@@ -546,7 +546,12 @@ namespace bl::test::metrics
             return;
 
         const std::string_view precision_name = precision == precision_type::f128 ? "f128" : "f256";
-        const std::string output_path = metrics_output_path(precision_name, "", "csv");
+        #ifdef FLTX_METRICS_REPORT_SUFFIX
+        constexpr std::string_view report_suffix = FLTX_METRICS_REPORT_SUFFIX;
+        #else
+        constexpr std::string_view report_suffix = "";
+        #endif
+        const std::string output_path = metrics_output_path(precision_name, report_suffix, "csv");
         write_csv_report(output_path, records);
 
         if (metrics_verbose_enabled())

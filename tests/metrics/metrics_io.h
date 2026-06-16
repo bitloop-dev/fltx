@@ -201,6 +201,7 @@ namespace bl::test::metrics::io_metrics
         std::vector<io_sample<Profile>> fixed;
         std::vector<io_sample<Profile>> scientific;
         std::vector<io_sample<Profile>> hexfloat;
+        bool parse_only = false;
     };
 
     struct io_format_case
@@ -209,6 +210,9 @@ namespace bl::test::metrics::io_metrics
         std::ios_base::fmtflags flags;
         bool hexfloat = false;
     };
+
+    template<class Profile>
+    [[nodiscard]] io_sample<Profile> make_sample(std::string text, bool hexfloat, int precision = -1);
 
     [[nodiscard]] inline std::string_view intern_operation_name(std::string text)
     {
@@ -570,6 +574,90 @@ namespace bl::test::metrics::io_metrics
         return text;
     }
 
+    template<class Profile>
+    [[nodiscard]] std::string make_medium_fixed_text(io_text_rng& rng, int exponent, int min_digits, int max_digits)
+    {
+        const int digit_count = rng.normal_integer(min_digits, max_digits);
+        return make_decimal_fixed_text(rng, exponent, digit_count);
+    }
+
+    template<class Profile>
+    [[nodiscard]] std::string make_medium_scientific_text(io_text_rng& rng, int exponent, int min_digits, int max_digits)
+    {
+        const int digit_count = rng.normal_integer(min_digits, max_digits);
+        return make_decimal_scientific_text(rng, exponent, digit_count);
+    }
+
+    template<class Profile>
+    [[nodiscard]] std::string make_default_boundary_text(io_text_rng& rng, int precision)
+    {
+        const int digit_count = std::max(1, precision);
+        const std::array<int, 4> exponents{ -5, -4, digit_count - 1, digit_count };
+        const int exponent = exponents[static_cast<std::size_t>(rng.integer(0, static_cast<int>(exponents.size() - 1)))];
+        if (exponent < -4 || exponent >= digit_count)
+            return make_decimal_scientific_text(rng, exponent, digit_count);
+        return make_decimal_fixed_text(rng, exponent, digit_count);
+    }
+
+    template<class Profile>
+    void fill_parse_focus_group(io_sample_group<Profile>& group, io_text_rng& rng)
+    {
+        using value_type = typename Profile::fltx_type;
+        constexpr int digits = std::numeric_limits<value_type>::digits10;
+        const int medium_min_digits = std::max(1, digits / 3);
+        const int medium_max_digits = digits + 8;
+        const int short_max_digits = std::min(8, digits + 8);
+        const int long_min_digits = std::max(12, digits / 2);
+        const int long_max_digits = digits + 8;
+
+        group.parse_only = true;
+        group.defaultfloat.reserve(samples_per_kind);
+        group.fixed.reserve(samples_per_kind);
+        group.scientific.reserve(samples_per_kind);
+
+        for (std::size_t index = 0; index < samples_per_kind; ++index)
+        {
+            if (group.label == "med-pos")
+            {
+                group.fixed.push_back(make_sample<Profile>(
+                    make_medium_fixed_text<Profile>(rng, 4, medium_min_digits, medium_max_digits),
+                    false));
+                group.scientific.push_back(make_sample<Profile>(
+                    make_medium_scientific_text<Profile>(rng, 4, medium_min_digits, medium_max_digits),
+                    false));
+            }
+            else if (group.label == "med-neg")
+            {
+                group.fixed.push_back(make_sample<Profile>(
+                    make_medium_fixed_text<Profile>(rng, -4, medium_min_digits, medium_max_digits),
+                    false));
+                group.scientific.push_back(make_sample<Profile>(
+                    make_medium_scientific_text<Profile>(rng, -4, medium_min_digits, medium_max_digits),
+                    false));
+            }
+            else if (group.label == "med-boundary")
+            {
+                const int precision = rng.integer(1, digits);
+                group.defaultfloat.push_back(make_sample<Profile>(
+                    make_default_boundary_text<Profile>(rng, precision),
+                    false,
+                    precision));
+            }
+            else if (group.label == "short-med")
+            {
+                group.fixed.push_back(make_sample<Profile>(
+                    make_medium_fixed_text<Profile>(rng, rng.negative() ? -4 : 4, 1, short_max_digits),
+                    false));
+            }
+            else
+            {
+                group.fixed.push_back(make_sample<Profile>(
+                    make_medium_fixed_text<Profile>(rng, rng.negative() ? -4 : 4, long_min_digits, long_max_digits),
+                    false));
+            }
+        }
+    }
+
     [[nodiscard]] inline std::string make_fixed_text(std::string_view label, io_text_rng& rng)
     {
         if (label == "high-prec")
@@ -660,7 +748,7 @@ namespace bl::test::metrics::io_metrics
     }
 
     template<class Profile>
-    [[nodiscard]] io_sample<Profile> make_sample(std::string text, bool hexfloat, int precision = -1)
+    [[nodiscard]] io_sample<Profile> make_sample(std::string text, bool hexfloat, int precision)
     {
         typename Profile::perfect_ref oracle = parse_oracle<Profile>(text, hexfloat);
         return { std::move(text), std::move(oracle), precision };
@@ -672,13 +760,17 @@ namespace bl::test::metrics::io_metrics
         static constexpr std::array<std::string_view, 7> labels{
             "high-prec", "large-exp", "small-exp", "big-dec", "low-prec", "tiny", "huge"
         };
+        static constexpr std::array<std::string_view, 5> parse_focus_labels{
+            "med-pos", "med-neg", "med-boundary", "short-med", "long-med"
+        };
         static constexpr std::array<std::string_view, 3> brute_labels{
             "brute-huge", "brute-med", "brute-tiny"
         };
 
         io_text_rng rng{ Profile::precision == precision_type::f128 ? 0x12810f00dull : 0x25610f00dull };
+        io_text_rng focus_rng{ Profile::precision == precision_type::f128 ? 0x128f0c05ull : 0x256f0c05ull };
         std::vector<io_sample_group<Profile>> groups;
-        groups.reserve(labels.size() + brute_labels.size());
+        groups.reserve(labels.size() + parse_focus_labels.size() + brute_labels.size());
 
         for (std::string_view label : labels)
         {
@@ -695,6 +787,13 @@ namespace bl::test::metrics::io_metrics
                 group.hexfloat.push_back(make_sample<Profile>(make_hex_text(label, rng), true));
             }
 
+            groups.push_back(std::move(group));
+        }
+
+        for (std::string_view label : parse_focus_labels)
+        {
+            io_sample_group<Profile> group{ label };
+            fill_parse_focus_group(group, focus_rng);
             groups.push_back(std::move(group));
         }
 
@@ -883,6 +982,45 @@ namespace bl::test::metrics::io_metrics
         return significant_digit_count(text) <= max_significant_digits;
     }
 
+    template<class Profile>
+    [[nodiscard]] std::string format_decimal_oracle(
+        const typename Profile::perfect_ref& value,
+        int precision,
+        std::ios_base::fmtflags flags)
+    {
+        std::ostringstream stream;
+        stream.precision(precision);
+        stream.setf(flags & std::ios_base::floatfield, std::ios_base::floatfield);
+        stream.setf(flags & (std::ios_base::showpoint | std::ios_base::showpos | std::ios_base::uppercase));
+        stream << value;
+        return stream.str();
+    }
+
+    template<class Profile>
+    [[nodiscard]] std::string make_formatter_seed_text(const io_sample<Profile>& sample)
+    {
+        return format_decimal_oracle<Profile>(
+            sample.oracle,
+            std::numeric_limits<typename Profile::fltx_type>::max_digits10,
+            std::ios_base::scientific);
+    }
+
+    template<class Profile, class Value>
+    [[nodiscard]] typename Profile::perfect_ref expected_to_string_value(
+        const Value& value,
+        int precision,
+        const io_format_case& format)
+    {
+        const typename Profile::perfect_ref exact_value = Profile::to_perfect(value);
+        if (format.hexfloat)
+            return exact_value;
+
+        const std::string rounded_text = format_decimal_oracle<Profile>(exact_value, precision, format.flags);
+        if (!formatted_decimal_respects_precision(rounded_text, precision, format))
+            throw std::invalid_argument("oracle formatter ignored requested precision");
+        return parse_oracle<Profile>(rounded_text, false);
+    }
+
     template<class Profile, class Samples, class Value, class FormatFn>
     [[nodiscard]] accuracy_result measure_to_string_accuracy(
         const Samples& samples,
@@ -903,7 +1041,8 @@ namespace bl::test::metrics::io_metrics
             },
             [&](std::size_t index)
             {
-                return Profile::to_perfect(values[index]);
+                const int sample_precision = samples[index].precision >= 0 ? samples[index].precision : precision;
+                return expected_to_string_value<Profile>(values[index], sample_precision, format);
             },
             [](std::size_t, const typename Profile::perfect_ref& expected)
             {
@@ -981,7 +1120,7 @@ namespace bl::test::metrics::io_metrics
         std::vector<typename Profile::fltx_type> values;
         values.reserve(samples.size());
         for (const auto& sample : samples)
-            values.push_back(bl::parse<typename Profile::fltx_type>(sample.text));
+            values.push_back(bl::parse<typename Profile::fltx_type>(make_formatter_seed_text<Profile>(sample)));
         return values;
     }
 
@@ -991,7 +1130,7 @@ namespace bl::test::metrics::io_metrics
         std::vector<typename Profile::competitor_ref> values;
         values.reserve(samples.size());
         for (const auto& sample : samples)
-            values.push_back(parse_stream_value<typename Profile::competitor_ref>(sample.text));
+            values.push_back(parse_stream_value<typename Profile::competitor_ref>(make_formatter_seed_text<Profile>(sample)));
         return values;
     }
 
@@ -1001,7 +1140,7 @@ namespace bl::test::metrics::io_metrics
         std::vector<typename Profile::extra_competitor_ref> values;
         values.reserve(samples.size());
         for (const auto& sample : samples)
-            values.push_back(parse_qdpp_value<typename Profile::extra_competitor_ref>(sample.text));
+            values.push_back(parse_qdpp_value<typename Profile::extra_competitor_ref>(make_formatter_seed_text<Profile>(sample)));
         return values;
     }
 
@@ -1067,6 +1206,25 @@ namespace bl::test::metrics::io_metrics
         return make_to_string_operation(sample_label, std::to_string(precision), format_label);
     }
 
+    template<class Profile>
+    [[nodiscard]] const std::vector<io_sample<Profile>>& to_string_samples_for_format(
+        const io_sample_group<Profile>& group,
+        const io_format_case& format) noexcept
+    {
+        if (format.hexfloat && !group.hexfloat.empty())
+            return group.hexfloat;
+
+        const std::ios_base::fmtflags floatfield = format.flags & std::ios_base::floatfield;
+        if (floatfield == std::ios_base::fixed && !group.fixed.empty())
+            return group.fixed;
+        if (floatfield == std::ios_base::scientific && !group.scientific.empty())
+            return group.scientific;
+        if (!group.defaultfloat.empty())
+            return group.defaultfloat;
+
+        return !group.scientific.empty() ? group.scientific : group.fixed;
+    }
+
     [[nodiscard]] inline std::string make_parse_operation(
         std::string_view sample_label,
         std::string_view style_label)
@@ -1111,8 +1269,6 @@ namespace bl::test::metrics::io_metrics
         metrics_record record = make_record<Profile>(operation);
 
         const auto fltx_values = make_fltx_values<Profile>(samples);
-        const auto competitor_values = make_competitor_values<Profile>(samples);
-        const auto extra_values = make_extra_competitor_values<Profile>(samples);
 
         record.fltx_accuracy = measure_to_string_accuracy<Profile>(
             samples,
@@ -1142,6 +1298,7 @@ namespace bl::test::metrics::io_metrics
             return record;
         }
 
+        const auto competitor_values = make_competitor_values<Profile>(samples);
         record.competitor_accuracy = measure_to_string_accuracy<Profile>(
             samples,
             competitor_values,
@@ -1176,6 +1333,7 @@ namespace bl::test::metrics::io_metrics
             return record;
         }
 
+        const auto extra_values = make_extra_competitor_values<Profile>(samples);
         extra.accuracy = measure_to_string_accuracy<Profile>(
             samples,
             extra_values,
@@ -1275,26 +1433,38 @@ namespace bl::test::metrics::io_metrics
         return record;
     }
 
+    [[nodiscard]] inline double finite_average_bits(double bits, double exact_bits) noexcept
+    {
+        if (!std::isinf(bits) || !std::isfinite(exact_bits))
+            return bits;
+        return bits > 0.0 ? exact_bits : -exact_bits;
+    }
+
     [[nodiscard]] inline accuracy_result average_accuracy(const std::vector<accuracy_result>& values)
     {
         double total_bits = 0.0;
         double total_domain = 0.0;
-        double worst_bits = std::numeric_limits<double>::infinity();
+        double total_worst_bits = 0.0;
         std::size_t sample_count = 0;
+        std::size_t row_count = 0;
 
         for (const accuracy_result& value : values)
         {
+            if (value.sample_count == 0)
+                continue;
+
             total_bits += value.mean_bits * static_cast<double>(value.sample_count);
             total_domain += value.domain_score * static_cast<double>(value.sample_count);
-            worst_bits = std::min(worst_bits, value.worst_bits);
+            total_worst_bits += finite_average_bits(value.worst_bits, value.mean_bits);
             sample_count += value.sample_count;
+            ++row_count;
         }
 
-        if (sample_count == 0)
+        if (sample_count == 0 || row_count == 0)
             return {};
 
         return {
-            worst_bits,
+            total_worst_bits / static_cast<double>(row_count),
             total_bits / static_cast<double>(sample_count),
             sample_count,
             total_domain / static_cast<double>(sample_count)
@@ -1328,20 +1498,16 @@ namespace bl::test::metrics::io_metrics
     {
         metrics_record average = make_record<Profile>(operation);
         std::vector<accuracy_result> fltx_accuracy;
-        std::vector<accuracy_result> primary_supported_fltx_accuracy;
         std::vector<accuracy_result> competitor_accuracy;
         std::vector<accuracy_result> extra_accuracy;
         std::vector<benchmark_result> fltx_benchmark;
-        std::vector<benchmark_result> primary_supported_fltx_benchmark;
         std::vector<benchmark_result> competitor_benchmark;
         std::vector<benchmark_result> extra_benchmark;
 
         fltx_accuracy.reserve(records.size());
-        primary_supported_fltx_accuracy.reserve(records.size());
         competitor_accuracy.reserve(records.size());
         extra_accuracy.reserve(records.size());
         fltx_benchmark.reserve(records.size());
-        primary_supported_fltx_benchmark.reserve(records.size());
         competitor_benchmark.reserve(records.size());
         extra_benchmark.reserve(records.size());
 
@@ -1350,36 +1516,47 @@ namespace bl::test::metrics::io_metrics
 
         for (const metrics_record& record : records)
         {
+            if (record.competitor_supported)
+                competitor_has_any_support = true;
+
+            if (!record.extra_competitors.empty() && record.extra_competitors.front().supported)
+                extra_has_any_support = true;
+        }
+
+        const auto extra_supported = [](const metrics_record& record) noexcept
+        {
+            return !record.extra_competitors.empty() && record.extra_competitors.front().supported;
+        };
+
+        for (const metrics_record& record : records)
+        {
+            if (competitor_has_any_support && !record.competitor_supported)
+                continue;
+            if (extra_has_any_support && !extra_supported(record))
+                continue;
+
             fltx_accuracy.push_back(record.fltx_accuracy);
             fltx_benchmark.push_back(record.fltx_benchmark);
 
-            if (record.competitor_supported)
+            if (competitor_has_any_support)
             {
-                competitor_has_any_support = true;
-                primary_supported_fltx_accuracy.push_back(record.fltx_accuracy);
-                primary_supported_fltx_benchmark.push_back(record.fltx_benchmark);
                 competitor_accuracy.push_back(record.competitor_accuracy);
                 competitor_benchmark.push_back(record.competitor_benchmark);
             }
 
-            if (!record.extra_competitors.empty() && record.extra_competitors.front().supported)
+            if (extra_has_any_support)
             {
-                extra_has_any_support = true;
                 extra_accuracy.push_back(record.extra_competitors.front().accuracy);
                 extra_benchmark.push_back(record.extra_competitors.front().benchmark);
             }
         }
 
-        average.fltx_accuracy = competitor_has_any_support
-            ? average_accuracy(primary_supported_fltx_accuracy)
-            : average_accuracy(fltx_accuracy);
-        average.fltx_benchmark = competitor_has_any_support
-            ? average_benchmark(primary_supported_fltx_benchmark)
-            : average_benchmark(fltx_benchmark);
-        average.competitor_supported = competitor_has_any_support;
+        average.fltx_accuracy = average_accuracy(fltx_accuracy);
+        average.fltx_benchmark = average_benchmark(fltx_benchmark);
+        average.competitor_supported = competitor_has_any_support && !competitor_accuracy.empty();
         average.competitor_accuracy = average_accuracy(competitor_accuracy);
         average.competitor_benchmark = average_benchmark(competitor_benchmark);
-        average.extra_competitors.front().supported = extra_has_any_support;
+        average.extra_competitors.front().supported = extra_has_any_support && !extra_accuracy.empty();
         average.extra_competitors.front().accuracy = average_accuracy(extra_accuracy);
         average.extra_competitors.front().benchmark = average_benchmark(extra_benchmark);
         return average;
@@ -1392,20 +1569,27 @@ namespace bl::test::metrics::io_metrics
         const auto precisions = precision_cases<Profile>();
         const auto formats = format_cases();
         records.reserve(groups.size() * precisions.size() * formats.size() + 1u);
+        std::vector<metrics_record> brute_records;
+        brute_records.reserve(groups.size() * formats.size());
 
         for (const io_sample_group<Profile>& group : groups)
         {
+            if (group.parse_only)
+                continue;
+
             if (is_brute_label(group.label))
             {
                 for (const io_format_case& format : formats)
                 {
                     const std::string_view operation = intern_operation_name(
                         make_to_string_operation(group.label, "rand", format.label));
+                    const auto& samples = to_string_samples_for_format(group, format);
                     records.push_back(make_to_string_record<Profile>(
                         operation,
-                        group.scientific,
+                        samples,
                         std::numeric_limits<typename Profile::fltx_type>::digits10,
                         format));
+                    brute_records.push_back(records.back());
                     sink(records.back());
                 }
                 continue;
@@ -1417,15 +1601,21 @@ namespace bl::test::metrics::io_metrics
                 {
                     const std::string_view operation = intern_operation_name(
                         make_to_string_operation(group.label, precision, format.label));
-                    records.push_back(make_to_string_record<Profile>(operation, group.scientific, precision, format));
+                    records.push_back(make_to_string_record<Profile>(
+                        operation,
+                        to_string_samples_for_format(group, format),
+                        precision,
+                        format));
                     sink(records.back());
                 }
             }
         }
 
+        const std::vector<metrics_record>& average_records =
+            brute_records.empty() ? records : brute_records;
         records.push_back(make_average_record<Profile>(
             intern_operation_name("to_string (average)"),
-            records));
+            average_records));
         sink(records.back());
     }
 
@@ -1457,6 +1647,12 @@ namespace bl::test::metrics::io_metrics
             parse_case{ "scientific", false, &io_sample_group<Profile>::scientific },
             parse_case{ "hexfloat", true, &io_sample_group<Profile>::hexfloat }
         };
+        const std::array<parse_case, 4> focused_cases{
+            parse_case{ "default", false, &io_sample_group<Profile>::defaultfloat },
+            parse_case{ "fixed", false, &io_sample_group<Profile>::fixed },
+            parse_case{ "scientific", false, &io_sample_group<Profile>::scientific },
+            parse_case{ "hexfloat", true, &io_sample_group<Profile>::hexfloat }
+        };
         const std::array<parse_case, 4> brute_cases{
             parse_case{ "default", false, &io_sample_group<Profile>::defaultfloat },
             parse_case{ "fixed", false, &io_sample_group<Profile>::fixed },
@@ -1466,6 +1662,8 @@ namespace bl::test::metrics::io_metrics
 
         std::vector<metrics_record> records;
         records.reserve(groups.size() * brute_cases.size() + 1u);
+        std::vector<metrics_record> brute_records;
+        brute_records.reserve(groups.size() * brute_cases.size());
         for (const io_sample_group<Profile>& group : groups)
         {
             const bool brute = is_brute_label(group.label);
@@ -1476,6 +1674,23 @@ namespace bl::test::metrics::io_metrics
                     const std::string_view operation = intern_operation_name(
                         make_brute_parse_operation(group.label, parse.label));
                     records.push_back(make_parse_record<Profile>(operation, group.*(parse.samples), parse.hexfloat));
+                    brute_records.push_back(records.back());
+                    sink(records.back());
+                }
+                continue;
+            }
+
+            if (group.parse_only)
+            {
+                for (const parse_case& parse : focused_cases)
+                {
+                    const auto& samples = group.*(parse.samples);
+                    if (samples.empty())
+                        continue;
+
+                    const std::string_view operation = intern_operation_name(
+                        make_parse_operation(group.label, parse.label));
+                    records.push_back(make_parse_record<Profile>(operation, samples, parse.hexfloat));
                     sink(records.back());
                 }
                 continue;
@@ -1490,9 +1705,11 @@ namespace bl::test::metrics::io_metrics
             }
         }
 
+        const std::vector<metrics_record>& average_records =
+            brute_records.empty() ? records : brute_records;
         records.push_back(make_average_record<Profile>(
             intern_operation_name("parse (average)"),
-            records));
+            average_records));
         sink(records.back());
     }
 

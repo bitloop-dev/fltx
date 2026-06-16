@@ -96,230 +96,6 @@ namespace bl::detail::charconv
         return length;
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr int hex_digit_bit_width(int digit) noexcept
-    {
-        int width = 0;
-        while (digit != 0)
-        {
-            ++width;
-            digit >>= 1;
-        }
-        return width;
-    }
-
-    BL_FORCE_INLINE constexpr void append_bounded_hex_bit(
-        detail::exact_decimal::biguint& coeff,
-        int& kept_bits,
-        int& total_bits,
-        int max_kept_bits,
-        bool bit,
-        bool& sticky) noexcept
-    {
-        ++total_bits;
-        if (kept_bits < max_kept_bits)
-        {
-            coeff.shl1();
-            if (bit)
-                coeff.add_small(1);
-            ++kept_bits;
-            return;
-        }
-
-        if (bit)
-            sticky = true;
-    }
-
-    template<class Traits>
-    BL_FORCE_INLINE constexpr void append_bounded_hex_digit(
-        detail::exact_decimal::biguint& coeff,
-        int digit,
-        int& kept_bits,
-        int& total_bits,
-        bool& seen_nonzero,
-        bool& sticky) noexcept
-    {
-        constexpr int max_kept_bits = detail::hex_full_significand_bits<Traits>() + 2;
-
-        if (!seen_nonzero)
-        {
-            if (digit == 0)
-                return;
-
-            seen_nonzero = true;
-            const int width = hex_digit_bit_width(digit);
-            for (int bit_index = width - 1; bit_index >= 0; --bit_index)
-            {
-                append_bounded_hex_bit(
-                    coeff,
-                    kept_bits,
-                    total_bits,
-                    max_kept_bits,
-                    ((digit >> bit_index) & 1) != 0,
-                    sticky);
-            }
-            return;
-        }
-
-        for (int bit_index = 3; bit_index >= 0; --bit_index)
-        {
-            append_bounded_hex_bit(
-                coeff,
-                kept_bits,
-                total_bits,
-                max_kept_bits,
-                ((digit >> bit_index) & 1) != 0,
-                sticky);
-        }
-    }
-
-    template<class Traits>
-    [[nodiscard]] constexpr typename Traits::value_type exact_binary_to_value(
-        detail::exact_decimal::biguint coeff,
-        int bin_exp,
-        bool neg) noexcept
-    {
-        if (coeff.is_zero())
-            return Traits::zero(neg);
-
-        constexpr int target_bits = detail::hex_full_significand_bits<Traits>();
-        int ratio_exp = coeff.bit_length() - 1;
-        detail::exact_decimal::biguint q = coeff;
-        if (ratio_exp > target_bits - 1)
-        {
-            const int shift = ratio_exp - (target_bits - 1);
-            const bool round_bit = coeff.get_bit(shift - 1);
-            const bool sticky = shift > 1 && detail::exact_decimal::any_low_bits_set(coeff, shift - 1);
-
-            q = detail::exact_decimal::shr_bits_copy(coeff, shift);
-            if (round_bit && (sticky || q.is_odd()))
-                q.add_small(1);
-
-            if (q.bit_length() > target_bits)
-            {
-                q.shr1();
-                ++ratio_exp;
-            }
-        }
-        else if (ratio_exp < target_bits - 1)
-        {
-            q.shl_bits((target_bits - 1) - ratio_exp);
-        }
-
-        const int e2 = bin_exp + ratio_exp;
-        if (e2 > Traits::max_binary_exponent)
-            return Traits::infinity(neg);
-        if (e2 < Traits::min_binary_exponent)
-            return Traits::zero(neg);
-
-        return Traits::pack_from_significand(q, e2, neg);
-    }
-
-    template<class Traits>
-    [[nodiscard]] constexpr bool parse_hex_float(
-        const char* first,
-        const char* last,
-        typename Traits::value_type& value,
-        const char** endptr,
-        bool allow_prefix = false,
-        bool allow_leading_plus = false) noexcept
-    {
-        const char* p = first;
-        bool neg = false;
-        if (*p == '-' || (allow_leading_plus && *p == '+'))
-        {
-            neg = *p == '-';
-            ++p;
-        }
-
-        if (detail::parse_special<Traits>(p, last, neg, value)) [[unlikely]]
-        {
-            *endptr = p;
-            return true;
-        }
-
-        if (allow_prefix && last - p >= 2 && p[0] == '0' && ascii_lower(p[1]) == 'x')
-            p += 2;
-
-        detail::exact_decimal::biguint coeff;
-        bool any_digit = false;
-        bool seen_nonzero = false;
-        bool fractional = false;
-        bool sticky = false;
-        int kept_bits = 0;
-        int total_bits = 0;
-        int frac_hex_digits = 0;
-
-        while (p != last)
-        {
-            if (*p == '.' && !fractional)
-            {
-                fractional = true;
-                ++p;
-                continue;
-            }
-
-            const int digit = ascii_hex_digit_value(*p);
-            if (digit < 0)
-                break;
-
-            append_bounded_hex_digit<Traits>(
-                coeff,
-                digit,
-                kept_bits,
-                total_bits,
-                seen_nonzero,
-                sticky);
-
-            any_digit = true;
-            if (fractional)
-                ++frac_hex_digits;
-            ++p;
-        }
-
-        if (!any_digit)
-        {
-            *endptr = first;
-            return false;
-        }
-
-        int exp2 = 0;
-        if (p != last && (*p == 'p' || *p == 'P'))
-        {
-            const char* exponent_marker = p;
-            ++p;
-
-            bool exp_neg = false;
-            if (p != last && (*p == '+' || *p == '-'))
-            {
-                exp_neg = (*p == '-');
-                ++p;
-            }
-
-            int parsed_exp = 0;
-            bool any_exp_digit = false;
-            while (p != last && '0' <= *p && *p <= '9')
-            {
-                any_exp_digit = true;
-                if (parsed_exp < 100000000)
-                    parsed_exp = parsed_exp * 10 + (*p - '0');
-                ++p;
-            }
-
-            if (any_exp_digit)
-                exp2 = exp_neg ? -parsed_exp : parsed_exp;
-            else
-                p = exponent_marker;
-        }
-
-        const int discarded_bits = total_bits - kept_bits;
-        if (sticky)
-            coeff.set_bit(0);
-
-        value = exact_binary_to_value<Traits>(coeff, exp2 - 4 * frac_hex_digits + discarded_bits, neg);
-        *endptr = p;
-        return true;
-    }
-
     template<class Traits>
     [[nodiscard]] constexpr std::to_chars_result emit_special(
         char* first,
@@ -413,7 +189,7 @@ namespace bl::detail::charconv
                 buffer[length] = '\0';
             }
 
-            parsed_ok = parse_hex_float<Traits>(buffer, buffer + length, parsed, &end);
+            parsed_ok = detail::parse_hex_float<Traits>(buffer, buffer + length, parsed, &end);
             end = first + (end - buffer);
         }
         else
@@ -750,7 +526,7 @@ namespace bl
             typename Traits::value_type parsed{};
             const char* end = nullptr;
             const bool parsed_ok = fmt == std::chars_format::hex
-                ? parse_hex_float<Traits>(first, last, parsed, &end, allow_hex_prefix, allow_leading_plus)
+                ? detail::parse_hex_float<Traits>(first, last, parsed, &end, allow_hex_prefix, allow_leading_plus)
                 : detail::parse_flt<Traits>(first, parsed, &end);
 
             if (!parsed_ok || end == first)
@@ -898,6 +674,10 @@ namespace bl
             }
             else
             {
+                #if defined(FLTX_SIMULATE_CONSTEVAL_MODE)
+                if (bl::detail::is_constant_evaluated())
+                    return detail::charconv::parse_constexpr<Value>(text, fmt);
+                #endif
                 return detail::charconv::parse_runtime<Value>(text, fmt);
             }
         }

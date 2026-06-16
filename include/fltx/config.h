@@ -81,10 +81,22 @@ static_assert(std::numeric_limits<double>::is_iec559 &&
 #if !defined(FLTX_DISABLE_FMA_AVAILABLE)
 #ifndef FMA_AVAILABLE
 #ifndef __EMSCRIPTEN__
-#if defined(__FMA__) || defined(__FMA4__) || defined(_MSC_VER) || defined(__clang__)
+#if defined(__FMA__) || defined(__FMA4__)
+#define FMA_AVAILABLE
+#elif defined(_MSC_VER) && (defined(__AVX2__) || defined(__AVX512F__))
 #define FMA_AVAILABLE
 #endif
 #endif
+#endif
+#endif
+
+#if !defined(BL_FLTX_HAS_X86_FMA)
+#if !defined(__EMSCRIPTEN__) && \
+    (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)) && \
+    (defined(__FMA__) || (defined(_MSC_VER) && (defined(__AVX2__) || defined(__AVX512F__))))
+#define BL_FLTX_HAS_X86_FMA 1
+#else
+#define BL_FLTX_HAS_X86_FMA 0
 #endif
 #endif
 
@@ -128,6 +140,11 @@ static_assert(std::numeric_limits<double>::is_iec559 &&
 #else
 #define BL_PUSH_PRECISE
 #define BL_POP_PRECISE
+#endif
+
+// Improves pow/cosh/sinh/lgamma domain scores with minimal overhead (default on)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER) && !defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#define FLTX_MATH_USES_CHECKED_DEKKER
 #endif
 
 namespace bl

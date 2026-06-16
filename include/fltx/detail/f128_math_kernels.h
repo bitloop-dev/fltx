@@ -1075,8 +1075,48 @@ namespace detail::_f128 // primitives and kernels
     {
         double y = sqrt_seed(x);
         y = 0.5 * (y + x / y);
-        y = 0.5 * (y + x / y);
-        return 0.5 * (y + x / y);
+
+        auto square_residual = [x](double value, double& hi, double& lo) constexpr noexcept
+        {
+            double product{};
+            double product_error{};
+            detail::fp::two_prod_precise(value, value, product, product_error);
+
+            double diff{};
+            double diff_error{};
+            detail::fp::two_diff_precise(product, x, diff, diff_error);
+            detail::fp::quick_two_sum_precise(diff, product_error + diff_error, hi, lo);
+        };
+
+        double best_hi{};
+        double best_lo{};
+        square_residual(y, best_hi, best_lo);
+        if (best_hi == 0.0 && best_lo == 0.0)
+            return y;
+
+        const bool negative = best_hi < 0.0 || (best_hi == 0.0 && best_lo < 0.0);
+        const double candidate = detail::fp::nextafter(
+            y,
+            negative ? std::numeric_limits<double>::infinity() : 0.0);
+
+        double candidate_hi{};
+        double candidate_lo{};
+        square_residual(candidate, candidate_hi, candidate_lo);
+
+        if (best_hi < 0.0 || (best_hi == 0.0 && best_lo < 0.0))
+        {
+            best_hi = -best_hi;
+            best_lo = -best_lo;
+        }
+        if (candidate_hi < 0.0 || (candidate_hi == 0.0 && candidate_lo < 0.0))
+        {
+            candidate_hi = -candidate_hi;
+            candidate_lo = -candidate_lo;
+        }
+
+        return (candidate_hi < best_hi || (candidate_hi == best_hi && candidate_lo < best_lo))
+            ? candidate
+            : y;
     }
 
     [[nodiscard]] BL_FORCE_INLINE constexpr double sqrt_tail_square(double c_lo, double correction) noexcept
@@ -1088,7 +1128,14 @@ namespace detail::_f128 // primitives and kernels
         }
         #endif
 
-        return c_lo * c_lo + correction;
+        double product{};
+        double product_error{};
+        detail::fp::two_prod_precise(c_lo, c_lo, product, product_error);
+
+        double sum{};
+        double sum_error{};
+        detail::fp::two_sum_precise(product, correction, sum, sum_error);
+        return sum + (product_error + sum_error);
     }
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s sqrt_compensated(const f128_s& scaled_a, double c) noexcept

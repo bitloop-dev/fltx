@@ -710,7 +710,7 @@ namespace detail::_f64_impl
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
         x * y + z,
-        std::fma(x, y, z)
+        detail::fp::fmadd_runtime(x, y, z)
     );
 }
 

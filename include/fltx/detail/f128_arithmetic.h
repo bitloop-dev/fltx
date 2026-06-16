@@ -132,6 +132,24 @@ namespace detail::_f128 // primitives and kernels
         return { hi, (q0 - hi) + q1 };
     }
 
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s div_compensated_inline_checked(const f128_s& a, const f128_s& b) noexcept
+    {
+        const double q0 = a.hi / b.hi;
+        if (detail::fp::isinf_or_nan(q0)) [[unlikely]]
+            return { q0, 0.0 };
+        if (q0 == 0.0 && a.hi == 0.0 && a.lo == 0.0) [[unlikely]]
+            return signed_zero(bl::signbit(a) != bl::signbit(b));
+
+        double p0{}, e0{};
+        detail::fp::two_prod_precise_checked(q0, b.hi, p0, e0);
+
+        const double q1 = (((a.hi - p0) - e0) + a.lo - (q0 * b.lo)) / b.hi;
+        const double hi = q0 + q1;
+        return { hi, (q0 - hi) + q1 };
+    }
+#endif
+
     [[nodiscard]] BL_MSVC_NOINLINE constexpr f128_s div_f128_double_runtime(const f128_s& a, double b) noexcept
     {
         return div_compensated_inline(a, f128_s{ b, 0.0 });
@@ -146,6 +164,16 @@ namespace detail::_f128 // primitives and kernels
         e += a.hi * b.lo + a.lo * b.hi;
         e += a.lo * b.lo;
     }
+
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+    BL_FORCE_INLINE constexpr void mul_expansion_inline_checked(const f128_s& a, const f128_s& b, double& p, double& e) noexcept
+    {
+        detail::fp::two_prod_precise_checked(a.hi, b.hi, p, e);
+
+        e += a.hi * b.lo + a.lo * b.hi;
+        e += a.lo * b.lo;
+    }
+#endif
     BL_POP_PRECISE;
 
     // fused expressions
@@ -190,6 +218,17 @@ namespace detail::_f128 // primitives and kernels
         return { p, e };
     }
 
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_inline_checked(const f128_s& a, const f128_s& b) noexcept
+    {
+        double p{}, e{};
+        detail::fp::two_prod_precise_checked(a.hi, b.hi, p, e);
+        e += a.hi * b.lo + a.lo * b.hi;
+        detail::fp::quick_two_sum_precise(p, e, p, e);
+        return { p, e };
+    }
+#endif
+
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_dd_inline(const f128_s& a, const f128_s& b) noexcept
     {
         return mul_inline(a, b);
@@ -208,6 +247,13 @@ namespace detail::_f128 // primitives and kernels
     {
         return div_compensated_inline(a, b);
     }
+
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s div_inline_checked(const f128_s& a, const f128_s& b) noexcept
+    {
+        return div_compensated_inline_checked(a, b);
+    }
+#endif
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s add_double_inline(const f128_s& a, double b) noexcept
     {
@@ -240,6 +286,17 @@ namespace detail::_f128 // primitives and kernels
         e += a.lo * b;
         return renorm(p, e);
     }
+
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_double_inline_checked(const f128_s& a, double b) noexcept
+    {
+        double p{}, e{};
+        detail::fp::two_prod_precise_checked(a.hi, b, p, e);
+
+        e += a.lo * b;
+        return renorm(p, e);
+    }
+#endif
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_double_inline(double a, const f128_s& b) noexcept
     {
@@ -304,6 +361,19 @@ namespace detail::_f128 // primitives and kernels
         t += e + c.lo;
         return renorm(s, t);
     }
+
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_add_inline_checked(const f128_s& a, const f128_s& b, const f128_s& c) noexcept
+    {
+        double p{}, e{};
+        mul_expansion_inline_checked(a, b, p, e);
+
+        double s{}, t{};
+        two_sum_precise(p, c.hi, s, t);
+        t += e + c.lo;
+        return renorm(s, t);
+    }
+#endif
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_sub_inline(const f128_s& a, const f128_s& b, const f128_s& c) noexcept
     {

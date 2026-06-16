@@ -513,6 +513,44 @@ BL_FORCE_INLINE constexpr double sqrt_seed(double x) noexcept
     return ldexp(y, exp2 / 2);
 }
 
+BL_FORCE_INLINE constexpr double cbrt_seed(double x) noexcept
+{
+    if (x == 0.0 || isnan(x) || isinf(x))
+        return x;
+
+    const bool negative = x < 0.0;
+    double ax = negative ? -x : x;
+
+    int exp2 = frexp_exponent(ax);
+    double m = ldexp(ax, -exp2);
+
+    int rem = exp2 % 3;
+    if (rem < 0)
+        rem += 3;
+
+    if (rem != 0)
+    {
+        m = ldexp(m, rem);
+        exp2 -= rem;
+    }
+
+    double y = 1.0;
+    for (int i = 0; i < 8; ++i)
+        y = (2.0 * y + m / (y * y)) / 3.0;
+
+    y = ldexp(y, exp2 / 3);
+    return negative ? -y : y;
+}
+
+BL_FORCE_INLINE constexpr bool exp_scale_needs_checked_product(int n) noexcept
+{
+    return n >= 691 || n <= -671;
+}
+
+BL_FORCE_INLINE constexpr bool exp_inverse_is_negligible(double x) noexcept
+{
+    return x >= 690.0;
+}
 
 } // namespace bl::detail::fp
 

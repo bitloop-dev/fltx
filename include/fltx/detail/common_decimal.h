@@ -397,7 +397,7 @@ constexpr inline void divmod_limited_quotient(
     int quotient_bits,
     biguint& remainder) noexcept
 {
-    if (!std::is_constant_evaluated())
+    if (!bl::detail::is_constant_evaluated())
     {
         std::uint64_t quotient = 0;
         if (div_quotient_limited_estimate(numerator, denominator, denominator_leading, quotient_bits, quotient, remainder))
@@ -409,7 +409,7 @@ constexpr inline void divmod_limited_quotient(
 
 [[nodiscard]] constexpr inline std::uint64_t div_quotient_limited(const biguint& numerator, const biguint& denominator, int quotient_bits, biguint& remainder) noexcept
 {
-    if (!std::is_constant_evaluated())
+    if (!bl::detail::is_constant_evaluated())
         return div_quotient_limited(
             numerator,
             denominator,
@@ -496,7 +496,7 @@ constexpr inline void divmod_limited_quotient_chunked(
         scaled.shl_bits(first_scale_bits);
 
     double normalized_den_leading = 0.0;
-    if (!std::is_constant_evaluated())
+    if (!bl::detail::is_constant_evaluated())
         normalized_den_leading = leading_value_as_double(normalized_den);
 
     biguint remainder;
@@ -810,12 +810,8 @@ template<class Traits>
     }
     else if (quotient_bits <= 64)
         q = biguint{ div_quotient_limited(num, den, quotient_bits, r) };
-    else if (!std::is_constant_evaluated())
-        divmod_limited_quotient_chunked(num, den, quotient_bits, q, r);
-    else if (num.bit_length() > quotient_bits)
-        divmod_limited_quotient(num, den, quotient_bits, q, r);
     else
-        divmod_bitwise(num, den, q, r);
+        divmod_limited_quotient_chunked(num, den, quotient_bits, q, r);
 
     if (!r.is_zero())
     {

@@ -12,6 +12,8 @@
 #include <cstdint>
 #include <type_traits>
 
+#include "fltx/config.h"
+
 namespace bl::detail::exact_decimal {
 
 struct biguint
@@ -51,7 +53,7 @@ struct biguint
         for (int i = 0; i < size; ++i)
             words[i] = other.words[i];
 
-        if (std::is_constant_evaluated())
+        if (bl::detail::is_constant_evaluated())
         {
             for (int i = size; i < max_words; ++i)
                 words[i] = 0;
@@ -67,7 +69,7 @@ struct biguint
         for (int i = 0; i < size; ++i)
             words[i] = other.words[i];
 
-        if (std::is_constant_evaluated())
+        if (bl::detail::is_constant_evaluated())
         {
             for (int i = size; i < max_words; ++i)
                 words[i] = 0;

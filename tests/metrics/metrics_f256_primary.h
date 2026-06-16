@@ -791,6 +791,36 @@ namespace bl::test::metrics::f256_primary
     template<class T>
     [[nodiscard]] BL_FORCE_INLINE T call_round(const T& x) { using boost::multiprecision::round; using std::round; return round(x); }
 
+    template<class T>
+    [[nodiscard]] BL_FORCE_INLINE T call_nearest_even_integer_reference(const T& x)
+    {
+        using boost::multiprecision::floor;
+        using std::floor;
+
+        const T lower = floor(x);
+        const T delta = x - lower;
+        if (delta < T{ 0.5 })
+            return lower;
+
+        const T upper = lower + T{ 1 };
+        if (delta > T{ 0.5 })
+            return upper;
+
+        const T half_lower = floor(lower / T{ 2 });
+        return lower == half_lower * T{ 2 } ? lower : upper;
+    }
+
+    template<class T, class FallbackFn>
+    [[nodiscard]] BL_FORCE_INLINE T call_unary_reference(
+        std::string_view operation,
+        const T& x,
+        FallbackFn fallback)
+    {
+        if (operation == "nearbyint" || operation == "rint")
+            return call_nearest_even_integer_reference(x);
+        return fallback(x);
+    }
+
     [[nodiscard]] BL_FORCE_INLINE extra_competitor_ref call_nearbyint(const extra_competitor_ref& x)
     {
         return qdpp::nearbyint(x);

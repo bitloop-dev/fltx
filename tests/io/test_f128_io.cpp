@@ -176,10 +176,16 @@ TEST_CASE("f128 literals parse numeric and string source text", "[fltx][f128][io
     constexpr f128 numeric    = 0.123456789012345678901234567890123_dd;
     constexpr f128 scientific = 1.25e-20_dd;
     constexpr f128 text       = "0.123456789012345678901234567890123"_dd;
+    constexpr f128 hex        = 0x1.4p+0_dd;
+    constexpr f128 hex_text   = "0x1.4p+0"_dd;
+    constexpr f128 hex_upper  = "0X1.8P+2"_dd;
 
     require_close(numeric, to_ref("0.123456789012345678901234567890123"));
     require_close(scientific, to_ref("1.25e-20"));
     require_close(text, to_ref("0.123456789012345678901234567890123"));
+    require_close(hex, to_ref("1.25"));
+    require_close(hex_text, to_ref("1.25"));
+    require_close(hex_upper, to_ref("6"));
 }
 
 TEST_CASE("f128 parser handles special values, partial tokens, and invalid inputs", "[fltx][f128][io][parse][edge]")
@@ -314,6 +320,14 @@ TEST_CASE("f128 fixed formatting round-trips large exponent values exactly", "[f
     REQUIRE(text.find('e') == std::string::npos);
     REQUIRE(text.find('E') == std::string::npos);
     REQUIRE(bl::parse<f128>(text) == value);
+}
+
+TEST_CASE("f128 scientific formatting handles extreme tiny values", "[fltx][f128][io][format]")
+{
+    const f128 value = bl::parse<f128>("-9.45985594532974e-301");
+
+    REQUIRE(bl::to_string(value, 15, std::ios_base::scientific) == "-9.459855945329740e-301");
+    REQUIRE(bl::to_string(value, 15) == "-9.45985594532974e-301");
 }
 
 TEST_CASE("f128 formats special values and stream flags consistently", "[fltx][f128][io][format][edge]")

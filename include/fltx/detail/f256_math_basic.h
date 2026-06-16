@@ -367,6 +367,9 @@ namespace detail::_f256_impl
         return f256_s{ std::numeric_limits<double>::quiet_NaN(), 0.0, 0.0, 0.0 };
     }
 
+    if (bl::detail::use_constexpr_math())
+        return sqrt_impl(a);
+
     return sqrt_impl_fast(a);
 }
 

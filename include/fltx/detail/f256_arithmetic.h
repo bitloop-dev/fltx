@@ -372,6 +372,57 @@ namespace detail::_f256 // primitives and kernels
         return renorm5(p0, p1, s0, t0, t1);
     }
 
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s mul_inline_checked(const f256_s& a, const f256_s& b) noexcept
+    {
+        using namespace detail::_f256;
+
+        double p0{}, p1{}, p2{}, p3{}, p4{}, p5{};
+        double q0{}, q1{}, q2{}, q3{}, q4{}, q5{};
+        double p6{}, p7{}, p8{}, p9{};
+        double q6{}, q7{}, q8{}, q9{};
+        double r0{}, r1{};
+        double t0{}, t1{};
+        double s0{}, s1{}, s2{};
+
+        detail::fp::two_prod_precise_checked(a.x0, b.x0, p0, q0);
+        detail::fp::two_prod_precise_checked(a.x0, b.x1, p1, q1);
+        detail::fp::two_prod_precise_checked(a.x1, b.x0, p2, q2);
+        detail::fp::two_prod_precise_checked(a.x0, b.x2, p3, q3);
+        detail::fp::two_prod_precise_checked(a.x1, b.x1, p4, q4);
+        detail::fp::two_prod_precise_checked(a.x2, b.x0, p5, q5);
+        detail::fp::two_prod_precise_checked(a.x0, b.x3, p6, q6);
+        detail::fp::two_prod_precise_checked(a.x1, b.x2, p7, q7);
+        detail::fp::two_prod_precise_checked(a.x2, b.x1, p8, q8);
+        detail::fp::two_prod_precise_checked(a.x3, b.x0, p9, q9);
+
+        three_sum(p1, p2, q0);
+        three_sum(p2, q1, q2);
+        three_sum(p3, p4, p5);
+
+        two_sum_precise(p2, p3, s0, t0);
+        two_sum_precise(q1, p4, s1, t1);
+        s2 = q2 + p5;
+        two_sum_precise(s1, t0, s1, t0);
+        s2 += (t0 + t1);
+
+        two_sum_precise(q0, q3, q0, q3);
+        two_sum_precise(q4, q5, q4, q5);
+        two_sum_precise(p6, p7, p6, p7);
+        two_sum_precise(p8, p9, p8, p9);
+
+        two_sum_precise(q0, q4, t0, t1);  t1 += (q3 + q5);
+        two_sum_precise(p6, p8, r0, r1);  r1 += (p7 + p9);
+        two_sum_precise(t0, r0, q3, q4);  q4 += (t1 + r1);
+
+        two_sum_precise(q3, s1, t0, t1);
+        t1 += q4;
+        t1 += a.x1 * b.x3 + a.x2 * b.x2 + a.x3 * b.x1 + q6 + q7 + q8 + q9 + s2;
+
+        return renorm5(p0, p1, s0, t0, t1);
+    }
+#endif
+
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s div_inline(const f256_s& a, const f256_s& b) noexcept
     {
         using namespace detail::_f256;

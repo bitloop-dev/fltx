@@ -112,11 +112,20 @@ namespace detail::_f128 // primitives and kernels
         std::uint32_t exponent = static_cast<std::uint32_t>(negative ? -n : n);
         const f128_s* table = negative ? exp_integer_inv_table : exp_integer_table;
         f128_s factor{ 1.0 };
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        const bool checked_product = detail::fp::exp_scale_needs_checked_product(n);
+#endif
 
         for (std::size_t i = 0; exponent != 0 && i < (sizeof(exp_integer_table) / sizeof(exp_integer_table[0])); ++i)
         {
             if ((exponent & 1u) != 0)
+            {
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+                factor = checked_product ? mul_inline_checked(factor, table[i]) : mul_inline(factor, table[i]);
+#else
                 factor = mul_inline(factor, table[i]);
+#endif
+            }
             exponent >>= 1u;
         }
 
@@ -125,9 +134,6 @@ namespace detail::_f128 // primitives and kernels
 
     BL_FORCE_INLINE constexpr double exp_nearest_integer(double x) noexcept
     {
-        if (bl::detail::use_constexpr_math())
-            return nearbyint_ties_even(x);
-
         return static_cast<double>(
             x >= 0.0
                 ? static_cast<int>(x + 0.5)
@@ -149,7 +155,13 @@ namespace detail::_f128 // primitives and kernels
             return sub_one ? e : add_inline(e, f128_s{ 1.0 });
 
         const f128_s factor = exp_integer_factor(n);
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        const f128_s scaled = detail::fp::exp_scale_needs_checked_product(n)
+            ? mul_add_inline_checked(factor, e, factor)
+            : mul_add_inline(factor, e, factor);
+#else
         const f128_s scaled = mul_add_inline(factor, e, factor);
+#endif
         return sub_one ? sub_inline(scaled, f128_s{ 1.0 }) : scaled;
     }
 
@@ -932,7 +944,11 @@ namespace detail::_f128 // primitives and kernels
         f128_s local_lgamma{};
         try_lgamma_near_one_or_two(y, local_lgamma);
         const f128_s local_gamma = detail::_f128_impl::exp(local_lgamma);
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        return shifted_up ? div_inline_checked(local_gamma, product) : mul_inline(local_gamma, product);
+#else
         return shifted_up ? div_inline(local_gamma, product) : mul_inline(local_gamma, product);
+#endif
     }
 
     BL_MSVC_NOINLINE constexpr f128_s lgamma_positive_recurrence(const f128_s& x) noexcept
@@ -972,7 +988,13 @@ namespace detail::_f128 // primitives and kernels
         int product_scale2 = 0;
         positive_recurrence_product(x, asymptotic_min, z, product, product_scale2);
 
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        f128_s out = (product == f128_s{ 1.0 })
+            ? detail::_f128_impl::exp(lgamma_stirling_asymptotic(z))
+            : div_inline(detail::_f128_impl::exp(lgamma_stirling_asymptotic(z)), product);
+#else
         f128_s out = div_inline(detail::_f128_impl::exp(lgamma_stirling_asymptotic(z)), product);
+#endif
         if (product_scale2 != 0)
             out = detail::_f128_impl::ldexp(out, -product_scale2);
 
@@ -991,7 +1013,7 @@ namespace detail::_f128 // primitives and kernels
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s cbrt_constexpr_seed(const f128_s& ax)
     {
-        return detail::_f128_impl::exp(div_inline(detail::_f128_impl::log(ax), f128_s{ 3.0 }));
+        return f128_s{ detail::fp::cbrt_seed(ax.hi), 0.0 };
     }
 }
 
@@ -1183,6 +1205,8 @@ namespace detail::_f128
     const f128_s ax = neg ? -x : x;
 
     f128_s y = cbrt_compensated(ax, cbrt_seed(ax).hi);
+    if (bl::detail::use_constexpr_math())
+        y = cbrt_compensated(ax, y.hi);
 
     if (neg)
         y = -y;
@@ -1532,7 +1556,13 @@ namespace detail::_f128
     }
 
     const f128_s ex = detail::_f128_impl::exp(ax);
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+    f128_s out = detail::fp::exp_inverse_is_negligible(ax.hi)
+        ? mul_pwr2_inline(ex, 0.5)
+        : mul_double_inline(sub_inline(ex, div_inline(f128_s{ 1.0 }, ex)), 0.5);
+#else
     f128_s out = mul_double_inline(sub_inline(ex, div_inline(f128_s{ 1.0 }, ex)), 0.5);
+#endif
     if (signbit(x))
         out = -out;
     return F128_CANONICALIZE_MATH_RESULT(out);
@@ -1549,6 +1579,11 @@ namespace detail::_f128
 
     const f128_s ax = detail::_f128::mag(x);
     const f128_s ex = detail::_f128_impl::exp(ax);
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+    if (detail::fp::exp_inverse_is_negligible(ax.hi))
+        return F128_CANONICALIZE_MATH_RESULT(mul_pwr2_inline(ex, 0.5));
+#endif
+
     return F128_CANONICALIZE_MATH_RESULT(mul_double_inline(add_inline(ex, div_inline(f128_s{ 1.0 }, ex)), 0.5));
 }
 

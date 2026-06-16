@@ -118,6 +118,9 @@ class BenchmarkTable:
     cells: dict[tuple[str, str, ColumnKey], BenchmarkCell]
 
 
+IO_AVERAGE_LABELS = {"to_string (average)", "parse (average)"}
+
+
 def normalize_key(value: str) -> str:
     return (
         value.strip()
@@ -355,6 +358,37 @@ def discover_table(metrics_root: Path) -> BenchmarkTable:
         rows_by_group=rows_by_group,
         cells=cells,
     )
+
+
+def is_detailed_io_label(label: str) -> bool:
+    if label in IO_AVERAGE_LABELS:
+        return False
+    return label.startswith("to_string(") or label.startswith("parse<") or label.startswith("parse(")
+
+
+def svg_summary_table(table: BenchmarkTable) -> BenchmarkTable:
+    groups: list[str] = []
+    rows_by_group: dict[str, list[str]] = {}
+    cells: dict[tuple[str, str, ColumnKey], BenchmarkCell] = {}
+
+    for group in table.groups:
+        labels = [
+            label
+            for label in table.rows_by_group.get(group, [])
+            if not is_detailed_io_label(label)
+        ]
+        if not labels:
+            continue
+
+        groups.append(group)
+        rows_by_group[group] = labels
+        for label in labels:
+            for column in table.columns:
+                cell = table.cells.get((group, label, column))
+                if cell is not None:
+                    cells[(group, label, column)] = cell
+
+    return BenchmarkTable(table.columns, groups, rows_by_group, cells)
 
 
 def mix_channel(a: int, b: int, t: float) -> int:
@@ -944,7 +978,7 @@ def write_outputs(table: BenchmarkTable, output_dir: Path, output_format: str, s
         written.append(path)
     if output_format in {"svg", "both"}:
         path = output_dir / "metrics_table.svg"
-        path.write_text(render_svg_table(table, show_title_legend), encoding="utf-8")
+        path.write_text(render_svg_table(svg_summary_table(table), show_title_legend), encoding="utf-8")
         written.append(path)
     return written
 

@@ -23,9 +23,9 @@ namespace detail::_f128 // primitives and kernels
 {
     struct f128_io_traits;
 
-    BL_FORCE_INLINE constexpr void normalize10(const f128_s& x, f128_s& m, int& exp10)
+    [[nodiscard]] BL_FORCE_INLINE constexpr bool normalize10(const f128_s& x, f128_s& m, int& exp10)
     {
-        if (x.hi == 0.0 && x.lo == 0.0) { m = f128_s{ 0.0 }; exp10 = 0; return; }
+        if (x.hi == 0.0 && x.lo == 0.0) { m = f128_s{ 0.0 }; exp10 = 0; return true; }
 
         f128_s ax = abs(x);
 
@@ -33,9 +33,26 @@ namespace detail::_f128 // primitives and kernels
         int e10 = (int)detail::fp::floor((e2 - 1) * 0.30102999566398114); // ≈ log10(2)
 
         m = ax * bl::detail::_f128_impl::pow10_128(-e10);
-        while (m >= f128_s{ 10.0 }) { m = m / f128_s{ 10.0 }; ++e10; }
-        while (m < f128_s{ 1.0 }) { m = m * f128_s{ 10.0 }; --e10; }
+        if (!detail::fp::isfinite(m.hi))
+            return false;
+
+        int guard = 0;
+        while (m >= f128_s{ 10.0 }) {
+            m = m / f128_s{ 10.0 };
+            ++e10;
+            if (!detail::fp::isfinite(m.hi) || ++guard > 16)
+                return false;
+        }
+
+        guard = 0;
+        while (m < f128_s{ 1.0 }) {
+            m = m * f128_s{ 10.0 };
+            --e10;
+            if (!detail::fp::isfinite(m.hi) || ++guard > 16)
+                return false;
+        }
         exp10 = e10;
+        return true;
     }
 
     BL_PUSH_PRECISE;
@@ -68,7 +85,8 @@ namespace detail::_f128 // primitives and kernels
             sig = 1;
 
         f128_s scaled{};
-        normalize10(x, scaled, exp10);
+        if (!normalize10(x, scaled, exp10))
+            return false;
         if (!(scaled >= f128_s{ 1.0 }) || !(scaled < f128_s{ 10.0 }))
             return false;
 
@@ -534,6 +552,7 @@ namespace detail::_f128 // primitives and kernels
         static constexpr int min_parse_order = detail::fltx_min_parse_order;
         static constexpr int limb_count = detail::_f128::exact_traits::limb_count;
         static constexpr int significand_bits = detail::_f128::exact_traits::significand_bits;
+        static constexpr int conversion_significand_bits = 53 * (limb_count + 1);
         static constexpr int max_binary_exponent = 1023;
         static constexpr int min_normal_binary_exponent = -1022;
         static constexpr int min_binary_exponent = -1074;
@@ -665,9 +684,8 @@ namespace detail::_f128 // primitives and kernels
     [[nodiscard]] consteval f128_s parse_dd_literal(const char* text, const char* expected_end)
     {
         f128_s out{};
-        const char* end = text;
 
-        if (!(parse(text, out, &end) && end == expected_end))
+        if (!bl::detail::parse_literal_float_text<f128_io_traits>(text, expected_end, out))
             throw "invalid _dd literal";
 
         return out;

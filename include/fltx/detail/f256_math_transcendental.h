@@ -179,10 +179,19 @@ namespace detail::_f256 // primitives and kernels
         std::uint32_t exponent = static_cast<std::uint32_t>(negative ? -n : n);
         f256_s factor{ 1.0 };
         const f256_s* table = negative ? exp_integer_inv_table : exp_integer_table;
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        const bool checked_product = detail::fp::exp_scale_needs_checked_product(n);
+#endif
         for (std::size_t i = 0; exponent != 0 && i < (sizeof(exp_integer_table) / sizeof(exp_integer_table[0])); ++i)
         {
             if ((exponent & 1u) != 0)
+            {
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+                factor = checked_product ? mul_inline_checked(factor, table[i]) : mul_inline(factor, table[i]);
+#else
                 factor = mul_inline(factor, table[i]);
+#endif
+            }
             exponent >>= 1u;
         }
 
@@ -209,17 +218,26 @@ namespace detail::_f256 // primitives and kernels
             return sub_one ? e : add_scalar_precise(e, 1.0);
 
         const f256_s factor = exp_integer_factor(n);
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        const f256_s factor_e = detail::fp::exp_scale_needs_checked_product(n)
+            ? mul_inline_checked(factor, e)
+            : mul_inline(factor, e);
+        const f256_s scaled = add_inline(factor, factor_e);
+#else
         const f256_s scaled = add_inline(factor, mul_inline(factor, e));
+#endif
         return sub_one ? add_scalar_precise(scaled, -1.0) : scaled;
     }
 
     BL_MSVC_NOINLINE constexpr f256_s log1p_newton_small(const f256_s& frac) noexcept
     {
-        f256_s x = bl::detail::use_constexpr_math()
+        const bool constexpr_path = bl::detail::use_constexpr_math();
+        f256_s x = constexpr_path
             ? f256_s{ detail::fp::log1p(frac.x0) }
             : f256_s{ std::log1p(frac.x0) };
 
-        for (int i = 0; i < 2; ++i)
+        const int iterations = constexpr_path ? 3 : 2;
+        for (int i = 0; i < iterations; ++i)
         {
             const f256_s em1 = exp_general_scaled(x, true);
             x = add_inline(x, div_inline(sub_inline(frac, em1), add_scalar_precise(em1, 1.0)));
@@ -1253,7 +1271,7 @@ namespace detail::_f256 // primitives and kernels
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s cbrt_constexpr_seed(const f256_s& ax)
     {
-        return detail::_f256_impl::exp(detail::_f256_impl::log(ax) / f256_s{ 3.0 });
+        return f256_s{ detail::fp::cbrt_seed(ax.x0), 0.0, 0.0, 0.0 };
     }
 }
 
@@ -1737,8 +1755,14 @@ namespace detail::_f256
     }
 
     const f256_s ex     = _exp(ax);
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+    f256_s out = detail::fp::exp_inverse_is_negligible(ax.x0)
+        ? _ldexp(ex, -1)
+        : mul_double_inline(sub_inline(ex, div_refined_once(f256_s{ 1.0 }, ex)), 0.5);
+#else
     const f256_s inv_ex = div_refined_once(f256_s{ 1.0 }, ex);
     f256_s out = mul_double_inline(sub_inline(ex, inv_ex), 0.5);
+#endif
     if (signbit(x))
         out = -out;
     return F256_CANONICALIZE_MATH_RESULT(out);
@@ -1753,6 +1777,11 @@ namespace detail::_f256
 
     const f256_s ax     = detail::_f256::mag(x);
     const f256_s ex     = _exp(ax);
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+    if (detail::fp::exp_inverse_is_negligible(ax.x0))
+        return F256_CANONICALIZE_MATH_RESULT(_ldexp(ex, -1));
+#endif
+
     const f256_s inv_ex = div_refined_once(f256_s{ 1.0 }, ex);
     return F256_CANONICALIZE_MATH_RESULT(
         mul_double_inline(add_inline(ex, inv_ex), 0.5));

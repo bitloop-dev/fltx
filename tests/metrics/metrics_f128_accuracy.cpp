@@ -13,7 +13,7 @@ using namespace bl::test::metrics::f128_primary;
         const auto record = run_unary_case<FLTX_PRIMARY_CASE_QDPP_EXTRA_SUPPORTED(NAME)>( \
             #NAME, REQUIRED_BITS, samples, \
             [](const auto& x) { return CALL(x); }, \
-            [](const auto& x) { return CALL(x); }, \
+            [](const auto& x) { return call_unary_reference(#NAME, x, [](const auto& y) { return CALL(y); }); }, \
             false, enforce_assertions); \
         bl::test::metrics::write_metrics_case_report("f128 primary precision: " #NAME, record); \
         if (enforce_assertions) check_competitor_slack(record); \

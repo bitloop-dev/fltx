@@ -362,6 +362,7 @@ namespace detail::_f256 // primitives and kernels
         static constexpr int min_parse_order = detail::fltx_min_parse_order;
         static constexpr int limb_count = detail::_f256::exact_traits::limb_count;
         static constexpr int significand_bits = detail::_f256::exact_traits::significand_bits;
+        static constexpr int conversion_significand_bits = detail::_f256::exact_traits::conversion_significand_bits;
         static constexpr int max_binary_exponent = 1023;
         static constexpr int min_normal_binary_exponent = -1022;
         static constexpr int min_binary_exponent = -1074;
@@ -488,9 +489,8 @@ namespace detail::_f256 // primitives and kernels
     [[nodiscard]] consteval f256_s parse_qd_literal(const char* text, const char* expected_end)
     {
         f256_s out{};
-        const char* end = text;
 
-        if (!(parse(text, out, &end) && end == expected_end))
+        if (!bl::detail::parse_literal_float_text<f256_io_traits>(text, expected_end, out))
             throw "invalid _qd literal";
 
         return out;

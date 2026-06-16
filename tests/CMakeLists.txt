@@ -189,6 +189,20 @@ add_executable(metrics_tests
     ${FLTX_TESTS_METRICS_SOURCE}
     ${FLTX_TESTS_QDPP_HEADERS}
 )
+
+set(FLTX_METRICS_TEST_TARGETS metrics_tests)
+if(FLTX_BUILD_SIMULATED_CONSTEVAL_METRICS)
+    addFltxTestLibrary(fltx_metrics_simulate_consteval_lib FLTX_SIMULATE_CONSTEVAL_MODE)
+    add_executable(metrics_consteval_tests
+        ${FLTX_HEADERS}
+        ${FLTX_SOURCE}
+
+        ${FLTX_TESTS_METRICS_HEADERS}
+        ${FLTX_TESTS_METRICS_SOURCE}
+        ${FLTX_TESTS_QDPP_HEADERS}
+    )
+    list(APPEND FLTX_METRICS_TEST_TARGETS metrics_consteval_tests)
+endif()
 organizeMetricsTestsSourceGroups()
 add_executable(parity_tests
     ${FLTX_HEADERS}
@@ -218,7 +232,7 @@ function (prepareTarget _TARGET _FLTX_LIBRARY)
     )
 
     set(_CATCH_TARGET Catch2::Catch2WithMain)
-    if(_TARGET STREQUAL "metrics_tests")
+    if(_TARGET IN_LIST FLTX_METRICS_TEST_TARGETS)
         set(_CATCH_TARGET Catch2::Catch2)
     endif()
 
@@ -240,7 +254,7 @@ function (prepareTarget _TARGET _FLTX_LIBRARY)
     target_compile_features(${_TARGET} PRIVATE cxx_std_23)
     fltx_apply_simd_options(${_TARGET})
 
-    if(_TARGET STREQUAL "metrics_tests")
+    if(_TARGET IN_LIST FLTX_METRICS_TEST_TARGETS)
         target_compile_definitions(${_TARGET} PRIVATE "FLTX_METRICS_OUTPUT_ROOT=\"${FLTX_METRICS_OUTPUT_ROOT}\"")
     endif()
 
@@ -260,24 +274,40 @@ prepareTarget(io_tests        fltx::fltx)
 prepareTarget(hash_tests      fltx::fltx)
 prepareTarget(random_tests    fltx::fltx)
 prepareTarget(metrics_tests   fltx::fltx)
+if(FLTX_BUILD_SIMULATED_CONSTEVAL_METRICS)
+    prepareTarget(metrics_consteval_tests fltx_metrics_simulate_consteval_lib)
+    target_compile_definitions(metrics_consteval_tests PRIVATE
+        FLTX_SIMULATE_CONSTEVAL_MODE
+        FLTX_TEST_FORCE_SIMULATED_CONSTEVAL
+        "FLTX_METRICS_REPORT_SUFFIX=\"consteval\""
+    )
+endif()
 prepareTarget(parity_tests    fltx_parity_test_lib)
 
 if(VERBOSE_TESTS)
-    target_compile_definitions(metrics_tests PRIVATE VERBOSE_TESTS=1)
+    foreach(_FLTX_METRICS_TARGET IN LISTS FLTX_METRICS_TEST_TARGETS)
+        target_compile_definitions(${_FLTX_METRICS_TARGET} PRIVATE VERBOSE_TESTS=1)
+    endforeach()
 else()
-    target_compile_definitions(metrics_tests PRIVATE VERBOSE_TESTS=0)
+    foreach(_FLTX_METRICS_TARGET IN LISTS FLTX_METRICS_TEST_TARGETS)
+        target_compile_definitions(${_FLTX_METRICS_TARGET} PRIVATE VERBOSE_TESTS=0)
+    endforeach()
 endif()
 
-target_include_directories(metrics_tests PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/extern/qdpp/include"
-)
+foreach(_FLTX_METRICS_TARGET IN LISTS FLTX_METRICS_TEST_TARGETS)
+    target_include_directories(${_FLTX_METRICS_TARGET} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/extern/qdpp/include"
+    )
+endforeach()
 
 if(EMSCRIPTEN)
-    target_link_options(metrics_tests PRIVATE
-        -sALLOW_MEMORY_GROWTH=1
-        -sINITIAL_MEMORY=268435456
-        -sMAXIMUM_MEMORY=1073741824
-    )
+    foreach(_FLTX_METRICS_TARGET IN LISTS FLTX_METRICS_TEST_TARGETS)
+        target_link_options(${_FLTX_METRICS_TARGET} PRIVATE
+            -sALLOW_MEMORY_GROWTH=1
+            -sINITIAL_MEMORY=268435456
+            -sMAXIMUM_MEMORY=1073741824
+        )
+    endforeach()
 endif()
 
 if (FLTX_PRECISION_TESTS_CONSTEXPR_PARITY)
@@ -292,6 +322,9 @@ addFltxTestMacroStatus(io_tests)
 addFltxTestMacroStatus(hash_tests)
 addFltxTestMacroStatus(random_tests)
 addFltxTestMacroStatus(metrics_tests)
+if(FLTX_BUILD_SIMULATED_CONSTEVAL_METRICS)
+    addFltxTestMacroStatus(metrics_consteval_tests DEFINITIONS FLTX_SIMULATE_CONSTEVAL_MODE FLTX_TEST_FORCE_SIMULATED_CONSTEVAL)
+endif()
 if(TARGET accuracy_tests)
     addFltxTestMacroStatus(accuracy_tests)
 endif()
@@ -305,6 +338,9 @@ registerFltxCatchTests(random_tests)
 registerFltxCatchTests(parity_tests)
 if(FLTX_REGISTER_METRICS_CTESTS)
     registerFltxCatchTests(metrics_tests TEST_SPEC "~[bench]")
+    if(FLTX_BUILD_SIMULATED_CONSTEVAL_METRICS)
+        registerFltxCatchTests(metrics_consteval_tests TEST_SPEC "~[bench]")
+    endif()
 endif()
 
 if(NOT TARGET f256_expression_compile_bench)

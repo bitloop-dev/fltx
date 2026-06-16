@@ -35,14 +35,6 @@
 #  endif
 #endif
 
-#if !defined(BL_FLTX_HAS_X86_FMA)
-#  if BL_FLTX_HAS_SSE2 && (defined(__FMA__) || (defined(_MSC_VER) && (defined(__AVX2__) || defined(__AVX512F__))))
-#    define BL_FLTX_HAS_X86_FMA 1
-#  else
-#    define BL_FLTX_HAS_X86_FMA 0
-#  endif
-#endif
-
 #if BL_FLTX_HAS_SSE2
 #  include <emmintrin.h>
 #endif

@@ -217,18 +217,12 @@ namespace bl {
 
 [[nodiscard]] BL_FORCE_INLINE constexpr int ilogb(const f128_s& x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f128_impl::ilogb(x),
-        std::ilogb(x.hi)
-    );
+    return detail::_f128_impl::ilogb(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 logb(const f128_s& x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f128_impl::logb(x),
-        f128{ std::logb(x.hi) }
-    );
+    return detail::_f128_impl::logb(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 scalbn(const f128_s& x, int e) noexcept

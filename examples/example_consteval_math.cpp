@@ -389,7 +389,7 @@ consteval f256 f256_test()
 }
 
 template<class T>
-consteval bool close_enough(T lhs, T rhs)
+consteval bool approx_match(T lhs, T rhs)
 {
     const T diff = bl::abs(lhs - rhs);
     const T lhs_abs = bl::abs(lhs);
@@ -409,10 +409,10 @@ int main()
     constexpr f128 result_f128 = f128_test();
     constexpr f256 result_f256 = f256_test();
 
-    constexpr bool approx_match =
-        close_enough(result_f32,  static_cast<f32>(result_f64)) &&
-        close_enough(result_f64,  static_cast<f64>(result_f128)) &&
-        close_enough(result_f128, static_cast<f128>(result_f256));
+    constexpr bool match =
+        approx_match(result_f32,  static_cast<f32>(result_f64)) &&
+        approx_match(result_f64,  static_cast<f64>(result_f128)) &&
+        approx_match(result_f128, static_cast<f128>(result_f256));
 
     std::cout
         << std::fixed
@@ -422,5 +422,5 @@ int main()
         << result_f128 << "\n"
         << result_f256;
 
-    return approx_match ? 0 : 1;
+    return match ? 0 : 1;
 }

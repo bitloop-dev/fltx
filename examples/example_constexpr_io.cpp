@@ -28,8 +28,8 @@ int main()
 {
     constexpr int digits = std::numeric_limits<f256>::digits10;
 
-    constexpr auto mode = std::ios_base::scientific;
-    // constexpr auto mode = std::ios_base::fixed;
+    constexpr auto mode = std::ios_base::fixed;
+    // constexpr auto mode = std::ios_base::scientific;
     // constexpr auto mode = std::ios_base::fmtflags{}; // defaultfloat
     // constexpr auto mode = std::ios_base::fixed | std::ios_base::scientific; // hexfloat
 
@@ -59,10 +59,6 @@ int main()
 
     constexpr f256 a = round_to_stream_precision(value, digits, flags);
     constexpr f256 b = round_to_stream_precision(parsed, digits, flags);
-
-    std::cout << std::setprecision(std::numeric_limits<f256>::max_digits10);
-    std::cout << "a: " << a << "\n";
-    std::cout << "b: " << b << "\n\n";
 
     return (a == b) ? 0 : 1;
 }

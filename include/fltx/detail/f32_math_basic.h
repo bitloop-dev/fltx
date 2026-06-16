@@ -273,7 +273,7 @@ namespace detail::_f32_impl
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
         static_cast<float>(bl::fma(static_cast<double>(x), static_cast<double>(y), static_cast<double>(z))),
-        std::fma(x, y, z)
+        detail::fp::fmadd_runtime(x, y, z)
     );
 }
 

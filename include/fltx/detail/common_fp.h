@@ -17,6 +17,18 @@
 
 #include "fltx/config.h"
 
+#if !defined(BL_FLTX_DETAIL_USE_SCALAR_X86_FMA)
+#  if defined(FMA_AVAILABLE) && BL_FLTX_HAS_X86_FMA
+#    define BL_FLTX_DETAIL_USE_SCALAR_X86_FMA 1
+#  else
+#    define BL_FLTX_DETAIL_USE_SCALAR_X86_FMA 0
+#  endif
+#endif
+
+#if BL_FLTX_DETAIL_USE_SCALAR_X86_FMA
+#  include <immintrin.h>
+#endif
+
 namespace bl::detail::fp
 {
 
@@ -487,7 +499,114 @@ BL_FORCE_INLINE constexpr void two_prod_precise_dekker(double a, double b, doubl
     p = a * b;
     err = ((a_hi * b_hi - p) + a_hi * b_lo + a_lo * b_hi) + a_lo * b_lo;
 }
+
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+BL_MSVC_NOINLINE constexpr void two_prod_precise_dekker_scaled(double a, double b, double& p, double& err) noexcept
+{
+    p = a * b;
+    if (isinf_or_nan(a) || isinf_or_nan(b) || isinf_or_nan(p))
+    {
+        err = 0.0;
+        return;
+    }
+
+    constexpr int scale = 28;
+    constexpr double split_overflow_threshold = 0x1p996;
+    constexpr double split_underflow_threshold = 0x1p-968;
+
+    int a_scale = 0;
+    int b_scale = 0;
+    if (absd(a) > split_overflow_threshold)
+        a_scale = -scale;
+    else if (a != 0.0 && absd(a) < split_underflow_threshold)
+        a_scale = scale;
+
+    if (absd(b) > split_overflow_threshold)
+        b_scale = -scale;
+    else if (b != 0.0 && absd(b) < split_underflow_threshold)
+        b_scale = scale;
+
+    const int product_scale = a_scale + b_scale;
+    double scaled_product{};
+    double scaled_error{};
+    two_prod_precise_dekker(ldexp(a, a_scale), ldexp(b, b_scale), scaled_product, scaled_error);
+
+    const double direct_scaled_product = ldexp(p, product_scale);
+    err = ldexp((scaled_product - direct_scaled_product) + scaled_error, -product_scale);
+}
+
+BL_FORCE_INLINE constexpr void two_prod_precise_dekker_checked(double a, double b, double& p, double& err) noexcept
+{
+    constexpr double split_overflow_threshold = 0x1p996;
+    constexpr double split_underflow_threshold = 0x1p-968;
+    const double aa = absd(a);
+    const double ab = absd(b);
+    if (aa > split_overflow_threshold || ab > split_overflow_threshold ||
+        (aa != 0.0 && aa < split_underflow_threshold) ||
+        (ab != 0.0 && ab < split_underflow_threshold)) [[unlikely]]
+    {
+        two_prod_precise_dekker_scaled(a, b, p, err);
+    }
+    else
+    {
+        two_prod_precise_dekker(a, b, p, err);
+    }
+}
+#endif
 BL_POP_PRECISE
+
+#if defined(FMA_AVAILABLE)
+BL_FORCE_INLINE double fmsub_runtime(double a, double b, double c) noexcept
+{
+    #if BL_FLTX_DETAIL_USE_SCALAR_X86_FMA
+    const __m128d aw = _mm_set_sd(a);
+    const __m128d bw = _mm_set_sd(b);
+    const __m128d cw = _mm_set_sd(c);
+    return _mm_cvtsd_f64(_mm_fmsub_sd(aw, bw, cw));
+    #elif defined(__clang__) || defined(__GNUC__)
+    return __builtin_fma(a, b, -c);
+    #else
+    return std::fma(a, b, -c);
+    #endif
+}
+#endif
+
+BL_FORCE_INLINE double fmadd_runtime(double a, double b, double c) noexcept
+{
+    #if BL_FLTX_DETAIL_USE_SCALAR_X86_FMA
+    const __m128d aw = _mm_set_sd(a);
+    const __m128d bw = _mm_set_sd(b);
+    const __m128d cw = _mm_set_sd(c);
+    return _mm_cvtsd_f64(_mm_fmadd_sd(aw, bw, cw));
+    #elif defined(FMA_AVAILABLE)
+        #if defined(__clang__) || defined(__GNUC__)
+    return __builtin_fma(a, b, c);
+        #else
+    return std::fma(a, b, c);
+        #endif
+    #else
+    return (a * b) + c;
+    #endif
+}
+
+BL_FORCE_INLINE float fmadd_runtime(float a, float b, float c) noexcept
+{
+    #if BL_FLTX_DETAIL_USE_SCALAR_X86_FMA
+    const __m128 aw = _mm_set_ss(a);
+    const __m128 bw = _mm_set_ss(b);
+    const __m128 cw = _mm_set_ss(c);
+    return _mm_cvtss_f32(_mm_fmadd_ss(aw, bw, cw));
+    #elif defined(FMA_AVAILABLE)
+        #if defined(__clang__) || defined(__GNUC__)
+    return __builtin_fmaf(a, b, c);
+        #else
+    return std::fma(a, b, c);
+        #endif
+    #else
+    return static_cast<float>(
+        (static_cast<double>(a) * static_cast<double>(b)) + static_cast<double>(c));
+    #endif
+}
 
 BL_FORCE_INLINE constexpr void two_prod_precise(double a, double b, double& p, double& err) noexcept
 {
@@ -499,16 +618,31 @@ BL_FORCE_INLINE constexpr void two_prod_precise(double a, double b, double& p, d
     else
     {
         p = a * b;
-        #if defined(__clang__) || defined(__GNUC__)
-        err = __builtin_fma(a, b, -p);
-        #else
-        err = std::fma(a, b, -p);
-        #endif
+        err = fmsub_runtime(a, b, p);
     }
     #else
     two_prod_precise_dekker(a, b, p, err);
     #endif
 }
+
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+BL_FORCE_INLINE constexpr void two_prod_precise_checked(double a, double b, double& p, double& err) noexcept
+{
+    #ifdef FMA_AVAILABLE
+    if (bl::detail::is_constant_evaluated() || bl::detail::use_constexpr_parity())
+    {
+        two_prod_precise_dekker_checked(a, b, p, err);
+    }
+    else
+    {
+        p = a * b;
+        err = fmsub_runtime(a, b, p);
+    }
+    #else
+    two_prod_precise_dekker_checked(a, b, p, err);
+    #endif
+}
+#endif
 
 BL_FORCE_INLINE constexpr void split_uint64_to_doubles(std::uint64_t value, double& hi, double& lo) noexcept
 {

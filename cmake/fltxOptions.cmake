@@ -85,15 +85,22 @@ fltx_define_cache_bool(
     "Tune fast-math builds for the local host CPU with -march=native/-mtune=native where supported."
 )
 
-set(_FLTX_DEFAULT_FMA_AVAILABLE ON)
-if(EMSCRIPTEN)
-    set(_FLTX_DEFAULT_FMA_AVAILABLE OFF)
+set(_FLTX_DISABLE_FMA_AVAILABLE_DEFAULT OFF)
+if(DEFINED CACHE{FLTX_FMA_AVAILABLE})
+    get_property(_FLTX_LEGACY_FMA_AVAILABLE CACHE FLTX_FMA_AVAILABLE PROPERTY VALUE)
+    if(NOT _FLTX_LEGACY_FMA_AVAILABLE)
+        set(_FLTX_DISABLE_FMA_AVAILABLE_DEFAULT ON)
+    endif()
+    unset(FLTX_FMA_AVAILABLE CACHE)
+endif()
+if(DEFINED CACHE{_FLTX_FMA_AVAILABLE_DEFAULT_VALUE})
+    unset(_FLTX_FMA_AVAILABLE_DEFAULT_VALUE CACHE)
 endif()
 
 fltx_define_cache_bool(
-    FLTX_FMA_AVAILABLE
-    "${_FLTX_DEFAULT_FMA_AVAILABLE}"
-    "Use FMA-based error-free transforms where the source checks FMA_AVAILABLE."
+    FLTX_DISABLE_FMA_AVAILABLE
+    "${_FLTX_DISABLE_FMA_AVAILABLE_DEFAULT}"
+    "Disable FMA-based error-free transforms even when the target macros report hardware FMA support."
 )
 
 set(_FLTX_SIMD_FMA_TWO_PROD_DEFAULT ON)
@@ -135,13 +142,20 @@ fltx_define_cache_bool(
     "Print metrics console tables while running metrics_tests."
 )
 
+fltx_define_cache_bool(
+    FLTX_BUILD_SIMULATED_CONSTEVAL_METRICS
+    OFF
+    "Build metrics_consteval_tests, which benchmarks fltx through simulated constant-evaluation paths."
+)
+
 mark_as_advanced(
     FLTX_FAST_MATH_NATIVE
-    FLTX_FMA_AVAILABLE
+    FLTX_DISABLE_FMA_AVAILABLE
     FLTX_SIMD_FMA_TWO_PROD
     FLTX_MSVC_TIMING_REPORTS
     FLTX_MSVC_PARALLEL_COMPILE
     FLTX_MSVC_DETAILED_TIMING_REPORTS
+    FLTX_BUILD_SIMULATED_CONSTEVAL_METRICS
 )
 
 fltx_import_transient_cache_value(FLTX_PRECISION_TESTS_CONSTEXPR_PARITY OFF)
