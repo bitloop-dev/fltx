@@ -37,6 +37,11 @@ namespace bl::test::metrics::f128_primary
     using perfect_ref = references::perfect_ref;
     using competitor_ref = references::competitor_ref;
     using extra_competitor_ref = references::extra_competitor_ref;
+    using bl::test::metrics::call_llrint_reference;
+    using bl::test::metrics::call_llround_reference;
+    using bl::test::metrics::call_lrint_reference;
+    using bl::test::metrics::call_lround_reference;
+    using bl::test::metrics::call_unary_reference;
 
     constexpr domain_id primary_domain{ "primary", domain_role::primary };
     constexpr double competitor_accuracy_slack_bits = 16.0;
@@ -396,6 +401,16 @@ namespace bl::test::metrics::f128_primary
     {
         const double bits = domain_matching_bits(actual, expected);
         return std::isnan(bits) ? 0.0 : bits;
+    }
+
+    [[nodiscard]] inline perfect_ref target_expected(const perfect_ref& exact)
+    {
+        return target_reference_value<fltx_type>(exact);
+    }
+
+    [[nodiscard]] inline double target_ideal_bits_for(const perfect_ref& expected)
+    {
+        return target_domain_ideal_bits<fltx_type>(expected);
     }
 
     [[nodiscard]] inline bool special_values_match(
@@ -788,36 +803,6 @@ namespace bl::test::metrics::f128_primary
     template<class T>
     [[nodiscard]] BL_FORCE_INLINE T call_round(const T& x) { using boost::multiprecision::round; using std::round; return round(x); }
 
-    template<class T>
-    [[nodiscard]] BL_FORCE_INLINE T call_nearest_even_integer_reference(const T& x)
-    {
-        using boost::multiprecision::floor;
-        using std::floor;
-
-        const T lower = floor(x);
-        const T delta = x - lower;
-        if (delta < T{ 0.5 })
-            return lower;
-
-        const T upper = lower + T{ 1 };
-        if (delta > T{ 0.5 })
-            return upper;
-
-        const T half_lower = floor(lower / T{ 2 });
-        return lower == half_lower * T{ 2 } ? lower : upper;
-    }
-
-    template<class T, class FallbackFn>
-    [[nodiscard]] BL_FORCE_INLINE T call_unary_reference(
-        std::string_view operation,
-        const T& x,
-        FallbackFn fallback)
-    {
-        if (operation == "nearbyint" || operation == "rint")
-            return call_nearest_even_integer_reference(x);
-        return fallback(x);
-    }
-
     [[nodiscard]] BL_FORCE_INLINE extra_competitor_ref call_nearbyint(const extra_competitor_ref& x)
     {
         return qdpp::nearbyint(x);
@@ -869,35 +854,6 @@ namespace bl::test::metrics::f128_primary
         using boost::multiprecision::llrint;
         using std::llrint;
         return llrint(x);
-    }
-
-    template<class T>
-    [[nodiscard]] BL_FORCE_INLINE T round_nearest_even_integer_reference(const T& x)
-    {
-        using boost::multiprecision::floor;
-        using std::floor;
-
-        const T lower = floor(x);
-        const T fraction = x - lower;
-        if (fraction < T{ 0.5 })
-            return lower;
-        if (fraction > T{ 0.5 })
-            return lower + T{ 1 };
-
-        const auto lower_integer = static_cast<long long>(lower);
-        return (lower_integer % 2ll) == 0 ? lower : lower + T{ 1 };
-    }
-
-    template<class T>
-    [[nodiscard]] BL_FORCE_INLINE long call_lrint_reference(const T& x)
-    {
-        return static_cast<long>(round_nearest_even_integer_reference(x));
-    }
-
-    template<class T>
-    [[nodiscard]] BL_FORCE_INLINE long long call_llrint_reference(const T& x)
-    {
-        return static_cast<long long>(round_nearest_even_integer_reference(x));
     }
 
     template<class T>
@@ -999,6 +955,11 @@ namespace bl::test::metrics::f128_primary
     [[nodiscard]] BL_FORCE_INLINE fltx_type call_nextafter(const fltx_type& from, const fltx_type& to) noexcept
     {
         return bl::nextafter(from, to);
+    }
+
+    [[nodiscard]] inline perfect_ref call_nextafter(const perfect_ref& from, const perfect_ref& to)
+    {
+        return target_nextafter_reference_value<fltx_type>(from, to);
     }
 
     template<class T>
@@ -1909,7 +1870,7 @@ namespace bl::test::metrics::f128_primary
             const auto& sample = samples[index];
             trace_domain_sample(operation, backend_name, index, sample);
             const perfect_ref actual = to_reference_value(eval(values[index]));
-            const perfect_ref expected = reference(make_perfect(sample.x));
+            const perfect_ref expected = target_expected(reference(make_perfect(sample.x)));
             double bits = matching_bits(actual, expected);
             trace_domain_result(operation, backend_name, index, bits);
 
@@ -1925,7 +1886,7 @@ namespace bl::test::metrics::f128_primary
 
             worst_bits = std::min(worst_bits, bits);
             total_bits += finite_for_mean(bits);
-            domain_scores.push_back(domain_sample_score(domain_score_bits(actual, expected), metrics_ideal_bits));
+            domain_scores.push_back(domain_sample_score(domain_score_bits(actual, expected), target_ideal_bits_for(expected)));
         }
 
         return {
@@ -1959,7 +1920,7 @@ namespace bl::test::metrics::f128_primary
             const auto& sample = samples[index];
             trace_domain_sample(operation, backend_name, index, sample);
             const perfect_ref actual = to_reference_value(eval(values[index].x, values[index].y));
-            const perfect_ref expected = reference(make_perfect(sample.x), make_perfect(sample.y));
+            const perfect_ref expected = target_expected(reference(make_perfect(sample.x), make_perfect(sample.y)));
             double bits = matching_bits(actual, expected);
             trace_domain_result(operation, backend_name, index, bits);
 
@@ -1975,7 +1936,7 @@ namespace bl::test::metrics::f128_primary
 
             worst_bits = std::min(worst_bits, bits);
             total_bits += finite_for_mean(bits);
-            domain_scores.push_back(domain_sample_score(domain_score_bits(actual, expected), metrics_ideal_bits));
+            domain_scores.push_back(domain_sample_score(domain_score_bits(actual, expected), target_ideal_bits_for(expected)));
         }
 
         return {
@@ -2152,7 +2113,7 @@ namespace bl::test::metrics::f128_primary
             trace_domain_sample(operation, backend_name, index, sample);
             const perfect_ref actual = to_reference_value(eval(values[index].x, values[index].y, values[index].z));
             const perfect_ref expected =
-                reference(make_perfect(sample.x), make_perfect(sample.y), make_perfect(sample.z));
+                target_expected(reference(make_perfect(sample.x), make_perfect(sample.y), make_perfect(sample.z)));
             double bits = matching_bits(actual, expected);
 
             INFO(operation << ' ' << backend_name << " sample '" << sample.label << "' matched " << bits << " bits");
@@ -2167,7 +2128,7 @@ namespace bl::test::metrics::f128_primary
 
             worst_bits = std::min(worst_bits, bits);
             total_bits += finite_for_mean(bits);
-            domain_scores.push_back(domain_sample_score(domain_score_bits(actual, expected), metrics_ideal_bits));
+            domain_scores.push_back(domain_sample_score(domain_score_bits(actual, expected), target_ideal_bits_for(expected)));
         }
 
         return {
@@ -2201,7 +2162,7 @@ namespace bl::test::metrics::f128_primary
             const auto& sample = samples[index];
             trace_domain_sample(operation, backend_name, index, sample);
             const perfect_ref actual = to_reference_value(eval(values[index].x, values[index].n));
-            const perfect_ref expected = reference(make_perfect(sample.x), sample.n);
+            const perfect_ref expected = target_expected(reference(make_perfect(sample.x), sample.n));
             double bits = matching_bits(actual, expected);
             trace_domain_result(operation, backend_name, index, bits);
 
@@ -2217,7 +2178,7 @@ namespace bl::test::metrics::f128_primary
 
             worst_bits = std::min(worst_bits, bits);
             total_bits += finite_for_mean(bits);
-            domain_scores.push_back(domain_sample_score(domain_score_bits(actual, expected), metrics_ideal_bits));
+            domain_scores.push_back(domain_sample_score(domain_score_bits(actual, expected), target_ideal_bits_for(expected)));
         }
 
         return {
@@ -2282,7 +2243,7 @@ namespace bl::test::metrics::f128_primary
             const auto& sample = samples[index];
             trace_domain_sample(operation, backend_name, index, sample);
             const perfect_ref actual = rebuild_frexp_result(eval(values[index]));
-            const perfect_ref expected = make_perfect(sample.x);
+            const perfect_ref expected = target_expected(make_perfect(sample.x));
             double bits = matching_bits(actual, expected);
 
             INFO(operation << ' ' << backend_name << " sample '" << sample.label << "' matched " << bits << " bits");
@@ -2297,7 +2258,7 @@ namespace bl::test::metrics::f128_primary
 
             worst_bits = std::min(worst_bits, bits);
             total_bits += finite_for_mean(bits);
-            domain_scores.push_back(domain_sample_score(domain_score_bits(actual, expected), metrics_ideal_bits));
+            domain_scores.push_back(domain_sample_score(domain_score_bits(actual, expected), target_ideal_bits_for(expected)));
         }
 
         return {

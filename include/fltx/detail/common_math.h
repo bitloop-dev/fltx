@@ -89,13 +89,13 @@ BL_FORCE_INLINE constexpr double round_half_away_zero(double x) noexcept
     if (ax >= integer_threshold)
         return x;
 
-    if (signbit(x))
-    {
-        const double y = -floor((-x) + 0.5);
-        return (y == 0.0) ? -0.0 : y;
-    }
+    const double integer = floor(ax);
+    const double fraction = ax - integer;
+    double y = fraction < 0.5 ? integer : integer + 1.0;
 
-    return floor(x + 0.5);
+    if (signbit(x))
+        y = -y;
+    return (y == 0.0) ? (signbit(x) ? -0.0 : 0.0) : y;
 }
 
 BL_FORCE_INLINE constexpr float round_half_away_zero(float x) noexcept

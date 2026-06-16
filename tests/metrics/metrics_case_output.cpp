@@ -14,7 +14,7 @@ namespace bl::test::metrics
                 return;
 
             out << "\n[metrics legend]\n"
-                << "bits accurate       = estimated matching binary bits versus the MPFR oracle; exact sampled matches are shown as exact.\n"
+                << "bits accurate       = estimated matching binary bits versus the operation oracle; value-returning f128/f256 rows use an MPFR-backed target reference.\n"
                 << "Inf/NaN             = whether the backend matches the std/libm oracle on a small Inf/NaN/signed-zero probe set.\n"
                 << "domain score        = normal finite-domain magnitude quality: 50% mean sample score, 30% 1st-percentile sample score, 20% worst sample score.\n"
                 << "sample score        = clamp(finite-domain bits / target bits, 0, 1); targets: f128=106 bits, f256=212 bits, reduced near expansion underflow.\n\n"

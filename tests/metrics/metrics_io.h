@@ -32,68 +32,11 @@
 namespace bl::test::metrics::io_metrics
 {
     inline constexpr domain_id io_domain{ "io", domain_role::primary };
-    inline constexpr std::size_t samples_per_kind = config::scale_accuracy_sample_count(10000);
-    inline constexpr std::size_t benchmark_min_iterations = config::scale_mixed_iterations(200000);
+    inline constexpr std::size_t samples_per_kind         = config::scale_accuracy_sample_count(20000);
+    inline constexpr std::size_t benchmark_min_iterations = config::scale_mixed_iterations(400000);
 
     template<class Float>
     struct io_profile;
-
-    template<class T>
-    [[nodiscard]] constexpr double expansion_storage_bits() noexcept
-    {
-        using value_type = std::remove_cvref_t<T>;
-        if constexpr (std::is_same_v<value_type, bl::f128> ||
-                      std::is_same_v<value_type, bl::f128_s> ||
-                      std::is_same_v<value_type, boost::multiprecision::cpp_double_double> ||
-                      std::is_same_v<value_type, dd_real>)
-        {
-            return 106.0;
-        }
-        else if constexpr (std::is_same_v<value_type, bl::f256> ||
-                           std::is_same_v<value_type, bl::f256_s> ||
-                           std::is_same_v<value_type, qd_real>)
-        {
-            return 212.0;
-        }
-        else
-        {
-            return 0.0;
-        }
-    }
-
-    template<class PerfectRef>
-    [[nodiscard]] int floor_log2_abs_ref(const PerfectRef& value)
-    {
-        const PerfectRef magnitude = value < 0 ? -value : value;
-        if (magnitude == 0)
-            return 0;
-
-        using std::floor;
-        using std::log2;
-        return floor(log2(magnitude)).template convert_to<int>();
-    }
-
-    template<class Value, class PerfectRef>
-    [[nodiscard]] double effective_domain_ideal_bits(const PerfectRef& expected)
-    {
-        constexpr double storage_bits = expansion_storage_bits<Value>();
-        if constexpr (storage_bits <= 0.0)
-        {
-            return 0.0;
-        }
-        else
-        {
-            if (expected == 0)
-                return storage_bits;
-
-            constexpr int min_double_bit_exponent =
-                std::numeric_limits<double>::min_exponent - std::numeric_limits<double>::digits;
-            const double available_bits =
-                static_cast<double>(floor_log2_abs_ref(expected) - min_double_bit_exponent + 1);
-
-            return std::clamp(available_bits, 1.0, storage_bits);
-        }
-    }
 
     template<>
     struct io_profile<bl::f128>
@@ -125,8 +68,8 @@ namespace bl::test::metrics::io_metrics
         template<class Value>
         [[nodiscard]] static double domain_ideal_bits_for(const perfect_ref& expected)
         {
-            const double effective_bits = effective_domain_ideal_bits<Value>(expected);
-            return effective_bits > 0.0 ? effective_bits : ideal_bits;
+            (void)sizeof(Value);
+            return target_domain_ideal_bits<fltx_type>(expected);
         }
 
         static void consume(const fltx_type& value) { f128_primary::consume_benchmark_value(value); }
@@ -170,8 +113,8 @@ namespace bl::test::metrics::io_metrics
         template<class Value>
         [[nodiscard]] static double domain_ideal_bits_for(const perfect_ref& expected)
         {
-            const double effective_bits = effective_domain_ideal_bits<Value>(expected);
-            return effective_bits > 0.0 ? effective_bits : ideal_bits;
+            (void)sizeof(Value);
+            return target_domain_ideal_bits<fltx_type>(expected);
         }
 
         static void consume(const fltx_type& value) { f256_primary::consume_benchmark_value(value); }
@@ -1064,7 +1007,7 @@ namespace bl::test::metrics::io_metrics
             },
             [&](std::size_t index)
             {
-                return samples[index].oracle;
+                return target_reference_value<typename Profile::fltx_type>(samples[index].oracle);
             },
             [](std::size_t, const typename Profile::perfect_ref& expected)
             {

@@ -103,17 +103,7 @@ namespace detail::_f256_runtime
 {
     [[nodiscard]] BL_FORCE_INLINE double round_half_away_zero_limb(double x) noexcept
     {
-        if (detail::fp::iszero_or_inf_or_nan(x))
-            return x;
-
-        const double ax = detail::fp::absd(x);
-        if (ax >= detail::fp::double_integer_threshold)
-            return x;
-
-        double out = static_cast<double>(static_cast<long long>(ax + 0.5));
-        if (detail::fp::signbit(x))
-            out = -out;
-        return out == 0.0 ? (detail::fp::signbit(x) ? -0.0 : 0.0) : out;
+        return detail::fp::round_half_away_zero(x);
     }
 }
 
@@ -129,10 +119,7 @@ namespace detail::_f256
 
     [[nodiscard]] BL_FORCE_INLINE double round_half_away_zero_limb_finite_small(double x) noexcept
     {
-        double out = static_cast<double>(static_cast<long long>(detail::fp::absd(x) + 0.5));
-        if (detail::fp::signbit(x))
-            out = -out;
-        return out;
+        return detail::fp::round_half_away_zero(x);
     }
 
     [[nodiscard]] BL_FORCE_INLINE constexpr bool has_negative_tail(double x1, double x2, double x3) noexcept

@@ -176,8 +176,8 @@
     UNARY(round, "[rounding][round]", bits_90, make_rounding_samples, call_round) \
     UNARY(nearbyint, "[nearbyint]", bits_90, make_rounding_samples, call_nearbyint) \
     UNARY(rint, "[rint]", bits_90, make_rounding_samples, call_rint) \
-    UNARY_INTEGER(lround, "[rounding][lround]", bits_90, make_rounding_samples, call_lround, call_lround) \
-    UNARY_INTEGER(llround, "[rounding][llround]", bits_90, make_rounding_samples, call_llround, call_llround) \
+    UNARY_INTEGER(lround, "[rounding][lround]", bits_90, make_rounding_samples, call_lround, call_lround_reference) \
+    UNARY_INTEGER(llround, "[rounding][llround]", bits_90, make_rounding_samples, call_llround, call_llround_reference) \
     UNARY_INTEGER(lrint, "[rounding][lrint]", bits_90, make_rounding_samples, call_lrint, call_lrint_reference) \
     UNARY_INTEGER(llrint, "[rounding][llrint]", bits_90, make_rounding_samples, call_llrint, call_llrint_reference) \
     BINARY(fmod, "[fmod]", domain_ideal_bits, make_remainder_samples, call_fmod, call_fmod) \
