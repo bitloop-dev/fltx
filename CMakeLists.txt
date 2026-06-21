@@ -9,7 +9,7 @@ if(CMAKE_GENERATOR MATCHES "Visual Studio")
     <MaxCpuCount>1</MaxCpuCount>
   </RunConfiguration>
   <Catch2Adapter disabled="false">
-    <FilenameFilter>^(accuracy_tests|hash_tests|io_tests|metrics_tests|parity_tests|precision_tests|random_tests)$</FilenameFilter>
+    <FilenameFilter>^(accuracy_tests|hash_tests|io_tests|metrics_tests|metrics_fastmath_tests|metrics_consteval_tests|parity_tests|precision_tests|random_tests)$</FilenameFilter>
     <DiscoverCommandLine>--verbosity high --list-tests --reporter xml ~[bench]</DiscoverCommandLine>
     <Environment>
       <FLTX_TEST_SUPPRESS_MACRO_STATUS>1</FLTX_TEST_SUPPRESS_MACRO_STATUS>

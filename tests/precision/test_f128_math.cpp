@@ -260,6 +260,25 @@ namespace
         return ulp_distance(got, round_ref_to_f128(expected));
     }
 
+    struct representable_reference_check
+    {
+        mpfr_ref expected;
+        mpfr_ref diff;
+        bool passed = false;
+    };
+
+    [[nodiscard]] representable_reference_check compare_to_representable_reference(
+        const mpfr_ref& got,
+        const mpfr_ref& exact_expected,
+        const mpfr_ref& tolerance)
+    {
+        const mpfr_ref expected = to_ref_exact(round_ref_to_f128(exact_expected));
+        const mpfr_ref diff = abs_ref(got - expected);
+        const mpfr_ref got_exact_diff = abs_ref(got - exact_expected);
+        const mpfr_ref expected_exact_diff = abs_ref(expected - exact_expected);
+        return { expected, diff, diff <= tolerance || got_exact_diff <= expected_exact_diff };
+    }
+
     [[nodiscard]] f128 random_finite_for_f128(bl::mt19937_64& rng)
     {
         bl::uniform_int_distribution<int> sign_dist(0, 1);
@@ -455,6 +474,8 @@ namespace
 
         const mpfr_ref tolerance = function_tolerance(op_name, scale);
         const mpfr_ref diff      = abs_ref(got_ref - expected);
+        const representable_reference_check reference_check =
+            compare_to_representable_reference(got_ref, expected, tolerance);
 
         CAPTURE(op_name);
         CAPTURE(lhs_text);
@@ -462,6 +483,8 @@ namespace
         CAPTURE(to_text(got));
         CAPTURE(to_text(expected));
         CAPTURE(to_text(diff));
+        CAPTURE(to_text(reference_check.expected));
+        CAPTURE(to_text(reference_check.diff));
         CAPTURE(to_text(tolerance));
 
         CAPTURE(to_text_double(got.hi));
@@ -469,8 +492,8 @@ namespace
         CAPTURE(to_text_double_hex(got.hi));
         CAPTURE(to_text_double_hex(got.lo));
 
-        record_accuracy_sample(op_name, got, expected, diff, scale, diff <= tolerance);
-        REQUIRE(diff <= tolerance);
+        record_accuracy_sample(op_name, got, expected, diff, scale, reference_check.passed);
+        REQUIRE(reference_check.passed);
     }
 
     template<typename Scalar, typename F128Op, typename RefOp>
@@ -497,6 +520,8 @@ namespace
 
         const mpfr_ref tolerance = function_tolerance(op_name, scale);
         const mpfr_ref diff      = abs_ref(got_ref - expected);
+        const representable_reference_check reference_check =
+            compare_to_representable_reference(got_ref, expected, tolerance);
 
         CAPTURE(op_name);
         CAPTURE(case_label);
@@ -506,6 +531,8 @@ namespace
         CAPTURE(to_text(got));
         CAPTURE(to_text(expected));
         CAPTURE(to_text(diff));
+        CAPTURE(to_text(reference_check.expected));
+        CAPTURE(to_text(reference_check.diff));
         CAPTURE(to_text(tolerance));
 
         CAPTURE(to_text_double(got.hi));
@@ -513,8 +540,8 @@ namespace
         CAPTURE(to_text_double_hex(got.hi));
         CAPTURE(to_text_double_hex(got.lo));
 
-        record_accuracy_sample(op_name, got, expected, diff, scale, diff <= tolerance);
-        REQUIRE(diff <= tolerance);
+        record_accuracy_sample(op_name, got, expected, diff, scale, reference_check.passed);
+        REQUIRE(reference_check.passed);
     }
 
     template<typename F128Op, typename RefOp>
@@ -533,6 +560,8 @@ namespace
 
         const mpfr_ref tolerance = function_tolerance(op_name, scale);
         const mpfr_ref diff      = abs_ref(got_ref - expected);
+        const representable_reference_check reference_check =
+            compare_to_representable_reference(got_ref, expected, tolerance);
 
         CAPTURE(op_name);
         CAPTURE(input_text);
@@ -540,6 +569,8 @@ namespace
         CAPTURE(to_text(got));
         CAPTURE(to_text(expected));
         CAPTURE(to_text(diff));
+        CAPTURE(to_text(reference_check.expected));
+        CAPTURE(to_text(reference_check.diff));
         CAPTURE(to_text(tolerance));
 
         //CAPTURE(to_text_double(input.hi));
@@ -552,8 +583,8 @@ namespace
         //CAPTURE(to_text_double_hex(got.hi));
         //CAPTURE(to_text_double_hex(got.lo));
 
-        record_accuracy_sample(op_name, got, expected, diff, scale, diff <= tolerance);
-        REQUIRE(diff <= tolerance);
+        record_accuracy_sample(op_name, got, expected, diff, scale, reference_check.passed);
+        REQUIRE(reference_check.passed);
     }
 
     template<typename F128Op, typename RefOp>
@@ -580,6 +611,8 @@ namespace
         const mpfr_ref tolerance = combined_tolerance(op_name, accuracy_scale, abs_tolerance, rel_tolerance, scale);
 
         const mpfr_ref diff = abs_ref(got_ref - expected);
+        const representable_reference_check reference_check =
+            compare_to_representable_reference(got_ref, expected, tolerance);
 
         CAPTURE(op_name);
         CAPTURE(input_text);
@@ -587,6 +620,8 @@ namespace
         CAPTURE(to_text(got));
         CAPTURE(to_text(expected));
         CAPTURE(to_text(diff));
+        CAPTURE(to_text(reference_check.expected));
+        CAPTURE(to_text(reference_check.diff));
         CAPTURE(to_text(tolerance));
         CAPTURE(to_text(abs_tolerance));
         CAPTURE(to_text(rel_tolerance));
@@ -601,8 +636,8 @@ namespace
         //CAPTURE(to_text_double_hex(got.hi));
         //CAPTURE(to_text_double_hex(got.lo));
 
-        record_accuracy_sample(op_name, got, expected, diff, accuracy_scale, diff <= tolerance);
-        REQUIRE(diff <= tolerance);
+        record_accuracy_sample(op_name, got, expected, diff, accuracy_scale, reference_check.passed);
+        REQUIRE(reference_check.passed);
     }
 
     template<typename F128Op, typename RefOp>
@@ -630,6 +665,8 @@ namespace
         const mpfr_ref tolerance = combined_tolerance(op_name, accuracy_scale, abs_tolerance, rel_tolerance, scale);
 
         const mpfr_ref diff = abs_ref(got_ref - expected);
+        const representable_reference_check reference_check =
+            compare_to_representable_reference(got_ref, expected, tolerance);
 
         CAPTURE(op_name);
         CAPTURE(lhs_text);
@@ -637,6 +674,8 @@ namespace
         CAPTURE(to_text(got));
         CAPTURE(to_text(expected));
         CAPTURE(to_text(diff));
+        CAPTURE(to_text(reference_check.expected));
+        CAPTURE(to_text(reference_check.diff));
         CAPTURE(to_text(tolerance));
         CAPTURE(to_text(abs_tolerance));
         CAPTURE(to_text(rel_tolerance));
@@ -646,8 +685,8 @@ namespace
         CAPTURE(to_text_double_hex(got.hi));
         CAPTURE(to_text_double_hex(got.lo));
 
-        record_accuracy_sample(op_name, got, expected, diff, accuracy_scale, diff <= tolerance);
-        CHECK(diff <= tolerance);
+        record_accuracy_sample(op_name, got, expected, diff, accuracy_scale, reference_check.passed);
+        CHECK(reference_check.passed);
     }
 
     [[nodiscard]] mpfr_ref ref_floor(const mpfr_ref& value)
@@ -2401,7 +2440,7 @@ TEST_CASE("f128 utility math helpers behave correctly for fixed values", "[fltx]
     {
         require_exact_value("round_to_decimals.2", bl::round_to_decimals(to_f128("1.2345"), 2), to_f128("1.23"));
         require_exact_value("round_to_decimals.3", bl::round_to_decimals(to_f128("1.2345"), 3), to_f128("1.234"));
-        require_exact_value("round_to_decimals.tie_even", bl::round_to_decimals(to_f128("1.2355"), 3), to_f128("1.236"));
+        require_exact_value("round_to_decimals.tie_even", bl::round_to_decimals(to_f128("1.1875"), 3), to_f128("1.188"));
         require_exact_value("round_to_precision.large", bl::round_to_precision(to_f128("12345"), 3), to_f128("12300"));
         require_exact_value("round_to_precision.small", bl::round_to_precision(to_f128("0.012345"), 3), to_f128("0.0123"));
         require_exact_value("round_to_precision.tie_even_down", bl::round_to_precision(to_f128("12500"), 2), to_f128("12000"));

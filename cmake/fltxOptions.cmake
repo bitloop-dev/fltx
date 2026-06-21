@@ -79,6 +79,13 @@ fltx_define_cache_string(
     ON OFF AUTO
 )
 
+fltx_define_cache_string(
+    FLTX_METRICS_FAST_MATH_MODE
+    OFF
+    "Fast-math mode for metrics_tests translation units and included fltx headers: ON, OFF, or AUTO."
+    ON OFF AUTO
+)
+
 fltx_define_cache_bool(
     FLTX_FAST_MATH_NATIVE
     OFF
@@ -146,6 +153,12 @@ fltx_define_cache_bool(
     FLTX_BUILD_SIMULATED_CONSTEVAL_METRICS
     OFF
     "Build metrics_consteval_tests, which benchmarks fltx through simulated constant-evaluation paths."
+)
+
+fltx_define_cache_bool(
+    FLTX_METRICS_BENCHMARK_ONLY_FLTX
+    OFF
+    "Run metrics targets in fltx-only benchmark/report mode; competitor benchmarks and special-value probes are skipped."
 )
 
 mark_as_advanced(

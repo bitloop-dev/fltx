@@ -1,6 +1,8 @@
 #ifndef FLTX_TESTS_METRICS_STD_SPECIAL_ORACLE_INCLUDED
 #define FLTX_TESTS_METRICS_STD_SPECIAL_ORACLE_INCLUDED
 
+#include <fltx/detail/common_fp.h>
+
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
@@ -78,9 +80,17 @@ namespace bl::test::metrics
         if (operation == "round")
             return std::round(x);
         if (operation == "nearbyint")
+        {
+            if (detail::fp::iszero_or_inf_or_nan(x))
+                return x;
             return std::nearbyint(x);
+        }
         if (operation == "rint")
+        {
+            if (detail::fp::iszero_or_inf_or_nan(x))
+                return x;
             return std::rint(x);
+        }
         if (operation == "logb")
             return std::logb(x);
         if (operation == "modf")
@@ -126,9 +136,21 @@ namespace bl::test::metrics
             return std::remquo(x, y, &quotient);
         }
         if (operation == "fmin")
+        {
+            if (detail::fp::isnan(x))
+                return y;
+            if (detail::fp::isnan(y))
+                return x;
             return std::fmin(x, y);
+        }
         if (operation == "fmax")
+        {
+            if (detail::fp::isnan(x))
+                return y;
+            if (detail::fp::isnan(y))
+                return x;
             return std::fmax(x, y);
+        }
         if (operation == "fdim")
             return std::fdim(x, y);
         if (operation == "copysign")
@@ -161,8 +183,17 @@ namespace bl::test::metrics
         throw std::invalid_argument("unknown unary-int std special oracle operation");
     }
 
+    [[nodiscard]] constexpr inline bool is_rounding_integer_operation(std::string_view operation) noexcept
+    {
+        return operation == "lround" || operation == "llround" ||
+               operation == "lrint" || operation == "llrint";
+    }
+
     [[nodiscard]] inline long long stdlib_unary_integer_special_result(std::string_view operation, double x)
     {
+        if (is_rounding_integer_operation(operation) && detail::fp::isinf_or_nan(x))
+            return 0;
+
         if (operation == "lround")
             return static_cast<long long>(std::lround(x));
         if (operation == "llround")
@@ -179,11 +210,11 @@ namespace bl::test::metrics
 
     [[nodiscard]] inline bool unary_integer_special_probe_is_meaningful(std::string_view operation) noexcept
     {
-        return operation == "ilogb";
+        return is_rounding_integer_operation(operation) || operation == "ilogb";
     }
 
     template<class Samples, class Values, class EvalFn, class RefFn>
-    [[nodiscard]] special_correctness measure_unary_integer_special_values(
+    [[nodiscard]] special_support measure_unary_integer_special_values(
         std::string_view operation,
         const Samples& samples,
         const Values& values,
@@ -192,10 +223,13 @@ namespace bl::test::metrics
     {
         (void)reference;
         if (samples.empty())
-            return special_correctness::unavailable;
+            return special_support::unavailable;
 
+        special_support_accumulator support;
         for (std::size_t index = 0; index < samples.size(); ++index)
         {
+            const bool has_inf = sample_has_inf(samples[index]);
+            const bool has_nan = sample_has_nan(samples[index]);
             long long expected = 0;
             try
             {
@@ -205,7 +239,7 @@ namespace bl::test::metrics
             }
             catch (...)
             {
-                return special_correctness::unavailable;
+                return special_support::unavailable;
             }
 
             try
@@ -219,15 +253,17 @@ namespace bl::test::metrics
                                   << " '" << samples[index].label << "' integer mismatch: "
                                   << actual << " != " << expected << '\n';
                     }
-                    return special_correctness::fail;
+                    support.record(has_inf, has_nan, false);
+                    continue;
                 }
+                support.record(has_inf, has_nan, true);
             }
             catch (...)
             {
-                return special_correctness::fail;
+                support.record(has_inf, has_nan, false);
             }
         }
-        return special_correctness::pass;
+        return support.result();
     }
 }
 

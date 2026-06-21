@@ -27,16 +27,25 @@ namespace detail::_f128 // primitives and kernels
 
     BL_FORCE_INLINE constexpr bool compare_less(double ahi, double alo, double bhi, double blo) noexcept
     {
+        if (detail::fp::isnan(ahi) || detail::fp::isnan(bhi))
+            return false;
+
         return (ahi < bhi) || (ahi == bhi && alo < blo);
     }
 
     BL_FORCE_INLINE constexpr bool compare_less_equal(double ahi, double alo, double bhi, double blo) noexcept
     {
+        if (detail::fp::isnan(ahi) || detail::fp::isnan(bhi))
+            return false;
+
         return (ahi < bhi) || (ahi == bhi && alo <= blo);
     }
 
     BL_FORCE_INLINE constexpr bool compare_equal(double ahi, double alo, double bhi, double blo) noexcept
     {
+        if (detail::fp::isnan(ahi) || detail::fp::isnan(bhi))
+            return false;
+
         return ahi == bhi && alo == blo;
     }
 

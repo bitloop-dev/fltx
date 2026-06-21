@@ -147,9 +147,17 @@ static_assert(std::numeric_limits<double>::is_iec559 &&
 #define FLTX_MATH_USES_CHECKED_DEKKER
 #endif
 
+#if defined(FLTX_SIMULATE_TOGGLE_CONSTEVAL_MODE) && defined(FLTX_SIMULATE_FIXED_CONSTEVAL_MODE)
+#error FLTX_SIMULATE_TOGGLE_CONSTEVAL_MODE and FLTX_SIMULATE_FIXED_CONSTEVAL_MODE are separate modes; enable only one.
+#endif
+
+#if defined(FLTX_SIMULATE_TOGGLE_CONSTEVAL_MODE) || defined(FLTX_SIMULATE_FIXED_CONSTEVAL_MODE)
+#define FLTX_HAS_SIMULATED_CONSTEVAL_MODE
+#endif
+
 namespace bl
 {
-    #if defined(FLTX_SIMULATE_CONSTEVAL_MODE)
+    #if defined(FLTX_SIMULATE_TOGGLE_CONSTEVAL_MODE)
     namespace _fltx_debug {
 
         inline bool simulate_consteval_path = false;
@@ -176,7 +184,9 @@ namespace bl
                 return true;
             }
 
-            #if defined(FLTX_SIMULATE_CONSTEVAL_MODE)
+            #if defined(FLTX_SIMULATE_FIXED_CONSTEVAL_MODE)
+            return true;
+            #elif defined(FLTX_SIMULATE_TOGGLE_CONSTEVAL_MODE)
             return bl::_fltx_debug::simulate_consteval_path;
             #else
             return false;
@@ -197,12 +207,13 @@ namespace bl
         [[nodiscard]] BL_FORCE_INLINE constexpr bool use_constexpr_math() noexcept
         {
             // Select constexpr-safe math algorithms. In normal builds this tracks
-            // actual constant evaluation. In FLTX_SIMULATE_CONSTEVAL_MODE, tests can
-            // force this at runtime to compare predicted consteval results with runtime
-            // results. FLTX_CONSTEXPR_PARITY also takes this path so runtime and
-            // constant-evaluated results are bitwise comparable.
-            #if defined(FLTX_SIMULATE_CONSTEVAL_MODE)
-            return is_constant_evaluated() || bl::_fltx_debug::simulate_consteval_path || use_constexpr_parity();
+            // actual constant evaluation. Toggle simulated mode lets tests select
+            // constexpr-safe paths at runtime for parity/domain checks. Fixed
+            // simulated mode always selects those paths so benchmarks do not measure
+            // the toggle branch. FLTX_CONSTEXPR_PARITY also takes this path so runtime
+            // and constant-evaluated results are bitwise comparable.
+            #if defined(FLTX_SIMULATE_FIXED_CONSTEVAL_MODE)
+            return true;
             #else
             return is_constant_evaluated() || use_constexpr_parity();
             #endif
@@ -276,7 +287,20 @@ struct std::numeric_limits<wrapper_type>                                        
 #endif
 
 #ifndef BL_CONSTEXPR_RUNTIME_DISPATCH
-  #if !defined(FLTX_CONSTEXPR_PARITY) && !defined(FLTX_SIMULATE_CONSTEVAL_MODE)
+  #if defined(FLTX_SIMULATE_FIXED_CONSTEVAL_MODE)
+    #define BL_CONSTEXPR_RUNTIME_DISPATCH(CONSTEVAL_EXPR, RUNTIME_EXPR) \
+        do                                                              \
+        {                                                               \
+            if consteval                                                \
+            {                                                           \
+                return (CONSTEVAL_EXPR);                                \
+            }                                                           \
+            else                                                        \
+            {                                                           \
+                return (CONSTEVAL_EXPR);                                \
+            }                                                           \
+        } while (false)
+  #elif !defined(FLTX_CONSTEXPR_PARITY) && !defined(FLTX_HAS_SIMULATED_CONSTEVAL_MODE)
     #define BL_CONSTEXPR_RUNTIME_DISPATCH(CONSTEVAL_EXPR, RUNTIME_EXPR) \
         do                                                              \
         {                                                               \

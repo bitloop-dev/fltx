@@ -126,7 +126,9 @@ namespace detail::_f256 // primitives and kernels
     {
         constexpr std::size_t coeff_count = sizeof(exp_inv_fact) / sizeof(exp_inv_fact[0]);
         f256_s p = horner_reverse(exp_inv_fact, coeff_count, r);
-        p = mul_add_horner_step(p, r, f256_s{ 0.5 });
+        p = bl::detail::use_constexpr_math()
+            ? mul_add_double_rhs_inline(p, r, 0.5)
+            : mul_add_horner_step(p, r, f256_s{ 0.5 });
         return mul_add_horner_step(sqr_inline(r), p, r);
     }
 
@@ -166,7 +168,7 @@ namespace detail::_f256 // primitives and kernels
         for (std::size_t i = coeff_count - 1; i > 0; --i)
             p = mul_add_inline(p, r, exp_inv_fact[i - 1]);
 
-        p = mul_add_inline(p, r, f256_s{ 0.5 });
+        p = mul_add_double_rhs_inline(p, r, 0.5);
         return mul_add_inline(sqr_inline(r), p, r);
     }
 
@@ -204,6 +206,12 @@ namespace detail::_f256 // primitives and kernels
         return add_inline(q, div_inline(sub_inline(a, mul_inline(b, q)), b));
     }
 
+    BL_FORCE_INLINE constexpr f256_s div_refined_once(double a, const f256_s& b) noexcept
+    {
+        const f256_s q = div_double_inline(a, b);
+        return add_inline(q, div_inline(sub_double_inline(a, mul_inline(b, q)), b));
+    }
+
     BL_MSVC_NOINLINE constexpr f256_s exp_general_scaled(const f256_s& x, bool sub_one) noexcept
     {
         int n = static_cast<int>(nearbyint_ties_even(x.x0));
@@ -211,20 +219,51 @@ namespace detail::_f256 // primitives and kernels
 
         const f256_s r = mul_double_inline(reduced, 0.03125);
         f256_s e = expm1_tiny_fast(r);
-        for (int i = 0; i < 5; ++i)
-            e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
 
         if (n == 0)
             return sub_one ? e : add_scalar_precise(e, 1.0);
 
         const f256_s factor = exp_integer_factor(n);
 #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
-        const f256_s factor_e = detail::fp::exp_scale_needs_checked_product(n)
-            ? mul_inline_checked(factor, e)
-            : mul_inline(factor, e);
-        const f256_s scaled = add_inline(factor, factor_e);
+        const f256_s scaled = detail::fp::exp_scale_needs_checked_product(n)
+            ? add_inline(factor, mul_inline_checked(factor, e))
+            : mul_add_inline(factor, e, factor);
 #else
-        const f256_s scaled = add_inline(factor, mul_inline(factor, e));
+        const f256_s scaled = mul_add_inline(factor, e, factor);
+#endif
+        return sub_one ? add_scalar_precise(scaled, -1.0) : scaled;
+    }
+
+    BL_MSVC_NOINLINE constexpr f256_s exp_general_scaled_precise(const f256_s& x, bool sub_one) noexcept
+    {
+        int n = static_cast<int>(nearbyint_ties_even(x.x0));
+        f256_s reduced = sub_double_inline(x, static_cast<double>(n));
+
+        const f256_s r = mul_double_inline(reduced, 0.0078125);
+        f256_s e = expm1_tiny_fast(r);
+        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
+
+        if (n == 0)
+            return sub_one ? e : add_scalar_precise(e, 1.0);
+
+        const f256_s factor = exp_integer_factor(n);
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        const f256_s scaled = detail::fp::exp_scale_needs_checked_product(n)
+            ? add_inline(factor, mul_inline_checked(factor, e))
+            : mul_add_inline(factor, e, factor);
+#else
+        const f256_s scaled = mul_add_inline(factor, e, factor);
 #endif
         return sub_one ? add_scalar_precise(scaled, -1.0) : scaled;
     }
@@ -236,11 +275,22 @@ namespace detail::_f256 // primitives and kernels
             ? f256_s{ detail::fp::log1p(frac.x0) }
             : f256_s{ std::log1p(frac.x0) };
 
-        const int iterations = constexpr_path ? 3 : 2;
-        for (int i = 0; i < iterations; ++i)
+        if (constexpr_path)
         {
             const f256_s em1 = exp_general_scaled(x, true);
             x = add_inline(x, div_inline(sub_inline(frac, em1), add_scalar_precise(em1, 1.0)));
+            const f256_s em2 = exp_general_scaled(x, true);
+            x = add_inline(x, div_inline(sub_inline(frac, em2), add_scalar_precise(em2, 1.0)));
+            const f256_s em3 = exp_general_scaled(x, true);
+            x = add_inline(x, div_inline(sub_inline(frac, em3), add_scalar_precise(em3, 1.0)));
+        }
+        else
+        {
+            for (int i = 0; i < 2; ++i)
+            {
+                const f256_s em1 = exp_general_scaled(x, true);
+                x = add_inline(x, div_inline(sub_inline(frac, em1), add_scalar_precise(em1, 1.0)));
+            }
         }
 
         return x;
@@ -333,18 +383,25 @@ namespace detail::_f256 // primitives and kernels
         for (std::size_t i = 11; i > 0; --i)
             p = mul_add_inline(p, u2, log_atanh_coeffs[i - 1]);
 
-        const f256_s log_m = add_inline(
-            mul_double_inline(std::numbers::ln2_v<f256_s>, static_cast<double>(j) / 64.0),
-            mul_inline(u, p));
-        f256_s y = add_inline(
-            mul_double_inline(std::numbers::ln2_v<f256_s>, static_cast<double>(exp2)),
-            log_m);
-        for (int i = 0; i < 1; ++i)
+        const f256_s log_m = add_inline(mul_inline(u, p), ln2_table_64[j]);
+        f256_s y = add_mul_double_inline(
+            log_m,
+            std::numbers::ln2_v<f256_s>,
+            static_cast<double>(exp2));
+        if (exp2 >= -96 && exp2 <= 96)
         {
-            const f256_s correction = add_scalar_precise(mul_inline(m, exp_general_scaled(-log_m, false)), -1.0);
+            for (int i = 0; i < 3; ++i)
+            {
+                const f256_s correction = mul_add_double_rhs_inline(a, exp_general_scaled(-y, false), -1.0);
+                y = add_inline(y, correction);
+                if (mag(correction) <= mul_inline(f256_s::eps(), mag(y)))
+                    break;
+            }
+        }
+        else
+        {
+            const f256_s correction = mul_add_double_rhs_inline(m, exp_general_scaled(-log_m, false), -1.0);
             y = add_inline(y, correction);
-            if (mag(correction) <= mul_inline(f256_s::eps(), mag(y)))
-                break;
         }
         return y;
     }
@@ -362,7 +419,7 @@ namespace detail::_f256 // primitives and kernels
         if (iszero(x))
             return f256_s{ 1.0 };
 
-        return F256_CANONICALIZE_MATH_RESULT(exp_from_reduced_64(x, false));
+        return F256_CANONICALIZE_MATH_RESULT(exp_general_scaled_precise(x, false));
     }
 
     BL_MSVC_NOINLINE constexpr f256_s _exp(const f256_s& x)
@@ -813,7 +870,7 @@ namespace detail::_f256 // primitives and kernels
 
         const f256_s pc = horner_forward_inline(f256_cos_coeffs_pi4, f256_trig_coeff_count_pi4, t);
 
-        return mul_add_inline(t, pc, f256_s{ 1.0 });
+        return mul_add_double_rhs_inline(t, pc, 1.0);
     }
 
     BL_MSVC_NOINLINE constexpr void sincos_kernel_pi4_inline(const f256_s& r, f256_s& s_out, f256_s& c_out)
@@ -825,7 +882,7 @@ namespace detail::_f256 // primitives and kernels
         horner_pair_forward_inline(f256_sin_coeffs_pi4, f256_cos_coeffs_pi4, f256_trig_coeff_count_pi4, t, ps, pc);
 
         s_out = mul_add_inline(mul_inline(r, t), ps, r);
-        c_out = mul_add_inline(t, pc, f256_s{ 1.0 });
+        c_out = mul_add_double_rhs_inline(t, pc, 1.0);
     }
 
     BL_MSVC_NOINLINE constexpr void sincos_kernel_small(const f256_s& r, f256_s& s_out, f256_s& c_out)
@@ -844,7 +901,9 @@ namespace detail::_f256 // primitives and kernels
 
         const f256_s rt = mul_inline(r, t);
         s_out = mul_add_horner_step(rt, ps, r);
-        c_out = mul_add_horner_step(t, pc, f256_s{ 1.0 });
+        c_out = bl::detail::use_constexpr_math()
+            ? mul_add_double_rhs_inline(t, pc, 1.0)
+            : mul_add_horner_step(t, pc, f256_s{ 1.0 });
     }
 
     BL_MSVC_NOINLINE constexpr void sincos_kernel_pi64_reduced(const f256_s& r, f256_s& s_out, f256_s& c_out)
@@ -872,8 +931,8 @@ namespace detail::_f256 // primitives and kernels
         const f256_s sa = k < 0 ? -f256_sin_table_pi64[table_index] : f256_sin_table_pi64[table_index];
         const f256_s ca = f256_cos_table_pi64[table_index];
 
-        s_out = mul_add_inline(ca, su, mul_inline(sa, cu));
-        c_out = mul_sub_inline(ca, cu, mul_inline(sa, su));
+        s_out = mul_add_mul_inline(ca, su, sa, cu);
+        c_out = mul_sub_mul_inline(ca, cu, sa, su);
     }
 
     BL_MSVC_NOINLINE constexpr f256_s sin_kernel_pi4(const f256_s& r)
@@ -900,7 +959,9 @@ namespace detail::_f256 // primitives and kernels
         const f256_s t = sqr_inline(r);
         const f256_s pc = horner_forward(f256_cos_coeffs_pi4, f256_trig_coeff_count_pi4, t);
 
-        return mul_add_horner_step(t, pc, f256_s{ 1.0 });
+        return bl::detail::use_constexpr_math()
+            ? mul_add_double_rhs_inline(t, pc, 1.0)
+            : mul_add_horner_step(t, pc, f256_s{ 1.0 });
     }
 
     BL_MSVC_NOINLINE constexpr void sincos_kernel_pi4(const f256_s& r, f256_s& s_out, f256_s& c_out)
@@ -986,7 +1047,7 @@ namespace detail::_f256 // primitives and kernels
 
         if (ax > f256_s{ 1.0 })
         {
-            const f256_s core = atan_core_unit(div_refined_once(f256_s{ 1.0 }, ax));
+            const f256_s core = atan_core_unit(div_refined_once(1.0, ax));
             const f256_s out  = sub_inline(pi_2, core);
             return neg ? -out : out;
         }
@@ -1041,14 +1102,14 @@ namespace detail::_f256 // primitives and kernels
             return detail::_f256_runtime::cheb_eval(x, coeffs, f256_erf_cheb_coeff_count, shift);
         }
 
-        const f256_s t = sub_inline(mul_double_inline(x, 2.0), f256_s{ shift });
+        const f256_s t = sub_double_inline(mul_double_inline(x, 2.0), shift);
         f256_s b1{ 0.0 };
         f256_s b2{ 0.0 };
 
         for (int i = static_cast<int>(f256_erf_cheb_coeff_count) - 1; i >= 1; --i)
         {
             const f256_s b0 = add_inline(
-                mul_double_sub_inline(mul_inline(t, b1), 2.0, b2),
+                mul_double_sub_pow2_inline(mul_inline(t, b1), 2.0, b2),
                 coeffs[i]);
             b2 = b1;
             b1 = b0;
@@ -1076,20 +1137,18 @@ namespace detail::_f256 // primitives and kernels
         {
             power = mul_inline(
                 power,
-                div_inline(-xx, f256_s{ static_cast<double>(n) }));
+                div_double_inline(-xx, static_cast<double>(n)));
 
-            const f256_s term = div_inline(
-                power,
-                f256_s{ static_cast<double>(2 * n + 1) });
+            const f256_s term = div_double_inline(power, static_cast<double>(2 * n + 1));
 
             sum = add_inline(sum, term);
             if (mag(term) < f256_s::eps())
                 break;
         }
 
-        return mul_inline(
-            mul_inline(f256_s{ 2.0 }, std::numbers::inv_sqrtpi_v<f256_s>),
-            sum);
+        return mul_double_inline(
+            mul_inline(std::numbers::inv_sqrtpi_v<f256_s>, sum),
+            2.0);
     }
 
     [[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s erfc_positive_cheb_3_4(const f256_s& x)
@@ -1100,35 +1159,37 @@ namespace detail::_f256 // primitives and kernels
     [[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s erfc_positive_cf(const f256_s& x)
     {
         const f256_s z = sqr_inline(x);
-        constexpr f256_s a = f256_s{ 0.5 };
         constexpr f256_s tiny = f256_s{ 1.0e-300, 0.0, 0.0, 0.0 };
 
         f256_s b = add_double_inline(z, 0.5);
-        f256_s c = f256_s{ 1.0 } / tiny;
-        f256_s d = f256_s{ 1.0 } / b;
+        const f256_s convergence = mul_double_inline(f256_s::eps(), 64.0);
+        f256_s c = div_double_inline(1.0, tiny);
+        f256_s d = div_double_inline(1.0, b);
         f256_s h = d;
 
+        double an = -0.5;
+        double an_step = -2.5;
         for (int i = 1; i <= 160; ++i)
         {
-            const f256_s ii = f256_s{ static_cast<double>(i) };
-            const f256_s an = -mul_inline(ii, sub_inline(ii, a));
-
             b = add_double_inline(b, 2.0);
 
-            d = mul_add_inline(an, d, b);
+            d = add_mul_double_inline(b, d, an);
             if (mag(d) < tiny)
                 d = tiny;
 
-            c = add_inline(b, div_inline(an, c));
+            c = add_inline(b, div_double_inline(an, c));
             if (mag(c) < tiny)
                 c = tiny;
 
-            d = f256_s{ 1.0 } / d;
+            d = div_double_inline(1.0, d);
             const f256_s delta = mul_inline(d, c);
             h = mul_inline(h, delta);
 
-            if (mag(sub_double_inline(delta, 1.0)) <= mul_double_inline(f256_s::eps(), 64.0))
+            if (mag(sub_double_inline(delta, 1.0)) <= convergence)
                 break;
+
+            an += an_step;
+            an_step -= 2.0;
         }
 
         return mul_inline(
@@ -1226,7 +1287,7 @@ namespace detail::_f256 // primitives and kernels
 
     BL_NO_INLINE constexpr f256_s lgamma_stirling_asymptotic(const f256_s& z) noexcept
     {
-        const f256_s inv    = f256_s{ 1.0 } / z;
+        const f256_s inv    = div_double_inline(1.0, z);
         const f256_s inv2   = sqr_eval(inv);
         const f256_s series = mul_eval(inv, horner_reverse(
             lgamma_stirling_coeffs,
@@ -1312,7 +1373,7 @@ namespace detail::_f256
         const double inv_derivative = 1.0 / (3.0 * current.x0 * current.x0);
         const f256_s current_squared = sqr_inline(current);
         const f256_s residual = value_sub_mul_inline(ax, current_squared, current);
-        return add_inline(current, mul_double_inline(residual, inv_derivative));
+        return add_mul_double_inline(current, residual, inv_derivative);
     }
 
 } // namespace detail::_f256
@@ -1526,7 +1587,7 @@ namespace detail::_f256
 
     if (y == 1.0) return x;
     if (y == 2.0) return F256_CANONICALIZE_MATH_RESULT(sqr_inline(x));
-    if (y == -1.0) return F256_CANONICALIZE_MATH_RESULT(f256_s{ 1.0 } / x);
+    if (y == -1.0) return F256_CANONICALIZE_MATH_RESULT(div_refined_once(1.0, x));
     if (y == 0.5) return F256_CANONICALIZE_MATH_RESULT(detail::_f256_impl::sqrt(x));
 
     double yi{};
@@ -1758,9 +1819,9 @@ namespace detail::_f256
 #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
     f256_s out = detail::fp::exp_inverse_is_negligible(ax.x0)
         ? _ldexp(ex, -1)
-        : mul_double_inline(sub_inline(ex, div_refined_once(f256_s{ 1.0 }, ex)), 0.5);
+        : mul_double_inline(sub_inline(ex, div_refined_once(1.0, ex)), 0.5);
 #else
-    const f256_s inv_ex = div_refined_once(f256_s{ 1.0 }, ex);
+    const f256_s inv_ex = div_refined_once(1.0, ex);
     f256_s out = mul_double_inline(sub_inline(ex, inv_ex), 0.5);
 #endif
     if (signbit(x))
@@ -1782,7 +1843,7 @@ namespace detail::_f256
         return F256_CANONICALIZE_MATH_RESULT(_ldexp(ex, -1));
 #endif
 
-    const f256_s inv_ex = div_refined_once(f256_s{ 1.0 }, ex);
+    const f256_s inv_ex = div_refined_once(1.0, ex);
     return F256_CANONICALIZE_MATH_RESULT(
         mul_double_inline(add_inline(ex, inv_ex), 0.5));
 }
@@ -1832,13 +1893,13 @@ namespace detail::_f256
     else if (ax <= f256_s{ 0.5 })
     {
         const f256_s ax2 = sqr_inline(ax);
-        const f256_s r = add_raw5_value_inline(sqr_raw5_inline(ax), f256_s{ 1.0 });
+        const f256_s r = add_raw5_double_inline(sqr_raw5_inline(ax), 1.0);
         out = detail::_f256_impl::log1p(add_inline(
             ax,
             div_inline(ax2, add_double_inline(detail::_f256_impl::sqrt(r), 1.0))));
     }
     else
-        out = detail::_f256_impl::log(add_inline(ax, detail::_f256_impl::sqrt(add_raw5_value_inline(sqr_raw5_inline(ax), f256_s{ 1.0 }))));
+        out = detail::_f256_impl::log(add_inline(ax, detail::_f256_impl::sqrt(add_raw5_double_inline(sqr_raw5_inline(ax), 1.0))));
 
     if (signbit(x))
         out = -out;
@@ -1933,11 +1994,11 @@ namespace detail::_f256
     }
     else if (ax < f256_s{ 4.0 })
     {
-        out = f256_s{ 1.0 } - erfc_positive_cheb_3_4(ax);
+        out = sub_double_inline(1.0, erfc_positive_cheb_3_4(ax));
     }
     else
     {
-        out = f256_s{ 1.0 } - erfc_positive_cf(ax);
+        out = sub_double_inline(1.0, erfc_positive_cf(ax));
     }
 
     if (neg)
@@ -2000,7 +2061,7 @@ namespace detail::_f256
     const f256_s out =
         mul_double_eval(half_log_pi, 2.0)
         - detail::_f256_impl::log(detail::_f256::mag(sinpix))
-        - lgamma_positive_recurrence(f256_s{ 1.0 } - x);
+        - lgamma_positive_recurrence(sub_double_inline(1.0, x));
 
     return F256_CANONICALIZE_MATH_RESULT(out);
 }

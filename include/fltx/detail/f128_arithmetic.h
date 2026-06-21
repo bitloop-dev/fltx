@@ -362,6 +362,29 @@ namespace detail::_f128 // primitives and kernels
         return renorm(s, t);
     }
 
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_add_double_lhs_inline(double a, const f128_s& b, const f128_s& c) noexcept
+    {
+        double p{}, e{};
+        two_prod_precise(a, b.hi, p, e);
+        e += a * b.lo;
+
+        double s{}, t{};
+        two_sum_precise(p, c.hi, s, t);
+        t += e + c.lo;
+        return renorm(s, t);
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_add_double_rhs_inline(const f128_s& a, const f128_s& b, double c) noexcept
+    {
+        double p{}, e{};
+        mul_expansion_inline(a, b, p, e);
+
+        double s{}, t{};
+        two_sum_precise(p, c, s, t);
+        t += e;
+        return renorm(s, t);
+    }
+
 #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_add_inline_checked(const f128_s& a, const f128_s& b, const f128_s& c) noexcept
     {

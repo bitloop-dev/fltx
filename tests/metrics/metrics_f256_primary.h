@@ -22,6 +22,7 @@
 #include <fltx/random.h>
 
 #include "metrics_config.h"
+#include "metrics_benchmark.h"
 #include "metrics_records.h"
 #include "metrics_domain_samples.h"
 #include "metrics_qdpp.h"
@@ -106,7 +107,11 @@ namespace bl::test::metrics::f256_primary
 
     [[nodiscard]] inline std::size_t benchmark_sample_count(std::string_view operation) noexcept
     {
-        return config::scale_count(benchmark_random_sample_count, benchmark_local_sample_scale(operation));
+        const std::size_t count =
+            config::scale_count(benchmark_random_sample_count, benchmark_local_sample_scale(operation));
+        if (is_integer_rounding_benchmark(operation))
+            return std::min(count, config::integer_rounding_benchmark_sample_count_cap);
+        return count;
     }
 
     class scoped_benchmark_sample_count
@@ -315,10 +320,10 @@ namespace bl::test::metrics::f256_primary
     [[nodiscard]] inline special_value_state classify_special_ref(const perfect_ref& value)
     {
         const double approximate = static_cast<double>(value);
-        if (std::isnan(approximate))
+        if (detail::fp::isnan(approximate))
             return { special_value_kind::nan, false, 0 };
-        if (std::isinf(approximate))
-            return { special_value_kind::infinity, std::signbit(approximate), 0 };
+        if (detail::fp::isinf(approximate))
+            return { special_value_kind::infinity, detail::fp::signbit(approximate), 0 };
 
         using boost::multiprecision::signbit;
         if (value == 0)
@@ -328,13 +333,13 @@ namespace bl::test::metrics::f256_primary
 
     [[nodiscard]] inline special_value_state classify_special_double(double value)
     {
-        if (std::isnan(value))
+        if (detail::fp::isnan(value))
             return { special_value_kind::nan, false, 0 };
-        if (std::isinf(value))
-            return { special_value_kind::infinity, std::signbit(value), 0 };
+        if (detail::fp::isinf(value))
+            return { special_value_kind::infinity, detail::fp::signbit(value), 0 };
         if (value == 0.0)
-            return { special_value_kind::zero, std::signbit(value), 0 };
-        return { special_value_kind::finite, std::signbit(value), perfect_ref{ value } };
+            return { special_value_kind::zero, detail::fp::signbit(value), 0 };
+        return { special_value_kind::finite, detail::fp::signbit(value), perfect_ref{ value } };
     }
 
     [[nodiscard]] inline special_value_state classify_special_value(const fltx_type& value)
@@ -355,16 +360,16 @@ namespace bl::test::metrics::f256_primary
 
     [[nodiscard]] inline special_value_state classify_special_value(const extra_competitor_ref& value)
     {
-        if (std::isnan(value[0]) || (std::isfinite(value[0]) &&
-            (std::isnan(value[1]) || std::isnan(value[2]) || std::isnan(value[3]))))
+        if (detail::fp::isnan(value[0]) || (detail::fp::isfinite(value[0]) &&
+            (detail::fp::isnan(value[1]) || detail::fp::isnan(value[2]) || detail::fp::isnan(value[3]))))
         {
             return { special_value_kind::nan, false, 0 };
         }
-        if (std::isinf(value[0]))
-            return { special_value_kind::infinity, std::signbit(value[0]), 0 };
+        if (detail::fp::isinf(value[0]))
+            return { special_value_kind::infinity, detail::fp::signbit(value[0]), 0 };
         if (value[0] == 0.0 && value[1] == 0.0 && value[2] == 0.0 && value[3] == 0.0)
-            return { special_value_kind::zero, std::signbit(value[0]), 0 };
-        return { special_value_kind::finite, std::signbit(value[0]), to_perfect(value) };
+            return { special_value_kind::zero, detail::fp::signbit(value[0]), 0 };
+        return { special_value_kind::finite, detail::fp::signbit(value[0]), to_perfect(value) };
     }
 
     [[nodiscard]] inline perfect_ref abs_ref(const perfect_ref& value)
@@ -372,32 +377,14 @@ namespace bl::test::metrics::f256_primary
         return value < 0 ? -value : value;
     }
 
-    [[nodiscard]] inline perfect_ref reference_scale(const perfect_ref& expected)
-    {
-        const perfect_ref scale = abs_ref(expected);
-        return scale < 1 ? perfect_ref{ 1 } : scale;
-    }
-
     [[nodiscard]] inline double matching_bits(const perfect_ref& actual, const perfect_ref& expected)
     {
-        const perfect_ref error = abs_ref(actual - expected);
-        if (error == 0)
-            return std::numeric_limits<double>::infinity();
-
-        const perfect_ref scaled_error = error / reference_scale(expected);
-        using std::log2;
-        return static_cast<double>(-log2(scaled_error));
+        return reference_matching_bits(actual, expected);
     }
 
     [[nodiscard]] inline double domain_matching_bits(const perfect_ref& actual, const perfect_ref& expected)
     {
-        const perfect_ref error = abs_ref(actual - expected);
-        if (error == 0)
-            return std::numeric_limits<double>::infinity();
-
-        const perfect_ref scaled_error = error / reference_scale(expected);
-        using std::log2;
-        return static_cast<double>(-log2(scaled_error));
+        return reference_matching_bits(actual, expected);
     }
 
     [[nodiscard]] inline double domain_score_bits(const perfect_ref& actual, const perfect_ref& expected)
@@ -434,7 +421,7 @@ namespace bl::test::metrics::f256_primary
     }
 
     template<class Samples, class Values, class EvalFn, class RefFn>
-    [[nodiscard]] special_correctness measure_unary_special_values(
+    [[nodiscard]] special_support measure_unary_special_values(
         std::string_view operation,
         const Samples& samples,
         const Values& values,
@@ -443,10 +430,13 @@ namespace bl::test::metrics::f256_primary
     {
         (void)reference;
         if (samples.empty())
-            return special_correctness::unavailable;
+            return special_support::unavailable;
 
+        special_support_accumulator support;
         for (std::size_t index = 0; index < samples.size(); ++index)
         {
+            const bool has_inf = sample_has_inf(samples[index]);
+            const bool has_nan = sample_has_nan(samples[index]);
             special_value_state expected;
             try
             {
@@ -455,7 +445,7 @@ namespace bl::test::metrics::f256_primary
             }
             catch (...)
             {
-                return special_correctness::unavailable;
+                return special_support::unavailable;
             }
 
             try
@@ -468,19 +458,21 @@ namespace bl::test::metrics::f256_primary
                         std::cerr << "[special trace] " << operation << " sample " << index
                                   << " '" << samples[index].label << "' mismatch\n";
                     }
-                    return special_correctness::fail;
+                    support.record(has_inf, has_nan, false);
+                    continue;
                 }
+                support.record(has_inf, has_nan, true);
             }
             catch (...)
             {
-                return special_correctness::fail;
+                support.record(has_inf, has_nan, false);
             }
         }
-        return special_correctness::pass;
+        return support.result();
     }
 
     template<class Samples, class Values, class EvalFn, class RefFn>
-    [[nodiscard]] special_correctness measure_binary_special_values(
+    [[nodiscard]] special_support measure_binary_special_values(
         std::string_view operation,
         const Samples& samples,
         const Values& values,
@@ -489,10 +481,13 @@ namespace bl::test::metrics::f256_primary
     {
         (void)reference;
         if (samples.empty())
-            return special_correctness::unavailable;
+            return special_support::unavailable;
 
+        special_support_accumulator support;
         for (std::size_t index = 0; index < samples.size(); ++index)
         {
+            const bool has_inf = sample_has_inf(samples[index]);
+            const bool has_nan = sample_has_nan(samples[index]);
             special_value_state expected;
             try
             {
@@ -503,7 +498,7 @@ namespace bl::test::metrics::f256_primary
             }
             catch (...)
             {
-                return special_correctness::unavailable;
+                return special_support::unavailable;
             }
 
             try
@@ -517,19 +512,21 @@ namespace bl::test::metrics::f256_primary
                         std::cerr << "[special trace] " << operation << " sample " << index
                                   << " '" << samples[index].label << "' mismatch\n";
                     }
-                    return special_correctness::fail;
+                    support.record(has_inf, has_nan, false);
+                    continue;
                 }
+                support.record(has_inf, has_nan, true);
             }
             catch (...)
             {
-                return special_correctness::fail;
+                support.record(has_inf, has_nan, false);
             }
         }
-        return special_correctness::pass;
+        return support.result();
     }
 
     template<class Samples, class Values, class EvalFn, class RefFn>
-    [[nodiscard]] special_correctness measure_ternary_special_values(
+    [[nodiscard]] special_support measure_ternary_special_values(
         std::string_view operation,
         const Samples& samples,
         const Values& values,
@@ -538,10 +535,13 @@ namespace bl::test::metrics::f256_primary
     {
         (void)reference;
         if (samples.empty())
-            return special_correctness::unavailable;
+            return special_support::unavailable;
 
+        special_support_accumulator support;
         for (std::size_t index = 0; index < samples.size(); ++index)
         {
+            const bool has_inf = sample_has_inf(samples[index]);
+            const bool has_nan = sample_has_nan(samples[index]);
             special_value_state expected;
             try
             {
@@ -553,7 +553,7 @@ namespace bl::test::metrics::f256_primary
             }
             catch (...)
             {
-                return special_correctness::unavailable;
+                return special_support::unavailable;
             }
 
             try
@@ -567,19 +567,21 @@ namespace bl::test::metrics::f256_primary
                         std::cerr << "[special trace] " << operation << " sample " << index
                                   << " '" << samples[index].label << "' mismatch\n";
                     }
-                    return special_correctness::fail;
+                    support.record(has_inf, has_nan, false);
+                    continue;
                 }
+                support.record(has_inf, has_nan, true);
             }
             catch (...)
             {
-                return special_correctness::fail;
+                support.record(has_inf, has_nan, false);
             }
         }
-        return special_correctness::pass;
+        return support.result();
     }
 
     template<class Samples, class Values, class EvalFn, class RefFn>
-    [[nodiscard]] special_correctness measure_unary_int_special_values(
+    [[nodiscard]] special_support measure_unary_int_special_values(
         std::string_view operation,
         const Samples& samples,
         const Values& values,
@@ -588,10 +590,13 @@ namespace bl::test::metrics::f256_primary
     {
         (void)reference;
         if (samples.empty())
-            return special_correctness::unavailable;
+            return special_support::unavailable;
 
+        special_support_accumulator support;
         for (std::size_t index = 0; index < samples.size(); ++index)
         {
+            const bool has_inf = sample_has_inf(samples[index]);
+            const bool has_nan = sample_has_nan(samples[index]);
             special_value_state expected;
             try
             {
@@ -602,7 +607,7 @@ namespace bl::test::metrics::f256_primary
             }
             catch (...)
             {
-                return special_correctness::unavailable;
+                return special_support::unavailable;
             }
 
             try
@@ -616,15 +621,17 @@ namespace bl::test::metrics::f256_primary
                         std::cerr << "[special trace] " << operation << " sample " << index
                                   << " '" << samples[index].label << "' mismatch\n";
                     }
-                    return special_correctness::fail;
+                    support.record(has_inf, has_nan, false);
+                    continue;
                 }
+                support.record(has_inf, has_nan, true);
             }
             catch (...)
             {
-                return special_correctness::fail;
+                support.record(has_inf, has_nan, false);
             }
         }
-        return special_correctness::pass;
+        return support.result();
     }
 
     [[nodiscard]] inline double finite_for_mean(double bits) noexcept
@@ -1922,7 +1929,7 @@ namespace bl::test::metrics::f256_primary
     }
 
     template<class Samples, class Values, class EvalFn, class RefFn>
-    [[nodiscard]] special_correctness measure_binary_bool_special_values(
+    [[nodiscard]] special_support measure_binary_bool_special_values(
         std::string_view operation,
         const Samples& samples,
         const Values& values,
@@ -1930,18 +1937,24 @@ namespace bl::test::metrics::f256_primary
         RefFn reference)
     {
         if (samples.empty())
-            return special_correctness::unavailable;
+            return special_support::unavailable;
 
+        special_support_accumulator support;
         for (std::size_t index = 0; index < samples.size(); ++index)
         {
+            const bool has_inf = sample_has_inf(samples[index]);
+            const bool has_nan = sample_has_nan(samples[index]);
             bool expected = false;
             try
             {
-                expected = reference(sample_as_double(samples[index].x), sample_as_double(samples[index].y));
+                if (sample_value_has_nan(samples[index].x) || sample_value_has_nan(samples[index].y))
+                    expected = operation == "operator!=";
+                else
+                    expected = reference(sample_as_double(samples[index].x), sample_as_double(samples[index].y));
             }
             catch (...)
             {
-                return special_correctness::unavailable;
+                return special_support::unavailable;
             }
 
             try
@@ -1954,15 +1967,17 @@ namespace bl::test::metrics::f256_primary
                         std::cerr << "[special trace] " << operation << " sample " << index
                                   << " '" << samples[index].label << "' mismatch\n";
                     }
-                    return special_correctness::fail;
+                    support.record(has_inf, has_nan, false);
+                    continue;
                 }
+                support.record(has_inf, has_nan, true);
             }
             catch (...)
             {
-                return special_correctness::fail;
+                support.record(has_inf, has_nan, false);
             }
         }
-        return special_correctness::pass;
+        return support.result();
     }
 
     template<class Samples, class Values, class EvalFn, class RefFn>
@@ -2116,29 +2131,36 @@ namespace bl::test::metrics::f256_primary
     }
 
     template<class Samples, class Values, class EvalFn>
-    [[nodiscard]] special_correctness measure_frexp_special_values(
+    [[nodiscard]] special_support measure_frexp_special_values(
         const Samples& samples,
         const Values& values,
         EvalFn eval)
     {
         if (samples.empty())
-            return special_correctness::unavailable;
+            return special_support::unavailable;
 
+        special_support_accumulator support;
         for (std::size_t index = 0; index < samples.size(); ++index)
         {
+            const bool has_inf = sample_has_inf(samples[index]);
+            const bool has_nan = sample_has_nan(samples[index]);
             const special_value_state expected = classify_special_ref(make_perfect(samples[index].x));
             try
             {
                 const special_value_state actual = classify_special_ref(rebuild_frexp_result(eval(values[index])));
                 if (!special_values_match(actual, expected))
-                    return special_correctness::fail;
+                {
+                    support.record(has_inf, has_nan, false);
+                    continue;
+                }
+                support.record(has_inf, has_nan, true);
             }
             catch (...)
             {
-                return special_correctness::fail;
+                support.record(has_inf, has_nan, false);
             }
         }
-        return special_correctness::pass;
+        return support.result();
     }
 
     template<class Samples, class Values, class EvalFn>
@@ -2276,6 +2298,10 @@ namespace bl::test::metrics::f256_primary
     {
         const auto scaled = static_cast<std::size_t>(
             static_cast<double>(benchmark_min_iterations) * benchmark_iteration_scale(operation));
+        if (is_integer_rounding_benchmark(operation))
+            return std::max<std::size_t>(
+                1,
+                std::min(scaled, config::integer_rounding_benchmark_min_iterations_cap));
         return std::max<std::size_t>(1, scaled);
     }
 
@@ -2297,17 +2323,14 @@ namespace bl::test::metrics::f256_primary
         std::string_view operation = {})
     {
         const std::size_t repetitions = benchmark_repetitions(values.size(), operation);
-        const auto start = std::chrono::steady_clock::now();
-        for (std::size_t repeat = 0; repeat < repetitions; ++repeat)
+        return benchmark_trials(values.size(), repetitions, [&]
         {
-            for (const auto& value : values)
-                consume_benchmark_value(eval(value));
-        }
-        const auto elapsed = std::chrono::steady_clock::now() - start;
-        const std::size_t iterations = repetitions * values.size();
-        const double ns = std::chrono::duration<double, std::nano>(elapsed).count()
-            / static_cast<double>(iterations);
-        return { ns, iterations };
+            for (std::size_t repeat = 0; repeat < repetitions; ++repeat)
+            {
+                for (const auto& value : values)
+                    consume_benchmark_value(eval(value));
+            }
+        });
     }
 
     template<class Values, class EvalFn>
@@ -2317,17 +2340,14 @@ namespace bl::test::metrics::f256_primary
         std::string_view operation = {})
     {
         const std::size_t repetitions = benchmark_repetitions(values.size(), operation);
-        const auto start = std::chrono::steady_clock::now();
-        for (std::size_t repeat = 0; repeat < repetitions; ++repeat)
+        return benchmark_trials(values.size(), repetitions, [&]
         {
-            for (const auto& value : values)
-                consume_benchmark_value(eval(value.x, value.y));
-        }
-        const auto elapsed = std::chrono::steady_clock::now() - start;
-        const std::size_t iterations = repetitions * values.size();
-        const double ns = std::chrono::duration<double, std::nano>(elapsed).count()
-            / static_cast<double>(iterations);
-        return { ns, iterations };
+            for (std::size_t repeat = 0; repeat < repetitions; ++repeat)
+            {
+                for (const auto& value : values)
+                    consume_benchmark_value(eval(value.x, value.y));
+            }
+        });
     }
 
     template<class Values, class EvalFn>
@@ -2337,17 +2357,14 @@ namespace bl::test::metrics::f256_primary
         std::string_view operation = {})
     {
         const std::size_t repetitions = benchmark_repetitions(values.size(), operation);
-        const auto start = std::chrono::steady_clock::now();
-        for (std::size_t repeat = 0; repeat < repetitions; ++repeat)
+        return benchmark_trials(values.size(), repetitions, [&]
         {
-            for (const auto& value : values)
-                consume_benchmark_value(eval(value.x, value.y, value.z));
-        }
-        const auto elapsed = std::chrono::steady_clock::now() - start;
-        const std::size_t iterations = repetitions * values.size();
-        const double ns = std::chrono::duration<double, std::nano>(elapsed).count()
-            / static_cast<double>(iterations);
-        return { ns, iterations };
+            for (std::size_t repeat = 0; repeat < repetitions; ++repeat)
+            {
+                for (const auto& value : values)
+                    consume_benchmark_value(eval(value.x, value.y, value.z));
+            }
+        });
     }
 
     template<class Values, class EvalFn>
@@ -2357,17 +2374,14 @@ namespace bl::test::metrics::f256_primary
         std::string_view operation = {})
     {
         const std::size_t repetitions = benchmark_repetitions(values.size(), operation);
-        const auto start = std::chrono::steady_clock::now();
-        for (std::size_t repeat = 0; repeat < repetitions; ++repeat)
+        return benchmark_trials(values.size(), repetitions, [&]
         {
-            for (const auto& value : values)
-                consume_benchmark_value(eval(value.x, value.n));
-        }
-        const auto elapsed = std::chrono::steady_clock::now() - start;
-        const std::size_t iterations = repetitions * values.size();
-        const double ns = std::chrono::duration<double, std::nano>(elapsed).count()
-            / static_cast<double>(iterations);
-        return { ns, iterations };
+            for (std::size_t repeat = 0; repeat < repetitions; ++repeat)
+            {
+                for (const auto& value : values)
+                    consume_benchmark_value(eval(value.x, value.n));
+            }
+        });
     }
 
     [[nodiscard]] inline suite_id make_suite(std::string_view operation) noexcept
@@ -2480,6 +2494,9 @@ namespace bl::test::metrics::f256_primary
 
     inline void check_competitor_slack(const metrics_record& record)
     {
+        if (!record.competitor_supported)
+            return;
+
         INFO("operation: " << record.suite.operation.name);
         INFO("fltx worst bits: " << record.fltx_accuracy.worst_bits);
         INFO("competitor worst bits: " << record.competitor_accuracy.worst_bits);
@@ -2487,6 +2504,9 @@ namespace bl::test::metrics::f256_primary
 
     inline void check_benchmark_claim_is_meaningful(const metrics_record& record)
     {
+        if (!record.competitor_supported)
+            return;
+
         INFO("operation: " << record.suite.operation.name);
         INFO("fltx ns/iter: " << record.fltx_benchmark.ns_per_iter);
         INFO("competitor ns/iter: " << record.competitor_benchmark.ns_per_iter);
@@ -2517,32 +2537,34 @@ namespace bl::test::metrics::f256_primary
         metrics_record record{};
         record.suite = make_suite(operation);
         record.competitor_name = references::competitor_name;
-        auto& extra_competitor = record.extra_competitors.emplace_back();
-        extra_competitor.name = references::extra_competitor_name;
-        extra_competitor.supported = ExtraSupported;
+        auto& extra_competitor = add_extra_competitor(record, references::extra_competitor_name, ExtraSupported);
         const auto special_samples = measure_accuracy ? make_special_unary_samples() : std::vector<unary_sample>{};
         const auto special_fltx_inputs = make_unary_inputs<decltype(special_samples), fltx_type>(special_samples, make_fltx);
-        const auto special_competitor_inputs =
-            make_unary_inputs<decltype(special_samples), competitor_ref>(special_samples, make_competitor);
         record.fltx_special_values =
             measure_unary_special_values(operation, special_samples, special_fltx_inputs, eval, reference);
-        record.competitor_special_values =
-            measure_unary_special_values(operation, special_samples, special_competitor_inputs, eval, reference);
+        if constexpr (!config::benchmark_only_fltx)
+        {
+            const auto special_competitor_inputs =
+                make_unary_inputs<decltype(special_samples), competitor_ref>(special_samples, make_competitor);
+            record.competitor_special_values =
+                measure_unary_special_values(operation, special_samples, special_competitor_inputs, eval, reference);
+        }
         if (include_benchmarks)
         {
             record.fltx_benchmark = benchmark_unary_values(fltx_inputs, eval, operation);
-            record.competitor_benchmark = benchmark_unary_values(competitor_inputs, eval, operation);
+            if constexpr (!config::benchmark_only_fltx)
+                record.competitor_benchmark = benchmark_unary_values(competitor_inputs, eval, operation);
         }
         if (!measure_accuracy)
         {
-            if constexpr (ExtraSupported)
+            if constexpr (!config::benchmark_only_fltx && ExtraSupported)
             {
                 const auto extra_competitor_inputs =
                     make_unary_inputs<Samples, extra_competitor_ref>(samples, make_extra_competitor);
                 const auto special_extra_competitor_inputs =
                     make_unary_inputs<decltype(special_samples), extra_competitor_ref>(special_samples, make_extra_competitor);
                 extra_competitor.special_values = extra_competitor_special_probe_is_unsafe(operation)
-                    ? special_correctness::fail
+                    ? special_support::none
                     : measure_unary_special_values(operation, special_samples, special_extra_competitor_inputs, eval, reference);
                 if (include_benchmarks)
                     extra_competitor.benchmark = benchmark_unary_values(extra_competitor_inputs, eval, operation);
@@ -2553,16 +2575,17 @@ namespace bl::test::metrics::f256_primary
         auto to_reference_value = [](const auto& value) { return to_perfect(value); };
         record.fltx_accuracy =
             measure_unary_accuracy(operation, "fltx", required_bits, metrics_ideal_bits, enforce_fltx_accuracy, samples, fltx_inputs, to_reference_value, eval, reference);
-        record.competitor_accuracy =
-            measure_unary_accuracy(operation, references::competitor_name, required_bits, metrics_ideal_bits, false, samples, competitor_inputs, to_reference_value, eval, reference);
-        if constexpr (ExtraSupported)
+        if constexpr (!config::benchmark_only_fltx)
+            record.competitor_accuracy =
+                measure_unary_accuracy(operation, references::competitor_name, required_bits, metrics_ideal_bits, false, samples, competitor_inputs, to_reference_value, eval, reference);
+        if constexpr (!config::benchmark_only_fltx && ExtraSupported)
         {
             const auto extra_competitor_inputs =
                 make_unary_inputs<Samples, extra_competitor_ref>(samples, make_extra_competitor);
             const auto special_extra_competitor_inputs =
                 make_unary_inputs<decltype(special_samples), extra_competitor_ref>(special_samples, make_extra_competitor);
             extra_competitor.special_values = extra_competitor_special_probe_is_unsafe(operation)
-                ? special_correctness::fail
+                ? special_support::none
                 : measure_unary_special_values(operation, special_samples, special_extra_competitor_inputs, eval, reference);
             if (include_benchmarks)
                 extra_competitor.benchmark = benchmark_unary_values(extra_competitor_inputs, eval, operation);
@@ -2590,22 +2613,23 @@ namespace bl::test::metrics::f256_primary
         metrics_record record{};
         record.suite = make_suite(operation);
         record.competitor_name = references::competitor_name;
-        auto& extra_competitor = record.extra_competitors.emplace_back();
-        extra_competitor.name = references::extra_competitor_name;
-        extra_competitor.supported = ExtraSupported;
+        auto& extra_competitor = add_extra_competitor(record, references::extra_competitor_name, ExtraSupported);
 
         if (measure_accuracy && unary_integer_special_probe_is_meaningful(operation))
         {
             const auto special_samples = make_special_unary_samples();
             const auto special_fltx_inputs =
                 make_unary_inputs<decltype(special_samples), fltx_type>(special_samples, make_fltx);
-            const auto special_competitor_inputs =
-                make_unary_inputs<decltype(special_samples), competitor_ref>(special_samples, make_competitor);
             record.fltx_special_values =
                 measure_unary_integer_special_values(operation, special_samples, special_fltx_inputs, eval, reference);
-            record.competitor_special_values =
-                measure_unary_integer_special_values(operation, special_samples, special_competitor_inputs, eval, reference);
-            if constexpr (ExtraSupported)
+            if constexpr (!config::benchmark_only_fltx)
+            {
+                const auto special_competitor_inputs =
+                    make_unary_inputs<decltype(special_samples), competitor_ref>(special_samples, make_competitor);
+                record.competitor_special_values =
+                    measure_unary_integer_special_values(operation, special_samples, special_competitor_inputs, eval, reference);
+            }
+            if constexpr (!config::benchmark_only_fltx && ExtraSupported)
             {
                 const auto special_extra_competitor_inputs =
                     make_unary_inputs<decltype(special_samples), extra_competitor_ref>(special_samples, make_extra_competitor);
@@ -2614,15 +2638,16 @@ namespace bl::test::metrics::f256_primary
             }
             else
             {
-                extra_competitor.special_values = special_correctness::unavailable;
+                extra_competitor.special_values = special_support::unavailable;
             }
         }
 
         if (include_benchmarks)
         {
             record.fltx_benchmark = benchmark_unary_values(fltx_inputs, eval, operation);
-            record.competitor_benchmark = benchmark_unary_values(competitor_inputs, eval, operation);
-            if constexpr (ExtraSupported)
+            if constexpr (!config::benchmark_only_fltx)
+                record.competitor_benchmark = benchmark_unary_values(competitor_inputs, eval, operation);
+            if constexpr (!config::benchmark_only_fltx && ExtraSupported)
             {
                 const auto extra_competitor_inputs =
                     make_unary_inputs<Samples, extra_competitor_ref>(samples, make_extra_competitor);
@@ -2634,9 +2659,10 @@ namespace bl::test::metrics::f256_primary
 
         record.fltx_accuracy =
             measure_unary_integer_accuracy(operation, "fltx", required_bits, metrics_ideal_bits, enforce_fltx_accuracy, samples, fltx_inputs, eval, reference);
-        record.competitor_accuracy =
-            measure_unary_integer_accuracy(operation, references::competitor_name, required_bits, metrics_ideal_bits, false, samples, competitor_inputs, eval, reference);
-        if constexpr (ExtraSupported)
+        if constexpr (!config::benchmark_only_fltx)
+            record.competitor_accuracy =
+                measure_unary_integer_accuracy(operation, references::competitor_name, required_bits, metrics_ideal_bits, false, samples, competitor_inputs, eval, reference);
+        if constexpr (!config::benchmark_only_fltx && ExtraSupported)
         {
             const auto extra_competitor_inputs =
                 make_unary_inputs<Samples, extra_competitor_ref>(samples, make_extra_competitor);
@@ -2664,25 +2690,27 @@ namespace bl::test::metrics::f256_primary
         metrics_record record{};
         record.suite = make_suite(operation);
         record.competitor_name = references::competitor_name;
-        auto& extra_competitor = record.extra_competitors.emplace_back();
-        extra_competitor.name = references::extra_competitor_name;
-        extra_competitor.supported = ExtraSupported;
+        auto& extra_competitor = add_extra_competitor(record, references::extra_competitor_name, ExtraSupported);
         const auto special_samples = measure_accuracy ? make_special_binary_samples() : std::vector<binary_sample>{};
         const auto special_fltx_inputs = make_binary_inputs<decltype(special_samples), fltx_type>(special_samples, make_fltx);
-        const auto special_competitor_inputs =
-            make_binary_inputs<decltype(special_samples), competitor_ref>(special_samples, make_competitor);
         record.fltx_special_values =
             measure_binary_special_values(operation, special_samples, special_fltx_inputs, eval, reference);
-        record.competitor_special_values =
-            measure_binary_special_values(operation, special_samples, special_competitor_inputs, eval, reference);
+        if constexpr (!config::benchmark_only_fltx)
+        {
+            const auto special_competitor_inputs =
+                make_binary_inputs<decltype(special_samples), competitor_ref>(special_samples, make_competitor);
+            record.competitor_special_values =
+                measure_binary_special_values(operation, special_samples, special_competitor_inputs, eval, reference);
+        }
         if (include_benchmarks)
         {
             record.fltx_benchmark = benchmark_binary_values(fltx_inputs, eval, operation);
-            record.competitor_benchmark = benchmark_binary_values(competitor_inputs, eval, operation);
+            if constexpr (!config::benchmark_only_fltx)
+                record.competitor_benchmark = benchmark_binary_values(competitor_inputs, eval, operation);
         }
         if (!measure_accuracy)
         {
-            if constexpr (ExtraSupported)
+            if constexpr (!config::benchmark_only_fltx && ExtraSupported)
             {
                 const auto extra_competitor_inputs =
                     make_binary_inputs<Samples, extra_competitor_ref>(samples, make_extra_competitor);
@@ -2699,9 +2727,10 @@ namespace bl::test::metrics::f256_primary
         auto to_reference_value = [](const auto& value) { return to_perfect(value); };
         record.fltx_accuracy =
             measure_binary_accuracy(operation, "fltx", required_bits, metrics_ideal_bits, enforce_fltx_accuracy, samples, fltx_inputs, to_reference_value, eval, reference);
-        record.competitor_accuracy =
-            measure_binary_accuracy(operation, references::competitor_name, required_bits, metrics_ideal_bits, false, samples, competitor_inputs, to_reference_value, eval, reference);
-        if constexpr (ExtraSupported)
+        if constexpr (!config::benchmark_only_fltx)
+            record.competitor_accuracy =
+                measure_binary_accuracy(operation, references::competitor_name, required_bits, metrics_ideal_bits, false, samples, competitor_inputs, to_reference_value, eval, reference);
+        if constexpr (!config::benchmark_only_fltx && ExtraSupported)
         {
             const auto extra_competitor_inputs =
                 make_binary_inputs<Samples, extra_competitor_ref>(samples, make_extra_competitor);
@@ -2735,26 +2764,28 @@ namespace bl::test::metrics::f256_primary
         metrics_record record{};
         record.suite = make_suite(operation);
         record.competitor_name = references::competitor_name;
-        auto& extra_competitor = record.extra_competitors.emplace_back();
-        extra_competitor.name = references::extra_competitor_name;
-        extra_competitor.supported = ExtraSupported;
+        auto& extra_competitor = add_extra_competitor(record, references::extra_competitor_name, ExtraSupported);
         const auto special_samples = measure_accuracy ? make_special_binary_samples() : std::vector<binary_sample>{};
         const auto special_fltx_inputs =
             make_binary_inputs<decltype(special_samples), fltx_type>(special_samples, make_fltx);
-        const auto special_competitor_inputs =
-            make_binary_inputs<decltype(special_samples), competitor_ref>(special_samples, make_competitor);
         record.fltx_special_values =
             measure_binary_bool_special_values(operation, special_samples, special_fltx_inputs, eval, reference);
-        record.competitor_special_values =
-            measure_binary_bool_special_values(operation, special_samples, special_competitor_inputs, eval, reference);
+        if constexpr (!config::benchmark_only_fltx)
+        {
+            const auto special_competitor_inputs =
+                make_binary_inputs<decltype(special_samples), competitor_ref>(special_samples, make_competitor);
+            record.competitor_special_values =
+                measure_binary_bool_special_values(operation, special_samples, special_competitor_inputs, eval, reference);
+        }
         if (include_benchmarks)
         {
             record.fltx_benchmark = benchmark_binary_values(fltx_inputs, eval, operation);
-            record.competitor_benchmark = benchmark_binary_values(competitor_inputs, eval, operation);
+            if constexpr (!config::benchmark_only_fltx)
+                record.competitor_benchmark = benchmark_binary_values(competitor_inputs, eval, operation);
         }
         if (!measure_accuracy)
         {
-            if constexpr (ExtraSupported)
+            if constexpr (!config::benchmark_only_fltx && ExtraSupported)
             {
                 const auto extra_competitor_inputs =
                     make_binary_inputs<Samples, extra_competitor_ref>(samples, make_extra_competitor);
@@ -2770,9 +2801,10 @@ namespace bl::test::metrics::f256_primary
 
         record.fltx_accuracy =
             measure_binary_bool_accuracy(operation, "fltx", required_bits, metrics_ideal_bits, enforce_fltx_accuracy, samples, fltx_inputs, eval, reference);
-        record.competitor_accuracy =
-            measure_binary_bool_accuracy(operation, references::competitor_name, required_bits, metrics_ideal_bits, false, samples, competitor_inputs, eval, reference);
-        if constexpr (ExtraSupported)
+        if constexpr (!config::benchmark_only_fltx)
+            record.competitor_accuracy =
+                measure_binary_bool_accuracy(operation, references::competitor_name, required_bits, metrics_ideal_bits, false, samples, competitor_inputs, eval, reference);
+        if constexpr (!config::benchmark_only_fltx && ExtraSupported)
         {
             const auto extra_competitor_inputs =
                 make_binary_inputs<Samples, extra_competitor_ref>(samples, make_extra_competitor);
@@ -2806,25 +2838,27 @@ namespace bl::test::metrics::f256_primary
         metrics_record record{};
         record.suite = make_suite(operation);
         record.competitor_name = references::competitor_name;
-        auto& extra_competitor = record.extra_competitors.emplace_back();
-        extra_competitor.name = references::extra_competitor_name;
-        extra_competitor.supported = ExtraSupported;
+        auto& extra_competitor = add_extra_competitor(record, references::extra_competitor_name, ExtraSupported);
         const auto special_samples = measure_accuracy ? make_special_ternary_samples() : std::vector<ternary_sample>{};
         const auto special_fltx_inputs = make_ternary_inputs<decltype(special_samples), fltx_type>(special_samples, make_fltx);
-        const auto special_competitor_inputs =
-            make_ternary_inputs<decltype(special_samples), competitor_ref>(special_samples, make_competitor);
         record.fltx_special_values =
             measure_ternary_special_values(operation, special_samples, special_fltx_inputs, eval, reference);
-        record.competitor_special_values =
-            measure_ternary_special_values(operation, special_samples, special_competitor_inputs, eval, reference);
+        if constexpr (!config::benchmark_only_fltx)
+        {
+            const auto special_competitor_inputs =
+                make_ternary_inputs<decltype(special_samples), competitor_ref>(special_samples, make_competitor);
+            record.competitor_special_values =
+                measure_ternary_special_values(operation, special_samples, special_competitor_inputs, eval, reference);
+        }
         if (include_benchmarks)
         {
             record.fltx_benchmark = benchmark_ternary_values(fltx_inputs, eval, operation);
-            record.competitor_benchmark = benchmark_ternary_values(competitor_inputs, eval, operation);
+            if constexpr (!config::benchmark_only_fltx)
+                record.competitor_benchmark = benchmark_ternary_values(competitor_inputs, eval, operation);
         }
         if (!measure_accuracy)
         {
-            if constexpr (ExtraSupported)
+            if constexpr (!config::benchmark_only_fltx && ExtraSupported)
             {
                 const auto extra_competitor_inputs =
                     make_ternary_inputs<Samples, extra_competitor_ref>(samples, make_extra_competitor);
@@ -2841,9 +2875,10 @@ namespace bl::test::metrics::f256_primary
         auto to_reference_value = [](const auto& value) { return to_perfect(value); };
         record.fltx_accuracy =
             measure_ternary_accuracy(operation, "fltx", required_bits, metrics_ideal_bits, enforce_fltx_accuracy, samples, fltx_inputs, to_reference_value, eval, reference);
-        record.competitor_accuracy =
-            measure_ternary_accuracy(operation, references::competitor_name, required_bits, metrics_ideal_bits, false, samples, competitor_inputs, to_reference_value, eval, reference);
-        if constexpr (ExtraSupported)
+        if constexpr (!config::benchmark_only_fltx)
+            record.competitor_accuracy =
+                measure_ternary_accuracy(operation, references::competitor_name, required_bits, metrics_ideal_bits, false, samples, competitor_inputs, to_reference_value, eval, reference);
+        if constexpr (!config::benchmark_only_fltx && ExtraSupported)
         {
             const auto extra_competitor_inputs =
                 make_ternary_inputs<Samples, extra_competitor_ref>(samples, make_extra_competitor);
@@ -2877,26 +2912,28 @@ namespace bl::test::metrics::f256_primary
         metrics_record record{};
         record.suite = make_suite(operation);
         record.competitor_name = references::competitor_name;
-        auto& extra_competitor = record.extra_competitors.emplace_back();
-        extra_competitor.name = references::extra_competitor_name;
-        extra_competitor.supported = ExtraSupported;
+        auto& extra_competitor = add_extra_competitor(record, references::extra_competitor_name, ExtraSupported);
         const auto special_samples = measure_accuracy ? make_special_unary_int_samples() : std::vector<unary_int_sample>{};
         const auto special_fltx_inputs =
             make_unary_int_inputs<decltype(special_samples), fltx_type>(special_samples, make_fltx);
-        const auto special_competitor_inputs =
-            make_unary_int_inputs<decltype(special_samples), competitor_ref>(special_samples, make_competitor);
         record.fltx_special_values =
             measure_unary_int_special_values(operation, special_samples, special_fltx_inputs, eval, reference);
-        record.competitor_special_values =
-            measure_unary_int_special_values(operation, special_samples, special_competitor_inputs, eval, reference);
+        if constexpr (!config::benchmark_only_fltx)
+        {
+            const auto special_competitor_inputs =
+                make_unary_int_inputs<decltype(special_samples), competitor_ref>(special_samples, make_competitor);
+            record.competitor_special_values =
+                measure_unary_int_special_values(operation, special_samples, special_competitor_inputs, eval, reference);
+        }
         if (include_benchmarks)
         {
             record.fltx_benchmark = benchmark_unary_int_values(fltx_inputs, eval, operation);
-            record.competitor_benchmark = benchmark_unary_int_values(competitor_inputs, eval, operation);
+            if constexpr (!config::benchmark_only_fltx)
+                record.competitor_benchmark = benchmark_unary_int_values(competitor_inputs, eval, operation);
         }
         if (!measure_accuracy)
         {
-            if constexpr (ExtraSupported)
+            if constexpr (!config::benchmark_only_fltx && ExtraSupported)
             {
                 const auto extra_competitor_inputs =
                     make_unary_int_inputs<Samples, extra_competitor_ref>(samples, make_extra_competitor);
@@ -2913,9 +2950,10 @@ namespace bl::test::metrics::f256_primary
         auto to_reference_value = [](const auto& value) { return to_perfect(value); };
         record.fltx_accuracy =
             measure_unary_int_accuracy(operation, "fltx", required_bits, metrics_ideal_bits, enforce_fltx_accuracy, samples, fltx_inputs, to_reference_value, eval, reference);
-        record.competitor_accuracy =
-            measure_unary_int_accuracy(operation, references::competitor_name, required_bits, metrics_ideal_bits, false, samples, competitor_inputs, to_reference_value, eval, reference);
-        if constexpr (ExtraSupported)
+        if constexpr (!config::benchmark_only_fltx)
+            record.competitor_accuracy =
+                measure_unary_int_accuracy(operation, references::competitor_name, required_bits, metrics_ideal_bits, false, samples, competitor_inputs, to_reference_value, eval, reference);
+        if constexpr (!config::benchmark_only_fltx && ExtraSupported)
         {
             const auto extra_competitor_inputs =
                 make_unary_int_inputs<Samples, extra_competitor_ref>(samples, make_extra_competitor);
@@ -2948,25 +2986,27 @@ namespace bl::test::metrics::f256_primary
         metrics_record record{};
         record.suite = make_suite(operation);
         record.competitor_name = references::competitor_name;
-        auto& extra_competitor = record.extra_competitors.emplace_back();
-        extra_competitor.name = references::extra_competitor_name;
-        extra_competitor.supported = ExtraSupported;
+        auto& extra_competitor = add_extra_competitor(record, references::extra_competitor_name, ExtraSupported);
         const auto special_samples = measure_accuracy ? make_special_unary_samples() : std::vector<unary_sample>{};
         const auto special_fltx_inputs = make_unary_inputs<decltype(special_samples), fltx_type>(special_samples, make_fltx);
-        const auto special_competitor_inputs =
-            make_unary_inputs<decltype(special_samples), competitor_ref>(special_samples, make_competitor);
         record.fltx_special_values =
             measure_frexp_special_values(special_samples, special_fltx_inputs, eval);
-        record.competitor_special_values =
-            measure_frexp_special_values(special_samples, special_competitor_inputs, eval);
+        if constexpr (!config::benchmark_only_fltx)
+        {
+            const auto special_competitor_inputs =
+                make_unary_inputs<decltype(special_samples), competitor_ref>(special_samples, make_competitor);
+            record.competitor_special_values =
+                measure_frexp_special_values(special_samples, special_competitor_inputs, eval);
+        }
         if (include_benchmarks)
         {
             record.fltx_benchmark = benchmark_unary_values(fltx_inputs, eval, operation);
-            record.competitor_benchmark = benchmark_unary_values(competitor_inputs, eval, operation);
+            if constexpr (!config::benchmark_only_fltx)
+                record.competitor_benchmark = benchmark_unary_values(competitor_inputs, eval, operation);
         }
         if (!measure_accuracy)
         {
-            if constexpr (ExtraSupported)
+            if constexpr (!config::benchmark_only_fltx && ExtraSupported)
             {
                 const auto extra_competitor_inputs =
                     make_unary_inputs<Samples, extra_competitor_ref>(samples, make_extra_competitor);
@@ -2982,9 +3022,10 @@ namespace bl::test::metrics::f256_primary
 
         record.fltx_accuracy =
             measure_frexp_accuracy(operation, "fltx", required_bits, metrics_ideal_bits, enforce_fltx_accuracy, samples, fltx_inputs, eval);
-        record.competitor_accuracy =
-            measure_frexp_accuracy(operation, references::competitor_name, required_bits, metrics_ideal_bits, false, samples, competitor_inputs, eval);
-        if constexpr (ExtraSupported)
+        if constexpr (!config::benchmark_only_fltx)
+            record.competitor_accuracy =
+                measure_frexp_accuracy(operation, references::competitor_name, required_bits, metrics_ideal_bits, false, samples, competitor_inputs, eval);
+        if constexpr (!config::benchmark_only_fltx && ExtraSupported)
         {
             const auto extra_competitor_inputs =
                 make_unary_inputs<Samples, extra_competitor_ref>(samples, make_extra_competitor);

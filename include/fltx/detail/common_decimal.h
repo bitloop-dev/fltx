@@ -78,8 +78,7 @@ namespace bl::detail::exact_decimal {
 
 [[nodiscard]] constexpr inline biguint rounded_decimal_places_shift(
     const biguint& magnitude,
-    int shift,
-    int significand_bits) noexcept
+    int shift) noexcept
 {
     if (shift >= 0)
     {
@@ -90,28 +89,10 @@ namespace bl::detail::exact_decimal {
 
     const int right_shift = -shift;
     biguint out = shr_bits_copy(magnitude, right_shift);
-    biguint remainder = low_bits_copy(magnitude, right_shift);
-
-    biguint twice_remainder = remainder;
-    twice_remainder.shl1();
-
-    biguint denominator;
-    denominator.set_bit(right_shift);
-
-    const int cmp = twice_remainder.compare(denominator);
-    const biguint delta = abs_diff(twice_remainder, denominator);
-    const int tie_window_shift = significand_bits > 15 ? significand_bits - 15 : 0;
-    const bool near_decimal_tie = le_power2(delta, right_shift - tie_window_shift);
-
-    if (near_decimal_tie)
-    {
-        if (out.is_odd())
-            out.add_small(1);
-    }
-    else if (cmp > 0)
-    {
+    const bool guard = magnitude.get_bit(right_shift - 1);
+    const bool sticky = right_shift > 1 && any_low_bits_set(magnitude, right_shift - 1);
+    if (guard && (sticky || out.is_odd()))
         out.add_small(1);
-    }
 
     return out;
 }
@@ -534,16 +515,12 @@ constexpr inline void divmod_limited_quotient_chunked(
 
     if (k >= 0)
     {
-        biguint shifted_den = denominator;
-        shifted_den.shl_bits(k);
-        if (numerator.compare(shifted_den) < 0)
+        if (compare_shifted(numerator, denominator, k) < 0)
             --k;
     }
     else
     {
-        biguint shifted_num = numerator;
-        shifted_num.shl_bits(-k);
-        if (shifted_num.compare(denominator) < 0)
+        if (compare_shifted(denominator, numerator, -k) > 0)
             --k;
     }
 
@@ -597,21 +574,20 @@ constexpr inline void add_signed(signed_biguint& acc, biguint term, bool term_ne
         const biguint p5 = pow5_big(dec_exp);
         const int binary_shift = bin_exp - dec_exp;
         if (binary_shift >= 0)
-            return compare(shifted(mag, binary_shift), p5);
-        return compare(mag, shifted(p5, -binary_shift));
+            return -compare_shifted(p5, mag, binary_shift);
+        return compare_shifted(mag, p5, -binary_shift);
     }
 
     const int scale = -dec_exp;
     biguint lhs = mul_big(mag, pow5_big(scale));
     const int binary_shift = bin_exp + scale;
 
-    if (binary_shift >= 0)
-    {
-        lhs.shl_bits(binary_shift);
+    if (binary_shift > 0)
+        return 1;
+    if (binary_shift == 0)
         return compare(lhs, biguint{ 1 });
-    }
 
-    return compare(lhs, shifted(biguint{ 1 }, -binary_shift));
+    return compare_shifted(lhs, biguint{ 1 }, -binary_shift);
 }
 
 [[nodiscard]] constexpr inline std::uint64_t decompose_double_mantissa(double x, int& exponent, bool& neg) noexcept
@@ -732,13 +708,15 @@ template<class Traits>
         return false;
     }
 
-    for (int i = 0; i < decimal_places; ++i)
-        magnitude.mul_small(5);
+    if (decimal_places > 13)
+        magnitude = mul_big(magnitude, pow5_big(decimal_places));
+    else
+        for (int i = 0; i < decimal_places; ++i)
+            magnitude.mul_small(5);
 
     coefficient = rounded_decimal_places_shift(
         magnitude,
-        binary_exp + decimal_places,
-        std::numeric_limits<typename Traits::value_type>::digits);
+        binary_exp + decimal_places);
     return true;
 }
 
@@ -815,9 +793,7 @@ template<class Traits>
 
     if (!r.is_zero())
     {
-        biguint twice_r = r;
-        twice_r.shl1();
-        const int cmp = compare(twice_r, den);
+        const int cmp = -compare_shifted(den, r, 1);
         if (cmp > 0 || (cmp == 0 && q.is_odd()))
             q.add_small(1);
     }
@@ -874,9 +850,7 @@ template<class Traits>
 
     if (!r.is_zero())
     {
-        biguint twice_r = r;
-        twice_r.shl1();
-        const int cmp = compare(twice_r, den);
+        const int cmp = -compare_shifted(den, r, 1);
         if (cmp > 0 || (cmp == 0 && q.is_odd()))
             q.add_small(1);
     }
@@ -997,25 +971,47 @@ template<class Traits, typename String>
     return true;
 }
 
-[[nodiscard]] constexpr inline bool pow5_u64(int exponent, std::uint64_t& out) noexcept
+[[nodiscard]] BL_FORCE_INLINE constexpr bool pow5_u64(int exponent, std::uint64_t& out) noexcept
 {
-    if (exponent < 0)
+    constexpr std::uint64_t pow5[] = {
+        1ull,
+        5ull,
+        25ull,
+        125ull,
+        625ull,
+        3125ull,
+        15625ull,
+        78125ull,
+        390625ull,
+        1953125ull,
+        9765625ull,
+        48828125ull,
+        244140625ull,
+        1220703125ull,
+        6103515625ull,
+        30517578125ull,
+        152587890625ull,
+        762939453125ull,
+        3814697265625ull,
+        19073486328125ull,
+        95367431640625ull,
+        476837158203125ull,
+        2384185791015625ull,
+        11920928955078125ull,
+        59604644775390625ull,
+        298023223876953125ull,
+        1490116119384765625ull,
+        7450580596923828125ull
+    };
+
+    if (exponent < 0 || exponent >= static_cast<int>(sizeof(pow5) / sizeof(pow5[0])))
         return false;
 
-    constexpr std::uint64_t max_u64 = ~std::uint64_t{ 0 };
-    std::uint64_t value = 1;
-    for (int i = 0; i < exponent; ++i)
-    {
-        if (value > max_u64 / 5)
-            return false;
-        value *= 5;
-    }
-
-    out = value;
+    out = pow5[exponent];
     return true;
 }
 
-[[nodiscard]] constexpr inline bool pow5_u32(int exponent, std::uint32_t& out) noexcept
+[[nodiscard]] BL_FORCE_INLINE constexpr bool pow5_u32(int exponent, std::uint32_t& out) noexcept
 {
     std::uint64_t value = 0;
     if (!pow5_u64(exponent, value) || value > static_cast<std::uint64_t>(~std::uint32_t{ 0 }))
@@ -1025,20 +1021,9 @@ template<class Traits, typename String>
     return true;
 }
 
-[[nodiscard]] constexpr inline int bit_length_u64(std::uint64_t value) noexcept
-{
-    int bits = 0;
-    while (value != 0)
-    {
-        ++bits;
-        value >>= 1;
-    }
-    return bits;
-}
-
 [[nodiscard]] constexpr inline int floor_log2_ratio_u64(std::uint64_t numerator, std::uint64_t denominator) noexcept
 {
-    int k = bit_length_u64(numerator) - bit_length_u64(denominator);
+    int k = static_cast<int>(std::bit_width(numerator)) - static_cast<int>(std::bit_width(denominator));
 
     if (k >= 0)
     {
@@ -1059,7 +1044,20 @@ template<class Traits, typename String>
 template<class Traits>
 [[nodiscard]] constexpr inline int decimal_conversion_significand_bits() noexcept
 {
-    if constexpr (requires { Traits::conversion_significand_bits; })
+    if constexpr (requires { Traits::decimal_conversion_significand_bits; })
+        return Traits::decimal_conversion_significand_bits;
+    else if constexpr (requires { Traits::conversion_significand_bits; })
+        return Traits::conversion_significand_bits;
+    else
+        return Traits::significand_bits;
+}
+
+template<class Traits>
+[[nodiscard]] constexpr inline int binary_conversion_significand_bits() noexcept
+{
+    if constexpr (requires { Traits::binary_conversion_significand_bits; })
+        return Traits::binary_conversion_significand_bits;
+    else if constexpr (requires { Traits::conversion_significand_bits; })
         return Traits::conversion_significand_bits;
     else
         return Traits::significand_bits;
@@ -1143,12 +1141,30 @@ constexpr inline bool compact_decimal_to_value(std::uint64_t coeff, int dec_exp,
 }
 
 template<class Traits>
-constexpr inline typename Traits::value_type exact_binary_integer_to_value(biguint q, int bin_exp, bool neg) noexcept
+constexpr inline bool compact_decimal_to_value(const biguint& coeff, int dec_exp, bool neg, typename Traits::value_type& out) noexcept
+{
+    if (coeff.size > 2)
+        return false;
+
+    std::uint64_t compact = 0;
+    if (coeff.size > 0)
+        compact = coeff.words[0];
+    if (coeff.size > 1)
+        compact |= static_cast<std::uint64_t>(coeff.words[1]) << 32;
+
+    return compact_decimal_to_value<Traits>(compact, dec_exp, neg, out);
+}
+
+template<class Traits>
+constexpr inline typename Traits::value_type exact_binary_integer_to_value(
+    biguint q,
+    int bin_exp,
+    bool neg,
+    int conversion_bits) noexcept
 {
     if (q.is_zero())
         return Traits::zero(neg);
 
-    const int conversion_bits = decimal_conversion_significand_bits<Traits>();
     int ratio_exp = q.bit_length() - 1;
     if (ratio_exp > conversion_bits - 1)
     {
@@ -1181,10 +1197,21 @@ constexpr inline typename Traits::value_type exact_binary_integer_to_value(bigui
 }
 
 template<class Traits>
+constexpr inline typename Traits::value_type exact_binary_integer_to_value(biguint q, int bin_exp, bool neg) noexcept
+{
+    return exact_binary_integer_to_value<Traits>(
+        q,
+        bin_exp,
+        neg,
+        binary_conversion_significand_bits<Traits>());
+}
+
+template<class Traits>
 constexpr inline typename Traits::value_type exact_decimal_to_value(const biguint& coeff, int dec_exp, bool neg) noexcept
 {
-    if (coeff.is_zero())
-        return Traits::zero(neg);
+    typename Traits::value_type compact{};
+    if (compact_decimal_to_value<Traits>(coeff, dec_exp, neg, compact))
+        return compact;
 
     biguint numerator = coeff;
     biguint denominator{ 1 };
@@ -1193,7 +1220,11 @@ constexpr inline typename Traits::value_type exact_decimal_to_value(const biguin
     if (dec_exp >= 0)
     {
         numerator = mul_big(coeff, pow5_big(dec_exp));
-        return exact_binary_integer_to_value<Traits>(numerator, dec_exp, neg);
+        return exact_binary_integer_to_value<Traits>(
+            numerator,
+            dec_exp,
+            neg,
+            decimal_conversion_significand_bits<Traits>());
     }
     else
     {

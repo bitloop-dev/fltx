@@ -46,3 +46,11 @@
 build/
 TestResults/
 CMakeUserPresets.json
+
+# Local Codex scratch/output
+.codex/
+
+# Generated metrics comparison runs
+res/metrics/windows/*_filtered.csv
+res/metrics/windows/*_fast.csv
+res/metrics/windows/*_consteval*.csv

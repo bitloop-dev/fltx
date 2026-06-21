@@ -1,6 +1,8 @@
 #ifndef FLTX_TESTS_METRICS_SAMPLES_INCLUDED
 #define FLTX_TESTS_METRICS_SAMPLES_INCLUDED
 
+#include <fltx/detail/common_fp.h>
+
 #include <cmath>
 #include <limits>
 #include <string_view>
@@ -68,6 +70,60 @@ namespace bl::test::metrics
         T x;
         int n = 0;
     };
+
+    [[nodiscard]] inline bool sample_value_has_inf(const value_sample& value) noexcept
+    {
+        return detail::fp::isinf(value.hi) || detail::fp::isinf(value.lo) ||
+               detail::fp::isinf(value.x2) || detail::fp::isinf(value.x3);
+    }
+
+    [[nodiscard]] inline bool sample_value_has_nan(const value_sample& value) noexcept
+    {
+        return detail::fp::isnan(value.hi) || detail::fp::isnan(value.lo) ||
+               detail::fp::isnan(value.x2) || detail::fp::isnan(value.x3);
+    }
+
+    [[nodiscard]] inline bool sample_has_inf(const unary_sample& sample) noexcept
+    {
+        return sample_value_has_inf(sample.x);
+    }
+
+    [[nodiscard]] inline bool sample_has_nan(const unary_sample& sample) noexcept
+    {
+        return sample_value_has_nan(sample.x);
+    }
+
+    [[nodiscard]] inline bool sample_has_inf(const binary_sample& sample) noexcept
+    {
+        return sample_value_has_inf(sample.x) || sample_value_has_inf(sample.y);
+    }
+
+    [[nodiscard]] inline bool sample_has_nan(const binary_sample& sample) noexcept
+    {
+        return sample_value_has_nan(sample.x) || sample_value_has_nan(sample.y);
+    }
+
+    [[nodiscard]] inline bool sample_has_inf(const ternary_sample& sample) noexcept
+    {
+        return sample_value_has_inf(sample.x) || sample_value_has_inf(sample.y) ||
+               sample_value_has_inf(sample.z);
+    }
+
+    [[nodiscard]] inline bool sample_has_nan(const ternary_sample& sample) noexcept
+    {
+        return sample_value_has_nan(sample.x) || sample_value_has_nan(sample.y) ||
+               sample_value_has_nan(sample.z);
+    }
+
+    [[nodiscard]] inline bool sample_has_inf(const unary_int_sample& sample) noexcept
+    {
+        return sample_value_has_inf(sample.x);
+    }
+
+    [[nodiscard]] inline bool sample_has_nan(const unary_int_sample& sample) noexcept
+    {
+        return sample_value_has_nan(sample.x);
+    }
 
     template<class T>
     struct frexp_value

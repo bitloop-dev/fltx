@@ -12,6 +12,7 @@
 #ifndef F128_DETAIL_MATH_BASIC_INCLUDED
 #define F128_DETAIL_MATH_BASIC_INCLUDED
 #include "fltx/detail/f128_math_kernels.h"
+#include "fltx/detail/f128_pow10_table.h"
 #include "fltx/detail/simd.h"
 
 namespace bl {
@@ -70,14 +71,14 @@ namespace detail::_f128
 
         if (frac > f128_s{ 0.5 })
         {
-            t = add_inline(t, f128_s{ 1.0 });
+            t = add_double_inline(t, 1.0);
             if (iszero(t))
                 return f128_s{ signbit(a.hi) ? -0.0 : 0.0 };
             return t;
         }
 
         if (detail::_f128_impl::fmod(t, f128_s{ 2.0 }) != f128_s{ 0.0 })
-            t = add_inline(t, f128_s{ 1.0 });
+            t = add_double_inline(t, 1.0);
 
         if (iszero(t))
             return f128_s{ signbit(a.hi) ? -0.0 : 0.0 };
@@ -135,6 +136,9 @@ namespace detail::_f128_impl
 
     [[nodiscard]] BL_FORCE_INLINE f128_s nearbyint_runtime(const f128_s& a) noexcept
     {
+        if (detail::fp::iszero_or_inf_or_nan(a.hi)) [[unlikely]]
+            return a;
+
         if (detail::_f128::absd(a.hi) < detail::fp::double_integer_threshold)
         {
             #if BL_FLTX_HAS_SSE2
@@ -250,7 +254,7 @@ namespace detail::_f128_impl
     }
 
     const f128_s r = div_inline(ay, ax);
-    return F128_CANONICALIZE_MATH_RESULT(mul_inline(ax, detail::_f128_impl::sqrt(add_inline(f128_s{ 1.0 }, mul_inline(r, r)))));
+    return F128_CANONICALIZE_MATH_RESULT(mul_inline(ax, detail::_f128_impl::sqrt(add_double_inline(mul_inline(r, r), 1.0))));
 }
 
 // rounding and decimals
@@ -386,21 +390,12 @@ namespace detail::_f128_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::pow10_128(int k)
 {
-    if (k == 0) [[unlikely]]
-        return f128_s{ 1.0 };
+    if (k < detail::_f128::pow10_f128_min_exponent) [[unlikely]]
+        return f128_s{ 0.0 };
+    if (k > detail::_f128::pow10_f128_max_exponent) [[unlikely]]
+        return std::numeric_limits<f128_s>::infinity();
 
-    int n = (k >= 0) ? k : -k;
-
-    f128_s r = f128_s{ 1.0 };
-    f128_s base = f128_s{ 10.0 };
-
-    while (n) {
-        if (n & 1) r = r * base;
-        n >>= 1;
-        if (n) base = base * base;
-    }
-
-    return (k >= 0) ? r : (f128_s{ 1.0 } / r);
+    return detail::_f128::pow10_f128_table[k - detail::_f128::pow10_f128_min_exponent];
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::nearbyint(const f128_s& a)
@@ -463,12 +458,13 @@ namespace detail::_f128_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::fmin(const f128_s& a, const f128_s& b)
 {
+    if (detail::fp::isnan(a.hi)) [[unlikely]]
+        return b;
+    if (detail::fp::isnan(b.hi)) [[unlikely]]
+        return a;
+
     if (a.hi != b.hi)
-    {
-        if (detail::fp::isnan(b.hi)) [[unlikely]]
-            return a;
         return a.hi < b.hi ? a : b;
-    }
 
     if (a.lo != b.lo)
         return a.lo < b.lo ? a : b;
@@ -481,12 +477,13 @@ namespace detail::_f128_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::fmax(const f128_s& a, const f128_s& b)
 {
+    if (detail::fp::isnan(a.hi)) [[unlikely]]
+        return b;
+    if (detail::fp::isnan(b.hi)) [[unlikely]]
+        return a;
+
     if (a.hi != b.hi)
-    {
-        if (detail::fp::isnan(b.hi)) [[unlikely]]
-            return a;
         return a.hi > b.hi ? a : b;
-    }
 
     if (a.lo != b.lo)
         return a.lo > b.lo ? a : b;

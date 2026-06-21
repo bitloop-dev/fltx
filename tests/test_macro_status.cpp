@@ -77,7 +77,7 @@ namespace
     {
         fltx_test_macro_status_printer() noexcept
         {
-            #if defined(FLTX_SIMULATE_CONSTEVAL_MODE)
+            #if defined(FLTX_SIMULATE_TOGGLE_CONSTEVAL_MODE)
             bool simulated_consteval_enabled = false;
             #if defined(FLTX_TEST_FORCE_SIMULATED_CONSTEVAL)
             simulated_consteval_enabled = true;
@@ -91,7 +91,7 @@ namespace
 
             std::fputs("[fltx ", stderr);
             std::fputs(FLTX_TEST_NAME, stderr);
-            std::fputs("] BL_FAST_MATH = ", stderr);
+            std::fputs("]\n\nBL_FAST_MATH = ", stderr);
             #if defined(BL_FAST_MATH)
             std::fputs("defined", stderr);
             #else
@@ -112,8 +112,15 @@ namespace
             std::fputs("not defined", stderr);
             #endif
 
-            std::fputs("\nFLTX_SIMULATE_CONSTEVAL_MODE = ", stderr);
-            #if defined(FLTX_SIMULATE_CONSTEVAL_MODE)
+            std::fputs("\nFLTX_SIMULATE_TOGGLE_CONSTEVAL_MODE = ", stderr);
+            #if defined(FLTX_SIMULATE_TOGGLE_CONSTEVAL_MODE)
+            std::fputs("defined", stderr);
+            #else
+            std::fputs("not defined", stderr);
+            #endif
+
+            std::fputs("\nFLTX_SIMULATE_FIXED_CONSTEVAL_MODE = ", stderr);
+            #if defined(FLTX_SIMULATE_FIXED_CONSTEVAL_MODE)
             std::fputs("defined", stderr);
             #else
             std::fputs("not defined", stderr);
@@ -126,8 +133,17 @@ namespace
             std::fputs("not defined", stderr);
             #endif
 
+            std::fputs("\nFLTX_METRICS_BENCHMARK_ONLY_FLTX = ", stderr);
+            #if defined(FLTX_METRICS_BENCHMARK_ONLY_FLTX)
+            std::fputs("defined", stderr);
+            #else
+            std::fputs("not defined", stderr);
+            #endif
+
             std::fputs("\nsimulated_consteval = ", stderr);
-            #if defined(FLTX_SIMULATE_CONSTEVAL_MODE)
+            #if defined(FLTX_SIMULATE_FIXED_CONSTEVAL_MODE)
+            std::fputs("fixed", stderr);
+            #elif defined(FLTX_SIMULATE_TOGGLE_CONSTEVAL_MODE)
             std::fputs(simulated_consteval_enabled ? "on" : "off", stderr);
             #else
             std::fputs("unavailable", stderr);

@@ -113,6 +113,70 @@ namespace bl::test::metrics
     }
 
     template<class PerfectRef>
+    [[nodiscard]] bool ref_is_nan(const PerfectRef& value)
+    {
+        using std::isnan;
+        return isnan(value);
+    }
+
+    template<class PerfectRef>
+    [[nodiscard]] bool ref_is_inf(const PerfectRef& value)
+    {
+        using std::isinf;
+        return isinf(value);
+    }
+
+    template<class PerfectRef>
+    [[nodiscard]] PerfectRef reference_error_scale(const PerfectRef& expected)
+    {
+        const PerfectRef scale = expected < 0 ? -expected : expected;
+        return scale < 1 ? PerfectRef{ 1 } : scale;
+    }
+
+    template<class PerfectRef>
+    [[nodiscard]] PerfectRef reference_relative_error_scale(const PerfectRef& expected)
+    {
+        const PerfectRef scale = expected < 0 ? -expected : expected;
+        return scale == 0 ? PerfectRef{ 1 } : scale;
+    }
+
+    template<class PerfectRef>
+    [[nodiscard]] double reference_matching_bits_with_scale(
+        const PerfectRef& actual,
+        const PerfectRef& expected,
+        const PerfectRef& scale)
+    {
+        if (ref_is_nonfinite(actual) || ref_is_nonfinite(expected))
+        {
+            if (ref_is_nan(expected))
+                return ref_is_nan(actual) ? std::numeric_limits<double>::infinity() : 0.0;
+
+            if (ref_is_inf(expected))
+            {
+                return ref_is_inf(actual) && ref_signbit(actual) == ref_signbit(expected)
+                    ? std::numeric_limits<double>::infinity()
+                    : 0.0;
+            }
+
+            return 0.0;
+        }
+
+        const PerfectRef error = actual > expected ? actual - expected : expected - actual;
+        if (error == 0)
+            return std::numeric_limits<double>::infinity();
+
+        const PerfectRef scaled_error = error / scale;
+        using std::log2;
+        return static_cast<double>(-log2(scaled_error));
+    }
+
+    template<class PerfectRef>
+    [[nodiscard]] double reference_matching_bits(const PerfectRef& actual, const PerfectRef& expected)
+    {
+        return reference_matching_bits_with_scale(actual, expected, reference_error_scale(expected));
+    }
+
+    template<class PerfectRef>
     [[nodiscard]] int floor_log2_abs_ref(const PerfectRef& value)
     {
         const PerfectRef magnitude = value < 0 ? -value : value;

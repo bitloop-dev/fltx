@@ -12,6 +12,7 @@
 #ifndef F256_DETAIL_MATH_BASIC_INCLUDED
 #define F256_DETAIL_MATH_BASIC_INCLUDED
 #include "fltx/detail/f256_math_kernels.h"
+#include "fltx/detail/f256_pow10_table.h"
 #include "fltx/detail/simd.h"
 
 namespace bl {
@@ -411,7 +412,7 @@ namespace detail::_f256_impl
         return F256_CANONICALIZE_MATH_RESULT(detail::_f256_impl::sqrt_accurate(add_raw5_raw5_inline(sqr_raw5_inline(ax), sqr_raw5_inline(ay))));
 
     const f256_s r = div_inline(ay, ax);
-    return F256_CANONICALIZE_MATH_RESULT(mul_inline(ax, detail::_f256_impl::sqrt_accurate(add_raw5_value_inline(sqr_raw5_inline(r), f256_s{ 1.0 }))));
+    return F256_CANONICALIZE_MATH_RESULT(mul_inline(ax, detail::_f256_impl::sqrt_accurate(add_raw5_double_inline(sqr_raw5_inline(r), 1.0))));
 }
 
 // rounding and decimals
@@ -422,7 +423,7 @@ namespace detail::_f256_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::ceil(const f256_s& a)
 {
-    return -detail::_f256_impl::floor(-a);
+    return detail::_f256::ceil_limbwise(a);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::trunc(const f256_s& a)
@@ -489,28 +490,12 @@ namespace detail::_f256_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::pow10_256(int k)
 {
-    if (k == 0) [[unlikely]]
-        return f256_s{ 1.0 };
+    if (k < detail::_f256::pow10_f256_min_exponent) [[unlikely]]
+        return f256_s{ 0.0 };
+    if (k > detail::_f256::pow10_f256_max_exponent) [[unlikely]]
+        return std::numeric_limits<f256_s>::infinity();
 
-    int n = (k >= 0) ? k : -k;
-
-    if (n <= 16) {
-        f256_s r = f256_s{ 1.0 };
-        const f256_s ten = f256_s{ 10.0, 0.0, 0.0, 0.0 };
-        for (int i = 0; i < n; ++i) r = r * ten;
-        return (k >= 0) ? r : (f256_s{ 1.0 } / r);
-    }
-
-    f256_s r = f256_s{ 1.0 };
-    f256_s base = f256_s{ 10.0, 0.0, 0.0, 0.0 };
-
-    while (n) {
-        if (n & 1) r = r * base;
-        n >>= 1;
-        if (n) base = base * base;
-    }
-
-    return (k >= 0) ? r : (f256_s{ 1.0 } / r);
+    return detail::_f256::pow10_f256_table[k - detail::_f256::pow10_f256_min_exponent];
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::nearbyint(const f256_s& a)
@@ -573,14 +558,13 @@ namespace detail::_f256_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::fmin(const f256_s& a, const f256_s& b)
 {
+    if (detail::fp::isnan(a.x0)) [[unlikely]]
+        return b;
+    if (detail::fp::isnan(b.x0)) [[unlikely]]
+        return a;
+
     if (a.x0 != b.x0)
-    {
-        if (detail::fp::isnan(a.x0)) [[unlikely]]
-            return b;
-        if (detail::fp::isnan(b.x0)) [[unlikely]]
-            return a;
         return a.x0 < b.x0 ? a : b;
-    }
 
     if (a.x1 != b.x1)
         return a.x1 < b.x1 ? a : b;
@@ -597,14 +581,13 @@ namespace detail::_f256_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::fmax(const f256_s& a, const f256_s& b)
 {
+    if (detail::fp::isnan(a.x0)) [[unlikely]]
+        return b;
+    if (detail::fp::isnan(b.x0)) [[unlikely]]
+        return a;
+
     if (a.x0 != b.x0)
-    {
-        if (detail::fp::isnan(a.x0)) [[unlikely]]
-            return b;
-        if (detail::fp::isnan(b.x0)) [[unlikely]]
-            return a;
         return a.x0 > b.x0 ? a : b;
-    }
 
     if (a.x1 != b.x1)
         return a.x1 > b.x1 ? a : b;

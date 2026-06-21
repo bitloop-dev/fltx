@@ -287,7 +287,7 @@ TEST_CASE("metrics console report keeps IO rows out of primary results", "[metri
     set_single_metrics_filter("[precision],[domain]");
 
     auto math_record = make_filter_test_record(bl::test::metrics::precision_type::f128, "add");
-    auto io_record = make_filter_test_record(bl::test::metrics::precision_type::f128, "parse(tiny, default)");
+    auto io_record = make_filter_test_record(bl::test::metrics::precision_type::f128, "parse(near-zero, default)");
 
     std::ostringstream out;
     bl::test::metrics::write_metrics_case_report_group(
@@ -307,11 +307,45 @@ TEST_CASE("metrics console report keeps IO rows out of primary results", "[metri
     CHECK(bl::test::metrics::metrics_csv_group(io_record) == "IO");
 
     const std::size_t add_row = text.find(" add ", primary_title);
-    const std::size_t parse_row = text.find("parse(tiny, default)", primary_title);
+    const std::size_t parse_row = text.find("parse(near-ze", primary_title);
     REQUIRE(add_row != std::string::npos);
     REQUIRE(parse_row != std::string::npos);
     CHECK(add_row < io_title);
     CHECK(parse_row > io_title);
+}
+
+TEST_CASE("metrics console report keeps custom rows out of primary results", "[metrics][filters]")
+{
+    const metrics_filter_restore restore;
+    set_single_metrics_filter("[precision],[domain]");
+
+    auto math_record = make_filter_test_record(bl::test::metrics::precision_type::f128, "add");
+    auto custom_record = make_filter_test_record(bl::test::metrics::precision_type::f128, "pow10<T>");
+    custom_record.suite.domain = { "custom", bl::test::metrics::domain_role::primary };
+
+    std::ostringstream out;
+    bl::test::metrics::write_metrics_case_report_group(
+        out,
+        "f128 primary metrics results",
+        "f128 mixed workload metrics results",
+        { math_record, custom_record });
+
+    const std::string text = out.str();
+    CHECK(text.find("[ f128 primary metrics results ]") != std::string::npos);
+    CHECK(text.find("[ f128 custom metrics results ]") != std::string::npos);
+
+    const std::size_t primary_title = text.find("[ f128 primary metrics results ]");
+    const std::size_t custom_title = text.find("[ f128 custom metrics results ]");
+    REQUIRE(primary_title != std::string::npos);
+    REQUIRE(custom_title != std::string::npos);
+    CHECK(bl::test::metrics::metrics_csv_group(custom_record) == "Custom operations");
+
+    const std::size_t add_row = text.find(" add ", primary_title);
+    const std::size_t pow10_row = text.find("pow10<T>", primary_title);
+    REQUIRE(add_row != std::string::npos);
+    REQUIRE(pow10_row != std::string::npos);
+    CHECK(add_row < custom_title);
+    CHECK(pow10_row > custom_title);
 }
 
 TEST_CASE("metrics bench-only console reports hide accuracy and domain columns", "[metrics][filters]")
@@ -336,8 +370,16 @@ TEST_CASE("metrics bench-only console reports hide accuracy and domain columns",
     const std::string text = out.str();
     CHECK(text.find("[ f128 mixed workload metrics results ]") != std::string::npos);
     CHECK(text.find("bench") != std::string::npos);
-    CHECK(text.find("speed") != std::string::npos);
-    CHECK(text.find("reference") != std::string::npos);
+    if constexpr (bl::test::metrics::config::benchmark_only_fltx)
+    {
+        CHECK(text.find("speed") == std::string::npos);
+        CHECK(text.find("reference") == std::string::npos);
+    }
+    else
+    {
+        CHECK(text.find("speed") != std::string::npos);
+        CHECK(text.find("reference") != std::string::npos);
+    }
     CHECK(text.find("bits accurate") == std::string::npos);
     CHECK(text.find("domain") == std::string::npos);
     CHECK(text.find("Inf/") == std::string::npos);
@@ -366,13 +408,13 @@ TEST_CASE("metrics console report keeps wide values aligned", "[metrics][filters
 {
     auto normal = make_filter_test_record(
         bl::test::metrics::precision_type::f128,
-        "normal alignment row");
+        "normal");
     normal.fltx_benchmark = { 10.0, 1000 };
     normal.competitor_benchmark = { 20.0, 1000 };
 
     auto wide = make_filter_test_record(
         bl::test::metrics::precision_type::f128,
-        "wide alignment row");
+        "wide");
     wide.fltx_accuracy = { 104.2, 106.3, 16, 99.0 };
     wide.competitor_accuracy = {
         std::numeric_limits<double>::infinity(),
@@ -380,8 +422,8 @@ TEST_CASE("metrics console report keeps wide values aligned", "[metrics][filters
         16,
         100.0
     };
-    wide.fltx_benchmark = { 1.0, 1000 };
-    wide.competitor_benchmark = { 123456.78, 1000 };
+    wide.fltx_benchmark = { 1234.0, 1000 };
+    wide.competitor_benchmark = { 98765.43, 1000 };
 
     std::ostringstream out;
     bl::test::metrics::write_console_report(
@@ -389,9 +431,11 @@ TEST_CASE("metrics console report keeps wide values aligned", "[metrics][filters
         "alignment metrics results",
         { normal, wide });
 
+    CHECK(out.str().find("\033[K") == std::string::npos);
+
     const std::string text = strip_ansi_sequences(out.str());
-    const std::string normal_line = find_line_containing(text, "normal alignment row");
-    const std::string wide_line = find_line_containing(text, "wide alignment row");
+    const std::string normal_line = find_line_containing(text, "normal");
+    const std::string wide_line = find_line_containing(text, "wide");
 
     REQUIRE_FALSE(normal_line.empty());
     REQUIRE_FALSE(wide_line.empty());

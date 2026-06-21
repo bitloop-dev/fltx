@@ -243,18 +243,12 @@ namespace bl {
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f256 nexttoward(const f256_s& from, long double to) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f256_impl::nexttoward(from, to),
-        detail::_f256_runtime::nexttoward(from, to)
-    );
+    return detail::_f256_impl::nexttoward(from, to);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f256 nexttoward(const f256_s& from, const f256_s& to) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f256_impl::nexttoward(from, to),
-        detail::_f256_runtime::nexttoward(from, to)
-    );
+    return detail::_f256_impl::nexttoward(from, to);
 }
 
 // exp / log

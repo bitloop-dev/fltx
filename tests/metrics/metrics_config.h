@@ -5,6 +5,14 @@
 
 namespace bl::test::metrics::config
 {
+    // Diagnostic mode: measure/report only fltx timings while keeping the
+    // MPFR-backed oracle work used for fltx accuracy/domain scores.
+    #if defined(FLTX_METRICS_BENCHMARK_ONLY_FLTX)
+    constexpr bool benchmark_only_fltx = true;
+    #else
+    constexpr bool benchmark_only_fltx = false;
+    #endif
+
     constexpr double accuracy_sample_count_scale  = 0.1;    // precision sample scale (default 0.1, fixed, no function-local scaling)
     constexpr double domain_sample_count_scale    = 2.0;    // domain sample scale    (default 2.0, fixed, no function-local scaling)
 
@@ -12,6 +20,12 @@ namespace bl::test::metrics::config
     constexpr double bench_iters_scale            = 20.0;   // global benchmark iteration scale (default 20)
     constexpr double mixed_sample_count_scale     = 0.25;   // mixed workload generated sample scale (default 0.25)
     constexpr double mixed_iters_scale            = 0.02;   // mixed workload benchmark iteration scale (default 0.02)
+
+    constexpr std::size_t benchmark_warmup_trials = 1;
+    constexpr std::size_t benchmark_timing_trials = 5;
+
+    constexpr std::size_t integer_rounding_benchmark_sample_count_cap = 8192;
+    constexpr std::size_t integer_rounding_benchmark_min_iterations_cap = 1500000;
 
     [[nodiscard]] constexpr std::size_t scale_count(std::size_t count, double scale) noexcept
     {

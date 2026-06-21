@@ -23,108 +23,6 @@ namespace detail::_f256 // primitives and kernels
 {
     struct f256_io_traits;
 
-    BL_PUSH_PRECISE;
-    BL_PRINT_NOINLINE inline f256_s mul_by_double_print(f256_s a, double b) noexcept
-    {
-        return a * b;
-    }
-
-    BL_PRINT_NOINLINE inline f256_s sub_by_double_print(f256_s a, double b) noexcept
-    {
-        return a - b;
-    }
-    BL_POP_PRECISE;
-
-    struct f256_print_expansion
-    {
-        double terms[64]{}; // small -> large
-        int n = 0;
-    };
-
-    inline constexpr void print_expansion_set(f256_print_expansion& st, const f256_s& x) noexcept
-    {
-        double tmp[4] = { x.x3, x.x2, x.x1, x.x0 };
-        st.n = detail::_f256::compress_expansion_zeroelim(4, tmp, st.terms);
-    }
-
-    inline constexpr bool print_expansion_is_zero(const f256_print_expansion& st) noexcept
-    {
-        return st.n <= 0;
-    }
-
-    inline constexpr f256_s print_expansion_to_f256(const f256_print_expansion& st) noexcept
-    {
-        return from_expansion_fast(st.terms, st.n);
-    }
-
-    inline constexpr void print_expansion_scale(f256_print_expansion& st, double b) noexcept
-    {
-        double tmp[128]{};
-        int n = detail::_f256::scale_expansion_zeroelim(st.n, st.terms, b, tmp);
-
-        double comp[64]{};
-        st.n = detail::_f256::compress_expansion_zeroelim(n, tmp, comp);
-        for (int i = 0; i < st.n; ++i)
-            st.terms[i] = comp[i];
-    }
-
-    inline constexpr void print_expansion_add_double(f256_print_expansion& st, double b) noexcept
-    {
-        double term = b;
-        double tmp[128]{};
-        int n = detail::_f256::fast_expansion_sum_zeroelim(st.n, st.terms, 1, &term, tmp);
-
-        double comp[64]{};
-        st.n = detail::_f256::compress_expansion_zeroelim(n, tmp, comp);
-        for (int i = 0; i < st.n; ++i)
-            st.terms[i] = comp[i];
-    }
-
-    inline constexpr uint32_t print_expansion_take_uint(f256_print_expansion& st, uint32_t max_value) noexcept
-    {
-        f256_s approx = print_expansion_to_f256(st);
-        const std::uint32_t value = detail::bounded_floor_to_u32(detail::_f256_impl::floor(approx).x0, max_value);
-
-        print_expansion_add_double(st, -(double)value);
-        return value;
-    }
-
-    inline constexpr int emit_uint_rev_buf(char* dst, f256_s n)
-    {
-        const f256_s base = f256_s{ 1000000000.0, 0.0, 0.0, 0.0 };
-
-        int len = 0;
-
-        if (n < f256_s{ 10.0, 0.0, 0.0, 0.0 }) {
-            const std::uint32_t d = detail::bounded_floor_to_u32(detail::fp::floor(n.x0), 9u);
-            dst[len++] = static_cast<char>('0' + d);
-            return len;
-        }
-
-        while (n >= base) {
-            f256_s q = detail::_f256_impl::floor(n / base);
-            f256_s r = n - q * base;
-
-            std::uint32_t chunk = detail::bounded_floor_to_u32(detail::fp::floor(r.x0), 1000000000u);
-            if (chunk >= 1000000000u) { chunk = 0; q += 1.0; }
-
-            for (int i = 0; i < 9; ++i) {
-                const std::uint32_t next = chunk / 10u;
-                const std::uint32_t d = chunk - next * 10u;
-                dst[len++] = static_cast<char>('0' + d);
-                chunk = next;
-            }
-
-            n = q;
-        }
-
-        len += detail::append_uint32_rev(
-            dst + len,
-            detail::bounded_floor_to_u32(detail::fp::floor(n.x0), 999999999u));
-
-        return len;
-    }
-
     struct exact_traits
     {
         using value_type = f256_s;
@@ -201,128 +99,6 @@ namespace detail::_f256 // primitives and kernels
         return detail::exact_decimal::exact_scientific_digits<exact_traits>(x, sig, digits, exp10);
     }
 
-    inline constexpr double pow10_double_table[10] = {
-        1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0,
-        1000000.0, 10000000.0, 100000000.0, 1000000000.0
-    };
-
-    inline constexpr detail::fltx_char_result emit_fixed_dec_to_chars(char* first, char* last, f256_s x, int prec, bool strip_trailing_zeros) noexcept
-    {
-        if (prec < 0) prec = 0;
-
-        if (iszero(x))
-            return detail::emit_fixed_zero_to_chars(first, last, detail::_f256::signbit(x.x0), prec, strip_trailing_zeros);
-
-        const bool neg = (x.x0 < 0.0);
-        if (neg) x = -x;
-        x = renorm(x.x0, x.x1, x.x2, x.x3);
-
-        f256_s ip = detail::_f256_impl::floor(x);
-        f256_s fp = x - ip;
-
-        if (fp >= f256_s{ 1.0 }) { fp -= 1.0; ip += 1.0; }
-        else if (fp < f256_s{}) { fp = f256_s{}; }
-
-        constexpr int kFracStack = 2048;
-        char frac_stack[kFracStack];
-        char* frac = frac_stack;
-
-        std::string frac_dyn;
-        if (prec > kFracStack) {
-            frac_dyn.resize((size_t)prec);
-            frac = (char*)frac_dyn.data();
-        }
-
-        int frac_len = (prec > 0) ? prec : 0;
-
-        if (prec > 0) {
-
-            f256_print_expansion fp_exp;
-            print_expansion_set(fp_exp, fp);
-
-            int written = 0;
-            const int full = prec / 9;
-            const int rem  = prec - full * 9;
-
-            for (int c = 0; c < full; ++c) {
-                print_expansion_scale(fp_exp, pow10_double_table[9]);
-                uint32_t chunk = print_expansion_take_uint(fp_exp, 999999999u);
-
-                for (int i = 8; i >= 0; --i) {
-                    frac[written + i] = char('0' + (chunk % 10u));
-                    chunk /= 10u;
-                }
-                written += 9;
-            }
-
-            if (rem > 0) {
-                print_expansion_scale(fp_exp, pow10_double_table[rem]);
-                uint32_t chunk = print_expansion_take_uint(fp_exp, (uint32_t)pow10_double_table[rem] - 1u);
-
-                for (int i = rem - 1; i >= 0; --i) {
-                    frac[written + i] = char('0' + (chunk % 10u));
-                    chunk /= 10u;
-                }
-                written += rem;
-            }
-
-            f256_print_expansion round_exp = fp_exp;
-            print_expansion_scale(round_exp, 10.0);
-            int next = (int)print_expansion_take_uint(round_exp, 9u);
-
-            const int last_digit = frac[prec - 1] - '0';
-            bool round_up = false;
-            if (next > 5) round_up = true;
-            else if (next < 5) round_up = false;
-            else {
-                const bool gt_half = !print_expansion_is_zero(round_exp);
-                round_up = gt_half || ((last_digit & 1) != 0);
-            }
-
-            if (round_up) {
-                int i = prec - 1;
-                for (; i >= 0; --i) {
-                    char& c = frac[i];
-                    if (c == '9') c = '0';
-                    else { c = char(c + 1); break; }
-                }
-                if (i < 0) {
-                    ip += 1.0;
-                    for (int j = 0; j < prec; ++j) frac[j] = '0';
-                }
-            }
-
-            if (strip_trailing_zeros) {
-                while (frac_len > 0 && frac[frac_len - 1] == '0') --frac_len;
-            }
-        }
-
-        char int_rev[320];
-        int int_len = emit_uint_rev_buf(int_rev, ip);
-
-        if (neg && int_len == 1 && int_rev[0] == '0' && frac_len == 0) {
-            if (first >= last) return { first, false };
-            *first = '0';
-            return { first + 1, true };
-        }
-
-        const size_t needed = (size_t)(neg ? 1 : 0) + (size_t)int_len + (frac_len ? (size_t)(1 + frac_len) : 0u);
-        if ((size_t)(last - first) < needed) return { first, false };
-
-        char* p = first;
-        if (neg) *p++ = '-';
-
-        for (int i = int_len - 1; i >= 0; --i) *p++ = int_rev[i];
-
-        if (frac_len > 0) {
-            *p++ = '.';
-            detail::copy_chars(p, frac, static_cast<std::size_t>(frac_len));
-            p += frac_len;
-        }
-
-        return { p, true };
-    }
-
     inline constexpr detail::fltx_char_result emit_scientific_sig_to_chars(char* first, char* last, const f256_s& x, int sig_digits, bool strip_trailing_zeros) noexcept
     {
         if (iszero(x))
@@ -389,12 +165,14 @@ namespace detail::_f256 // primitives and kernels
 
         static constexpr detail::fltx_char_result to_chars_fixed(char* first, char* last, const value_type& x, int precision, bool strip_trailing_zeros)
         {
-            return detail::emit_fixed_decimal_for_traits<f256_io_traits>(first, last, x, precision, strip_trailing_zeros);
-        }
-
-        static constexpr detail::fltx_char_result to_chars_fixed_fast(char* first, char* last, const value_type& x, int precision, bool strip_trailing_zeros)
-        {
-            return emit_fixed_dec_to_chars(first, last, x, precision, strip_trailing_zeros);
+            return detail::emit_exact_fixed_decimal_to_chars<exact_decimal_traits, string_type>(
+                first,
+                last,
+                x,
+                precision,
+                strip_trailing_zeros,
+                iszero(x),
+                is_negative(x));
         }
 
         static constexpr detail::fltx_char_result to_chars_default_fixed(
@@ -476,13 +254,10 @@ namespace detail::_f256 // primitives and kernels
     return detail::to_static_string_impl<detail::_f256::f256_io_traits>(value, precision, flags);
 }
 
-[[nodiscard]] BL_FORCE_INLINE std::string to_string(
+[[nodiscard]] BL_NO_INLINE std::string to_string(
     const f256_s& value,
     precision_info precision = std::numeric_limits<f256_s>::digits10,
-    std::ios_base::fmtflags flags = std::ios_base::fmtflags{})
-{
-    return detail::to_string_impl<detail::_f256::f256_io_traits>(value, precision, flags);
-}
+    std::ios_base::fmtflags flags = std::ios_base::fmtflags{});
 
 namespace detail::_f256 // primitives and kernels
 {

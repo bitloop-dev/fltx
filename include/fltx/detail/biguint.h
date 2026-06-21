@@ -9,6 +9,7 @@
 
 #ifndef FLTX_DETAIL_BIGUINT_INCLUDED
 #define FLTX_DETAIL_BIGUINT_INCLUDED
+#include <bit>
 #include <cstdint>
 #include <type_traits>
 
@@ -104,14 +105,7 @@ struct biguint
         if (size == 0)
             return 0;
 
-        std::uint32_t msw = words[size - 1];
-        int bits = 32 * (size - 1);
-        while (msw != 0)
-        {
-            ++bits;
-            msw >>= 1;
-        }
-        return bits;
+        return 32 * (size - 1) + static_cast<int>(std::bit_width(words[size - 1]));
     }
 
     [[nodiscard]] constexpr bool get_bit(int index) const noexcept
@@ -153,6 +147,19 @@ struct biguint
             count -= take;
         }
         return value;
+    }
+
+    [[nodiscard]] constexpr unsigned get_hex_nibble(int nibble_index) const noexcept
+    {
+        if (nibble_index < 0)
+            return 0;
+
+        const int bit_index = nibble_index << 2;
+        const int word_index = bit_index >> 5;
+        if (word_index >= size)
+            return 0;
+
+        return static_cast<unsigned>((words[word_index] >> (bit_index & 31)) & 0xfu);
     }
 
     constexpr void set_bit(int index) noexcept
@@ -346,7 +353,6 @@ struct biguint
                 words[i] = 0;
 
             size = src_count + word_shift;
-            trim();
             return;
         }
 
@@ -470,24 +476,71 @@ struct biguint
 
 constexpr inline void sub_shifted_inplace(biguint& a, const biguint& b, int bits) noexcept
 {
-    const int a_size = a.size;
-    std::uint64_t borrow = 0;
-    for (int i = 0; i < a_size; ++i)
+    if (a.is_zero())
+        return;
+    if (b.is_zero())
     {
-        const std::uint64_t bi  = shifted_word_at(b, i, bits);
-        const std::uint64_t sub = bi + borrow;
-        const std::uint64_t ai  = a.words[i];
-        if (ai < sub)
+        a.trim();
+        return;
+    }
+
+    const int word_shift = bits >> 5;
+    if (word_shift >= a.size)
+    {
+        a.trim();
+        return;
+    }
+
+    const int bit_shift = bits & 31;
+    const int a_size = a.size;
+    const int count = b.size < (a_size - word_shift) ? b.size : (a_size - word_shift);
+    std::uint64_t borrow = 0;
+    int i = word_shift;
+
+    if (bit_shift == 0)
+    {
+        for (int j = 0; j < count; ++j, ++i)
         {
-            a.words[i] = static_cast<std::uint32_t>((std::uint64_t{1} << 32) + ai - sub);
-            borrow = 1;
-        }
-        else
-        {
+            const std::uint64_t sub = static_cast<std::uint64_t>(b.words[j]) + borrow;
+            const std::uint64_t ai = a.words[i];
             a.words[i] = static_cast<std::uint32_t>(ai - sub);
-            borrow = 0;
+            borrow = ai < sub ? 1u : 0u;
         }
     }
+    else
+    {
+        std::uint32_t carry = 0;
+        for (int j = 0; j < count; ++j, ++i)
+        {
+            const std::uint32_t word = b.words[j];
+            const std::uint32_t shifted =
+                static_cast<std::uint32_t>((static_cast<std::uint64_t>(word) << bit_shift) | carry);
+            const std::uint64_t sub = static_cast<std::uint64_t>(shifted) + borrow;
+            carry = word >> (32 - bit_shift);
+
+            const std::uint64_t ai = a.words[i];
+            a.words[i] = static_cast<std::uint32_t>(ai - sub);
+            borrow = ai < sub ? 1u : 0u;
+        }
+
+        if (carry != 0 && i < a_size)
+        {
+            const std::uint64_t sub = static_cast<std::uint64_t>(carry) + borrow;
+            const std::uint64_t ai = a.words[i];
+            a.words[i] = static_cast<std::uint32_t>(ai - sub);
+            borrow = ai < sub ? 1u : 0u;
+            ++i;
+        }
+    }
+
+    while (borrow != 0 && i < a_size)
+    {
+        const std::uint64_t ai = a.words[i];
+        a.words[i] = static_cast<std::uint32_t>(ai - 1u);
+        borrow = ai == 0 ? 1u : 0u;
+        ++i;
+    }
+
     a.trim();
 }
 

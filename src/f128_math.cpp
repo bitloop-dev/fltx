@@ -12,6 +12,11 @@
 namespace bl::detail::_f128_runtime
 {
     // roots
+    BL_NO_INLINE f128_s sqrt(const f128_s& a)
+    {
+        return detail::_f128_impl::sqrt(a);
+    }
+
     BL_NO_INLINE f128_s hypot(const f128_s& x, const f128_s& y)
     {
         return detail::_f128_impl::hypot(x, y);

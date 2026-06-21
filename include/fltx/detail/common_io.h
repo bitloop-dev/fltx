@@ -362,11 +362,6 @@ BL_FORCE_INLINE constexpr fltx_char_result append_exp2_to_chars(char* p, char* e
     return out;
 }
 
-[[nodiscard]] constexpr inline unsigned hex_nibble_at(const exact_decimal::biguint& value, int nibble_index) noexcept
-{
-    return static_cast<unsigned>(value.get_bits(nibble_index * 4, 4));
-}
-
 template<class Traits>
 [[nodiscard]] BL_FORCE_INLINE constexpr int hex_nominal_fraction_digits() noexcept
 {
@@ -429,7 +424,7 @@ template<class Traits>
     if (strip_trailing_zeros)
     {
         while (emitted_fraction_digits > 0 &&
-               hex_nibble_at(scaled, fraction_digits - emitted_fraction_digits) == 0u)
+               scaled.get_hex_nibble(fraction_digits - emitted_fraction_digits) == 0u)
         {
             --emitted_fraction_digits;
         }
@@ -441,7 +436,7 @@ template<class Traits>
         return { first, false };
     const int exp_len = static_cast<int>(exp_result.ptr - exp_buf);
 
-    const unsigned int_digit = zero ? 0u : hex_nibble_at(scaled, fraction_digits);
+    const unsigned int_digit = zero ? 0u : scaled.get_hex_nibble(fraction_digits);
     const std::size_t needed = static_cast<std::size_t>(neg ? 1 : 0)
         + static_cast<std::size_t>(prefix ? 2 : 0)
         + 1u
@@ -466,7 +461,7 @@ template<class Traits>
         for (int i = 0; i < emitted_fraction_digits; ++i)
         {
             const int nibble_index = fraction_digits - 1 - i;
-            *p++ = lower_hex_digit(hex_nibble_at(scaled, nibble_index));
+            *p++ = lower_hex_digit(scaled.get_hex_nibble(nibble_index));
         }
     }
 
@@ -701,8 +696,11 @@ BL_FORCE_INLINE constexpr void append_hybrid_decimal_digit(
     if (!token.coeff_overflow)
     {
         constexpr std::uint64_t max_u64 = ~std::uint64_t{ 0 };
+        constexpr std::uint64_t max_before_mul10 = max_u64 / 10u;
+        constexpr std::uint64_t max_last_digit = max_u64 % 10u;
         const std::uint64_t udigit = static_cast<std::uint64_t>(digit);
-        if (token.coeff <= (max_u64 - udigit) / 10)
+        if (token.coeff < max_before_mul10 ||
+            (token.coeff == max_before_mul10 && udigit <= max_last_digit))
         {
             token.coeff = token.coeff * 10 + udigit;
             return;
@@ -800,18 +798,52 @@ BL_MSVC_NOINLINE constexpr bool scan_hybrid_decimal_token(
     return true;
 }
 
+BL_FORCE_INLINE constexpr bool pow10_u64(int exp, std::uint64_t& out) noexcept
+{
+    constexpr std::uint64_t pow10[] = {
+        1ull,
+        10ull,
+        100ull,
+        1000ull,
+        10000ull,
+        100000ull,
+        1000000ull,
+        10000000ull,
+        100000000ull,
+        1000000000ull,
+        10000000000ull,
+        100000000000ull,
+        1000000000000ull,
+        10000000000000ull,
+        100000000000000ull,
+        1000000000000000ull,
+        10000000000000000ull,
+        100000000000000000ull,
+        1000000000000000000ull,
+        10000000000000000000ull
+    };
+
+    if (exp < 0 || exp >= static_cast<int>(sizeof(pow10) / sizeof(pow10[0])))
+        return false;
+
+    out = pow10[exp];
+    return true;
+}
+
 BL_FORCE_INLINE constexpr bool mul_pow10_u64(std::uint64_t& value, int exp) noexcept
 {
-    if (exp < 0 || exp > 19)
+    if (exp == 0)
+        return true;
+
+    std::uint64_t scale = 0;
+    if (!pow10_u64(exp, scale))
         return false;
 
     constexpr std::uint64_t max_u64 = ~std::uint64_t{ 0 };
-    for (int i = 0; i < exp; ++i)
-    {
-        if (value > max_u64 / 10)
-            return false;
-        value *= 10;
-    }
+    if (value > max_u64 / scale)
+        return false;
+
+    value *= scale;
     return true;
 }
 
@@ -820,12 +852,17 @@ BL_FORCE_INLINE constexpr bool div_pow10_exact_u64(std::uint64_t& value, int exp
     if (exp < 0 || exp >= sig_digits)
         return false;
 
-    for (int i = 0; i < exp; ++i)
-    {
-        if ((value % 10) != 0)
-            return false;
-        value /= 10;
-    }
+    if (exp == 0)
+        return true;
+
+    std::uint64_t scale = 0;
+    if (!pow10_u64(exp, scale))
+        return false;
+
+    if ((value % scale) != 0)
+        return false;
+
+    value /= scale;
     return true;
 }
 
@@ -935,13 +972,7 @@ BL_MSVC_NOINLINE constexpr bool parse_special(
 
 [[nodiscard]] BL_FORCE_INLINE constexpr int hex_digit_bit_width(int digit) noexcept
 {
-    int width = 0;
-    while (digit != 0)
-    {
-        ++width;
-        digit >>= 1;
-    }
-    return width;
+    return digit >= 8 ? 4 : digit >= 4 ? 3 : digit >= 2 ? 2 : digit;
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr bool has_hex_float_syntax(const char* first, const char* last) noexcept
@@ -962,25 +993,43 @@ BL_MSVC_NOINLINE constexpr bool parse_special(
     return false;
 }
 
-BL_FORCE_INLINE constexpr void append_bounded_hex_bit(
+template<class Traits>
+BL_FORCE_INLINE constexpr void append_bounded_hex_bits(
     exact_decimal::biguint& coeff,
+    int bits,
+    int width,
     int& kept_bits,
     int& total_bits,
-    int max_kept_bits,
-    bool bit,
     bool& sticky) noexcept
 {
-    ++total_bits;
-    if (kept_bits < max_kept_bits)
+    constexpr int max_kept_bits = hex_full_significand_bits<Traits>() + 2;
+
+    total_bits += width;
+    const int available = max_kept_bits - kept_bits;
+    if (available >= width)
     {
-        coeff.shl1();
-        if (bit)
-            coeff.add_small(1);
-        ++kept_bits;
+        coeff.shl_bits(width);
+        if (bits != 0)
+            coeff.add_small(static_cast<std::uint32_t>(bits));
+        kept_bits += width;
         return;
     }
 
-    if (bit)
+    if (available > 0)
+    {
+        const int discarded = width - available;
+        const int kept = bits >> discarded;
+        coeff.shl_bits(available);
+        if (kept != 0)
+            coeff.add_small(static_cast<std::uint32_t>(kept));
+        kept_bits += available;
+
+        if ((bits & ((1 << discarded) - 1)) != 0)
+            sticky = true;
+        return;
+    }
+
+    if (bits != 0)
         sticky = true;
 }
 
@@ -993,8 +1042,6 @@ BL_FORCE_INLINE constexpr void append_bounded_hex_digit(
     bool& seen_nonzero,
     bool& sticky) noexcept
 {
-    constexpr int max_kept_bits = hex_full_significand_bits<Traits>() + 2;
-
     if (!seen_nonzero)
     {
         if (digit == 0)
@@ -1002,29 +1049,11 @@ BL_FORCE_INLINE constexpr void append_bounded_hex_digit(
 
         seen_nonzero = true;
         const int width = hex_digit_bit_width(digit);
-        for (int bit_index = width - 1; bit_index >= 0; --bit_index)
-        {
-            append_bounded_hex_bit(
-                coeff,
-                kept_bits,
-                total_bits,
-                max_kept_bits,
-                ((digit >> bit_index) & 1) != 0,
-                sticky);
-        }
+        append_bounded_hex_bits<Traits>(coeff, digit, width, kept_bits, total_bits, sticky);
         return;
     }
 
-    for (int bit_index = 3; bit_index >= 0; --bit_index)
-    {
-        append_bounded_hex_bit(
-            coeff,
-            kept_bits,
-            total_bits,
-            max_kept_bits,
-            ((digit >> bit_index) & 1) != 0,
-            sticky);
-    }
+    append_bounded_hex_bits<Traits>(coeff, digit, 4, kept_bits, total_bits, sticky);
 }
 
 template<class Traits>
@@ -1296,6 +1325,36 @@ namespace bl::detail
         return lower_decimal_exponent < -5 || lower_decimal_exponent >= significant_digits;
     }
 
+    template<class Traits>
+    [[nodiscard]] constexpr bool defaultfloat_rounded_exp10(
+        const typename Traits::value_type& ax,
+        int significant_digits,
+        int initial_exp10,
+        int& rounded_exp10)
+    {
+        exact_decimal::biguint magnitude;
+        int common_exp = 0;
+        bool neg = false;
+        if (!exact_decimal::exact_binary_components<typename Traits::exact_decimal_traits>(
+                ax,
+                magnitude,
+                common_exp,
+                neg) ||
+            neg)
+        {
+            return false;
+        }
+
+        exact_decimal::biguint coefficient;
+        rounded_exp10 = initial_exp10;
+        return exact_decimal::exact_significant_decimal<typename Traits::exact_decimal_traits>(
+            magnitude,
+            common_exp,
+            significant_digits,
+            coefficient,
+            rounded_exp10);
+    }
+
     template<class Traits, typename String>
     [[nodiscard]] BL_FORCE_INLINE constexpr fltx_char_result emit_exact_fixed_decimal_to_chars(
         char* first,
@@ -1328,17 +1387,17 @@ namespace bl::detail
         const int integer_digits = digit_count > precision ? digit_count - precision : 1;
         int fractional_digits = precision > 0 ? precision : 0;
 
-        const auto fractional_digit =
-            [&](int index) constexpr -> char
-            {
-                if (digit_count > precision)
-                    return digits[static_cast<std::size_t>(integer_digits + index)];
+        auto fractional_digit = [&](int index) constexpr noexcept -> char
+        {
+            if (digit_count > precision)
+                return digits[static_cast<std::size_t>(integer_digits + index)];
 
-                const int leading_zero_count = precision - digit_count;
-                return index < leading_zero_count
-                    ? '0'
-                    : digits[static_cast<std::size_t>(index - leading_zero_count)];
-            };
+            const int leading_zero_count = precision - digit_count;
+            if (index < leading_zero_count)
+                return '0';
+
+            return digits[static_cast<std::size_t>(index - leading_zero_count)];
+        };
 
         if (strip_trailing_zeros)
         {
@@ -1428,10 +1487,18 @@ namespace bl::detail
         if (!exact_decimal::exact_decimal_exponent<typename Traits::exact_decimal_traits>(ax, e10))
             return emit_single_zero_to_chars(first, last);
 
-        if (e10 >= -4 && e10 < sig)
+        int format_exp10 = e10;
+        if (e10 == -5 || e10 == sig - 1)
         {
-            const int frac = sig > e10 + 1 ? sig - (e10 + 1) : 0;
-            return Traits::to_chars_default_fixed(first, last, x, frac, sig, e10, strip_trailing_zeros);
+            int rounded_exp10 = e10;
+            if (defaultfloat_rounded_exp10<Traits>(ax, sig, e10, rounded_exp10))
+                format_exp10 = rounded_exp10;
+        }
+
+        if (format_exp10 >= -4 && format_exp10 < sig)
+        {
+            const int frac = sig > format_exp10 + 1 ? sig - (format_exp10 + 1) : 0;
+            return Traits::to_chars_default_fixed(first, last, x, frac, sig, format_exp10, strip_trailing_zeros);
         }
 
         return Traits::to_chars_scientific_sig(first, last, x, sig, strip_trailing_zeros);

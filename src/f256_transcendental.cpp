@@ -79,7 +79,7 @@ namespace bl::detail::_f256_runtime
         for (std::size_t i = count - 1; i >= 1; --i)
         {
             const f256_s b0 = detail::_f256::add_inline(
-                detail::_f256::mul_double_sub_inline(detail::_f256::mul_inline(t, b1), 2.0, b2),
+                detail::_f256::mul_double_sub_pow2_inline(detail::_f256::mul_inline(t, b1), 2.0, b2),
                 coeffs[i]);
             b2 = b1;
             b1 = b0;

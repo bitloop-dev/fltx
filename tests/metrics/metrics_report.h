@@ -21,6 +21,7 @@
 #include <emscripten/emscripten.h>
 #endif
 
+#include "metrics_config.h"
 #include "metrics_records.h"
 
 namespace bl::test::metrics
@@ -157,6 +158,11 @@ namespace bl::test::metrics
         return metrics_operation_starts_with(operation, { "to_string", "parse<", "parse(", "parse " });
     }
 
+    [[nodiscard]] inline bool metrics_record_is_custom(const metrics_record& record) noexcept
+    {
+        return record.suite.domain.name == std::string_view{ "custom" };
+    }
+
     [[nodiscard]] inline std::string metrics_csv_group(const metrics_record& record)
     {
         const std::string_view operation = record.suite.operation.name;
@@ -164,6 +170,8 @@ namespace bl::test::metrics
             return "Mixed Workloads";
         if (metrics_operation_is_io(operation))
             return "IO";
+        if (metrics_record_is_custom(record))
+            return "Custom operations";
         if (metrics_operation_is(operation, { "add", "subtract", "multiply", "divide" }))
             return metrics_native_arithmetic_group(record.suite.precision);
         if (metrics_operation_is(operation, {
@@ -221,17 +229,18 @@ namespace bl::test::metrics
         if (group == metrics_native_arithmetic_group(record.suite.precision)) return 0;
         if (group == "Mixed Workloads") return 1;
         if (group == "IO") return 2;
-        if (group == "Rounding") return 3;
-        if (group == "Remainders") return 4;
-        if (group == "Floating-point utilities") return 5;
-        if (group == "Roots & powers") return 6;
-        if (group == "Exponentials") return 7;
-        if (group == "Logarithms") return 8;
-        if (group == "Trigonometric") return 9;
-        if (group == "Hyperbolic") return 10;
-        if (group == "Inverse hyperbolic") return 11;
-        if (group == "Special functions") return 12;
-        if (group == "Comparisons") return 13;
+        if (group == "Custom operations") return 3;
+        if (group == "Rounding") return 4;
+        if (group == "Remainders") return 5;
+        if (group == "Floating-point utilities") return 6;
+        if (group == "Roots & powers") return 7;
+        if (group == "Exponentials") return 8;
+        if (group == "Logarithms") return 9;
+        if (group == "Trigonometric") return 10;
+        if (group == "Hyperbolic") return 11;
+        if (group == "Inverse hyperbolic") return 12;
+        if (group == "Special functions") return 13;
+        if (group == "Comparisons") return 14;
         return 100;
     }
 
@@ -249,6 +258,8 @@ namespace bl::test::metrics
         if (operation == "to_string (average)") return 1000;
         if (operation.starts_with("parse<") || operation.starts_with("parse(")) return 1100;
         if (operation == "parse (average)") return 2000;
+        if (operation == "round_to_decimals") return 0;
+        if (operation == "pow10<T>") return 1;
         if (operation == "floor") return 0;
         if (operation == "ceil") return 1;
         if (operation == "trunc") return 2;
@@ -463,6 +474,9 @@ namespace bl::test::metrics
     [[nodiscard]] inline std::vector<std::string_view> collect_extra_competitor_names(
         const std::vector<metrics_record>& records)
     {
+        if constexpr (config::benchmark_only_fltx)
+            return {};
+
         std::vector<std::string_view> names;
         for (const metrics_record& record : records)
         {
@@ -500,7 +514,7 @@ namespace bl::test::metrics
         std::string_view name;
         const accuracy_result* accuracy = nullptr;
         const benchmark_result* benchmark = nullptr;
-        special_correctness special_values = special_correctness::unavailable;
+        special_support special_values = special_support::unavailable;
         bool supported = false;
     };
 
@@ -514,13 +528,15 @@ namespace bl::test::metrics
         return 0.0;
     }
 
-    [[nodiscard]] inline int special_correctness_rank(special_correctness value) noexcept
+    [[nodiscard]] inline int special_support_rank(special_support value) noexcept
     {
         switch (value)
         {
-        case special_correctness::pass:        return 2;
-        case special_correctness::unavailable: return 1;
-        case special_correctness::fail:        return 0;
+        case special_support::both:        return 4;
+        case special_support::inf:
+        case special_support::nan:         return 3;
+        case special_support::none:        return 1;
+        case special_support::unavailable: return 0;
         }
         return 0;
     }
@@ -575,8 +591,8 @@ namespace bl::test::metrics
         if (candidate.accuracy->domain_score != current.accuracy->domain_score)
             return candidate.accuracy->domain_score > current.accuracy->domain_score;
 
-        const int candidate_special_rank = special_correctness_rank(candidate.special_values);
-        const int current_special_rank = special_correctness_rank(current.special_values);
+        const int candidate_special_rank = special_support_rank(candidate.special_values);
+        const int current_special_rank = special_support_rank(current.special_values);
         if (candidate_special_rank != current_special_rank)
             return candidate_special_rank > current_special_rank;
 
@@ -731,7 +747,10 @@ namespace bl::test::metrics
     {
         if (value <= 0.0)
             return "-";
-        return format_metrics_number(value, 2) + "x";
+
+        constexpr double rounds_to_three_integer_digits_at_two_decimals = 99.995;
+        const int precision = value >= rounds_to_three_integer_digits_at_two_decimals ? 1 : 2;
+        return format_metrics_number(value, precision) + "x";
     }
 
     inline void write_csv_metric_number(std::ostream& out, double value)
@@ -744,13 +763,15 @@ namespace bl::test::metrics
             out << value;
     }
 
-    [[nodiscard]] inline std::string_view format_special_correctness(special_correctness value) noexcept
+    [[nodiscard]] inline std::string_view format_special_support(special_support value) noexcept
     {
         switch (value)
         {
-        case special_correctness::pass: return "Yes";
-        case special_correctness::fail: return "No";
-        case special_correctness::unavailable: return "-";
+        case special_support::both: return "Both";
+        case special_support::inf: return "Inf";
+        case special_support::nan: return "NaN";
+        case special_support::none: return "No";
+        case special_support::unavailable: return "-";
         }
         return "-";
     }
@@ -760,11 +781,11 @@ namespace bl::test::metrics
         if (name.find("cpp_double_double") != std::string_view::npos)
             return "cppdd";
         if (name.find("mpfr_float_backend<64>") != std::string_view::npos)
-            return "mpfr<64>";
+            return "mpfr64";
         if (name.find("dd_real") != std::string_view::npos)
-            return "dd_real";
+            return "ddreal";
         if (name.find("qd_real") != std::string_view::npos)
-            return "qd_real";
+            return "qdreal";
         if (name.size() > 14)
             return std::string(name.substr(0, 14));
         return std::string(name);
@@ -792,12 +813,12 @@ namespace bl::test::metrics
 
         [[nodiscard]] bool has_comparison_metric() const noexcept
         {
-            return accuracy || domain || benchmark;
+            return !config::benchmark_only_fltx && (accuracy || domain || benchmark);
         }
 
         [[nodiscard]] bool has_preferred_reference() const noexcept
         {
-            return benchmark;
+            return !config::benchmark_only_fltx && benchmark;
         }
     };
 
@@ -879,30 +900,33 @@ namespace bl::test::metrics
         void write_record(const metrics_record& record)
         {
             begin_report_line();
-            write_left_cell(record.suite.operation.name, operation_column_width, metadata_background, {}, true);
-            write_raw_backend(
-                record.competitor_accuracy,
-                record.competitor_benchmark,
-                record.competitor_special_values,
-                record.competitor_supported,
-                primary_competitor_background,
-                true);
-            for (std::string_view competitor_name : extra_competitors)
+            write_left_truncated_cell(record.suite.operation.name, operation_column_width, metadata_background, {}, true);
+            if constexpr (!config::benchmark_only_fltx)
             {
-                const competitor_result* competitor = find_extra_competitor(record, competitor_name);
-                if (competitor == nullptr)
-                {
-                    write_empty_raw_backend(extra_competitor_background, true);
-                    continue;
-                }
-
                 write_raw_backend(
-                    competitor->accuracy,
-                    competitor->benchmark,
-                    competitor->special_values,
-                    competitor->supported,
-                    extra_competitor_background,
+                    record.competitor_accuracy,
+                    record.competitor_benchmark,
+                    record.competitor_special_values,
+                    record.competitor_supported,
+                    primary_competitor_background,
                     true);
+                for (std::string_view competitor_name : extra_competitors)
+                {
+                    const competitor_result* competitor = find_extra_competitor(record, competitor_name);
+                    if (competitor == nullptr)
+                    {
+                        write_empty_raw_backend(extra_competitor_background, true);
+                        continue;
+                    }
+
+                    write_raw_backend(
+                        competitor->accuracy,
+                        competitor->benchmark,
+                        competitor->special_values,
+                        competitor->supported,
+                        extra_competitor_background,
+                        true);
+                }
             }
             write_raw_backend(
                 record.fltx_accuracy,
@@ -911,31 +935,34 @@ namespace bl::test::metrics
                 true,
                 fltx_background,
                 true);
-            write_comparison(
-                record.fltx_accuracy,
-                record.fltx_benchmark,
-                record.competitor_accuracy,
-                record.competitor_benchmark,
-                record.competitor_supported,
-                fltx_background,
-                true);
-            for (std::string_view competitor_name : extra_competitors)
+            if constexpr (!config::benchmark_only_fltx)
             {
-                const competitor_result* competitor = find_extra_competitor(record, competitor_name);
-                if (competitor == nullptr)
-                {
-                    write_empty_comparison(fltx_background, true);
-                    continue;
-                }
-
                 write_comparison(
                     record.fltx_accuracy,
                     record.fltx_benchmark,
-                    competitor->accuracy,
-                    competitor->benchmark,
-                    competitor->supported,
+                    record.competitor_accuracy,
+                    record.competitor_benchmark,
+                    record.competitor_supported,
                     fltx_background,
                     true);
+                for (std::string_view competitor_name : extra_competitors)
+                {
+                    const competitor_result* competitor = find_extra_competitor(record, competitor_name);
+                    if (competitor == nullptr)
+                    {
+                        write_empty_comparison(fltx_background, true);
+                        continue;
+                    }
+
+                    write_comparison(
+                        record.fltx_accuracy,
+                        record.fltx_benchmark,
+                        competitor->accuracy,
+                        competitor->benchmark,
+                        competitor->supported,
+                        fltx_background,
+                        true);
+                }
             }
 
             if (columns.has_preferred_reference())
@@ -947,22 +974,25 @@ namespace bl::test::metrics
 
     private:
         static constexpr int default_operation_width = 10;
-        static constexpr int bits_width = 7;
+        static constexpr int bits_width = 6;
         static constexpr int domain_width = 6;
-        static constexpr int benchmark_ns_width = 10;
-        static constexpr int benchmark_speed_width = 10;
+        static constexpr int benchmark_ns_width = 8;
+        static constexpr int benchmark_speed_width = 6;
         static constexpr int special_width = 4;
         static constexpr int pair_group_width = bits_width * 2 + 1;
+        static constexpr int comparison_bits_mean_width = 6;
+        static constexpr int comparison_bits_worst_width = 6;
         static constexpr int domain_single_group_width = domain_width;
         static constexpr int benchmark_single_group_width = benchmark_ns_width;
         static constexpr int special_single_group_width = special_width;
         static constexpr int raw_backend_group_width =
             pair_group_width + domain_single_group_width + benchmark_single_group_width +
             special_single_group_width + 9;
-        static constexpr int comparison_bits_group_width = pair_group_width;
+        static constexpr int comparison_bits_group_width =
+            comparison_bits_mean_width + comparison_bits_worst_width + 2;
         static constexpr int comparison_group_width =
             comparison_bits_group_width + domain_single_group_width + benchmark_speed_width + 4;
-        static constexpr int preferred_reference_width = 9;
+        static constexpr int preferred_reference_width = 6;
         static constexpr int preferred_reference_group_width =
             preferred_reference_width + comparison_group_width + 3;
         static constexpr std::string_view red = "\033[31m";
@@ -970,7 +1000,6 @@ namespace bl::test::metrics
         static constexpr std::string_view reset_foreground = "\033[39m";
         static constexpr std::string_view reset_background = "\033[49m";
         static constexpr std::string_view reset_all = "\033[0m";
-        static constexpr std::string_view clear_to_end_of_line = "\033[K";
         static constexpr std::string_view metadata_background = "\033[48;2;24;25;28m";
         static constexpr std::string_view fltx_background = "\033[48;2;17;31;48m";
         static constexpr std::string_view primary_competitor_background = "\033[48;2;37;30;50m";
@@ -1025,7 +1054,7 @@ namespace bl::test::metrics
 
         void end_report_line()
         {
-            stream << reset_all << reset_background << clear_to_end_of_line << '\n';
+            stream << reset_all << reset_background << '\n';
         }
 
         void begin_report_line()
@@ -1074,7 +1103,7 @@ namespace bl::test::metrics
         {
             if (columns.accuracy)
             {
-                int width = pair_group_width - 2;
+                int width = comparison_bits_group_width - 2;
                 if (columns.domain)
                     width += domain_single_group_width + 3;
                 if (columns.benchmark)
@@ -1097,7 +1126,7 @@ namespace bl::test::metrics
 
         [[nodiscard]] int comparison_speed_visible_width() const noexcept
         {
-            return columns.accuracy || columns.domain ? benchmark_speed_width : 10;
+            return benchmark_speed_width;
         }
 
         void write_regular_border_group(
@@ -1189,9 +1218,12 @@ namespace bl::test::metrics
             begin_report_line();
             write_section_boundary();
             write_background_repeated(metadata_background, '-', operation_column_width + 2);
-            write_raw_backend_border(primary_competitor_background);
-            for (std::size_t index = 0; index < extra_competitors.size(); ++index)
-                write_raw_backend_border(extra_competitor_background);
+            if constexpr (!config::benchmark_only_fltx)
+            {
+                write_raw_backend_border(primary_competitor_background);
+                for (std::size_t index = 0; index < extra_competitors.size(); ++index)
+                    write_raw_backend_border(extra_competitor_background);
+            }
             write_raw_backend_border(fltx_background);
             if (columns.has_comparison_metric())
             {
@@ -1253,6 +1285,20 @@ namespace bl::test::metrics
         {
             begin_cell(background, leading_border_background, leading_section_boundary);
             stream << std::left << std::setw(width) << text << std::right;
+            end_cell(background);
+        }
+
+        void write_left_truncated_cell(
+            std::string_view text,
+            int width,
+            std::string_view background = {},
+            std::string_view leading_border_background = {},
+            bool leading_section_boundary = false)
+        {
+            begin_cell(background, leading_border_background, leading_section_boundary);
+            const std::string_view visible_text =
+                static_cast<int>(text.size()) > width ? text.substr(0, static_cast<std::size_t>(width)) : text;
+            stream << std::left << std::setw(width) << visible_text << std::right;
             end_cell(background);
         }
 
@@ -1442,20 +1488,20 @@ namespace bl::test::metrics
         }
 
         void write_special_single(
-            special_correctness special_values,
+            special_support special_values,
             std::string_view background = {},
             std::string_view leading_border_background = {},
             bool leading_section_boundary = false)
         {
             begin_cell(background, leading_border_background, leading_section_boundary);
-            write_metric_text(format_special_correctness(special_values), special_width);
+            write_metric_text(format_special_support(special_values), special_width);
             end_cell(background);
         }
 
         void write_raw_backend(
             const accuracy_result& accuracy,
             const benchmark_result& benchmark,
-            special_correctness special_values,
+            special_support special_values,
             bool supported,
             std::string_view background,
             bool leading_section_boundary = false)
@@ -1583,9 +1629,9 @@ namespace bl::test::metrics
             bool leading_section_boundary = false)
         {
             begin_tight_cell(background, {}, leading_section_boundary);
-            write_colored_metric_value(mean_bits, color_for_signed_value(mean_bits, 1), bits_width - 1, 1);
+            write_colored_metric_value(mean_bits, color_for_signed_value(mean_bits, 1), comparison_bits_mean_width, 1);
             stream << ' ';
-            write_colored_bits_metric(worst_bits);
+            write_colored_metric_value(worst_bits, color_for_signed_value(worst_bits, 1), comparison_bits_worst_width, 1);
             stream << ' ';
             end_tight_cell(background);
         }
@@ -1663,9 +1709,9 @@ namespace bl::test::metrics
                 else
                 {
                     begin_tight_cell(background, leading.border_background, leading.section_boundary);
-                    write_metric_text("-", bits_width - 1);
+                    write_metric_text("-", comparison_bits_mean_width);
                     stream << ' ';
-                    write_metric_text("-", bits_width);
+                    write_metric_text("-", comparison_bits_worst_width);
                     stream << ' ';
                     end_tight_cell(background);
                 }
@@ -1720,9 +1766,9 @@ namespace bl::test::metrics
             {
                 const cell_leading leading = next_cell();
                 begin_tight_cell(background, leading.border_background, leading.section_boundary);
-                write_metric_text("-", bits_width - 1);
+                write_metric_text("-", comparison_bits_mean_width);
                 stream << ' ';
-                write_metric_text("-", bits_width);
+                write_metric_text("-", comparison_bits_worst_width);
                 stream << ' ';
                 end_tight_cell(background);
             }
@@ -1803,7 +1849,8 @@ namespace bl::test::metrics
             bool leading_section_boundary = false)
         {
             begin_tight_cell(background, {}, leading_section_boundary);
-            stream << "  mean  worst  ";
+            stream << std::right << std::setw(comparison_bits_mean_width) << "mean" << ' '
+                   << std::right << std::setw(comparison_bits_worst_width) << "worst" << ' ';
             end_tight_cell(background);
         }
 
@@ -1997,17 +2044,20 @@ namespace bl::test::metrics
             end_report_line();
             begin_report_line();
             write_center_cell("operation", operation_column_width, metadata_background, {}, true);
-            const std::string primary_backend_name = metrics_comparison_name(primary_competitor);
-            write_center_cell(primary_backend_name, raw_backend_visible_widths(), primary_competitor_background, {}, true);
-            for (std::string_view competitor_name : extra_competitors)
+            if constexpr (!config::benchmark_only_fltx)
             {
-                const std::string backend_name = metrics_comparison_name(competitor_name);
-                write_center_cell(
-                    backend_name,
-                    raw_backend_visible_widths(),
-                    extra_competitor_background,
-                    {},
-                    true);
+                const std::string primary_backend_name = metrics_comparison_name(primary_competitor);
+                write_center_cell(primary_backend_name, raw_backend_visible_widths(), primary_competitor_background, {}, true);
+                for (std::string_view competitor_name : extra_competitors)
+                {
+                    const std::string backend_name = metrics_comparison_name(competitor_name);
+                    write_center_cell(
+                        backend_name,
+                        raw_backend_visible_widths(),
+                        extra_competitor_background,
+                        {},
+                        true);
+                }
             }
             write_center_cell(fltx_backend, raw_backend_visible_widths(), fltx_background, {}, true);
             if (columns.has_comparison_metric())
@@ -2038,9 +2088,12 @@ namespace bl::test::metrics
             write_detail_border();
             begin_report_line();
             write_center_cell("", operation_column_width, metadata_background, {}, true);
-            write_raw_backend_metric_header(primary_competitor_background, true);
-            for (std::size_t remaining = extra_competitors.size(); remaining > 0; --remaining)
-                write_raw_backend_metric_header(extra_competitor_background, true);
+            if constexpr (!config::benchmark_only_fltx)
+            {
+                write_raw_backend_metric_header(primary_competitor_background, true);
+                for (std::size_t remaining = extra_competitors.size(); remaining > 0; --remaining)
+                    write_raw_backend_metric_header(extra_competitor_background, true);
+            }
             write_raw_backend_metric_header(fltx_background, true);
             if (columns.has_comparison_metric())
             {
@@ -2050,16 +2103,19 @@ namespace bl::test::metrics
             }
             if (columns.has_preferred_reference())
             {
-                write_center_cell("reference", preferred_reference_width, fltx_background, {}, true);
+                write_center_cell("ref", preferred_reference_width, fltx_background, {}, true);
                 write_comparison_group_header(fltx_background);
             }
             write_section_boundary();
             end_report_line();
             begin_report_line();
             write_center_cell("", operation_column_width, metadata_background, {}, true);
-            write_raw_backend_metric_subheader(primary_competitor_background, true);
-            for (std::size_t index = 0; index < extra_competitors.size(); ++index)
-                write_raw_backend_metric_subheader(extra_competitor_background, true);
+            if constexpr (!config::benchmark_only_fltx)
+            {
+                write_raw_backend_metric_subheader(primary_competitor_background, true);
+                for (std::size_t index = 0; index < extra_competitors.size(); ++index)
+                    write_raw_backend_metric_subheader(extra_competitor_background, true);
+            }
             write_raw_backend_metric_subheader(fltx_background, true);
             if (columns.has_comparison_metric())
             {
@@ -2084,8 +2140,8 @@ namespace bl::test::metrics
     {
         out << "group,label,precision,operation,domain,domain_role,samples,"
             << "primary_competitor,primary_competitor_supported,"
-            << "fltx_worst_bits,fltx_mean_bits,fltx_domain_score,fltx_inf_nan_correct,"
-            << "competitor_worst_bits,competitor_mean_bits,competitor_domain_score,competitor_inf_nan_correct,"
+            << "fltx_worst_bits,fltx_mean_bits,fltx_domain_score,fltx_inf_nan_support,"
+            << "competitor_worst_bits,competitor_mean_bits,competitor_domain_score,competitor_inf_nan_support,"
             << "precision_gap_bits,domain_gap_pp,fltx_ns_iter,competitor_ns_iter,speed_ratio,"
             << "preferred_reference,preferred_mean_gap_bits,preferred_worst_gap_bits,"
             << "preferred_domain_gap_pp,preferred_speed_ratio";
@@ -2096,7 +2152,7 @@ namespace bl::test::metrics
                 << name << "_worst_bits,"
                 << name << "_mean_bits,"
                 << name << "_domain_score,"
-                << name << "_inf_nan_correct,"
+                << name << "_inf_nan_support,"
                 << name << "_gap_bits,"
                 << name << "_domain_gap_pp,"
                 << name << "_ns_iter,"
@@ -2108,7 +2164,7 @@ namespace bl::test::metrics
     inline void write_csv_accuracy_fields(
         std::ostream& out,
         const accuracy_result& accuracy,
-        special_correctness special_values)
+        special_support special_values)
     {
         if (has_accuracy_data(accuracy))
         {
@@ -2123,7 +2179,7 @@ namespace bl::test::metrics
         {
             out << "-,-,-,";
         }
-        write_csv_text(out, format_special_correctness(special_values));
+        write_csv_text(out, format_special_support(special_values));
     }
 
     inline void write_csv_gap_fields(
@@ -2367,6 +2423,7 @@ namespace bl::test::metrics
                 operation_column_width,
                 static_cast<int>(record.suite.operation.name.size()));
         }
+        operation_column_width = std::max(10, operation_column_width - 12);
 
         const std::string_view primary_competitor_name =
             records.empty() || records.front().competitor_name.empty()

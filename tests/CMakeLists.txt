@@ -145,7 +145,7 @@ endfunction()
 
 set(FLTX_PARITY_TEST_DEFINITIONS
     FLTX_CONSTEXPR_PARITY
-    FLTX_SIMULATE_CONSTEVAL_MODE
+    FLTX_SIMULATE_TOGGLE_CONSTEVAL_MODE
 )
 
 addFltxTestLibrary(fltx_parity_test_lib ${FLTX_PARITY_TEST_DEFINITIONS})
@@ -155,7 +155,7 @@ if(FLTX_PRECISION_TESTS_CONSTEXPR_PARITY)
 endif()
 
 if(FLTX_PRECISION_TESTS_SIMULATE_CONSTEVAL)
-    addFltxTestLibrary(fltx_simulate_consteval_lib FLTX_SIMULATE_CONSTEVAL_MODE)
+    addFltxTestLibrary(fltx_simulate_consteval_lib FLTX_SIMULATE_TOGGLE_CONSTEVAL_MODE)
 endif()
 
 add_executable(precision_tests
@@ -190,9 +190,39 @@ add_executable(metrics_tests
     ${FLTX_TESTS_QDPP_HEADERS}
 )
 
-set(FLTX_METRICS_TEST_TARGETS metrics_tests)
+addFltxTestLibrary(fltx_metrics_fastmath_lib FAST_MATH_MODE ON)
+add_executable(metrics_fastmath_tests
+    ${FLTX_HEADERS}
+    ${FLTX_SOURCE}
+
+    ${FLTX_TESTS_METRICS_HEADERS}
+    ${FLTX_TESTS_METRICS_SOURCE}
+    ${FLTX_TESTS_QDPP_HEADERS}
+)
+
+set(FLTX_METRICS_TEST_TARGETS metrics_tests metrics_fastmath_tests)
+set_target_properties(metrics_tests PROPERTIES
+    FLTX_METRICS_FAST_MATH_MODE "${FLTX_METRICS_FAST_MATH_MODE}"
+)
+set_target_properties(metrics_fastmath_tests PROPERTIES
+    FLTX_METRICS_FAST_MATH_MODE ON
+    FLTX_METRICS_REPORT_SUFFIX fast
+)
+fltx_resolve_fast_math_mode(FLTX_METRICS_ENABLE_FAST_MATH "${FLTX_METRICS_FAST_MATH_MODE}")
+set(FLTX_METRICS_REPORT_SUFFIX "")
+set(FLTX_METRICS_CONSTEVAL_REPORT_SUFFIX "consteval")
+if(FLTX_METRICS_ENABLE_FAST_MATH)
+    set(FLTX_METRICS_REPORT_SUFFIX "fast")
+    set(FLTX_METRICS_CONSTEVAL_REPORT_SUFFIX "consteval_fast")
+endif()
+if(FLTX_METRICS_REPORT_SUFFIX)
+    set_target_properties(metrics_tests PROPERTIES
+        FLTX_METRICS_REPORT_SUFFIX "${FLTX_METRICS_REPORT_SUFFIX}"
+    )
+endif()
+
 if(FLTX_BUILD_SIMULATED_CONSTEVAL_METRICS)
-    addFltxTestLibrary(fltx_metrics_simulate_consteval_lib FLTX_SIMULATE_CONSTEVAL_MODE)
+    addFltxTestLibrary(fltx_metrics_simulate_consteval_lib FLTX_SIMULATE_FIXED_CONSTEVAL_MODE)
     add_executable(metrics_consteval_tests
         ${FLTX_HEADERS}
         ${FLTX_SOURCE}
@@ -200,6 +230,10 @@ if(FLTX_BUILD_SIMULATED_CONSTEVAL_METRICS)
         ${FLTX_TESTS_METRICS_HEADERS}
         ${FLTX_TESTS_METRICS_SOURCE}
         ${FLTX_TESTS_QDPP_HEADERS}
+    )
+    set_target_properties(metrics_consteval_tests PROPERTIES
+        FLTX_METRICS_FAST_MATH_MODE "${FLTX_METRICS_FAST_MATH_MODE}"
+        FLTX_METRICS_REPORT_SUFFIX "${FLTX_METRICS_CONSTEVAL_REPORT_SUFFIX}"
     )
     list(APPEND FLTX_METRICS_TEST_TARGETS metrics_consteval_tests)
 endif()
@@ -217,6 +251,16 @@ find_library(MPFR_LIBRARY NAMES mpfr REQUIRED)
 
 find_path(GMP_INCLUDE_DIR NAMES gmp.h REQUIRED)
 find_library(GMP_LIBRARY NAMES gmp REQUIRED)
+
+function (fltxGetTargetPropertyOrDefault _OUT _TARGET _PROPERTY _DEFAULT)
+    get_property(_FLTX_HAS_PROPERTY TARGET ${_TARGET} PROPERTY ${_PROPERTY} SET)
+    if(_FLTX_HAS_PROPERTY)
+        get_target_property(_FLTX_PROPERTY_VALUE ${_TARGET} ${_PROPERTY})
+        set(${_OUT} "${_FLTX_PROPERTY_VALUE}" PARENT_SCOPE)
+    else()
+        set(${_OUT} "${_DEFAULT}" PARENT_SCOPE)
+    endif()
+endfunction()
 
 function (prepareTarget _TARGET _FLTX_LIBRARY)
     if (NOT EMSCRIPTEN)
@@ -255,7 +299,20 @@ function (prepareTarget _TARGET _FLTX_LIBRARY)
     fltx_apply_simd_options(${_TARGET})
 
     if(_TARGET IN_LIST FLTX_METRICS_TEST_TARGETS)
-        target_compile_definitions(${_TARGET} PRIVATE "FLTX_METRICS_OUTPUT_ROOT=\"${FLTX_METRICS_OUTPUT_ROOT}\"")
+        target_compile_definitions(${_TARGET} PRIVATE
+            "FLTX_METRICS_OUTPUT_ROOT=\"${FLTX_METRICS_OUTPUT_ROOT}\""
+            $<$<BOOL:${FLTX_METRICS_BENCHMARK_ONLY_FLTX}>:FLTX_METRICS_BENCHMARK_ONLY_FLTX>
+        )
+
+        fltxGetTargetPropertyOrDefault(_FLTX_METRICS_TARGET_FAST_MATH_MODE ${_TARGET} FLTX_METRICS_FAST_MATH_MODE "${FLTX_METRICS_FAST_MATH_MODE}")
+        fltx_apply_fast_math_options(${_TARGET} MODE ${_FLTX_METRICS_TARGET_FAST_MATH_MODE})
+
+        fltxGetTargetPropertyOrDefault(_FLTX_METRICS_TARGET_REPORT_SUFFIX ${_TARGET} FLTX_METRICS_REPORT_SUFFIX "")
+        if(_FLTX_METRICS_TARGET_REPORT_SUFFIX)
+            target_compile_definitions(${_TARGET} PRIVATE
+                "FLTX_METRICS_REPORT_SUFFIX=\"${_FLTX_METRICS_TARGET_REPORT_SUFFIX}\""
+            )
+        endif()
     endif()
 
     fltx_apply_msvc_timing_reports(${_TARGET})
@@ -274,12 +331,12 @@ prepareTarget(io_tests        fltx::fltx)
 prepareTarget(hash_tests      fltx::fltx)
 prepareTarget(random_tests    fltx::fltx)
 prepareTarget(metrics_tests   fltx::fltx)
+prepareTarget(metrics_fastmath_tests fltx_metrics_fastmath_lib)
+
 if(FLTX_BUILD_SIMULATED_CONSTEVAL_METRICS)
     prepareTarget(metrics_consteval_tests fltx_metrics_simulate_consteval_lib)
     target_compile_definitions(metrics_consteval_tests PRIVATE
-        FLTX_SIMULATE_CONSTEVAL_MODE
-        FLTX_TEST_FORCE_SIMULATED_CONSTEVAL
-        "FLTX_METRICS_REPORT_SUFFIX=\"consteval\""
+        FLTX_SIMULATE_FIXED_CONSTEVAL_MODE
     )
 endif()
 prepareTarget(parity_tests    fltx_parity_test_lib)
@@ -313,7 +370,7 @@ endif()
 if (FLTX_PRECISION_TESTS_CONSTEXPR_PARITY)
     addFltxTestMacroStatus(precision_tests DEFINITIONS FLTX_CONSTEXPR_PARITY)
 elseif(FLTX_PRECISION_TESTS_SIMULATE_CONSTEVAL)
-    addFltxTestMacroStatus(precision_tests DEFINITIONS FLTX_SIMULATE_CONSTEVAL_MODE FLTX_TEST_FORCE_SIMULATED_CONSTEVAL)
+    addFltxTestMacroStatus(precision_tests DEFINITIONS FLTX_SIMULATE_TOGGLE_CONSTEVAL_MODE FLTX_TEST_FORCE_SIMULATED_CONSTEVAL)
 else()
     addFltxTestMacroStatus(precision_tests)
 endif()
@@ -321,9 +378,25 @@ endif()
 addFltxTestMacroStatus(io_tests)
 addFltxTestMacroStatus(hash_tests)
 addFltxTestMacroStatus(random_tests)
-addFltxTestMacroStatus(metrics_tests)
+set(FLTX_METRICS_STATUS_DEFINITIONS "")
+if(FLTX_METRICS_BENCHMARK_ONLY_FLTX)
+    list(APPEND FLTX_METRICS_STATUS_DEFINITIONS FLTX_METRICS_BENCHMARK_ONLY_FLTX)
+endif()
+addFltxTestMacroStatus(metrics_tests
+    FAST_MATH_MODE ${FLTX_METRICS_FAST_MATH_MODE}
+    DEFINITIONS ${FLTX_METRICS_STATUS_DEFINITIONS}
+)
+addFltxTestMacroStatus(metrics_fastmath_tests
+    FAST_MATH_MODE ON
+    DEFINITIONS ${FLTX_METRICS_STATUS_DEFINITIONS}
+)
 if(FLTX_BUILD_SIMULATED_CONSTEVAL_METRICS)
-    addFltxTestMacroStatus(metrics_consteval_tests DEFINITIONS FLTX_SIMULATE_CONSTEVAL_MODE FLTX_TEST_FORCE_SIMULATED_CONSTEVAL)
+    addFltxTestMacroStatus(metrics_consteval_tests
+        FAST_MATH_MODE ${FLTX_METRICS_FAST_MATH_MODE}
+        DEFINITIONS
+            FLTX_SIMULATE_FIXED_CONSTEVAL_MODE
+            ${FLTX_METRICS_STATUS_DEFINITIONS}
+    )
 endif()
 if(TARGET accuracy_tests)
     addFltxTestMacroStatus(accuracy_tests)
@@ -338,6 +411,7 @@ registerFltxCatchTests(random_tests)
 registerFltxCatchTests(parity_tests)
 if(FLTX_REGISTER_METRICS_CTESTS)
     registerFltxCatchTests(metrics_tests TEST_SPEC "~[bench]")
+    registerFltxCatchTests(metrics_fastmath_tests TEST_SPEC "~[bench]")
     if(FLTX_BUILD_SIMULATED_CONSTEVAL_METRICS)
         registerFltxCatchTests(metrics_consteval_tests TEST_SPEC "~[bench]")
     endif()

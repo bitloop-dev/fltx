@@ -25,7 +25,14 @@ namespace bl {
 // roots
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 sqrt(f128_s a)
 {
+    #if defined(BL_FAST_MATH)
     return detail::_f128_impl::sqrt(a);
+    #else
+    BL_CONSTEXPR_RUNTIME_DISPATCH(
+        detail::_f128_impl::sqrt(a),
+        detail::_f128_runtime::sqrt(a)
+    );
+    #endif
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 cbrt(const f128_s& a)

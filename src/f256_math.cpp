@@ -121,14 +121,4 @@ namespace bl::detail::_f256_runtime
         return detail::_f256_impl::scalbln(x, e); 
     }
 
-    BL_NO_INLINE f256_s nexttoward(const f256_s& from, long double to) noexcept
-    { 
-        return detail::_f256_impl::nexttoward(from, to);
-    }
-
-    BL_NO_INLINE f256_s nexttoward(const f256_s& from, const f256_s& to) noexcept 
-    {
-        return detail::_f256_impl::nexttoward(from, to); 
-    }
-
 } // namespace bl::detail::_f256_runtime

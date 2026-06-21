@@ -191,6 +191,41 @@ namespace bl::test::metrics
             metrics_filter_is_complete_report_filter_for("f256");
     }
 
+    [[nodiscard]] inline bool metrics_filter_is_precision_only_report_filter()
+    {
+        const std::vector<std::string> clauses = metrics_normalized_filter_clauses();
+        if (clauses.empty())
+            return false;
+
+        return std::all_of(
+            clauses.begin(),
+            clauses.end(),
+            [](const std::string& clause)
+            {
+                return metrics_filter_clause_matches_tags(clause, "f128") ||
+                    metrics_filter_clause_matches_tags(clause, "f256");
+            });
+    }
+
+    [[nodiscard]] inline bool metrics_filter_writes_canonical_report()
+    {
+        return metrics_filter_arguments().empty() ||
+            metrics_filter_is_precision_only_report_filter() ||
+            metrics_filter_is_complete_report_filter();
+    }
+
+    [[nodiscard]] inline std::string metrics_report_suffix_for_current_filter(std::string_view base_suffix)
+    {
+        std::string suffix(base_suffix);
+        if (!metrics_filter_writes_canonical_report())
+        {
+            if (!suffix.empty())
+                suffix += "_";
+            suffix += "filtered";
+        }
+        return suffix;
+    }
+
     [[nodiscard]] inline bool metrics_case_phase_enabled(std::string_view phase)
     {
         if (phase == "precision")
@@ -551,7 +586,10 @@ namespace bl::test::metrics
         #else
         constexpr std::string_view report_suffix = "";
         #endif
-        const std::string output_path = metrics_output_path(precision_name, report_suffix, "csv");
+        const std::string output_path = metrics_output_path(
+            precision_name,
+            metrics_report_suffix_for_current_filter(report_suffix),
+            "csv");
         write_csv_report(output_path, records);
 
         if (metrics_verbose_enabled())
@@ -597,6 +635,11 @@ namespace bl::test::metrics
         return std::string(to_string(precision)) + " IO metrics results";
     }
 
+    [[nodiscard]] inline std::string metrics_custom_report_title_for(precision_type precision)
+    {
+        return std::string(to_string(precision)) + " custom metrics results";
+    }
+
     inline void write_metrics_case_report_group(
         std::ostream& out,
         std::string_view primary_title,
@@ -606,9 +649,11 @@ namespace bl::test::metrics
         std::vector<metrics_record> primary_records;
         std::vector<metrics_record> stress_records;
         std::vector<metrics_record> io_records;
+        std::vector<metrics_record> custom_records;
         primary_records.reserve(records.size());
         stress_records.reserve(records.size());
         io_records.reserve(records.size());
+        custom_records.reserve(records.size());
 
         for (const metrics_record& record : records)
         {
@@ -616,6 +661,8 @@ namespace bl::test::metrics
                 stress_records.push_back(record);
             else if (metrics_operation_is_io(record.suite.operation.name))
                 io_records.push_back(record);
+            else if (metrics_record_is_custom(record))
+                custom_records.push_back(record);
             else
                 primary_records.push_back(record);
         }
@@ -644,6 +691,14 @@ namespace bl::test::metrics
                 0.005,
                 0.01,
                 metrics_console_columns_for_current_filter());
+        if (!custom_records.empty())
+            write_console_report(
+                out,
+                metrics_custom_report_title_for(custom_records.front().suite.precision),
+                custom_records,
+                0.005,
+                0.01,
+                metrics_console_columns_for_current_filter());
     }
 
     inline void write_complete_metrics_case_reports(
@@ -669,6 +724,8 @@ namespace bl::test::metrics
     {
         if (metrics_operation_is_io(record.suite.operation.name))
             return metrics_io_report_title_for(record.suite.precision);
+        if (metrics_record_is_custom(record))
+            return metrics_custom_report_title_for(record.suite.precision);
 
         std::string title = std::string(to_string(record.suite.precision));
         title += record.suite.domain.role == domain_role::stress
@@ -853,7 +910,7 @@ namespace bl::test::metrics
 
     struct metrics_realtime_table
     {
-        static constexpr int initial_operation_column_width = 40;
+        static constexpr int initial_operation_column_width = 32;
 
         std::string key;
         std::string title;

@@ -4,6 +4,7 @@
 #include <fltx/f256_math.h>
 
 #include "metrics_case_output.h"
+#include "metrics_config.h"
 #include "metrics_mixed_workloads.h"
 
 namespace
@@ -22,10 +23,14 @@ namespace
     {
         bl::test::metrics::write_metrics_case_report(title, record);
         CHECK(record.fltx_accuracy.sample_count > 0);
-        CHECK(record.competitor_accuracy.sample_count > 0);
         CHECK(record.fltx_benchmark.iteration_count > 0);
-        CHECK(record.competitor_benchmark.iteration_count > 0);
+        if constexpr (!bl::test::metrics::config::benchmark_only_fltx)
+        {
+            CHECK(record.competitor_accuracy.sample_count > 0);
+            CHECK(record.competitor_benchmark.iteration_count > 0);
+        }
     }
+
 }
 
 TEST_CASE("f128 workload 001 mixed arithmetic", "[metrics][bench][fltx][f128][mixed][workload][arithmetic]")

@@ -1,4 +1,5 @@
 set(FLTX_LIBRARY_SOURCE_FILES
+    src/fltx_io.cpp
     src/f128.cpp
     src/f128_math.cpp
     src/f128_transcendental.cpp

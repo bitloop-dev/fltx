@@ -2410,7 +2410,7 @@ inline QD_CONSTEXPR qd_real atan2(const qd_real &y, const qd_real &x) {
     
     if (y.is_zero()) {
       /* Both x and y is zero. */
-      qd_real::error("(qd_real::atan2): Both arguments zero.");
+      // Keep atan2(0, 0) quiet for benchmark/diagnostic use; dd_real already returns NaN silently here.
       return qd_real::_nan;
     }
 

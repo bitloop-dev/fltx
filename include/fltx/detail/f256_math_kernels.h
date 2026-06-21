@@ -147,7 +147,7 @@ namespace detail::_f256 // primitives and kernels
     BL_FORCE_INLINE constexpr f256_s add_mul_double_eval(const f256_s& addend, const f256_s& value, double scalar) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            add_mul_double_inline(addend, value, scalar),
+            add_mul_double_maybe_pow2_inline(addend, value, scalar),
             detail::_f256_runtime::add_mul_double(addend, value, scalar)
         );
     }
@@ -155,7 +155,7 @@ namespace detail::_f256 // primitives and kernels
     BL_FORCE_INLINE constexpr f256_s sub_mul_double_eval(const f256_s& minuend, const f256_s& value, double scalar) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            sub_mul_double_inline(minuend, value, scalar),
+            sub_mul_double_maybe_pow2_inline(minuend, value, scalar),
             detail::_f256_runtime::sub_mul_double(minuend, value, scalar)
         );
     }
@@ -163,7 +163,7 @@ namespace detail::_f256 // primitives and kernels
     BL_FORCE_INLINE constexpr f256_s mul_double_sub_eval(const f256_s& value, double scalar, const f256_s& subtrahend) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            mul_double_sub_inline(value, scalar, subtrahend),
+            mul_double_sub_maybe_pow2_inline(value, scalar, subtrahend),
             detail::_f256_runtime::mul_double_sub(value, scalar, subtrahend)
         );
     }
@@ -925,7 +925,7 @@ namespace detail::_f256 // primitives and kernels
         const f256_s ay = mag(y);
         f256_s r = mag(x);
 
-        constexpr int exact_reduction_exponent_gap = 96;
+        constexpr int exact_reduction_exponent_gap = 62;
         if (frexp_exponent_limb(r.x0) - frexp_exponent_limb(ay.x0) > exact_reduction_exponent_gap)
             return fmod_exact(x, y);
 
@@ -991,6 +991,10 @@ namespace detail::_f256 // primitives and kernels
     {
         using value_type = f256_s;
         static constexpr int limb_count = 4;
+        static constexpr int significand_bits = 212;
+        static constexpr int conversion_significand_bits = 53 * (limb_count + 1);
+        static constexpr int max_binary_exponent = 1023;
+        static constexpr int min_binary_exponent = -1074;
 
         static constexpr double limb(const value_type& x, int index) noexcept
         {
@@ -1002,59 +1006,56 @@ namespace detail::_f256 // primitives and kernels
             default: return x.x3;
             }
         }
+
+        static constexpr value_type zero(bool neg = false) noexcept
+        {
+            return neg ? value_type{ -0.0, 0.0, 0.0, 0.0 } : value_type{ 0.0, 0.0, 0.0, 0.0 };
+        }
+
+        static constexpr value_type infinity(bool neg = false) noexcept
+        {
+            const value_type inf = std::numeric_limits<value_type>::infinity();
+            return neg ? -inf : inf;
+        }
+
+        static constexpr value_type pack_from_significand(const biguint& q, int e2, bool neg) noexcept
+        {
+            if (q.bit_length() > significand_bits)
+            {
+                const std::uint64_t c4 = q.get_bits(0, 53);
+                const std::uint64_t c3 = q.get_bits(53, 53);
+                const std::uint64_t c2 = q.get_bits(106, 53);
+                const std::uint64_t c1 = q.get_bits(159, 53);
+                const std::uint64_t c0 = q.get_bits(212, 53);
+
+                const double x0 = c0 ? detail::fp::ldexp(static_cast<double>(c0), e2 - 52) : 0.0;
+                const double x1 = c1 ? detail::fp::ldexp(static_cast<double>(c1), e2 - 105) : 0.0;
+                const double x2 = c2 ? detail::fp::ldexp(static_cast<double>(c2), e2 - 158) : 0.0;
+                const double x3 = c3 ? detail::fp::ldexp(static_cast<double>(c3), e2 - 211) : 0.0;
+                const double x4 = c4 ? detail::fp::ldexp(static_cast<double>(c4), e2 - 264) : 0.0;
+
+                f256_s out = renorm5(x0, x1, x2, x3, x4);
+                return neg ? -out : out;
+            }
+
+            const std::uint64_t c3 = q.get_bits(0, 53);
+            const std::uint64_t c2 = q.get_bits(53, 53);
+            const std::uint64_t c1 = q.get_bits(106, 53);
+            const std::uint64_t c0 = q.get_bits(159, 53);
+
+            const double x0 = c0 ? detail::fp::ldexp(static_cast<double>(c0), e2 - 52) : 0.0;
+            const double x1 = c1 ? detail::fp::ldexp(static_cast<double>(c1), e2 - 105) : 0.0;
+            const double x2 = c2 ? detail::fp::ldexp(static_cast<double>(c2), e2 - 158) : 0.0;
+            const double x3 = c3 ? detail::fp::ldexp(static_cast<double>(c3), e2 - 211) : 0.0;
+
+            f256_s out = renorm(x0, x1, x2, x3);
+            return neg ? -out : out;
+        }
     };
-
-    BL_FORCE_INLINE constexpr f256_s pack_decimal_significand(const biguint& q, int e2, bool neg) noexcept
-    {
-        const std::uint64_t c3 = q.get_bits(0, 53);
-        const std::uint64_t c2 = q.get_bits(53, 53);
-        const std::uint64_t c1 = q.get_bits(106, 53);
-        const std::uint64_t c0 = q.get_bits(159, 53);
-
-        const double x0 = c0 ? detail::fp::ldexp(static_cast<double>(c0), e2 - 52) : 0.0;
-        const double x1 = c1 ? detail::fp::ldexp(static_cast<double>(c1), e2 - 105) : 0.0;
-        const double x2 = c2 ? detail::fp::ldexp(static_cast<double>(c2), e2 - 158) : 0.0;
-        const double x3 = c3 ? detail::fp::ldexp(static_cast<double>(c3), e2 - 211) : 0.0;
-
-        f256_s out = renorm(x0, x1, x2, x3);
-        return neg ? -out : out;
-    }
 
     BL_MSVC_NOINLINE constexpr f256_s round_decimal_exact_to_f256(const biguint& coeff, int dec_exp, bool neg) noexcept
     {
-        if (coeff.is_zero())
-            return neg ? f256_s{ -0.0, 0.0, 0.0, 0.0 } : f256_s{ 0.0, 0.0, 0.0, 0.0 };
-
-        biguint numerator = coeff;
-        biguint denominator{ 1 };
-        int bin_exp = 0;
-
-        if (dec_exp >= 0)
-        {
-            numerator = detail::exact_decimal::mul_big(coeff, detail::exact_decimal::pow5_big(dec_exp));
-            bin_exp = dec_exp;
-        }
-        else
-        {
-            denominator = detail::exact_decimal::pow5_big(-dec_exp);
-            bin_exp = dec_exp;
-        }
-
-        int ratio_exp = detail::exact_decimal::floor_log2_ratio(numerator, denominator);
-        biguint q = detail::exact_decimal::extract_rounded_significand_chunks(numerator, denominator, ratio_exp, std::numeric_limits<f256_s>::digits);
-        if (q.bit_length() > std::numeric_limits<f256_s>::digits)
-        {
-            q.shr1();
-            ++ratio_exp;
-        }
-
-        const int e2 = bin_exp + ratio_exp;
-        if (e2 > 1023)
-            return neg ? -std::numeric_limits<f256_s>::infinity() : std::numeric_limits<f256_s>::infinity();
-        if (e2 < -1074)
-            return neg ? f256_s{ -0.0, 0.0, 0.0, 0.0 } : f256_s{ 0.0, 0.0, 0.0, 0.0 };
-
-        return pack_decimal_significand(q, e2, neg);
+        return detail::exact_decimal::exact_decimal_to_value<f256_significant_decimal_traits>(coeff, dec_exp, neg);
     }
 
     // quotient helpers
@@ -1472,14 +1473,14 @@ namespace detail::_f256 // primitives and kernels
         if (bl::signbit(x))
         {
             f256_s y = -detail::_f256_impl::floor(
-                add_inline(-x, f256_s{ 0.5 }));
+                add_double_inline(-x, 0.5));
             if (iszero(y))
                 return f256_s{ -0.0, 0.0, 0.0, 0.0 };
             return y;
         }
 
         return detail::_f256_impl::floor(
-            add_inline(x, f256_s{ 0.5 }));
+            add_double_inline(x, 0.5));
     }
 
     BL_FORCE_INLINE constexpr f256_s normalize_nextafter_tail(const f256_s& from, double stepped_x3) noexcept

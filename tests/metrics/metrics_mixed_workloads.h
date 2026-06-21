@@ -827,8 +827,6 @@ namespace bl::test::metrics::mixed_workloads
         using perfect_ref = typename Profile::perfect_ref;
 
         const auto fltx_inputs = make_inputs.template operator()<fltx_type>(samples);
-        const auto competitor_inputs = make_inputs.template operator()<competitor_ref>(samples);
-        const auto extra_inputs = make_inputs.template operator()<extra_competitor_ref>(samples);
         const auto perfect_inputs = make_inputs.template operator()<perfect_ref>(samples);
 
         const auto expected = workload(perfect_inputs, accuracy_repetitions);
@@ -838,18 +836,27 @@ namespace bl::test::metrics::mixed_workloads
         record.competitor_name = Profile::competitor_name;
         record.fltx_accuracy =
             pair_accuracy<Profile>(workload(fltx_inputs, accuracy_repetitions), expected, samples.size());
-        record.competitor_accuracy =
-            pair_accuracy<Profile>(workload(competitor_inputs, accuracy_repetitions), expected, samples.size());
-        auto& extra_competitor = record.extra_competitors.emplace_back();
-        extra_competitor.name = Profile::extra_competitor_name;
-        extra_competitor.accuracy =
-            pair_accuracy<Profile>(workload(extra_inputs, accuracy_repetitions), expected, samples.size());
+        auto& extra_competitor = add_extra_competitor(record, Profile::extra_competitor_name);
+
+        if constexpr (!config::benchmark_only_fltx)
+        {
+            const auto competitor_inputs = make_inputs.template operator()<competitor_ref>(samples);
+            const auto extra_inputs = make_inputs.template operator()<extra_competitor_ref>(samples);
+            record.competitor_accuracy =
+                pair_accuracy<Profile>(workload(competitor_inputs, accuracy_repetitions), expected, samples.size());
+            extra_competitor.accuracy =
+                pair_accuracy<Profile>(workload(extra_inputs, accuracy_repetitions), expected, samples.size());
+
+            if (include_benchmarks)
+            {
+                record.competitor_benchmark = benchmark_pair_workload<Profile>(competitor_inputs, workload);
+                extra_competitor.benchmark = benchmark_pair_workload<Profile>(extra_inputs, workload);
+            }
+        }
 
         if (include_benchmarks)
         {
             record.fltx_benchmark = benchmark_pair_workload<Profile>(fltx_inputs, workload);
-            record.competitor_benchmark = benchmark_pair_workload<Profile>(competitor_inputs, workload);
-            extra_competitor.benchmark = benchmark_pair_workload<Profile>(extra_inputs, workload);
         }
 
         return record;
@@ -903,20 +910,26 @@ namespace bl::test::metrics::mixed_workloads
         aggregate.suite = { Profile::precision, operation_id{ "mixed arithmetic", "mixed arithmetic" }, mixed_domain };
         aggregate.competitor_name = Profile::competitor_name;
         aggregate.fltx_accuracy = aggregate_accuracy(records, [](const metrics_record& record) -> const accuracy_result& { return record.fltx_accuracy; });
-        aggregate.competitor_accuracy = aggregate_accuracy(records, [](const metrics_record& record) -> const accuracy_result& { return record.competitor_accuracy; });
         aggregate.fltx_benchmark = aggregate_benchmark(records, [](const metrics_record& record) -> const benchmark_result& { return record.fltx_benchmark; });
-        aggregate.competitor_benchmark = aggregate_benchmark(records, [](const metrics_record& record) -> const benchmark_result& { return record.competitor_benchmark; });
+        if constexpr (!config::benchmark_only_fltx)
+        {
+            aggregate.competitor_accuracy = aggregate_accuracy(records, [](const metrics_record& record) -> const accuracy_result& { return record.competitor_accuracy; });
+            aggregate.competitor_benchmark = aggregate_benchmark(records, [](const metrics_record& record) -> const benchmark_result& { return record.competitor_benchmark; });
+        }
 
         if (!records.empty() && !records.front().extra_competitors.empty())
         {
-            auto& extra_competitor = aggregate.extra_competitors.emplace_back();
-            extra_competitor.name = records.front().extra_competitors.front().name;
-            extra_competitor.accuracy = aggregate_accuracy(
-                records,
-                [](const metrics_record& record) -> const accuracy_result& { return record.extra_competitors.front().accuracy; });
-            extra_competitor.benchmark = aggregate_benchmark(
-                records,
-                [](const metrics_record& record) -> const benchmark_result& { return record.extra_competitors.front().benchmark; });
+            auto& extra_competitor =
+                add_extra_competitor(aggregate, records.front().extra_competitors.front().name);
+            if constexpr (!config::benchmark_only_fltx)
+            {
+                extra_competitor.accuracy = aggregate_accuracy(
+                    records,
+                    [](const metrics_record& record) -> const accuracy_result& { return record.extra_competitors.front().accuracy; });
+                extra_competitor.benchmark = aggregate_benchmark(
+                    records,
+                    [](const metrics_record& record) -> const benchmark_result& { return record.extra_competitors.front().benchmark; });
+            }
         }
 
         return aggregate;
@@ -1183,25 +1196,32 @@ namespace bl::test::metrics::mixed_workloads
             make_mandelbrot_constant_set<Profile, perfect_ref>());
         const auto fltx = run_mandelbrot_traces<fltx_type>(
             make_mandelbrot_constant_set<Profile, fltx_type>());
-        const auto competitor = run_mandelbrot_traces<competitor_ref>(
-            make_mandelbrot_constant_set<Profile, competitor_ref>());
-        const auto extra = run_mandelbrot_traces<extra_competitor_ref>(
-            make_mandelbrot_constant_set<Profile, extra_competitor_ref>());
 
         metrics_record record{};
         record.suite = { Profile::precision, operation_id{ "mandelbrot", "mandelbrot" }, mixed_domain };
         record.competitor_name = Profile::competitor_name;
         record.fltx_accuracy = mandelbrot_accuracy<Profile>(fltx, expected);
-        record.competitor_accuracy = mandelbrot_accuracy<Profile>(competitor, expected);
-        auto& extra_competitor = record.extra_competitors.emplace_back();
-        extra_competitor.name = Profile::extra_competitor_name;
-        extra_competitor.accuracy = mandelbrot_accuracy<Profile>(extra, expected);
+        auto& extra_competitor = add_extra_competitor(record, Profile::extra_competitor_name);
+
+        if constexpr (!config::benchmark_only_fltx)
+        {
+            const auto competitor = run_mandelbrot_traces<competitor_ref>(
+                make_mandelbrot_constant_set<Profile, competitor_ref>());
+            const auto extra = run_mandelbrot_traces<extra_competitor_ref>(
+                make_mandelbrot_constant_set<Profile, extra_competitor_ref>());
+            record.competitor_accuracy = mandelbrot_accuracy<Profile>(competitor, expected);
+            extra_competitor.accuracy = mandelbrot_accuracy<Profile>(extra, expected);
+
+            if (include_benchmarks)
+            {
+                record.competitor_benchmark = benchmark_mandelbrot<Profile, competitor_ref>();
+                extra_competitor.benchmark = benchmark_mandelbrot<Profile, extra_competitor_ref>();
+            }
+        }
 
         if (include_benchmarks)
         {
             record.fltx_benchmark = benchmark_mandelbrot<Profile, fltx_type>();
-            record.competitor_benchmark = benchmark_mandelbrot<Profile, competitor_ref>();
-            extra_competitor.benchmark = benchmark_mandelbrot<Profile, extra_competitor_ref>();
         }
 
         return record;

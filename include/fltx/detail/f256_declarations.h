@@ -52,10 +52,6 @@ namespace detail::_f256_runtime
     BL_NO_INLINE f256_s scalbn(const f256_s& x, int e) noexcept;
     BL_NO_INLINE f256_s scalbln(const f256_s& x, long e) noexcept;
 
-    // adjacent values
-    BL_NO_INLINE f256_s nexttoward(const f256_s& from, long double to) noexcept;
-    BL_NO_INLINE f256_s nexttoward(const f256_s& from, const f256_s& to) noexcept;
-
     // exp / log
     BL_NO_INLINE f256_s exp(const f256_s& x);
     BL_NO_INLINE f256_s exp2(const f256_s& x);

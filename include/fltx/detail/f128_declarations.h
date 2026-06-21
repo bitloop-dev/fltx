@@ -22,6 +22,7 @@ namespace bl {
 namespace detail::_f128_runtime
 {
     // roots
+    BL_NO_INLINE f128_s sqrt(const f128_s& a);
     BL_NO_INLINE f128_s hypot(const f128_s& x, const f128_s& y);
 
     // rounding and decimals

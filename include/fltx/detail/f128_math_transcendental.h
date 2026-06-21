@@ -23,7 +23,7 @@ namespace detail::_f128 // primitives and kernels
     // expm1/log1p functions
     BL_MSVC_NOINLINE constexpr f128_s log1p_series_reduced(const f128_s& x)
     {
-        const f128_s z = div_inline(x, add_inline(f128_s{ 2.0 }, x));
+        const f128_s z = div_inline(x, add_double_inline(x, 2.0));
         const f128_s z2 = mul_inline(z, z);
 
         f128_s term = z;
@@ -32,7 +32,7 @@ namespace detail::_f128 // primitives and kernels
         for (int k = 3; k <= 81; k += 2)
         {
             term = mul_inline(term, z2);
-            const f128_s add = div_inline(term, f128_s{ static_cast<double>(k) });
+            const f128_s add = div_double_inline(term, static_cast<double>(k));
             sum = add_inline(sum, add);
 
             const f128_s asum  = mag(sum);
@@ -77,7 +77,7 @@ namespace detail::_f128 // primitives and kernels
         for (int i = static_cast<int>(sizeof(inv_odd) / sizeof(inv_odd[0])) - 2; i >= 0; --i)
             p = mul_add_inline(p, z2, inv_odd[i]);
 
-        p = mul_add_inline(p, z2, f128_s{ 1.0 });
+        p = mul_add_double_rhs_inline(p, z2, 1.0);
         return mul_double_inline(mul_inline(z, p), 2.0);
     }
 
@@ -144,15 +144,20 @@ namespace detail::_f128 // primitives and kernels
     {
         const double nd = exp_nearest_integer(x.hi);
         const int n = static_cast<int>(nd);
-        const f128_s reduced = sub_inline(x, f128_s{ nd });
+        const f128_s reduced = sub_double_inline(x, nd);
         const f128_s r = mul_pwr2_inline(reduced, 0.0078125);
 
         f128_s e = expm1_tiny(r);
-        for (int i = 0; i < 7; ++i)
-            e = mul_add_inline(e, e, mul_pwr2_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_pwr2_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_pwr2_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_pwr2_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_pwr2_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_pwr2_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_pwr2_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_pwr2_inline(e, 2.0));
 
         if (n == 0)
-            return sub_one ? e : add_inline(e, f128_s{ 1.0 });
+            return sub_one ? e : add_double_inline(e, 1.0);
 
         const f128_s factor = exp_integer_factor(n);
 #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
@@ -162,7 +167,7 @@ namespace detail::_f128 // primitives and kernels
 #else
         const f128_s scaled = mul_add_inline(factor, e, factor);
 #endif
-        return sub_one ? sub_inline(scaled, f128_s{ 1.0 }) : scaled;
+        return sub_one ? sub_double_inline(scaled, 1.0) : scaled;
     }
 
     BL_MSVC_NOINLINE constexpr f128_s _exp(const f128_s& x)
@@ -199,14 +204,19 @@ namespace detail::_f128 // primitives and kernels
 
         const double kd = exp_nearest_integer(x.hi);
         const int k = static_cast<int>(kd);
-        const f128_s reduced = sub_inline(x, f128_s{ kd });
+        const f128_s reduced = sub_double_inline(x, kd);
         const f128_s r = mul_pwr2_inline(mul_dd_inline(reduced, std::numbers::ln2_v<f128_s>), 0.0078125);
 
         f128_s e = expm1_tiny(r);
-        for (int i = 0; i < 7; ++i)
-            e = mul_add_inline(e, e, mul_pwr2_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_pwr2_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_pwr2_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_pwr2_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_pwr2_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_pwr2_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_pwr2_inline(e, 2.0));
+        e = mul_add_inline(e, e, mul_pwr2_inline(e, 2.0));
 
-        return _ldexp(add_inline(e, f128_s{ 1.0 }), k);
+        return _ldexp(add_double_inline(e, 1.0), k);
     }
 
     // logarithm functions
@@ -232,11 +242,11 @@ namespace detail::_f128 // primitives and kernels
         f128_s m = _ldexp(a, -exp2);
         if (m < sqrt_half)
         {
-            m = mul_inline(m, f128_s{ 2.0 });
+            m = mul_double_inline(m, 2.0);
             --exp2;
         }
 
-        const f128_s exp2_ln2 = mul_inline(f128_s{ static_cast<double>(exp2) }, std::numbers::ln2_v<f128_s>);
+        const f128_s exp2_ln2 = mul_double_inline(std::numbers::ln2_v<f128_s>, static_cast<double>(exp2));
         return add_inline(exp2_ln2, log_normalized_series(m));
     }
 
@@ -361,7 +371,7 @@ namespace detail::_f128 // primitives and kernels
     BL_FORCE_INLINE constexpr f128_s pow_from_log_product(const f128_s& product)
     {
         if (detail::_f128::mag(product) <= f128_s{ 0.125 })
-            return add_inline(f128_s{ 1.0 }, expm1_tiny(product));
+            return add_double_inline(expm1_tiny(product), 1.0);
 
         return _exp(product);
     }
@@ -395,7 +405,7 @@ namespace detail::_f128 // primitives and kernels
 	        return false;
 	    }
 
-	    const f128_s delta = sub_inline(t, f128_s{ qd });
+	    const f128_s delta = sub_double_inline(t, qd);
 	    if (delta.hi > 0.5 || (delta.hi == 0.5 && delta.lo > 0.0))
 	        qd += 1.0;
 	    else if (delta.hi < -0.5 || (delta.hi == -0.5 && delta.lo < 0.0))
@@ -413,12 +423,12 @@ namespace detail::_f128 // primitives and kernels
 	    constexpr f128_s pi_4{ pi_4_hi };
 
 	    long long n = static_cast<long long>(qd);
-	    const f128_s q{ static_cast<double>(n) };
+	    const double q = static_cast<double>(n);
 
 	    f128_s r = x;
-	    r = sub_inline(r, mul_inline(q, pi_2_hi));
-	    r = sub_inline(r, mul_inline(q, pi_2_mid));
-	    r = sub_inline(r, mul_inline(q, pi_2_lo));
+	    r = sub_inline(r, mul_double_inline(pi_2_hi, q));
+	    r = sub_inline(r, mul_double_inline(pi_2_mid, q));
+	    r = sub_inline(r, mul_double_inline(pi_2_lo, q));
 
 	    if (r > pi_4)
 	    {
@@ -536,7 +546,7 @@ namespace detail::_f128 // primitives and kernels
             f128_trig_small_coeff_count,
             t);
 
-        return mul_add_inline(t, pc, f128_s{ 1.0 });
+        return mul_add_double_rhs_inline(t, pc, 1.0);
     }
 
     BL_FORCE_INLINE constexpr void sincos_kernel_small(const f128_s& x, f128_s& s_out, f128_s& c_out)
@@ -557,7 +567,7 @@ namespace detail::_f128 // primitives and kernels
 
         const f128_s xt = mul_inline(x, t);
         s_out = mul_add_inline(xt, ps, x);
-        c_out = mul_add_inline(t, pc, f128_s{ 1.0 });
+        c_out = mul_add_double_rhs_inline(t, pc, 1.0);
     }
 
     BL_FORCE_INLINE constexpr void sincos_kernel_pi64_reduced(const f128_s& x, f128_s& s_out, f128_s& c_out)
@@ -603,7 +613,7 @@ namespace detail::_f128 // primitives and kernels
 
         const f128_s pc = horner_forward(f128_cos_coeffs_pi4, f128_trig_coeff_count_pi4, t);
 
-        return mul_add_inline(t, pc, f128_s{ 1.0 });
+        return mul_add_double_rhs_inline(t, pc, 1.0);
     }
 
     BL_FORCE_INLINE constexpr void sincos_kernel_pi4(const f128_s& x, f128_s& s_out, f128_s& c_out)
@@ -649,7 +659,7 @@ namespace detail::_f128 // primitives and kernels
 
         if (ax > f128_s{ 1.0 })
         {
-            const f128_s core = atan_core_unit(div_inline(f128_s{ 1.0 }, ax));
+            const f128_s core = atan_core_unit(div_double_inline(1.0, ax));
             const f128_s out  = sub_inline(pi_2, core);
             return neg ? -out : out;
         }
@@ -670,7 +680,7 @@ namespace detail::_f128 // primitives and kernels
             return (x.hi < 0.0) ? -pi_2 : pi_2;
 
         if (ax <= f128_s{ 0.5 })
-            return _atan(div_inline(x, detail::_f128_impl::sqrt(sub_inline(f128_s{ 1.0 }, mul_inline(x, x)))));
+            return _atan(div_inline(x, detail::_f128_impl::sqrt(sub_double_inline(1.0, mul_inline(x, x)))));
 
         const f128_s t = detail::_f128_impl::sqrt(div_inline(sub_double_inline(1.0, ax), add_double_inline(ax, 1.0)));
         const f128_s a = sub_inline(pi_2, mul_double_inline(_atan(t), 2.0));
@@ -703,7 +713,7 @@ namespace detail::_f128 // primitives and kernels
         for (int k = 1; k <= 32; ++k)
         {
             power = mul_inline(power, x2);
-            const f128_s term = div_inline(power, f128_s{ static_cast<double>(2 * k + 1) });
+            const f128_s term = div_double_inline(power, static_cast<double>(2 * k + 1));
             sum = add_inline(sum, term);
 
             if (mag(term) <= f128_s::eps())
@@ -720,7 +730,7 @@ namespace detail::_f128 // primitives and kernels
         std::size_t count,
         double shift)
     {
-        const f128_s t = sub_inline(mul_double_inline(x, 2.0), f128_s{ shift });
+        const f128_s t = sub_double_inline(mul_double_inline(x, 2.0), shift);
         f128_s b1{ 0.0 };
         f128_s b2{ 0.0 };
 
@@ -749,48 +759,50 @@ namespace detail::_f128 // primitives and kernels
 
         for (int n = 1; n < 256; ++n)
         {
-            power = mul_inline(power, div_inline(-xx, f128_s{ static_cast<double>(n) }));
-            const f128_s term = div_inline(power, f128_s{ static_cast<double>(2 * n + 1) });
+            power = mul_inline(power, div_double_inline(-xx, static_cast<double>(n)));
+            const f128_s term = div_double_inline(power, static_cast<double>(2 * n + 1));
             sum = add_inline(sum, term);
             if (mag(term) < f128_s::eps())
                 break;
         }
 
-        return F128_CANONICALIZE_MATH_RESULT(mul_inline(mul_inline(f128_s{ 2.0 }, std::numbers::inv_sqrtpi_v<f128_s>), sum));
+        return F128_CANONICALIZE_MATH_RESULT(mul_pwr2_inline(mul_inline(std::numbers::inv_sqrtpi_v<f128_s>, sum), 2.0));
     }
 
     BL_FORCE_INLINE constexpr f128_s erfc_positive_cf(const f128_s& x)
     {
         const f128_s z = mul_inline(x, x);
-        constexpr f128_s a = f128_s{ 0.5 };
         constexpr f128_s tiny = f128_s{ 1.0e-300 };
+        constexpr f128_s convergence = f128_s{ 3.9443045261050590270586428264139311484e-31 }; // 32 * f128_s::eps()
 
-        f128_s b = sub_inline(add_inline(z, f128_s{ 1.0 }), a);
-        f128_s c = div_inline(f128_s{ 1.0 }, tiny);
-        f128_s d = div_inline(f128_s{ 1.0 }, b);
+        f128_s b = add_double_inline(z, 0.5);
+        f128_s c = div_double_inline(1.0, tiny);
+        f128_s d = div_double_inline(1.0, b);
         f128_s h = d;
 
+        double an = -0.5;
+        double an_step = -2.5;
         for (int i = 1; i <= 96; ++i)
         {
-            const f128_s ii = f128_s{ static_cast<double>(i) };
-            const f128_s an = -mul_inline(ii, sub_inline(ii, a));
+            b = add_double_inline(b, 2.0);
 
-            b = add_inline(b, f128_s{ 2.0 });
-
-            d = mul_add_inline(an, d, b);
+            d = mul_add_double_lhs_inline(an, d, b);
             if (mag(d) < tiny)
                 d = tiny;
 
-            c = add_inline(b, div_inline(an, c));
+            c = add_inline(b, div_double_inline(an, c));
             if (mag(c) < tiny)
                 c = tiny;
 
-            d = div_inline(f128_s{ 1.0 }, d);
+            d = div_double_inline(1.0, d);
             const f128_s delta = mul_inline(d, c);
             h = mul_inline(h, delta);
 
-            if (mag(sub_inline(delta, f128_s{ 1.0 })) <= mul_inline(f128_s{ 32.0 }, f128_s::eps()))
+            if (mag(sub_double_inline(delta, 1.0)) <= convergence)
                 break;
+
+            an += an_step;
+            an_step -= 2.0;
         }
 
         const f128_s out = mul_inline(mul_inline(mul_inline(detail::_f128_impl::exp(-z), x), std::numbers::inv_sqrtpi_v<f128_s>), h);
@@ -813,28 +825,28 @@ namespace detail::_f128 // primitives and kernels
 
         const f128_s p = horner_reverse(lgamma1p5_coeff, static_cast<std::size_t>(count), y);
 
-        const f128_s constant = sub_inline(half_log_two_pi, mul_inline(f128_s{ 1.5 }, std::numbers::ln2_v<f128_s>));
-        const f128_s linear   = sub_inline(sub_inline(f128_s{ 2.0 }, std::numbers::egamma_v<f128_s>), mul_inline(f128_s{ 2.0 }, std::numbers::ln2_v<f128_s>));
+        const f128_s constant = sub_inline(half_log_two_pi, mul_double_inline(std::numbers::ln2_v<f128_s>, 1.5));
+        const f128_s linear   = sub_inline(sub_double_inline(2.0, std::numbers::egamma_v<f128_s>), mul_double_inline(std::numbers::ln2_v<f128_s>, 2.0));
         return mul_add_inline(y, mul_add_inline(y, p, linear), constant);
     }
 
     BL_MSVC_NOINLINE constexpr bool try_lgamma_near_one_or_two(const f128_s& x, f128_s& out) noexcept
     {
-        const f128_s y1 = sub_inline(x, f128_s{ 1.0 });
+        const f128_s y1 = sub_double_inline(x, 1.0);
         if (mag(y1) <= f128_s{ 0.25 })
         {
             out = lgamma1p_series(y1);
             return true;
         }
 
-        const f128_s y15 = sub_inline(x, f128_s{ 1.5 });
+        const f128_s y15 = sub_double_inline(x, 1.5);
         if (mag(y15) <= f128_s{ 0.25 })
         {
             out = lgamma1p5_series(y15);
             return true;
         }
 
-        const f128_s y2 = sub_inline(x, f128_s{ 2.0 });
+        const f128_s y2 = sub_double_inline(x, 2.0);
         if (mag(y2) <= f128_s{ 0.25 })
         {
             out = add_inline(log1p_series_reduced(y2), lgamma1p_series(y2));
@@ -846,14 +858,14 @@ namespace detail::_f128 // primitives and kernels
 
     BL_MSVC_NOINLINE constexpr f128_s lgamma_stirling_asymptotic(const f128_s& z) noexcept
     {
-        const f128_s inv    = div_inline(f128_s{ 1.0 }, z);
+        const f128_s inv    = div_double_inline(1.0, z);
         const f128_s inv2   = mul_inline(inv, inv);
         const f128_s series = mul_inline(inv, horner_reverse(
             lgamma_stirling_coeffs,
             sizeof(lgamma_stirling_coeffs) / sizeof(lgamma_stirling_coeffs[0]),
             inv2));
 
-        return add_inline(add_inline(sub_inline(mul_inline(sub_inline(z, f128_s{ 0.5 }), detail::_f128_impl::log(z)), z), half_log_two_pi), series);
+        return add_inline(add_inline(sub_inline(mul_inline(sub_double_inline(z, 0.5), detail::_f128_impl::log(z)), z), half_log_two_pi), series);
     }
 
     BL_MSVC_NOINLINE constexpr void positive_recurrence_product(const f128_s& x, const f128_s& asymptotic_min, f128_s& z, f128_s& product, int& product_scale2) noexcept
@@ -877,7 +889,7 @@ namespace detail::_f128 // primitives and kernels
                 }
             }
 
-            z = add_inline(z, f128_s{ 1.0 });
+            z = add_double_inline(z, 1.0);
         }
     }
 
@@ -893,7 +905,7 @@ namespace detail::_f128 // primitives and kernels
             do
             {
                 product = mul_inline(product, y);
-                y = add_inline(y, f128_s{ 1.0 });
+                y = add_double_inline(y, 1.0);
             }
             while (y < f128_s{ 0.75 });
         }
@@ -901,7 +913,7 @@ namespace detail::_f128 // primitives and kernels
         {
             while (y > f128_s{ 2.25 })
             {
-                y = sub_inline(y, f128_s{ 1.0 });
+                y = sub_double_inline(y, 1.0);
                 product = mul_inline(product, y);
             }
         }
@@ -928,7 +940,7 @@ namespace detail::_f128 // primitives and kernels
             do
             {
                 product = mul_inline(product, y);
-                y = add_inline(y, f128_s{ 1.0 });
+                y = add_double_inline(y, 1.0);
             }
             while (y < f128_s{ 0.75 });
         }
@@ -936,7 +948,7 @@ namespace detail::_f128 // primitives and kernels
         {
             while (y > f128_s{ 2.25 })
             {
-                y = sub_inline(y, f128_s{ 1.0 });
+                y = sub_double_inline(y, 1.0);
                 product = mul_inline(product, y);
             }
         }
@@ -969,7 +981,7 @@ namespace detail::_f128 // primitives and kernels
 
         return sub_inline(
             sub_inline(lgamma_stirling_asymptotic(z), detail::_f128_impl::log(product)),
-            mul_inline(f128_s{ static_cast<double>(product_scale2) }, std::numbers::ln2_v<f128_s>));
+            mul_double_inline(std::numbers::ln2_v<f128_s>, static_cast<double>(product_scale2)));
     }
 
     BL_MSVC_NOINLINE constexpr f128_s gamma_positive_recurrence(const f128_s& x) noexcept
@@ -1188,7 +1200,7 @@ namespace detail::_f128
     if (ax <= f128_s{ 0.25 })
         return F128_CANONICALIZE_MATH_RESULT(log1p_series_reduced(x));
 
-    const f128_s u = add_inline(f128_s{ 1.0 }, x);
+    const f128_s u = add_double_inline(x, 1.0);
     return F128_CANONICALIZE_MATH_RESULT(_log(u));
 }
 
@@ -1282,7 +1294,7 @@ namespace detail::_f128
 
     if (y == 1.0)  return x;
     if (y == 2.0)  return F128_CANONICALIZE_MATH_RESULT(x * x);
-    if (y == -1.0) return F128_CANONICALIZE_MATH_RESULT(f128_s{ 1.0 } / x);
+    if (y == -1.0) return F128_CANONICALIZE_MATH_RESULT(div_double_inline(1.0, x));
     if (y == 0.5)  return F128_CANONICALIZE_MATH_RESULT(detail::_f128_impl::sqrt(x));
 
     double yi{};
@@ -1559,9 +1571,9 @@ namespace detail::_f128
 #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
     f128_s out = detail::fp::exp_inverse_is_negligible(ax.hi)
         ? mul_pwr2_inline(ex, 0.5)
-        : mul_double_inline(sub_inline(ex, div_inline(f128_s{ 1.0 }, ex)), 0.5);
+        : mul_double_inline(sub_inline(ex, div_double_inline(1.0, ex)), 0.5);
 #else
-    f128_s out = mul_double_inline(sub_inline(ex, div_inline(f128_s{ 1.0 }, ex)), 0.5);
+    f128_s out = mul_double_inline(sub_inline(ex, div_double_inline(1.0, ex)), 0.5);
 #endif
     if (signbit(x))
         out = -out;
@@ -1584,7 +1596,7 @@ namespace detail::_f128
         return F128_CANONICALIZE_MATH_RESULT(mul_pwr2_inline(ex, 0.5));
 #endif
 
-    return F128_CANONICALIZE_MATH_RESULT(mul_double_inline(add_inline(ex, div_inline(f128_s{ 1.0 }, ex)), 0.5));
+    return F128_CANONICALIZE_MATH_RESULT(mul_double_inline(add_inline(ex, div_double_inline(1.0, ex)), 0.5));
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::tanh(const f128_s& x)
@@ -1603,7 +1615,7 @@ namespace detail::_f128
     if (ax >= f128_s{ 0.5 })
     {
         const f128_s e = detail::_f128_impl::exp(mul_double_inline(ax, -2.0));
-        f128_s out = sub_inline(f128_s{ 1.0 }, div_inline(mul_double_inline(e, 2.0), add_double_inline(e, 1.0)));
+        f128_s out = sub_double_inline(1.0, div_inline(mul_double_inline(e, 2.0), add_double_inline(e, 1.0)));
         if (signbit(x))
             out = -out;
         return F128_CANONICALIZE_MATH_RESULT(out);
@@ -1728,7 +1740,7 @@ namespace detail::_f128
     else if (ax < f128_s{ 2.0 })
         out = erf_positive_cheb_1_2(ax);
     else
-        out = ax > f128_s{ 27.0 } ? f128_s{ 1.0 } : sub_inline(f128_s{ 1.0 }, erfc_positive_cf(ax));
+        out = ax > f128_s{ 27.0 } ? f128_s{ 1.0 } : sub_double_inline(1.0, erfc_positive_cf(ax));
 
     if (neg)
         out = -out;
@@ -1751,19 +1763,19 @@ namespace detail::_f128
     {
         const f128_s ax = -x;
         if (ax < f128_s{ 1.0 })
-            return F128_CANONICALIZE_MATH_RESULT(add_inline(f128_s{ 1.0 }, erf_positive_series(ax)));
+            return F128_CANONICALIZE_MATH_RESULT(add_double_inline(erf_positive_series(ax), 1.0));
         if (ax < f128_s{ 2.0 })
-            return F128_CANONICALIZE_MATH_RESULT(add_inline(f128_s{ 1.0 }, erf_positive_cheb_1_2(ax)));
+            return F128_CANONICALIZE_MATH_RESULT(add_double_inline(erf_positive_cheb_1_2(ax), 1.0));
         if (ax > f128_s{ 27.0 })
             return f128_s{ 2.0 };
-        return F128_CANONICALIZE_MATH_RESULT(sub_inline(f128_s{ 2.0 }, erfc_positive_cf(ax)));
+        return F128_CANONICALIZE_MATH_RESULT(sub_double_inline(2.0, erfc_positive_cf(ax)));
     }
 
     // Keep the short series near zero and switch to the fixed midrange approximation before it gets expensive.
     if (x < f128_s{ 1.0 })
-        return F128_CANONICALIZE_MATH_RESULT(sub_inline(f128_s{ 1.0 }, erf_positive_series(x)));
+        return F128_CANONICALIZE_MATH_RESULT(sub_double_inline(1.0, erf_positive_series(x)));
     if (x < f128_s{ 2.0 })
-        return F128_CANONICALIZE_MATH_RESULT(sub_inline(f128_s{ 1.0 }, erf_positive_cheb_1_2(x)));
+        return F128_CANONICALIZE_MATH_RESULT(sub_double_inline(1.0, erf_positive_cheb_1_2(x)));
 
     if (x > f128_s{ 27.0 })
         return f128_s{ 0.0 };
@@ -1795,7 +1807,7 @@ namespace detail::_f128
     const f128_s out =
         sub_inline(
             sub_inline(detail::_f128_impl::log(std::numbers::pi_v<f128_s>), detail::_f128_impl::log(detail::_f128::mag(sinpix))),
-            lgamma_positive_recurrence(sub_inline(f128_s{ 1.0 }, x)));
+            lgamma_positive_recurrence(sub_double_inline(1.0, x)));
 
     return F128_CANONICALIZE_MATH_RESULT(out);
 }
@@ -1824,7 +1836,7 @@ namespace detail::_f128
     if (iszero(sinpix))
         return std::numeric_limits<f128_s>::quiet_NaN();
 
-    const f128_s out = div_inline(std::numbers::pi_v<f128_s>, mul_inline(sinpix, gamma_positive_recurrence(sub_inline(f128_s{ 1.0 }, x))));
+    const f128_s out = div_inline(std::numbers::pi_v<f128_s>, mul_inline(sinpix, gamma_positive_recurrence(sub_double_inline(1.0, x))));
     return F128_CANONICALIZE_MATH_RESULT(out);
 }
 

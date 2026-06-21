@@ -753,36 +753,39 @@ return renorm5(p0, p1, s0, t0, t1);
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s add_checked_inline(const f256_s& a, const f256_s& b) noexcept
     {
-        if (detail::fp::isinf_or_nan(a.x0) || detail::fp::isinf_or_nan(b.x0)) [[unlikely]]
-            return add_special(a, b);
-
         const f256_s out = add_inline(a, b);
         if (detail::fp::isinf_or_nan(out.x0)) [[unlikely]]
+        {
+            if (detail::fp::isinf_or_nan(a.x0, b.x0)) [[unlikely]]
+                return add_special(a, b);
             return signed_infinity(bl::signbit(a));
+        }
         return out;
     }
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s sub_checked_inline(const f256_s& a, const f256_s& b) noexcept
     {
-        if (detail::fp::isinf_or_nan(a.x0) || detail::fp::isinf_or_nan(b.x0)) [[unlikely]]
-            return sub_special(a, b);
-
         const f256_s out = sub_inline(a, b);
         if (detail::fp::isinf_or_nan(out.x0)) [[unlikely]]
+        {
+            if (detail::fp::isinf_or_nan(a.x0, b.x0)) [[unlikely]]
+                return sub_special(a, b);
             return signed_infinity(bl::signbit(a));
+        }
         return out;
     }
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s mul_checked_inline(const f256_s& a, const f256_s& b) noexcept
     {
-        if (detail::fp::isinf_or_nan(a.x0) || detail::fp::isinf_or_nan(b.x0)) [[unlikely]]
-            return mul_special(a, b);
-        if (bl::iszero(a) || bl::iszero(b)) [[unlikely]]
-            return signed_zero(bl::signbit(a) != bl::signbit(b));
-
         const f256_s out = mul_inline(a, b);
         if (detail::fp::isinf_or_nan(out.x0)) [[unlikely]]
+        {
+            if (detail::fp::isinf_or_nan(a.x0, b.x0)) [[unlikely]]
+                return mul_special(a, b);
             return signed_infinity(bl::signbit(a) != bl::signbit(b));
+        }
+        if (out.x0 == 0.0 && (bl::iszero(a) || bl::iszero(b))) [[unlikely]]
+            return signed_zero(bl::signbit(a) != bl::signbit(b));
         return out;
     }
 
@@ -796,47 +799,51 @@ return renorm5(p0, p1, s0, t0, t1);
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s add_double_checked_inline(const f256_s& a, double b) noexcept
     {
-        if (detail::fp::isinf_or_nan(a.x0) || detail::fp::isinf_or_nan(b)) [[unlikely]]
-            return add_special(a, f256_s{ b, 0.0, 0.0, 0.0 });
-
         const f256_s out = add_double_inline(a, b);
         if (detail::fp::isinf_or_nan(out.x0)) [[unlikely]]
+        {
+            if (detail::fp::isinf_or_nan(a.x0, b)) [[unlikely]]
+                return add_special(a, f256_s{ b, 0.0, 0.0, 0.0 });
             return signed_infinity(bl::signbit(a));
+        }
         return out;
     }
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s sub_double_checked_inline(const f256_s& a, double b) noexcept
     {
-        if (detail::fp::isinf_or_nan(a.x0) || detail::fp::isinf_or_nan(b)) [[unlikely]]
-            return sub_special(a, f256_s{ b, 0.0, 0.0, 0.0 });
-
         const f256_s out = sub_double_inline(a, b);
         if (detail::fp::isinf_or_nan(out.x0)) [[unlikely]]
+        {
+            if (detail::fp::isinf_or_nan(a.x0, b)) [[unlikely]]
+                return sub_special(a, f256_s{ b, 0.0, 0.0, 0.0 });
             return signed_infinity(bl::signbit(a));
+        }
         return out;
     }
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s sub_double_checked_inline(double a, const f256_s& b) noexcept
     {
-        if (detail::fp::isinf_or_nan(a) || detail::fp::isinf_or_nan(b.x0)) [[unlikely]]
-            return sub_special(f256_s{ a, 0.0, 0.0, 0.0 }, b);
-
         const f256_s out = sub_double_inline(a, b);
         if (detail::fp::isinf_or_nan(out.x0)) [[unlikely]]
+        {
+            if (detail::fp::isinf_or_nan(a, b.x0)) [[unlikely]]
+                return sub_special(f256_s{ a, 0.0, 0.0, 0.0 }, b);
             return signed_infinity(signbit(a));
+        }
         return out;
     }
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s mul_double_checked_inline(const f256_s& a, double b) noexcept
     {
-        if (detail::fp::isinf_or_nan(a.x0) || detail::fp::isinf_or_nan(b)) [[unlikely]]
-            return mul_special(a, f256_s{ b, 0.0, 0.0, 0.0 });
-        if (bl::iszero(a) || b == 0.0) [[unlikely]]
-            return signed_zero(bl::signbit(a) != signbit(b));
-
         const f256_s out = mul_double_inline(a, b);
         if (detail::fp::isinf_or_nan(out.x0)) [[unlikely]]
+        {
+            if (detail::fp::isinf_or_nan(a.x0, b)) [[unlikely]]
+                return mul_special(a, f256_s{ b, 0.0, 0.0, 0.0 });
             return signed_infinity(bl::signbit(a) != signbit(b));
+        }
+        if (out.x0 == 0.0 && (bl::iszero(a) || b == 0.0)) [[unlikely]]
+            return signed_zero(bl::signbit(a) != signbit(b));
         return out;
     }
 

@@ -9,9 +9,11 @@
 
 #ifndef F128_STRING_INCLUDED
 #define F128_STRING_INCLUDED
+#include <charconv>
 #include <cstddef>
 #include <ios>
 #include <string>
+#include <type_traits>
 
 #include "fltx/f128_limits.h"
 #include "fltx/detail/f128_math_basic.h"
@@ -23,6 +25,52 @@ namespace detail::_f128 // primitives and kernels
 {
     struct f128_io_traits;
 
+    [[nodiscard]] BL_FORCE_INLINE constexpr bool runtime_native_double_subnormal(const f128_s& x) noexcept
+    {
+        return !std::is_constant_evaluated() &&
+            x.lo == 0.0 &&
+            detail::fp::isfinite(x.hi) &&
+            detail::fp::absd(x.hi) < std::numeric_limits<double>::min();
+    }
+
+    BL_FORCE_INLINE detail::fltx_char_result strip_scientific_trailing_zeros(char* first, char* ptr) noexcept
+    {
+        char* exp = first;
+        while (exp < ptr && *exp != 'e' && *exp != 'E')
+            ++exp;
+        if (exp == ptr)
+            return { ptr, true };
+
+        char* frac_end = exp;
+        while (frac_end > first && frac_end[-1] == '0')
+            --frac_end;
+        if (frac_end > first && frac_end[-1] == '.')
+            --frac_end;
+        if (frac_end == exp)
+            return { ptr, true };
+
+        char* out = frac_end;
+        for (char* in = exp; in < ptr; ++in)
+            *out++ = *in;
+        return { out, true };
+    }
+
+    BL_FORCE_INLINE detail::fltx_char_result emit_native_double_to_chars(
+        char* first,
+        char* last,
+        double x,
+        std::chars_format format,
+        int precision,
+        bool strip_trailing_zeros = false) noexcept
+    {
+        auto result = std::to_chars(first, last, x, format, precision);
+        if (result.ec != std::errc{})
+            return { first, false };
+        if (strip_trailing_zeros && format == std::chars_format::scientific)
+            return strip_scientific_trailing_zeros(first, result.ptr);
+        return { result.ptr, true };
+    }
+
     [[nodiscard]] BL_FORCE_INLINE constexpr bool normalize10(const f128_s& x, f128_s& m, int& exp10)
     {
         if (x.hi == 0.0 && x.lo == 0.0) { m = f128_s{ 0.0 }; exp10 = 0; return true; }
@@ -30,7 +78,7 @@ namespace detail::_f128 // primitives and kernels
         f128_s ax = abs(x);
 
         int e2 = detail::fp::frexp_exponent(ax.hi); // ax.hi = f * 2^(e2-1)
-        int e10 = (int)detail::fp::floor((e2 - 1) * 0.30102999566398114); // ≈ log10(2)
+        int e10 = (int)detail::fp::floor((e2 - 1) * 0.30102999566398114); // approx log10(2)
 
         m = ax * bl::detail::_f128_impl::pow10_128(-e10);
         if (!detail::fp::isfinite(m.hi))
@@ -90,7 +138,7 @@ namespace detail::_f128 // primitives and kernels
         if (!(scaled >= f128_s{ 1.0 }) || !(scaled < f128_s{ 10.0 }))
             return false;
 
-        const int digit_count = sig + 1;
+        const int digit_count = sig + 2;
         if (digit_count > capacity)
             return false;
 
@@ -121,10 +169,28 @@ namespace detail::_f128 // primitives and kernels
         if (digits[0] <= '0' || digits[0] > '9')
             return false;
 
-        if (digits[digit_count - 1] >= '5')
+        const int round_digit_index = sig;
+        const int sticky_digit_index = sig + 1;
+        const int round_digit = digits[round_digit_index] - '0';
+
+        // The approximate path is fast, but decimal cases close to a rounding
+        // boundary are exactly where the stream-compatible policy matters.
+        if (round_digit == 4 || round_digit == 5)
+            return false;
+
+        const bool sticky =
+            digits[sticky_digit_index] != '0' ||
+            scaled.hi > 0.0 ||
+            scaled.lo > 0.0;
+        const int last_kept_digit = digits[sig - 1] - '0';
+        const bool round_up =
+            round_digit > 5 ||
+            (round_digit == 5 && (sticky || ((last_kept_digit & 1) != 0)));
+
+        if (round_up)
         {
-            ++digits[digit_count - 2];
-            int i = digit_count - 2;
+            ++digits[sig - 1];
+            int i = sig - 1;
             while (i > 0 && digits[i] > '9')
             {
                 digits[i] = static_cast<char>(digits[i] - 10);
@@ -226,29 +292,41 @@ namespace detail::_f128 // primitives and kernels
 
         static constexpr value_type pack_from_significand(const detail::exact_decimal::biguint& q, int e2, bool neg) noexcept
         {
-            if (q.bit_length() > significand_bits)
+            const int bits = q.bit_length();
+            if (bits <= 0)
+                return zero(neg);
+
+            if (bits <= 53)
             {
-                const std::uint64_t c2 = q.get_bits(0, 53);
-                const std::uint64_t c1 = q.get_bits(53, 53);
-                const std::uint64_t c0 = q.get_bits(106, 53);
-
-                const double hi = c0 ? detail::fp::ldexp(static_cast<double>(c0), e2 - 52) : 0.0;
-                const double mid = c1 ? detail::fp::ldexp(static_cast<double>(c1), e2 - 105) : 0.0;
-                const double lo = c2 ? detail::fp::ldexp(static_cast<double>(c2), e2 - 158) : 0.0;
-
-                const f128_s tail = detail::_f128::renorm(mid, lo);
-                f128_s out = detail::_f128::renorm(hi, tail.hi);
-                out = detail::_f128::renorm(out.hi, out.lo + tail.lo);
-                if (neg)
-                    out = -out;
-                return out;
+                const std::uint64_t c0 = q.get_bits(0, bits);
+                value_type out{ c0 ? detail::fp::ldexp(static_cast<double>(c0), e2 - (bits - 1)) : 0.0, 0.0 };
+                return neg ? -out : out;
             }
 
-            const std::uint64_t c1 = q.get_bits(0, 53);
-            const std::uint64_t c0 = q.get_bits(53, 53);
+            if (bits <= 106)
+            {
+                const int lo_width = bits - 53;
+                const std::uint64_t c1 = q.get_bits(0, lo_width);
+                const std::uint64_t c0 = q.get_bits(lo_width, 53);
+
+                const double hi = c0 ? detail::fp::ldexp(static_cast<double>(c0), e2 - 52) : 0.0;
+                const double lo = c1 ? detail::fp::ldexp(static_cast<double>(c1), e2 - (bits - 1)) : 0.0;
+                value_type out = detail::_f128::renorm(hi, lo);
+                return neg ? -out : out;
+            }
+
+            const int lo_width = bits - 106;
+            const std::uint64_t c2 = q.get_bits(0, lo_width);
+            const std::uint64_t c1 = q.get_bits(lo_width, 53);
+            const std::uint64_t c0 = q.get_bits(bits - 53, 53);
+
             const double hi = c0 ? detail::fp::ldexp(static_cast<double>(c0), e2 - 52) : 0.0;
-            const double lo = c1 ? detail::fp::ldexp(static_cast<double>(c1), e2 - 105) : 0.0;
-            f128_s out = detail::_f128::renorm(hi, lo);
+            const double mid = c1 ? detail::fp::ldexp(static_cast<double>(c1), e2 - 105) : 0.0;
+            const double lo = c2 ? detail::fp::ldexp(static_cast<double>(c2), e2 - (bits - 1)) : 0.0;
+
+            const f128_s tail = detail::_f128::renorm(mid, lo);
+            f128_s out = detail::_f128::renorm(hi, tail.hi);
+            out = detail::_f128::renorm(out.hi, out.lo + tail.lo);
             if (neg)
                 out = -out;
             return out;
@@ -269,26 +347,24 @@ namespace detail::_f128 // primitives and kernels
             !exact_neg)
         {
             exp10 = detail::exact_decimal::decimal_exponent_from_components(magnitude, common_exp);
-            if (exp10 >= 10 && exp10 <= 32)
+
+            detail::exact_decimal::biguint coefficient;
+            int exact_exp10 = exp10;
+            if (detail::exact_decimal::exact_significant_decimal<exact_traits>(
+                    magnitude,
+                    common_exp,
+                    sig,
+                    coefficient,
+                    exact_exp10))
             {
-                detail::exact_decimal::biguint coefficient;
-                int exact_exp10 = exp10;
-                if (detail::exact_decimal::exact_significant_decimal<exact_traits>(
-                        magnitude,
-                        common_exp,
-                        sig,
-                        coefficient,
-                        exact_exp10))
+                exp10 = exact_exp10;
+                digits = detail::exact_decimal::to_decimal_string<String>(coefficient);
+                if (static_cast<int>(digits.size()) < sig)
                 {
-                    exp10 = exact_exp10;
-                    digits = detail::exact_decimal::to_decimal_string<String>(coefficient);
-                    if (static_cast<int>(digits.size()) < sig)
-                    {
-                        const std::size_t zero_pad_count = static_cast<std::size_t>(sig - static_cast<int>(digits.size()));
-                        digits.insert(0, zero_pad_count, '0');
-                    }
-                    return true;
+                    const std::size_t zero_pad_count = static_cast<std::size_t>(sig - static_cast<int>(digits.size()));
+                    digits.insert(0, zero_pad_count, '0');
                 }
+                return true;
             }
 
             f128_s m = x * bl::detail::_f128_impl::pow10_128(-exp10);
@@ -553,6 +629,9 @@ namespace detail::_f128 // primitives and kernels
         static constexpr int limb_count = detail::_f128::exact_traits::limb_count;
         static constexpr int significand_bits = detail::_f128::exact_traits::significand_bits;
         static constexpr int conversion_significand_bits = 53 * (limb_count + 1);
+        static constexpr int decimal_conversion_guard_bits = conversion_significand_bits - significand_bits;
+        static constexpr int decimal_conversion_significand_bits =
+            significand_bits + decimal_conversion_guard_bits;
         static constexpr int max_binary_exponent = 1023;
         static constexpr int min_normal_binary_exponent = -1022;
         static constexpr int min_binary_exponent = -1074;
@@ -574,11 +653,29 @@ namespace detail::_f128 // primitives and kernels
         static constexpr value_type quiet_nan() noexcept { return std::numeric_limits<value_type>::quiet_NaN(); }
         static constexpr detail::fltx_char_result to_chars_general(char* first, char* last, const value_type& x, int precision, bool strip_trailing_zeros)
         {
+            if (detail::_f128::runtime_native_double_subnormal(x))
+                return detail::_f128::emit_native_double_to_chars(first, last, x.hi, std::chars_format::general, precision, strip_trailing_zeros);
+
             return detail::emit_general_decimal_for_traits<f128_io_traits>(first, last, x, precision, strip_trailing_zeros);
         }
 
         static constexpr detail::fltx_char_result to_chars_fixed(char* first, char* last, const value_type& x, int precision, bool strip_trailing_zeros)
         {
+            if (detail::_f128::runtime_native_double_subnormal(x))
+                return detail::_f128::emit_native_double_to_chars(first, last, x.hi, std::chars_format::fixed, precision);
+
+            if (precision <= std::numeric_limits<value_type>::digits10)
+            {
+                return detail::emit_exact_fixed_decimal_to_chars<exact_decimal_traits, string_type>(
+                    first,
+                    last,
+                    x,
+                    precision,
+                    strip_trailing_zeros,
+                    iszero(x),
+                    is_negative(x));
+            }
+
             return detail::emit_fixed_decimal_for_traits<f128_io_traits>(first, last, x, precision, strip_trailing_zeros);
         }
 
@@ -592,32 +689,42 @@ namespace detail::_f128 // primitives and kernels
             char* last,
             const value_type& x,
             int precision,
-            int significant_digits,
-            int exp10,
+            int,
+            int,
             bool strip_trailing_zeros)
         {
-            if (significant_digits <= 16 && exp10 >= 10)
-            {
-                return detail::emit_exact_fixed_decimal_to_chars<exact_decimal_traits, string_type>(
-                    first,
-                    last,
-                    x,
-                    precision,
-                    strip_trailing_zeros,
-                    iszero(x),
-                    is_negative(x));
-            }
-
-            return to_chars_fixed_fast(first, last, x, precision, strip_trailing_zeros);
+            return detail::emit_exact_fixed_decimal_to_chars<exact_decimal_traits, string_type>(
+                first,
+                last,
+                x,
+                precision,
+                strip_trailing_zeros,
+                iszero(x),
+                is_negative(x));
         }
 
         static constexpr detail::fltx_char_result to_chars_scientific_frac(char* first, char* last, const value_type& x, int precision, bool strip_trailing_zeros)
         {
+            if (detail::_f128::runtime_native_double_subnormal(x))
+                return detail::_f128::emit_native_double_to_chars(first, last, x.hi, std::chars_format::scientific, precision);
+
             return detail::emit_scientific_frac_for_traits<f128_io_traits>(first, last, x, precision, strip_trailing_zeros);
         }
 
         static constexpr detail::fltx_char_result to_chars_scientific_sig(char* first, char* last, const value_type& x, int precision, bool strip_trailing_zeros)
         {
+            if (detail::_f128::runtime_native_double_subnormal(x))
+            {
+                const int frac_digits = precision > 1 ? precision - 1 : 0;
+                return detail::_f128::emit_native_double_to_chars(
+                    first,
+                    last,
+                    x.hi,
+                    std::chars_format::scientific,
+                    frac_digits,
+                    strip_trailing_zeros);
+            }
+
             return emit_scientific_sig_to_chars_f128(first, last, x, precision, strip_trailing_zeros);
         }
 
@@ -629,12 +736,12 @@ namespace detail::_f128 // primitives and kernels
 
         static constexpr bool compact_decimal_to_value(std::uint64_t coeff, int dec_exp, bool neg, value_type& out)
         {
-            return detail::exact_decimal::compact_decimal_to_value<detail::_f128::exact_traits>(coeff, dec_exp, neg, out);
+            return detail::exact_decimal::compact_decimal_to_value<f128_io_traits>(coeff, dec_exp, neg, out);
         }
 
         static constexpr value_type exact_decimal_to_value(const detail::exact_decimal::biguint& coeff, int dec_exp, bool neg)
         {
-            return detail::exact_decimal::exact_decimal_to_value<detail::_f128::exact_traits>(coeff, dec_exp, neg);
+            return detail::exact_decimal::exact_decimal_to_value<f128_io_traits>(coeff, dec_exp, neg);
         }
 
         static constexpr value_type pack_from_significand(const detail::exact_decimal::biguint& q, int e2, bool neg) noexcept
@@ -671,13 +778,10 @@ namespace detail::_f128 // primitives and kernels
     return detail::to_static_string_impl<detail::_f128::f128_io_traits>(value, precision, flags);
 }
 
-[[nodiscard]] inline std::string to_string(
+[[nodiscard]] BL_NO_INLINE std::string to_string(
     const f128_s& value,
     precision_info precision = std::numeric_limits<f128_s>::digits10,
-    std::ios_base::fmtflags flags = std::ios_base::fmtflags{})
-{
-    return detail::to_string_impl<detail::_f128::f128_io_traits>(value, precision, flags);
-}
+    std::ios_base::fmtflags flags = std::ios_base::fmtflags{});
 
 namespace detail::_f128 // primitives and kernels
 {
