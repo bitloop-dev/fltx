@@ -11,6 +11,7 @@
 #define F128_DETAIL_CONSTS_INCLUDED
 #include <cstdint>
 
+#include "fltx/detail/trig_reduce_consts.h"
 #include "fltx/f128_type.h"
 
 namespace bl::detail::_f128 // primitives and kernels
@@ -18,6 +19,8 @@ namespace bl::detail::_f128 // primitives and kernels
     // scalar constants
     inline constexpr f128_s sqrt_half       = { 0x1.6a09e667f3bcdp-1, -0x1.bdd3413b26456p-55 };
     inline constexpr f128_s half_log_two_pi = { 0x1.d67f1c864beb5p-1, -0x1.65b5a1b7ff5dfp-55 };
+    inline constexpr f128_s exp_overflow_cutoff = { 0x1.62e42fefa39efp+9, 0x1.a9c9e3b39803fp-46 };
+    inline constexpr f128_s exp_zero_cutoff     = { -0x1.74910d52d3052p+9, 0x1.04e7ce353629ep-46 };
 
     // trig constants
     inline constexpr f128_s pi_2   = { 0x1.921fb54442d18p+0,  0x1.1a62633145c07p-54 };

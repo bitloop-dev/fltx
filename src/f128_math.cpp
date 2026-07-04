@@ -48,11 +48,6 @@ namespace bl::detail::_f128_runtime
         return detail::_f128_impl::nearbyint_runtime(a);
     }
 
-    BL_NO_INLINE f128_s rint(const f128_s& x)
-    {
-        return detail::_f128_impl::rint(x);
-    }
-
     BL_NO_INLINE long lround(const f128_s& x)
     {
         return detail::_f128_impl::lround(x);
@@ -79,11 +74,6 @@ namespace bl::detail::_f128_runtime
         return detail::_f128_impl::fmod(x, y);
     }
 
-    BL_NO_INLINE f128_s remainder(const f128_s& x, const f128_s& y)
-    {
-        return detail::_f128_impl::remainder(x, y);
-    }
-
     BL_NO_INLINE f128_s remquo(const f128_s& x, const f128_s& y, int* quo) 
     { 
         return detail::_f128_impl::remquo(x, y, quo); 
@@ -93,12 +83,6 @@ namespace bl::detail::_f128_runtime
     BL_NO_INLINE f128_s modf(const f128_s& x, f128_s* iptr) noexcept 
     { 
         return detail::_f128_impl::modf(x, iptr);
-    }
-
-    // decomposition and scaling
-    BL_NO_INLINE f128_s ldexp(const f128_s& x, int e)
-    {
-        return detail::_f128_impl::ldexp(x, e);
     }
 
 } // namespace bl::detail::_f128_runtime

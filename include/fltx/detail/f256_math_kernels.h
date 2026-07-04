@@ -147,7 +147,7 @@ namespace detail::_f256 // primitives and kernels
     BL_FORCE_INLINE constexpr f256_s add_mul_double_eval(const f256_s& addend, const f256_s& value, double scalar) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            add_mul_double_maybe_pow2_inline(addend, value, scalar),
+            add_mul_double_inline(addend, value, scalar),
             detail::_f256_runtime::add_mul_double(addend, value, scalar)
         );
     }
@@ -155,7 +155,7 @@ namespace detail::_f256 // primitives and kernels
     BL_FORCE_INLINE constexpr f256_s sub_mul_double_eval(const f256_s& minuend, const f256_s& value, double scalar) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            sub_mul_double_maybe_pow2_inline(minuend, value, scalar),
+            sub_mul_double_inline(minuend, value, scalar),
             detail::_f256_runtime::sub_mul_double(minuend, value, scalar)
         );
     }
@@ -163,7 +163,7 @@ namespace detail::_f256 // primitives and kernels
     BL_FORCE_INLINE constexpr f256_s mul_double_sub_eval(const f256_s& value, double scalar, const f256_s& subtrahend) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            mul_double_sub_maybe_pow2_inline(value, scalar, subtrahend),
+            mul_double_sub_inline(value, scalar, subtrahend),
             detail::_f256_runtime::mul_double_sub(value, scalar, subtrahend)
         );
     }
@@ -882,7 +882,7 @@ namespace detail::_f256 // primitives and kernels
         if (!refine_quotient)
             return false;
 
-        const f256_s q_floor = detail::_f256_impl::floor(ax / ay);
+        const f256_s q_floor = detail::_f256_impl::trunc(ax / ay);
         if (q_floor.x1 != 0.0 || q_floor.x2 != 0.0 || q_floor.x3 != 0.0)
             return false;
         if (!(q_floor.x0 > 0.0) || q_floor.x0 >= quotient_limit || q_floor.x0 == q)
@@ -912,20 +912,16 @@ namespace detail::_f256 // primitives and kernels
         return true;
     }
 
-    BL_FORCE_INLINE constexpr f256_s fmod_exact_abs_with_quotient_mod(
-        const f256_s& ax,
-        const f256_s& ay,
-        std::uint64_t& quotient_mod)
-    {
-        return fmod_exact_fixed_limb_abs_with_quotient_mod(ax, ay, quotient_mod);
-    }
-
     BL_MSVC_NOINLINE constexpr f256_s fmod_reduced_or_exact(const f256_s& x, const f256_s& y)
     {
         const f256_s ay = mag(y);
         f256_s r = mag(x);
 
-        constexpr int exact_reduction_exponent_gap = 62;
+        // A scaled reduction with shift > 0 rounds an intermediate remainder
+        // whose ulp is 2^shift coarser than the final modulo-by-y remainder.
+        // Keep the fast reduced path only where the first subtraction is also
+        // the final-scale subtraction; wider quotients need the exact reducer.
+        constexpr int exact_reduction_exponent_gap = 52;
         if (frexp_exponent_limb(r.x0) - frexp_exponent_limb(ay.x0) > exact_reduction_exponent_gap)
             return fmod_exact(x, y);
 
@@ -1472,14 +1468,14 @@ namespace detail::_f256 // primitives and kernels
 
         if (bl::signbit(x))
         {
-            f256_s y = -detail::_f256_impl::floor(
+            f256_s y = -detail::_f256_impl::trunc(
                 add_double_inline(-x, 0.5));
             if (iszero(y))
                 return f256_s{ -0.0, 0.0, 0.0, 0.0 };
             return y;
         }
 
-        return detail::_f256_impl::floor(
+        return detail::_f256_impl::trunc(
             add_double_inline(x, 0.5));
     }
 
@@ -1535,7 +1531,17 @@ namespace detail::_f256 // primitives and kernels
         if (x < detail::_f256_impl::to_f256(lo_i) || x > detail::_f256_impl::to_f256(hi_i))
             return false;
 
-        const std::int64_t base = static_cast<std::int64_t>(x.x0);
+        std::int64_t base = static_cast<std::int64_t>(x.x0);
+        if (static_cast<double>(base) == x.x0)
+        {
+            const bool tail_positive = x.x1 > 0.0 || (x.x1 == 0.0 && (x.x2 > 0.0 || (x.x2 == 0.0 && x.x3 > 0.0)));
+            const bool tail_negative = x.x1 < 0.0 || (x.x1 == 0.0 && (x.x2 < 0.0 || (x.x2 == 0.0 && x.x3 < 0.0)));
+            if (x.x0 < 0.0 && tail_positive)
+                ++base;
+            else if (x.x0 > 0.0 && tail_negative)
+                --base;
+        }
+
         const f256_s frac     = sub_double_inline(x, static_cast<double>(base));
         const f256_s abs_frac = mag(frac);
         std::int64_t rounded = base;
@@ -1543,7 +1549,7 @@ namespace detail::_f256 // primitives and kernels
         if (abs_frac > f256_s{ 0.5 } || (!ties_to_even && abs_frac == f256_s{ 0.5 }) ||
             (ties_to_even && abs_frac == f256_s{ 0.5 } && (base & 1ll) != 0))
         {
-            rounded += (x.x0 < 0.0 || (x.x0 == 0.0 && signbit(x.x0))) ? -1 : 1;
+            rounded += bl::signbit(frac) ? -1 : 1;
         }
 
         if (rounded < lo_i || rounded > hi_i)

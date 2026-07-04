@@ -146,10 +146,47 @@ namespace detail::_f32_runtime
     );
 }
 
-template<class Exp>
-requires fltx_pow_wider_floating_exponent<float, Exp>
-[[nodiscard]] BL_FORCE_INLINE constexpr float pow(float, const Exp&) noexcept = delete;
+template<detail::fp::non_bool_integral Exp>
+[[nodiscard]] BL_FORCE_INLINE constexpr float ipow(float x, Exp y) noexcept
+{
+    int exponent = 0;
+    if (detail::fp::try_int_exponent(y, exponent))
+    {
+        const bool negative_base = x < 0.0f;
+        const float magnitude = negative_base ? -x : x;
+        float value{};
 
+        if (magnitude == 2.0f)
+        {
+            if (exponent >= std::numeric_limits<float>::max_exponent)
+                value = std::numeric_limits<float>::infinity();
+            else if (exponent < std::numeric_limits<float>::min_exponent - std::numeric_limits<float>::digits)
+                value = 0.0f;
+            else
+                value = static_cast<float>(detail::fp::ldexp(1.0, exponent));
+
+            return (negative_base && detail::fp::is_odd_integral(y)) ? -value : value;
+        }
+
+        if (magnitude == 10.0f)
+        {
+            value = detail::_f32_impl::pow10(exponent);
+            return (negative_base && detail::fp::is_odd_integral(y)) ? -value : value;
+        }
+    }
+
+    using U = std::make_unsigned_t<std::remove_cvref_t<Exp>>;
+    const U magnitude = detail::fp::unsigned_abs(y);
+    const float powered = detail::fp::ipow_nonneg_fast<float, U>(x, magnitude);
+
+    if constexpr (std::signed_integral<std::remove_cvref_t<Exp>>)
+    {
+        if (y < 0)
+            return 1.0f / powered;
+    }
+
+    return powered;
+}
 
 // trig
 [[nodiscard]] BL_FORCE_INLINE constexpr float sin(float x) noexcept

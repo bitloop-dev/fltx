@@ -30,7 +30,6 @@ namespace detail::_f256_runtime
     BL_NO_INLINE f256_s round_to_decimals(f256_s v, int prec);
     BL_NO_INLINE f256_s round_to_significant_figures(f256_s v, int figures);
     BL_NO_INLINE f256_s nearbyint(const f256_s& a);
-    BL_NO_INLINE f256_s rint(const f256_s& x);
     BL_NO_INLINE long lround(const f256_s& x);
     BL_NO_INLINE long long llround(const f256_s& x);
     BL_NO_INLINE long lrint(const f256_s& x);
@@ -38,19 +37,10 @@ namespace detail::_f256_runtime
 
     // remainders
     BL_NO_INLINE f256_s fmod(const f256_s& x, const f256_s& y);
-    BL_NO_INLINE f256_s remainder(const f256_s& x, const f256_s& y);
     BL_NO_INLINE f256_s remquo(const f256_s& x, const f256_s& y, int* quo);
 
     // fractional decomposition
     BL_NO_INLINE f256_s modf(const f256_s& x, f256_s* iptr) noexcept;
-
-    // decomposition and scaling
-    BL_NO_INLINE f256_s ldexp(const f256_s& a, int e);
-    BL_NO_INLINE f256_s frexp(const f256_s& x, int* exp) noexcept;
-    BL_NO_INLINE int ilogb(const f256_s& x) noexcept;
-    BL_NO_INLINE f256_s logb(const f256_s& x) noexcept;
-    BL_NO_INLINE f256_s scalbn(const f256_s& x, int e) noexcept;
-    BL_NO_INLINE f256_s scalbln(const f256_s& x, long e) noexcept;
 
     // exp / log
     BL_NO_INLINE f256_s exp(const f256_s& x);
@@ -62,9 +52,10 @@ namespace detail::_f256_runtime
     BL_NO_INLINE f256_s log1p(const f256_s& x);
 
     // pow
-    BL_NO_INLINE f256_s pow10_256(int k);
     BL_NO_INLINE f256_s pow(const f256_s& x, const f256_s& y);
     BL_NO_INLINE f256_s pow(const f256_s& x, double y);
+    BL_NO_INLINE f256_s ipow_signed(const f256_s& x, std::intmax_t y);
+    BL_NO_INLINE f256_s ipow_unsigned(const f256_s& x, std::uintmax_t y);
 
     // trig
     BL_NO_INLINE bool sincos(const f256_s& x, f256_s& s_out, f256_s& c_out);
@@ -109,8 +100,6 @@ namespace detail::_f256_impl
     BL_FORCE_INLINE constexpr f256_s hypot(const f256_s& x, const f256_s& y);
 
     // rounding and decimals
-    inline constexpr f256_s floor(const f256_s& a);
-    inline constexpr f256_s ceil(const f256_s& a);
     BL_FORCE_INLINE constexpr f256_s trunc(const f256_s& a);
     BL_FORCE_INLINE constexpr f256_s round(const f256_s& a);
     BL_FORCE_INLINE f256_s round_runtime(const f256_s& a) noexcept;
@@ -118,7 +107,6 @@ namespace detail::_f256_impl
     BL_FORCE_INLINE constexpr f256_s round_to_significant_figures(f256_s v, int figures);
     BL_FORCE_INLINE constexpr f256_s nearbyint(const f256_s& a);
     BL_FORCE_INLINE f256_s nearbyint_runtime(const f256_s& a) noexcept;
-    BL_FORCE_INLINE constexpr f256_s rint(const f256_s& x);
     BL_FORCE_INLINE constexpr long lround(const f256_s& x);
     BL_FORCE_INLINE constexpr long long llround(const f256_s& x);
     BL_FORCE_INLINE constexpr long lrint(const f256_s& x);
@@ -133,7 +121,6 @@ namespace detail::_f256_impl
 
     // remainders
     BL_FORCE_INLINE constexpr f256_s fmod(const f256_s& x, const f256_s& y);
-    BL_FORCE_INLINE constexpr f256_s remainder(const f256_s& x, const f256_s& y);
     BL_FORCE_INLINE constexpr f256_s remquo(const f256_s& x, const f256_s& y, int* quo);
 
     // fractional decomposition
@@ -144,13 +131,9 @@ namespace detail::_f256_impl
     BL_FORCE_INLINE constexpr f256_s frexp(const f256_s& x, int* exp) noexcept;
     BL_FORCE_INLINE constexpr int ilogb(const f256_s& x) noexcept;
     BL_FORCE_INLINE constexpr f256_s logb(const f256_s& x) noexcept;
-    BL_FORCE_INLINE constexpr f256_s scalbn(const f256_s& x, int e) noexcept;
-    BL_FORCE_INLINE constexpr f256_s scalbln(const f256_s& x, long e) noexcept;
 
     // adjacent values
     BL_FORCE_INLINE constexpr f256_s nextafter(const f256_s& from, const f256_s& to) noexcept;
-    BL_FORCE_INLINE constexpr f256_s nexttoward(const f256_s& from, long double to) noexcept;
-    BL_FORCE_INLINE constexpr f256_s nexttoward(const f256_s& from, const f256_s& to) noexcept;
 
     // exp / log
     BL_FORCE_INLINE constexpr double log_as_double(f256_s a) noexcept;

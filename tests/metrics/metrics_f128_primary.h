@@ -632,10 +632,21 @@ namespace bl::test::metrics::f128_primary
         return support.result();
     }
 
+    inline constexpr double exact_result_bits = 160.0;
+
+    [[nodiscard]] inline double cap_accuracy_bits(double bits) noexcept
+    {
+        if (std::isinf(bits) || std::isnan(bits))
+            return bits;
+        return std::min(bits, exact_result_bits);
+    }
+
     [[nodiscard]] inline double finite_for_mean(double bits) noexcept
     {
-        constexpr double exact_result_bits = 160.0;
-        return std::isinf(bits) ? exact_result_bits : bits;
+        const double capped = cap_accuracy_bits(bits);
+        return std::isinf(capped)
+            ? (capped > 0.0 ? exact_result_bits : -exact_result_bits)
+            : capped;
     }
 
     template<class Samples, class T, class MakeFn>
@@ -1144,7 +1155,11 @@ namespace bl::test::metrics::f128_primary
             { "near one", { "x", 1.0, 0x1p-54 } },
             { "two", { "x", 2.0, 0x1p-55 } },
             { "large", { "x", 0x1.3c0ca428c59f8p+24, 0x1p-30 } },
-            { "tiny normal", { "x", 0x1p-32, 0x1p-86 } }
+            { "tiny normal", { "x", 0x1p-32, 0x1p-86 } },
+            { "sqrt scaled tiny below", { "x", 0x1p-901, 0.0 } },
+            { "sqrt scaled tiny edge", { "x", 0x1p-900, 0.0 } },
+            { "sqrt scaled huge edge", { "x", 0x1p900, 0.0 } },
+            { "sqrt scaled huge above", { "x", 0x1p901, 0.0 } }
         };
 
         sample_rng rng{ 0x128acc90517ull };
@@ -1163,7 +1178,9 @@ namespace bl::test::metrics::f128_primary
             { "large plus small", { "x", 0x1.3c0ca428c59f8p+32, 0x1p-22 }, { "y", -0x1.f972474538ef3p-20, 0x1p-74 } },
             { "near cancellation", { "x", 1.0, 0x1p-54 }, { "y", -1.0, 0x1p-55 } },
             { "fractional", { "x", -0x1.1f9add3739636p-4, 0x1p-60 }, { "y", 0x1.3be76c8b43958p+3, -0x1p-52 } },
-            { "wide finite", { "x", 0x1.2d6444d013d18p+48, -0x1p-8 }, { "y", 0x1.8p-24, 0x1p-80 } }
+            { "wide finite", { "x", 0x1.2d6444d013d18p+48, -0x1p-8 }, { "y", 0x1.8p-24, 0x1p-80 } },
+            { "checked dekker huge", { "x", 0x1p997, 0.0 }, { "y", 1.5, -0x1p-54 } },
+            { "checked dekker tiny", { "x", 0x1p-969, 0.0 }, { "y", -1.5, 0x1p-54 } }
         };
 
         sample_rng rng{ 0x128acca217ull };
@@ -1329,6 +1346,15 @@ namespace bl::test::metrics::f128_primary
         samples.push_back({ "negative moderate", { "x", -2.5, 0x1p-54 } });
         samples.push_back({ "ten pi plus offset", { "x", 31.75, -0x1p-52 } });
         samples.push_back({ "wide reduction", { "x", 12345.678901234567, 0x1p-43 } });
+        samples.push_back({ "large reduction limit", { "x", 7.0e15, 0.0 } });
+        samples.push_back({
+            "above reduction limit",
+            { "x", std::nextafter(7.0e15, std::numeric_limits<double>::infinity()), 0.0 }
+        });
+        samples.push_back({
+            "negative above reduction limit",
+            { "x", -std::nextafter(7.0e15, std::numeric_limits<double>::infinity()), 0.0 }
+        });
     }
 
     [[nodiscard]] inline std::vector<unary_sample> make_unshifted_trig_samples()
@@ -1377,6 +1403,9 @@ namespace bl::test::metrics::f128_primary
     [[nodiscard]] inline std::vector<unary_sample> make_tan_samples()
     {
         std::vector<unary_sample> samples = make_unshifted_trig_samples();
+        const fltx_type half_pi = trig_half_pi();
+        samples.push_back({ "near positive pole", make_runtime_value("x", half_pi - fltx_type{ 0x1p-20 }) });
+        samples.push_back({ "near negative pole", make_runtime_value("x", -half_pi + fltx_type{ 0x1p-20 }) });
         sample_rng rng{ 0x128acc7a9ull };
         while (samples.size() < random_sample_count() + 6)
         {
@@ -1392,10 +1421,14 @@ namespace bl::test::metrics::f128_primary
     {
         std::vector<unary_sample> samples{
             { "negative ten", { "x", -10.0, 0x1p-50 } },
+            { "underflow edge below", { "x", -745.133219101941, -0x1p-45 } },
+            { "underflow edge above", { "x", -745.133219101941, 0x1p-45 } },
             { "near zero", { "x", 0.0, 0x1p-60 } },
             { "quarter", { "x", 0.25, 0x1p-56 } },
             { "one", { "x", 1.0, -0x1p-54 } },
-            { "five", { "x", 5.0, 0x1p-50 } }
+            { "five", { "x", 5.0, 0x1p-50 } },
+            { "overflow edge below", { "x", 709.782712893384, -0x1p-45 } },
+            { "overflow edge above", { "x", 709.782712893384, 0x1p-45 } }
         };
 
         sample_rng rng{ 0x128acce901ull };
@@ -1411,10 +1444,14 @@ namespace bl::test::metrics::f128_primary
     {
         std::vector<unary_sample> samples{
             { "negative ten", { "x", -10.0, 0x1p-50 } },
+            { "subnormal edge below", { "x", -1074.0, -0x1p-45 } },
+            { "subnormal edge", { "x", -1074.0, 0.0 } },
             { "negative one", { "x", -1.0, 0x1p-54 } },
             { "zero", { "x", 0.0, 0.0 } },
             { "one", { "x", 1.0, -0x1p-54 } },
-            { "ten", { "x", 10.0, -0x1p-50 } }
+            { "ten", { "x", 10.0, -0x1p-50 } },
+            { "overflow edge", { "x", 1023.0, 0.0 } },
+            { "overflow edge above", { "x", 1023.0, 0x1p-45 } }
         };
 
         sample_rng rng{ 0x128acce2e2ull };
@@ -1430,10 +1467,14 @@ namespace bl::test::metrics::f128_primary
     {
         std::vector<unary_sample> samples{
             { "negative twenty", { "x", -20.0, 0x1p-48 } },
+            { "underflow edge below", { "x", -745.133219101941, -0x1p-45 } },
+            { "underflow edge above", { "x", -745.133219101941, 0x1p-45 } },
             { "negative tiny", { "x", -1e-10, 0x1p-88 } },
             { "zero", { "x", 0.0, 0.0 } },
             { "positive tiny", { "x", 1e-10, -0x1p-88 } },
-            { "twenty", { "x", 20.0, -0x1p-48 } }
+            { "twenty", { "x", 20.0, -0x1p-48 } },
+            { "overflow edge below", { "x", 709.782712893384, -0x1p-45 } },
+            { "overflow edge above", { "x", 709.782712893384, 0x1p-45 } }
         };
 
         sample_rng rng{ 0x128acce111ull };
@@ -1471,7 +1512,15 @@ namespace bl::test::metrics::f128_primary
             { "fractional base", { "x", 0.75, 0x1p-56 }, { "y", 3.25, -0x1p-54 } },
             { "near one", { "x", 1.0, 0x1p-53 }, { "y", 512.0, 0x1p-45 } },
             { "moderate", { "x", 8.5, -0x1p-53 }, { "y", -1.25, 0x1p-55 } },
-            { "large base", { "x", 1024.0, 0x1p-42 }, { "y", 1.75, -0x1p-55 } }
+            { "large base", { "x", 1024.0, 0x1p-42 }, { "y", 1.75, -0x1p-55 } },
+            { "negative odd integer", { "x", -2.0, -0x1p-55 }, { "y", 3.0, 0.0 } },
+            { "negative even integer", { "x", -2.0, 0x1p-55 }, { "y", 4.0, 0.0 } },
+            { "negative reciprocal odd", { "x", -2.0, -0x1p-55 }, { "y", -3.0, 0.0 } },
+            { "negative noninteger", { "x", -2.0, 0x1p-55 }, { "y", 0.5, 0.0 } },
+            { "negative near integer exponent", { "x", -2.0, -0x1p-55 }, { "y", 3.0, 0x1p-60 } },
+            { "dyadic eighth max", { "x", 1.25, 0x1p-56 }, { "y", 128.0, 0.0 } },
+            { "dyadic eighth outside", { "x", 1.25, -0x1p-56 }, { "y", 128.125, 0.0 } },
+            { "power of two high exponent", { "x", 2.0, 0.0 }, { "y", 255.0, 0.0 } }
         };
 
         sample_rng rng{ 0x128acc90dull };
@@ -1479,7 +1528,8 @@ namespace bl::test::metrics::f128_primary
         {
             fltx_type x{};
             fltx_type y{};
-            switch (index % 4)
+            bool exact_integer_exponent = false;
+            switch (index % 5)
             {
             case 0:
                 x = positive_log_value(rng, -12, 12);
@@ -1493,15 +1543,21 @@ namespace bl::test::metrics::f128_primary
                 x = positive_log_value(rng, -32, 32);
                 y = uniform_value(rng, -2.0, 2.0);
                 break;
-            default:
+            case 3:
                 x = uniform_value(rng, 0.125, 64.0);
                 y = fltx_type{ rng.integer(-16, 16) };
+                exact_integer_exponent = true;
+                break;
+            default:
+                x = -positive_log_value(rng, -12, 12);
+                y = fltx_type{ rng.integer(-16, 16) };
+                exact_integer_exponent = true;
                 break;
             }
             samples.push_back({
                 "random",
                 make_runtime_value("x", x, residual_for(x, rng)),
-                make_runtime_value("y", y, residual_for(y, rng))
+                make_runtime_value("y", y, exact_integer_exponent ? fltx_type{ 0.0 } : residual_for(y, rng))
             });
         }
         return samples;
@@ -1553,7 +1609,11 @@ namespace bl::test::metrics::f128_primary
             { "zero", { "x", 0.0, 0.0 }, { "y", 0.0, 0.0 } },
             { "three four", { "x", 3.0, 0x1p-54 }, { "y", 4.0, -0x1p-54 } },
             { "mixed scale", { "x", 1e20, 0x1p+12 }, { "y", 1e-20, 0x1p-120 } },
-            { "moderate", { "x", 123.456, 0x1p-48 }, { "y", 789.25, -0x1p-44 } }
+            { "moderate", { "x", 123.456, 0x1p-48 }, { "y", 789.25, -0x1p-44 } },
+            { "ratio cutoff", { "x", 1.0, 0.0 }, { "y", 0x1p-55, 0.0 } },
+            { "ratio above cutoff", { "x", 1.0, 0.0 }, { "y", 0x1p-54, 0.0 } },
+            { "large scaled", { "x", 0x1p501, 0.0 }, { "y", 0x1p500, 0.0 } },
+            { "tiny scaled", { "x", 0x1p-501, 0.0 }, { "y", 0x1p-502, 0.0 } }
         };
 
         sample_rng rng{ 0x128acc1707ull };
@@ -1722,6 +1782,46 @@ namespace bl::test::metrics::f128_primary
         std::vector<unary_sample> samples{
             { "negative large fraction", { "x", -123456.75, 0x1p-48 } },
             { "negative above half", { "x", -0.51, -0x1p-58 } },
+            { "negative two52 half", { "x", -0x1p52, -0.5 } },
+            { "negative two52 below half", { "x", -0x1p52, 0.5 } },
+            { "negative tiny", { "x", -0x1p-20, 0x1p-80 } },
+            { "positive tiny", { "x", 0x1p-20, -0x1p-80 } },
+            { "two52 below half", { "x", 0x1p52, -0.5 } },
+            { "two52 half", { "x", 0x1p52, 0.5 } },
+            { "two53 half", { "x", 0x1p53, 0.5 } },
+            { "above half", { "x", 0.51, -0x1p-58 } },
+            { "large fraction", { "x", 123456.75, -0x1p-48 } }
+        };
+
+        sample_rng rng{ 0x128acc9080ull };
+        for (std::size_t index = 0; index < random_sample_count(); ++index)
+        {
+            fltx_type x{};
+            switch (index % 4)
+            {
+            case 0:
+                x = uniform_value(rng, -1e6, 1e6);
+                break;
+            case 1:
+                x = fltx_type{ rng.integer(-1000000, 1000000) } + fltx_type{ 0.5 } + residual_for(fltx_type{ 1.0 }, rng);
+                break;
+            case 2:
+                x = fltx_type{ rng.integer(-1000000, 1000000) } + residual_for(fltx_type{ 1.0 }, rng);
+                break;
+            default:
+                x = signed_log_value(rng, -20, 29);
+                break;
+            }
+            samples.push_back({ "random", make_runtime_value("x", x, residual_for(x, rng)) });
+        }
+        return samples;
+    }
+
+    [[nodiscard]] inline std::vector<unary_sample> make_integer_rounding_base_samples()
+    {
+        std::vector<unary_sample> samples{
+            { "negative large fraction", { "x", -123456.75, 0x1p-48 } },
+            { "negative above half", { "x", -0.51, -0x1p-58 } },
             { "negative tiny", { "x", -0x1p-20, 0x1p-80 } },
             { "positive tiny", { "x", 0x1p-20, -0x1p-80 } },
             { "above half", { "x", 0.51, -0x1p-58 } },
@@ -1749,6 +1849,47 @@ namespace bl::test::metrics::f128_primary
             }
             samples.push_back({ "random", make_runtime_value("x", x, residual_for(x, rng)) });
         }
+        return samples;
+    }
+
+    inline void append_long_rounding_boundary_samples(std::vector<unary_sample>& samples)
+    {
+        const double long_max = static_cast<double>(std::numeric_limits<long>::max());
+        const double long_min = static_cast<double>(std::numeric_limits<long>::min());
+
+        samples.push_back({ "long max below half", { "x", long_max, -0.49 } });
+        samples.push_back({ "long min above half", { "x", long_min, 0.5 } });
+
+        if constexpr (std::numeric_limits<long>::digits > 53)
+        {
+            samples.push_back({ "long two52 half", { "x", 0x1p52, 0.5 } });
+            samples.push_back({ "negative long two52 half", { "x", -0x1p52, -0.5 } });
+            samples.push_back({ "long two53 below half", { "x", 0x1p53, -0.5 } });
+            samples.push_back({ "negative long two53 below half", { "x", -0x1p53, 0.5 } });
+        }
+    }
+
+    inline void append_long_long_rounding_boundary_samples(std::vector<unary_sample>& samples)
+    {
+        samples.push_back({ "ll two52 half", { "x", 0x1p52, 0.5 } });
+        samples.push_back({ "negative ll two52 half", { "x", -0x1p52, -0.5 } });
+        samples.push_back({ "ll two53 below half", { "x", 0x1p53, -0.5 } });
+        samples.push_back({ "negative ll two53 below half", { "x", -0x1p53, 0.5 } });
+        samples.push_back({ "ll max safe", { "x", static_cast<double>(std::numeric_limits<long long>::max() / 2), 0.25 } });
+        samples.push_back({ "ll min safe", { "x", static_cast<double>(std::numeric_limits<long long>::min() / 2), -0.25 } });
+    }
+
+    [[nodiscard]] inline std::vector<unary_sample> make_long_rounding_samples()
+    {
+        std::vector<unary_sample> samples = make_integer_rounding_base_samples();
+        append_long_rounding_boundary_samples(samples);
+        return samples;
+    }
+
+    [[nodiscard]] inline std::vector<unary_sample> make_long_long_rounding_samples()
+    {
+        std::vector<unary_sample> samples = make_integer_rounding_base_samples();
+        append_long_long_rounding_boundary_samples(samples);
         return samples;
     }
 
@@ -1806,10 +1947,18 @@ namespace bl::test::metrics::f128_primary
     {
         std::vector<unary_sample> samples{
             { "negative four", { "x", -4.0, 0x1p-52 } },
+            { "negative saturation above", { "x", -27.0, -0x1p-48 } },
+            { "negative saturation below", { "x", -27.0, 0x1p-48 } },
+            { "negative two", { "x", -2.0, 0x1p-54 } },
+            { "negative one", { "x", -1.0, 0x1p-55 } },
             { "negative tiny", { "x", -1e-10, 0x1p-88 } },
             { "zero", { "x", 0.0, 0.0 } },
             { "positive tiny", { "x", 1e-10, -0x1p-88 } },
-            { "four", { "x", 4.0, -0x1p-52 } }
+            { "one", { "x", 1.0, -0x1p-55 } },
+            { "two", { "x", 2.0, -0x1p-54 } },
+            { "four", { "x", 4.0, -0x1p-52 } },
+            { "saturation below", { "x", 27.0, -0x1p-48 } },
+            { "saturation above", { "x", 27.0, 0x1p-48 } }
         };
 
         sample_rng rng{ 0x128accecfull };
@@ -1824,18 +1973,26 @@ namespace bl::test::metrics::f128_primary
     [[nodiscard]] inline std::vector<unary_sample> make_gamma_samples()
     {
         std::vector<unary_sample> samples{
+            { "negative twenty-nine", { "x", -29.75, 0x1p-54 } },
+            { "negative ten", { "x", -10.25, -0x1p-54 } },
+            { "negative one half", { "x", -1.5, 0x1p-55 } },
+            { "negative half", { "x", -0.5, -0x1p-56 } },
             { "eighth", { "x", 0.125, 0x1p-58 } },
             { "half", { "x", 0.5, 0x1p-58 } },
             { "one", { "x", 1.0, 0.0 } },
             { "one half", { "x", 1.5, -0x1p-54 } },
-            { "ten", { "x", 10.0, 0x1p-50 } }
+            { "ten", { "x", 10.0, 0x1p-50 } },
+            { "asymptotic below", { "x", 40.0, -0x1p-48 } },
+            { "asymptotic edge", { "x", 40.0, 0.0 } },
+            { "asymptotic above", { "x", 40.0, 0x1p-48 } },
+            { "large finite", { "x", 170.0, -0x1p-45 } }
         };
 
         sample_rng rng{ 0x128acc6a99ull };
         for (std::size_t index = 0; index < random_sample_count(); ++index)
         {
             fltx_type x{};
-            switch (index % 4)
+            switch (index % 5)
             {
             case 0:
                 x = uniform_value(rng, 0.125, 12.0);
@@ -1846,11 +2003,15 @@ namespace bl::test::metrics::f128_primary
             case 2:
                 x = uniform_value(rng, 0.125, 35.0);
                 break;
+            case 4:
+                x = -uniform_value(rng, 0.125, 30.0);
+                break;
             default:
                 x = uniform_value(rng, 12.0, 35.0);
                 break;
             }
-            samples.push_back({ "random", make_runtime_value("x", x, positive_residual_for(x, rng)) });
+            const fltx_type residual = x < fltx_type{ 0.0 } ? residual_for(x, rng) : positive_residual_for(x, rng);
+            samples.push_back({ "random", make_runtime_value("x", x, residual) });
         }
         return samples;
     }
@@ -1892,7 +2053,7 @@ namespace bl::test::metrics::f128_primary
             if (enforce_required_bits)
                 CHECK(bits >= required_bits);
 
-            worst_bits = std::min(worst_bits, bits);
+            worst_bits = std::min(worst_bits, cap_accuracy_bits(bits));
             total_bits += finite_for_mean(bits);
             domain_scores.push_back(domain_sample_score(domain_score_bits(actual, expected), target_ideal_bits_for(expected)));
         }
@@ -1942,7 +2103,7 @@ namespace bl::test::metrics::f128_primary
             if (enforce_required_bits)
                 CHECK(bits >= required_bits);
 
-            worst_bits = std::min(worst_bits, bits);
+            worst_bits = std::min(worst_bits, cap_accuracy_bits(bits));
             total_bits += finite_for_mean(bits);
             domain_scores.push_back(domain_sample_score(domain_score_bits(actual, expected), target_ideal_bits_for(expected)));
         }
@@ -1991,7 +2152,7 @@ namespace bl::test::metrics::f128_primary
             if (enforce_required_bits)
                 CHECK(bits >= required_bits);
 
-            worst_bits = std::min(worst_bits, bits);
+            worst_bits = std::min(worst_bits, cap_accuracy_bits(bits));
             total_bits += finite_for_mean(bits);
             domain_scores.push_back(domain_sample_score(domain_score_bits(actual, expected), metrics_ideal_bits));
         }
@@ -2092,7 +2253,7 @@ namespace bl::test::metrics::f128_primary
             if (enforce_required_bits)
                 CHECK(bits >= required_bits);
 
-            worst_bits = std::min(worst_bits, bits);
+            worst_bits = std::min(worst_bits, cap_accuracy_bits(bits));
             total_bits += bits;
             domain_scores.push_back(domain_sample_score(bits, metrics_ideal_bits));
         }
@@ -2142,7 +2303,7 @@ namespace bl::test::metrics::f128_primary
             if (enforce_required_bits)
                 CHECK(bits >= required_bits);
 
-            worst_bits = std::min(worst_bits, bits);
+            worst_bits = std::min(worst_bits, cap_accuracy_bits(bits));
             total_bits += finite_for_mean(bits);
             domain_scores.push_back(domain_sample_score(domain_score_bits(actual, expected), target_ideal_bits_for(expected)));
         }
@@ -2192,7 +2353,7 @@ namespace bl::test::metrics::f128_primary
             if (enforce_required_bits)
                 CHECK(bits >= required_bits);
 
-            worst_bits = std::min(worst_bits, bits);
+            worst_bits = std::min(worst_bits, cap_accuracy_bits(bits));
             total_bits += finite_for_mean(bits);
             domain_scores.push_back(domain_sample_score(domain_score_bits(actual, expected), target_ideal_bits_for(expected)));
         }
@@ -2279,7 +2440,7 @@ namespace bl::test::metrics::f128_primary
             if (enforce_required_bits)
                 CHECK(bits >= required_bits);
 
-            worst_bits = std::min(worst_bits, bits);
+            worst_bits = std::min(worst_bits, cap_accuracy_bits(bits));
             total_bits += finite_for_mean(bits);
             domain_scores.push_back(domain_sample_score(domain_score_bits(actual, expected), target_ideal_bits_for(expected)));
         }
@@ -2355,6 +2516,9 @@ namespace bl::test::metrics::f128_primary
 
         if (operation == "asin" || operation == "acos" || operation == "atan" || operation == "atan2"
             || operation == "atanh" || operation == "asinh" || operation == "acosh" || operation == "pow")
+            return 0.03;
+
+        if (operation.starts_with("pow<T>(") || operation.starts_with("ipow<T>("))
             return 0.03;
 
         if (operation == "sin" || operation == "cos" || operation == "tan")

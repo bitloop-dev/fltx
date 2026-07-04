@@ -11,6 +11,7 @@
 #define F256_DETAIL_CONSTS_INCLUDED
 #include <cstdint>
 
+#include "fltx/detail/trig_reduce_consts.h"
 #include "fltx/f256_type.h"
 
 namespace bl::detail::_f256 // primitives and kernels
@@ -20,32 +21,15 @@ namespace bl::detail::_f256 // primitives and kernels
     inline constexpr f256_s sqrtpi          = { 0x1.c5bf891b4ef6bp+0, -0x1.618f13eb7ca89p-54, -0x1.b1f0071b7aae4p-110, -0x1.389b5a46bdfe8p-165 };
     inline constexpr f256_s half_log_pi     = { 0x1.250d048e7a1bdp-1,  0x1.7abf2ad8d5088p-58, -0x1.6ccf43244818ap-114,  0x1.f9303719c0176p-168 };
     inline constexpr f256_s half_log_two_pi = { 0x1.d67f1c864beb5p-1, -0x1.65b5a1b7ff5dfp-55, -0x1.b7f70c13dc1ccp-110,  0x1.3458b4ddec6a3p-164 };
+    inline constexpr f256_s exp_overflow_cutoff = { 0x1.62e42fefa39efp+9, 0x1.a9c9e3b39803fp-46, 0x1.7757a079a1934p-101, -0x1.b23e8fa413b27p-155 };
+    inline constexpr f256_s exp_zero_cutoff     = { -0x1.74910d52d3052p+9, 0x1.04e7ce353629ep-46, -0x1.541e1edbd82fap-100, -0x1.ccdd1404ead3ep-154 };
 
     // trig constants
     inline constexpr f256_s pi_2       = {  0x1.921fb54442d18p+0,  0x1.1a62633145c07p-54, -0x1.f1976b7ed8fbcp-110,  0x1.4cf98e804177dp-164 };
     inline constexpr f256_s pi_4       = {  0x1.921fb54442d18p-1,  0x1.1a62633145c07p-55, -0x1.f1976b7ed8fbcp-111,  0x1.4cf98e804177dp-165 };
     inline constexpr f256_s invpi2     = {  0x1.45f306dc9c883p-1, -0x1.6b01ec5417056p-55, -0x1.6447e493ad4cep-109,  0x1.e21c820ff28b2p-163 };
     inline constexpr f256_s pi_3_4     = {  0x1.2d97c7f3321d2p+1,  0x1.a79394c9e8a0ap-54,  0x1.456737b06ea1ap-108, -0x1.83226a8fe7731p-162 };
-
-    // argument reduction tables
-    inline constexpr std::uint32_t two_over_pi_fixed_words[] = {
-        0xcaf27f1du, 0x9f3a1f35u, 0x6b1e5ef8u, 0xc33d26efu,
-        0x98327dbbu, 0x32c2de4fu, 0x3f7e33e8u, 0xa5ff0705u,
-        0x5719053eu, 0xddaf44d1u, 0x8b961ca6u, 0x8359c476u,
-        0xdce8092au, 0x19c367cdu, 0x8c6b47c4u, 0x60e27bc0u,
-        0xca73a8c9u, 0x06061556u, 0x4d732731u, 0x8dffd880u,
-        0x14a06840u, 0x6599855fu, 0x5ee61b08u, 0xa9e39161u,
-        0x9af4361du, 0xf0cfbc20u, 0xfc7b6babu, 0x56033046u,
-        0x1f8d5d08u, 0x6bfb5fb1u, 0x8a5292eau, 0x3d0739f7u,
-        0xebe5f17bu, 0x7527bac7u, 0x9e5fea2du, 0x4f463f66u,
-        0x27cb09b7u, 0x6d367ecfu, 0x5a0a6d1fu, 0xef2f118bu,
-        0xde05980fu, 0x1ff897ffu, 0xbdf9283bu, 0x9c845f8bu,
-        0x835339f4u, 0x3991d639u, 0xb45f7e41u, 0xe99c7026u,
-        0x2ebb4484u, 0xe88235f5u, 0xb129a73eu, 0xfe1deb1cu,
-        0x09d1921cu, 0x06492eeau, 0x424dd2e0u, 0xb7246e3au,
-        0xdebbc561u, 0xfe5163abu, 0x3c439041u, 0xdb629599u,
-        0xf534ddc0u, 0xfc2757d1u, 0x4e441529u, 0xa2f9836eu
-    };
+    inline constexpr double pi_2_tail_4 = 0x1.31d89cd9128a5p-218;
 
     // exponential coefficients
     inline constexpr f256_s exp_inv_fact[] = {
@@ -763,7 +747,6 @@ namespace bl::detail::_f256 // primitives and kernels
     };
 
     // table metadata
-    inline constexpr int two_over_pi_fixed_bits         = 2048;
     inline constexpr auto f256_trig_coeff_count_pi4     = sizeof(f256_sin_coeffs_pi4) / sizeof(f256_sin_coeffs_pi4[0]);
     inline constexpr auto f256_trig_small_coeff_count   = 13;
     inline constexpr auto f256_trig_small_coeff_offset  = f256_trig_coeff_count_pi4 - f256_trig_small_coeff_count;

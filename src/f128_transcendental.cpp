@@ -94,11 +94,6 @@ namespace bl::detail::_f128_runtime
     }
 
     // powers
-    BL_NO_INLINE f128_s pow10_128(int k)
-    {
-        return detail::_f128_impl::pow10_128(k);
-    }
-
     BL_NO_INLINE f128_s pow(const f128_s& x, const f128_s& y)
     {
         return detail::_f128_impl::pow(x, y);
@@ -107,6 +102,16 @@ namespace bl::detail::_f128_runtime
     BL_NO_INLINE f128_s pow(const f128_s& x, double y)
     {
         return detail::_f128_impl::pow(x, y);
+    }
+
+    BL_NO_INLINE f128_s ipow_signed(const f128_s& x, std::intmax_t y)
+    {
+        return detail::_f128::ipow_integer(x, y);
+    }
+
+    BL_NO_INLINE f128_s ipow_unsigned(const f128_s& x, std::uintmax_t y)
+    {
+        return detail::_f128::ipow_integer(x, y);
     }
 
     // trigonometric

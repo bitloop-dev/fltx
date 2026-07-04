@@ -105,7 +105,7 @@ namespace
     void check_roundtrip_case(const char* label, const f128& value)
     {
         const std::string text     = to_text(value);
-        const f128 reparsed        = to_f128(text);
+        const f128 reparsed        = bl::parse<f128>(text);
         const mpfr_check expected  = to_ref_exact(value);
         const mpfr_check got       = to_ref_exact(reparsed);
         const mpfr_check tolerance = comparison_tolerance(expected);
@@ -284,7 +284,7 @@ TEST_CASE("f128 parser handles special values, partial tokens, and invalid input
         REQUIRE(parsed.lo == 0.0);
     }
 
-    REQUIRE(bl::iszero(to_f128("oops")));
+    REQUIRE(bl::iszero(bl::parse<f128>("oops", f128{ 0.0 })));
 }
 
 TEST_CASE("f128 fixed zero formatting respects precision", "[fltx][f128][io][format]")
@@ -339,7 +339,7 @@ TEST_CASE("f128 formats special values and stream flags consistently", "[fltx][f
     REQUIRE(bl::to_string(inf) == "inf");
     REQUIRE(bl::to_string(neg_inf) == "-inf");
     REQUIRE(bl::to_string(nan) == "nan");
-    REQUIRE(std::string(bl::to_static_string(to_f128("1.2500"), 4)) == "1.25");
+    REQUIRE(std::string(bl::to_static_string(bl::parse<f128>("1.2500"), 4)) == "1.25");
 
     std::ostringstream pos_upper;
     pos_upper << std::showpos << std::uppercase << inf;
@@ -425,7 +425,7 @@ TEST_CASE("f128 brute-force random roundtrip test", "[fltx][f128][io][rand]")
         const f128 value           = random_large_finite_for_f128(rng);
         const std::string expected = to_text(value);
 
-        const f128 parsed        = to_f128(expected);
+        const f128 parsed        = bl::parse<f128>(expected);
         const std::string actual = to_text(parsed);
 
         INFO("iteration: " << i);

@@ -263,8 +263,6 @@ struct f128 : public f128_s
     constexpr f128(uint64_t u) noexcept : f128_s{} { static_cast<f128_s&>(*this) = static_cast<uint64_t>(u); }
     constexpr f128(int32_t  v) noexcept : f128((int64_t)v) {}
     constexpr f128(uint32_t u) noexcept : f128((int64_t)u) {}
-    constexpr f128(const char*);
-
     constexpr f128(const f128_s& f) noexcept : f128_s{ f.hi, f.lo } {}
 
     using f128_s::operator=;

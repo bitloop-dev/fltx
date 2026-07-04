@@ -101,6 +101,10 @@ namespace bl::test::metrics::custom
         {
             return f128_primary::finite_for_mean(bits);
         }
+        [[nodiscard]] static double cap_accuracy_bits(double bits) noexcept
+        {
+            return f128_primary::cap_accuracy_bits(bits);
+        }
 
         [[nodiscard]] static fltx_type signed_log_value(sample_rng& rng, int min_exp, int max_exp) noexcept
         {
@@ -192,6 +196,10 @@ namespace bl::test::metrics::custom
         {
             return f256_primary::finite_for_mean(bits);
         }
+        [[nodiscard]] static double cap_accuracy_bits(double bits) noexcept
+        {
+            return f256_primary::cap_accuracy_bits(bits);
+        }
 
         [[nodiscard]] static fltx_type signed_log_value(sample_rng& rng, int min_exp, int max_exp) noexcept
         {
@@ -209,12 +217,14 @@ namespace bl::test::metrics::custom
     };
 
     template<class Float>
-    [[nodiscard]] typename profile<Float>::perfect_ref pow10_reference(int exponent)
+    [[nodiscard]] typename profile<Float>::perfect_ref pow_integer_reference(
+        const typename profile<Float>::perfect_ref& input_base,
+        int exponent)
     {
         using perfect_ref = typename profile<Float>::perfect_ref;
 
         perfect_ref value = 1;
-        perfect_ref base = 10;
+        perfect_ref base = input_base;
         unsigned n = static_cast<unsigned>(exponent < 0 ? -exponent : exponent);
         while (n != 0)
         {
@@ -225,6 +235,12 @@ namespace bl::test::metrics::custom
                 base *= base;
         }
         return exponent < 0 ? perfect_ref{ 1 } / value : value;
+    }
+
+    template<class Float>
+    [[nodiscard]] typename profile<Float>::perfect_ref pow10_reference(int exponent)
+    {
+        return pow_integer_reference<Float>(typename profile<Float>::perfect_ref{ 10 }, exponent);
     }
 
     template<class Float>
@@ -307,19 +323,338 @@ namespace bl::test::metrics::custom
         return samples;
     }
 
+    enum class special_pow_sample_set
+    {
+        exact_window,
+        outside_window
+    };
+
+    struct special_pow_exponent_range
+    {
+        int min = 0;
+        int max = 0;
+    };
+
+    struct special_pow_case
+    {
+        int base = 1;
+        bool has_exact_window = false;
+        bool emit_exact_window = true;
+        bool enforce_exact_window_accuracy = true;
+        bool exact_window_is_unbounded = false;
+        bool has_outside_window = false;
+        special_pow_exponent_range exact_window{};
+        int sample_min = -512;
+        int sample_max = 512;
+        std::string exact_operation;
+        std::string outside_operation;
+    };
+
+    inline constexpr int special_pow_nominal_sample_limit = 512;
+    inline constexpr int ipow_integer_grid_max_abs_exponent = 300;
+    inline constexpr std::string_view ipow_integer_grid_operation =
+        "ipow<T>(bases[1,256], finite[-300,300])";
+
     template<class Float>
-    [[nodiscard]] std::vector<unary_int_sample> make_pow10_samples(std::size_t random_count)
+    struct special_pow_support_traits;
+
+    template<>
+    struct special_pow_support_traits<bl::f128>
+    {
+        static constexpr int pow10_min = detail::_f128::pow10_f128_min_exponent;
+        static constexpr int pow10_max = detail::_f128::pow10_f128_max_exponent;
+    };
+
+    template<>
+    struct special_pow_support_traits<bl::f256>
+    {
+        static constexpr int pow10_min = detail::_f256::pow10_f256_min_exponent;
+        static constexpr int pow10_max = detail::_f256::pow10_f256_max_exponent;
+    };
+
+    [[nodiscard]] int finite_positive_pow_exponent_limit(int base) noexcept
+    {
+        if (base <= 1)
+            return special_pow_nominal_sample_limit;
+
+        const long double max_value = static_cast<long double>(std::numeric_limits<double>::max());
+        const long double log_limit = std::log(max_value) / std::log(static_cast<long double>(base));
+        if (!std::isfinite(log_limit) || log_limit < 0.0L)
+            return 0;
+
+        int limit = static_cast<int>(std::floor(log_limit));
+        while (limit > 0 && std::pow(static_cast<long double>(base), limit) > max_value)
+            --limit;
+        while (limit < special_pow_nominal_sample_limit &&
+               std::pow(static_cast<long double>(base), limit + 1) <= max_value)
+        {
+            ++limit;
+        }
+
+        return limit;
+    }
+
+    [[nodiscard]] int finite_negative_pow_exponent_limit(int base) noexcept
+    {
+        if (base <= 1)
+            return special_pow_nominal_sample_limit;
+
+        int limit = 0;
+        while (limit < special_pow_nominal_sample_limit &&
+               !detail::fp::integral_pow_reciprocal_underflows_binary64(
+                   base,
+                   static_cast<unsigned>(limit + 1)))
+        {
+            ++limit;
+        }
+
+        return limit;
+    }
+
+    [[nodiscard]] bool is_power_of_two(int value) noexcept
+    {
+        return value > 1 && (value & (value - 1)) == 0;
+    }
+
+    [[nodiscard]] int ceil_div_positive_denominator(int numerator, int denominator) noexcept
+    {
+        return numerator >= 0
+            ? (numerator + denominator - 1) / denominator
+            : numerator / denominator;
+    }
+
+    [[nodiscard]] int floor_div_positive_denominator(int numerator, int denominator) noexcept
+    {
+        return numerator >= 0
+            ? numerator / denominator
+            : -((-numerator + denominator - 1) / denominator);
+    }
+
+    template<class Float>
+    [[nodiscard]] special_pow_case make_special_pow_case(int base)
+    {
+        special_pow_case pow_case{};
+        pow_case.base = base;
+        pow_case.sample_min = -special_pow_nominal_sample_limit;
+        const int finite_positive_limit = finite_positive_pow_exponent_limit(base);
+        pow_case.sample_max = std::max(
+            0,
+            std::min(special_pow_nominal_sample_limit, finite_positive_limit));
+
+        if (base == 1)
+        {
+            pow_case.has_exact_window = true;
+            pow_case.exact_window_is_unbounded = true;
+            pow_case.exact_operation = "pow<T>(1, inside[all])";
+            return pow_case;
+        }
+
+        if (is_power_of_two(base))
+        {
+            pow_case.has_exact_window = true;
+            pow_case.exact_window_is_unbounded = true;
+            pow_case.exact_operation = "pow<T>(" + std::to_string(base) + ", inside[ldexp])";
+            return pow_case;
+        }
+
+        if (base == 10)
+        {
+            pow_case.has_exact_window = true;
+            pow_case.has_outside_window = true;
+            pow_case.exact_window = {
+                special_pow_support_traits<Float>::pow10_min,
+                special_pow_support_traits<Float>::pow10_max
+            };
+            pow_case.sample_min = std::min(pow_case.sample_min, pow_case.exact_window.min - 32);
+            pow_case.sample_max = std::max(pow_case.sample_max, pow_case.exact_window.max + 32);
+            pow_case.exact_operation =
+                "pow<T>(" + std::to_string(base) + ", inside[" +
+                std::to_string(pow_case.exact_window.min) + "," +
+                std::to_string(pow_case.exact_window.max) + "])";
+            pow_case.outside_operation =
+                "pow<T>(" + std::to_string(base) + ", outside[" +
+                std::to_string(pow_case.exact_window.min) + "," +
+                std::to_string(pow_case.exact_window.max) + "])";
+            return pow_case;
+        }
+
+        int pow2_count = 0;
+        int pow5_count = 0;
+        if (detail::fp::factor_power_of_two_five(static_cast<unsigned>(base), pow2_count, pow5_count))
+        {
+            const int finite_negative_limit = finite_negative_pow_exponent_limit(base);
+            pow_case.sample_min = std::max(pow_case.sample_min, -finite_negative_limit);
+            pow_case.sample_max = std::min(pow_case.sample_max, finite_positive_limit);
+            pow_case.has_exact_window = true;
+            pow_case.exact_window = {
+                -finite_negative_limit,
+                finite_positive_limit
+            };
+            pow_case.has_outside_window =
+                pow_case.exact_window.min > pow_case.sample_min ||
+                pow_case.exact_window.max < pow_case.sample_max;
+            pow_case.exact_operation =
+                "pow<T>(" + std::to_string(base) + ", inside[" +
+                std::to_string(pow_case.exact_window.min) + "," +
+                std::to_string(pow_case.exact_window.max) + "])";
+            pow_case.outside_operation =
+                "pow<T>(" + std::to_string(base) + ", outside[" +
+                std::to_string(pow_case.exact_window.min) + "," +
+                std::to_string(pow_case.exact_window.max) + "])";
+            return pow_case;
+        }
+
+        pow_case.has_outside_window = true;
+        pow_case.outside_operation = "pow<T>(" + std::to_string(base) + ", outside[fallback])";
+        return pow_case;
+    }
+
+    template<class Float>
+    [[nodiscard]] std::vector<special_pow_case> make_special_pow_cases()
+    {
+        std::vector<special_pow_case> cases;
+        cases.reserve(257);
+        for (int base = 1; base <= 256; ++base)
+            cases.push_back(make_special_pow_case<Float>(base));
+
+        cases.push_back(make_special_pow_case<Float>(65537));
+        return cases;
+    }
+
+    template<class Float>
+    [[nodiscard]] const std::vector<special_pow_case>& special_pow_cases()
+    {
+        static const std::vector<special_pow_case> cases = make_special_pow_cases<Float>();
+        return cases;
+    }
+
+    [[nodiscard]] int finite_ipow_abs_exponent_limit(int base) noexcept
+    {
+        return std::min(ipow_integer_grid_max_abs_exponent, finite_positive_pow_exponent_limit(base));
+    }
+
+    template<class Float>
+    [[nodiscard]] std::vector<unary_int_sample> make_ipow_integer_grid_samples()
+    {
+        using prof = profile<Float>;
+        std::size_t sample_count = 0;
+        for (int base = 1; base <= 256; ++base)
+        {
+            const int limit = finite_ipow_abs_exponent_limit(base);
+            sample_count += static_cast<std::size_t>(limit * 2 + 1);
+        }
+
+        std::vector<unary_int_sample> samples;
+        samples.reserve(sample_count);
+        for (int base = 1; base <= 256; ++base)
+        {
+            const int limit = finite_ipow_abs_exponent_limit(base);
+            const typename prof::fltx_type value{ base };
+            for (int exponent = -limit; exponent <= limit; ++exponent)
+                samples.push_back(make_value_sample<Float>("ipow finite grid", value, exponent));
+        }
+
+        return samples;
+    }
+
+    template<class Float>
+    [[nodiscard]] std::vector<unary_int_sample> make_special_pow_samples(
+        const special_pow_case& pow_case,
+        special_pow_sample_set sample_set,
+        std::size_t random_count)
     {
         using prof = profile<Float>;
         std::vector<unary_int_sample> samples;
-        samples.reserve(11 + random_count);
+        samples.reserve(14 + random_count);
 
-        for (int exponent : { -300, -128, -32, -10, -1, 0, 1, 10, 32, 128, 300 })
-            samples.push_back(make_value_sample<Float>("pow10", typename prof::fltx_type{ 0.0 }, exponent));
+        auto exponent_belongs_to_set = [&](int exponent) noexcept
+        {
+            if (sample_set == special_pow_sample_set::exact_window)
+            {
+                if (!pow_case.has_exact_window)
+                    return false;
+                if (pow_case.exact_window_is_unbounded)
+                    return true;
+                return exponent >= pow_case.exact_window.min && exponent <= pow_case.exact_window.max;
+            }
+
+            if (!pow_case.has_exact_window || pow_case.exact_window_is_unbounded)
+                return true;
+
+            return exponent < pow_case.exact_window.min || exponent > pow_case.exact_window.max;
+        };
+
+        auto add_sample = [&](std::string_view label, int exponent)
+        {
+            if (exponent < pow_case.sample_min || exponent > pow_case.sample_max)
+                return;
+            if (!exponent_belongs_to_set(exponent))
+                return;
+
+            const auto duplicate = std::find_if(
+                samples.begin(),
+                samples.end(),
+                [exponent](const unary_int_sample& sample) { return sample.n == exponent; });
+            if (duplicate == samples.end())
+                samples.push_back(make_value_sample<Float>(label, typename prof::fltx_type{ pow_case.base }, exponent));
+        };
+
+        if (sample_set == special_pow_sample_set::exact_window)
+        {
+            const int low = pow_case.exact_window_is_unbounded ? pow_case.sample_min : pow_case.exact_window.min;
+            const int high = pow_case.exact_window_is_unbounded ? pow_case.sample_max : pow_case.exact_window.max;
+            add_sample("pow exact-window", low);
+            for (int exponent : { -384, -323, -256, -128, -64, -32, -10, -1, 0, 1, 10, 32, 64, 128, 256, 308, 384 })
+                add_sample("pow exact-window", exponent);
+            add_sample("pow exact-window", high);
+        }
+        else if (pow_case.has_exact_window && !pow_case.exact_window_is_unbounded)
+        {
+            add_sample("pow outside-window", pow_case.sample_min);
+            add_sample("pow outside-window", pow_case.exact_window.min - 1);
+            add_sample("pow outside-window", pow_case.exact_window.min - 32);
+            add_sample("pow outside-window", pow_case.exact_window.max + 1);
+            add_sample("pow outside-window", pow_case.exact_window.max + 32);
+            add_sample("pow outside-window", pow_case.sample_max);
+        }
+        else
+        {
+            add_sample("pow fallback", pow_case.sample_min);
+            for (int exponent : { -384, -256, -128, -32, -1, 0, 1, 32, 128, 256, 384 })
+                add_sample("pow fallback", exponent);
+            add_sample("pow fallback", pow_case.sample_max);
+        }
 
         typename prof::sample_rng rng{ 0x90a11c0570decadeull };
         for (std::size_t i = 0; i < random_count; ++i)
-            samples.push_back(make_value_sample<Float>("random", typename prof::fltx_type{ 0.0 }, rng.integer(-300, 300)));
+        {
+            int exponent = 0;
+            if (sample_set == special_pow_sample_set::outside_window &&
+                pow_case.has_exact_window &&
+                !pow_case.exact_window_is_unbounded)
+            {
+                const bool has_lower = pow_case.sample_min < pow_case.exact_window.min;
+                const bool has_upper = pow_case.sample_max > pow_case.exact_window.max;
+                if (has_lower && (!has_upper || rng.integer(0, 1) == 0))
+                    exponent = rng.integer(pow_case.sample_min, pow_case.exact_window.min - 1);
+                else
+                    exponent = rng.integer(pow_case.exact_window.max + 1, pow_case.sample_max);
+            }
+            else if (sample_set == special_pow_sample_set::exact_window &&
+                     pow_case.has_exact_window &&
+                     !pow_case.exact_window_is_unbounded)
+            {
+                exponent = rng.integer(pow_case.exact_window.min, pow_case.exact_window.max);
+            }
+            else
+            {
+                exponent = rng.integer(pow_case.sample_min, pow_case.sample_max);
+            }
+
+            add_sample(
+                sample_set == special_pow_sample_set::exact_window ? "random exact-window" : "random outside-window",
+                exponent);
+        }
 
         return samples;
     }
@@ -377,7 +712,7 @@ namespace bl::test::metrics::custom
                 prof::target_expected(reference(prof::make_perfect(sample.x), sample.n));
             double bits = reference_matching_bits(actual, expected);
 
-            INFO(operation << " sample '" << sample.label << "' matched " << bits << " bits");
+            INFO(operation << " sample '" << sample.label << "' n=" << sample.n << " matched " << bits << " bits");
             if (std::isnan(bits))
             {
                 if (enforce_required_bits)
@@ -387,7 +722,7 @@ namespace bl::test::metrics::custom
             if (enforce_required_bits)
                 CHECK(bits >= required_bits);
 
-            worst_bits = std::min(worst_bits, bits);
+            worst_bits = std::min(worst_bits, prof::cap_accuracy_bits(bits));
             total_bits += prof::finite_for_mean(bits);
             domain_scores.push_back(domain_sample_score(bits, prof::target_ideal_bits_for(expected)));
         }
@@ -481,35 +816,41 @@ namespace bl::test::metrics::custom
     }
 
     template<class T>
-    [[nodiscard]] T pow10_via_pow(int n)
+    [[nodiscard]] T pow_via_pow(int base, int n)
     {
         using std::pow;
-        return pow(T{ 10 }, n);
+        return pow(T{ base }, n);
     }
 
     template<class T>
-    [[nodiscard]] T pow10_via_npwr(int n)
+    [[nodiscard]] T pow_via_npwr(int base, int n)
     {
-        return ::npwr(T{ 10 }, n);
+        return ::npwr(T{ base }, n);
     }
 
     template<class Float, class Samples, class EvalFn, class RefFn>
-    void run_pow10_precision_case(const Samples& samples, EvalFn eval, RefFn reference)
+    void run_special_pow_precision_case(
+        std::string_view operation,
+        int base,
+        const Samples& samples,
+        EvalFn eval,
+        RefFn reference,
+        bool enforce_required_bits)
     {
         using prof = profile<Float>;
-        auto record = make_custom_record<Float>("pow10<T>", true);
+        auto record = make_custom_record<Float>(operation, true);
         auto to_reference = [](const auto& value) { return prof::to_perfect(value); };
 
         record.fltx_accuracy =
-            measure_custom_accuracy<Float>("pow10<T>", prof::required_bits, true, samples, eval, reference);
+            measure_custom_accuracy<Float>(operation, prof::required_bits, enforce_required_bits, samples, eval, reference);
 
         if constexpr (!config::benchmark_only_fltx)
         {
-            auto competitor_eval = [](const auto&, int n) { return pow10_via_pow<typename prof::competitor_ref>(n); };
-            auto extra_eval = [](const auto&, int n) { return pow10_via_npwr<typename prof::extra_competitor_ref>(n); };
+            auto competitor_eval = [base](const auto&, int n) { return pow_via_pow<typename prof::competitor_ref>(base, n); };
+            auto extra_eval = [base](const auto&, int n) { return pow_via_npwr<typename prof::extra_competitor_ref>(base, n); };
 
             record.competitor_accuracy = measure_custom_accuracy<Float>(
-                "pow10<T>",
+                operation,
                 prof::required_bits,
                 false,
                 samples,
@@ -521,7 +862,7 @@ namespace bl::test::metrics::custom
             if (!record.extra_competitors.empty())
             {
                 record.extra_competitors.front().accuracy = measure_custom_accuracy<Float>(
-                    "pow10<T>",
+                    operation,
                     prof::required_bits,
                     false,
                     samples,
@@ -533,59 +874,59 @@ namespace bl::test::metrics::custom
         }
 
         write_metrics_case_report(
-            std::string(prof::precision_name) + " custom precision: pow10<T>",
+            std::string(prof::precision_name) + " custom precision: " + std::string(operation),
             record);
     }
 
     template<class Float, class Samples, class EvalFn>
-    void run_pow10_benchmark_case(const Samples& samples, EvalFn eval)
+    void run_special_pow_benchmark_case(std::string_view operation, int base, const Samples& samples, EvalFn eval)
     {
         using prof = profile<Float>;
-        auto record = make_custom_record<Float>("pow10<T>", true);
+        auto record = make_custom_record<Float>(operation, true);
         record.fltx_benchmark =
-            prof::benchmark_unary_int_values(make_fltx_values<Float>(samples), eval, "pow10<T>");
+            prof::benchmark_unary_int_values(make_fltx_values<Float>(samples), eval, operation);
 
         if constexpr (!config::benchmark_only_fltx)
         {
-            auto competitor_eval = [](const auto&, int n) { return pow10_via_pow<typename prof::competitor_ref>(n); };
-            auto extra_eval = [](const auto&, int n) { return pow10_via_npwr<typename prof::extra_competitor_ref>(n); };
+            auto competitor_eval = [base](const auto&, int n) { return pow_via_pow<typename prof::competitor_ref>(base, n); };
+            auto extra_eval = [base](const auto&, int n) { return pow_via_npwr<typename prof::extra_competitor_ref>(base, n); };
 
             record.competitor_benchmark = prof::benchmark_unary_int_values(
                 make_competitor_values<Float>(samples),
                 competitor_eval,
-                "pow10<T>");
+                operation);
 
             if (!record.extra_competitors.empty())
             {
                 record.extra_competitors.front().benchmark = prof::benchmark_unary_int_values(
                     make_extra_competitor_values<Float>(samples),
                     extra_eval,
-                    "pow10<T>");
+                    operation);
             }
         }
 
         write_metrics_case_report(
-            std::string(prof::precision_name) + " custom benchmark: pow10<T>",
+            std::string(prof::precision_name) + " custom benchmark: " + std::string(operation),
             record);
     }
 
     template<class Float, class Samples, class EvalFn, class RefFn>
-    void run_pow10_domain_case(const Samples& samples, EvalFn eval, RefFn reference)
+    void run_special_pow_domain_case(std::string_view operation, int base, const Samples& samples, EvalFn eval, RefFn reference)
     {
         using prof = profile<Float>;
-        auto record = make_custom_record<Float>("pow10<T>", true);
+        auto record = make_custom_record<Float>(operation, true);
         auto to_reference = [](const auto& value) { return prof::to_perfect(value); };
 
         record.fltx_accuracy =
-            measure_custom_accuracy<Float>("pow10<T>", prof::required_bits, false, samples, eval, reference);
+            measure_custom_accuracy<Float>(operation, prof::required_bits, false, samples, eval, reference);
 
         if constexpr (!config::benchmark_only_fltx)
         {
-            auto competitor_eval = [](const auto&, int n) { return pow10_via_pow<typename prof::competitor_ref>(n); };
-            auto extra_eval = [](const auto&, int n) { return pow10_via_npwr<typename prof::extra_competitor_ref>(n); };
+            auto competitor_eval = [base](const auto&, int n) { return pow_via_pow<typename prof::competitor_ref>(base, n); };
+            auto extra_eval = [base](const auto&, int n) { return pow_via_npwr<typename prof::extra_competitor_ref>(base, n); };
 
             record.competitor_accuracy = measure_custom_accuracy<Float>(
-                "pow10<T>",
+                operation,
                 prof::required_bits,
                 false,
                 samples,
@@ -597,7 +938,7 @@ namespace bl::test::metrics::custom
             if (!record.extra_competitors.empty())
             {
                 record.extra_competitors.front().accuracy = measure_custom_accuracy<Float>(
-                    "pow10<T>",
+                    operation,
                     prof::required_bits,
                     false,
                     samples,
@@ -609,14 +950,14 @@ namespace bl::test::metrics::custom
         }
 
         write_metrics_case_report(
-            std::string(prof::precision_name) + " custom domain: pow10<T>",
+            std::string(prof::precision_name) + " custom domain: " + std::string(operation),
             record);
     }
 
     template<class Float>
     void run_round_to_decimals_precision()
     {
-        auto eval = [](const auto& x, int n) { return bl::round_to_decimals(x, n); };
+        auto eval = [](const auto& x, int n) { return bl::round_to(x, n, bl::decimals); };
         auto reference = [](const auto& x, int n) { return round_to_decimals_reference<Float>(x, n); };
         const auto samples = make_round_to_decimals_samples<Float>(profile<Float>::random_sample_count());
         run_custom_precision_case<Float>(
@@ -630,7 +971,7 @@ namespace bl::test::metrics::custom
     template<class Float>
     void run_round_to_decimals_benchmark()
     {
-        auto eval = [](const auto& x, int n) { return bl::round_to_decimals(x, n); };
+        auto eval = [](const auto& x, int n) { return bl::round_to(x, n, bl::decimals); };
         const auto samples = make_round_to_decimals_samples<Float>(profile<Float>::random_sample_count());
         run_custom_benchmark_case<Float>("round_to_decimals", samples, eval);
     }
@@ -638,36 +979,237 @@ namespace bl::test::metrics::custom
     template<class Float>
     void run_round_to_decimals_domain()
     {
-        auto eval = [](const auto& x, int n) { return bl::round_to_decimals(x, n); };
+        auto eval = [](const auto& x, int n) { return bl::round_to(x, n, bl::decimals); };
         auto reference = [](const auto& x, int n) { return round_to_decimals_reference<Float>(x, n); };
         const auto samples = make_round_to_decimals_samples<Float>(configured_domain_random_sample_count(profile<Float>::random_sample_count()));
         run_custom_domain_case<Float>("round_to_decimals", samples, eval, reference);
     }
 
     template<class Float>
-    void run_pow10_precision()
+    void run_ipow_integer_grid_precision()
     {
-        auto eval = [](const auto&, int n) { return bl::pow10<typename profile<Float>::fltx_type>(n); };
-        auto reference = [](const auto&, int n) { return pow10_reference<Float>(n); };
-        const auto samples = make_pow10_samples<Float>(profile<Float>::random_sample_count());
-        run_pow10_precision_case<Float>(samples, eval, reference);
+        auto eval = [](const auto& x, int n) { return bl::ipow(x, n); };
+        auto reference = [](const auto& x, int n) { return pow_integer_reference<Float>(x, n); };
+        const auto samples = make_ipow_integer_grid_samples<Float>();
+        run_custom_precision_case<Float>(ipow_integer_grid_operation, samples, eval, reference);
     }
 
     template<class Float>
-    void run_pow10_benchmark()
+    void run_ipow_integer_grid_benchmark()
     {
-        auto eval = [](const auto&, int n) { return bl::pow10<typename profile<Float>::fltx_type>(n); };
-        const auto samples = make_pow10_samples<Float>(profile<Float>::random_sample_count());
-        run_pow10_benchmark_case<Float>(samples, eval);
+        auto eval = [](const auto& x, int n) { return bl::ipow(x, n); };
+        const auto samples = make_ipow_integer_grid_samples<Float>();
+        run_custom_benchmark_case<Float>(ipow_integer_grid_operation, samples, eval);
     }
 
     template<class Float>
-    void run_pow10_domain()
+    void run_ipow_integer_grid_domain()
     {
-        auto eval = [](const auto&, int n) { return bl::pow10<typename profile<Float>::fltx_type>(n); };
-        auto reference = [](const auto&, int n) { return pow10_reference<Float>(n); };
-        const auto samples = make_pow10_samples<Float>(configured_domain_random_sample_count(profile<Float>::random_sample_count()));
-        run_pow10_domain_case<Float>(samples, eval, reference);
+        auto eval = [](const auto& x, int n) { return bl::ipow(x, n); };
+        auto reference = [](const auto& x, int n) { return pow_integer_reference<Float>(x, n); };
+        const auto samples = make_ipow_integer_grid_samples<Float>();
+        run_custom_domain_case<Float>(ipow_integer_grid_operation, samples, eval, reference);
+    }
+
+    template<class Float>
+    void run_special_pow_precision()
+    {
+        for (const special_pow_case& pow_case : special_pow_cases<Float>())
+        {
+            if (!pow_case.has_exact_window || !pow_case.emit_exact_window)
+                continue;
+
+            const int base = pow_case.base;
+            auto eval = [base](const auto&, int n) { return bl::pow(typename profile<Float>::fltx_type{ base }, n); };
+            auto reference = [base](const auto&, int n) {
+                return pow_integer_reference<Float>(typename profile<Float>::perfect_ref{ base }, n);
+            };
+
+            const auto samples = make_special_pow_samples<Float>(
+                pow_case,
+                special_pow_sample_set::exact_window,
+                profile<Float>::random_sample_count());
+            run_special_pow_precision_case<Float>(
+                pow_case.exact_operation,
+                base,
+                samples,
+                eval,
+                reference,
+                pow_case.enforce_exact_window_accuracy);
+        }
+
+        for (const special_pow_case& pow_case : special_pow_cases<Float>())
+        {
+            if (!pow_case.has_outside_window)
+                continue;
+
+            const int base = pow_case.base;
+            auto eval = [base](const auto&, int n) { return bl::pow(typename profile<Float>::fltx_type{ base }, n); };
+            auto reference = [base](const auto&, int n) {
+                return pow_integer_reference<Float>(typename profile<Float>::perfect_ref{ base }, n);
+            };
+
+            const auto samples = make_special_pow_samples<Float>(
+                pow_case,
+                special_pow_sample_set::outside_window,
+                profile<Float>::random_sample_count());
+            run_special_pow_precision_case<Float>(pow_case.outside_operation, base, samples, eval, reference, false);
+        }
+    }
+
+    template<class Float>
+    void run_special_pow_benchmark()
+    {
+        for (const special_pow_case& pow_case : special_pow_cases<Float>())
+        {
+            if (!pow_case.has_exact_window || !pow_case.emit_exact_window)
+                continue;
+
+            const int base = pow_case.base;
+            auto eval = [base](const auto&, int n) { return bl::pow(typename profile<Float>::fltx_type{ base }, n); };
+
+            const auto samples = make_special_pow_samples<Float>(
+                pow_case,
+                special_pow_sample_set::exact_window,
+                profile<Float>::random_sample_count());
+            run_special_pow_benchmark_case<Float>(pow_case.exact_operation, base, samples, eval);
+        }
+
+        for (const special_pow_case& pow_case : special_pow_cases<Float>())
+        {
+            if (!pow_case.has_outside_window)
+                continue;
+
+            const int base = pow_case.base;
+            auto eval = [base](const auto&, int n) { return bl::pow(typename profile<Float>::fltx_type{ base }, n); };
+
+            const auto samples = make_special_pow_samples<Float>(
+                pow_case,
+                special_pow_sample_set::outside_window,
+                profile<Float>::random_sample_count());
+            run_special_pow_benchmark_case<Float>(pow_case.outside_operation, base, samples, eval);
+        }
+    }
+
+    template<class Float>
+    void run_special_pow_domain()
+    {
+        const std::size_t random_count = configured_domain_random_sample_count(profile<Float>::random_sample_count());
+
+        for (const special_pow_case& pow_case : special_pow_cases<Float>())
+        {
+            if (!pow_case.has_exact_window || !pow_case.emit_exact_window)
+                continue;
+
+            const int base = pow_case.base;
+            auto eval = [base](const auto&, int n) { return bl::pow(typename profile<Float>::fltx_type{ base }, n); };
+            auto reference = [base](const auto&, int n) {
+                return pow_integer_reference<Float>(typename profile<Float>::perfect_ref{ base }, n);
+            };
+
+            const auto samples = make_special_pow_samples<Float>(
+                pow_case,
+                special_pow_sample_set::exact_window,
+                random_count);
+            run_special_pow_domain_case<Float>(pow_case.exact_operation, base, samples, eval, reference);
+        }
+
+        for (const special_pow_case& pow_case : special_pow_cases<Float>())
+        {
+            if (!pow_case.has_outside_window)
+                continue;
+
+            const int base = pow_case.base;
+            auto eval = [base](const auto&, int n) { return bl::pow(typename profile<Float>::fltx_type{ base }, n); };
+            auto reference = [base](const auto&, int n) {
+                return pow_integer_reference<Float>(typename profile<Float>::perfect_ref{ base }, n);
+            };
+
+            const auto samples = make_special_pow_samples<Float>(
+                pow_case,
+                special_pow_sample_set::outside_window,
+                random_count);
+            run_special_pow_domain_case<Float>(pow_case.outside_operation, base, samples, eval, reference);
+        }
+    }
+
+    [[nodiscard]] inline bool special_pow_complete_mode() noexcept
+    {
+        if (!metrics_filter_has_explicit_phase())
+            return metrics_filter_arguments().empty();
+
+        return metrics_filter_phase_count() == 3;
+    }
+
+    [[nodiscard]] inline bool special_pow_filter_mentions_phase(std::string_view phase)
+    {
+        for (const std::string& filter : metrics_filter_arguments())
+        {
+            const std::string normalized = normalized_metrics_filter(filter);
+            if (normalized.find("customspecialpow") != std::string::npos &&
+                normalized.find(phase) != std::string::npos)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    [[nodiscard]] inline bool special_pow_complete_mode_for_phase(std::string_view phase)
+    {
+        return special_pow_complete_mode() && !special_pow_filter_mentions_phase(phase);
+    }
+
+    template<class Float>
+    void run_special_pow_complete_case(
+        const special_pow_case& pow_case,
+        special_pow_sample_set sample_set)
+    {
+        const int base = pow_case.base;
+        const std::string& operation =
+            sample_set == special_pow_sample_set::exact_window
+                ? pow_case.exact_operation
+                : pow_case.outside_operation;
+        auto eval = [base](const auto&, int n) { return bl::pow(typename profile<Float>::fltx_type{ base }, n); };
+        auto reference = [base](const auto&, int n) {
+            return pow_integer_reference<Float>(typename profile<Float>::perfect_ref{ base }, n);
+        };
+
+        const auto precision_benchmark_samples = make_special_pow_samples<Float>(
+            pow_case,
+            sample_set,
+            profile<Float>::random_sample_count());
+        run_special_pow_precision_case<Float>(
+            operation,
+            base,
+            precision_benchmark_samples,
+            eval,
+            reference,
+            sample_set == special_pow_sample_set::exact_window && pow_case.enforce_exact_window_accuracy);
+        run_special_pow_benchmark_case<Float>(operation, base, precision_benchmark_samples, eval);
+
+        const auto domain_samples = make_special_pow_samples<Float>(
+            pow_case,
+            sample_set,
+            configured_domain_random_sample_count(profile<Float>::random_sample_count()));
+        run_special_pow_domain_case<Float>(operation, base, domain_samples, eval, reference);
+    }
+
+    template<class Float>
+    void run_special_pow_complete()
+    {
+        for (const special_pow_case& pow_case : special_pow_cases<Float>())
+        {
+            if (pow_case.has_exact_window && pow_case.emit_exact_window)
+                run_special_pow_complete_case<Float>(pow_case, special_pow_sample_set::exact_window);
+        }
+
+        for (const special_pow_case& pow_case : special_pow_cases<Float>())
+        {
+            if (pow_case.has_outside_window)
+                run_special_pow_complete_case<Float>(pow_case, special_pow_sample_set::outside_window);
+        }
     }
 }
 
@@ -686,19 +1228,79 @@ TEST_CASE("f128 custom round_to_decimals domain", "[metrics][custom][domain][f12
     bl::test::metrics::custom::run_round_to_decimals_domain<bl::f128>();
 }
 
-TEST_CASE("f128 custom pow10 precision", "[metrics][custom][precision][accuracy][f128]")
+TEST_CASE("f128 custom ipow integer grid precision", "[metrics][custom][precision][accuracy][ipow][f128]")
 {
-    bl::test::metrics::custom::run_pow10_precision<bl::f128>();
+    if (!bl::test::metrics::metrics_case_phase_enabled("precision"))
+    {
+        SUCCEED("metrics precision phase not selected");
+        return;
+    }
+    bl::test::metrics::custom::run_ipow_integer_grid_precision<bl::f128>();
 }
 
-TEST_CASE("f128 custom pow10 benchmark", "[metrics][custom][bench][f128]")
+TEST_CASE("f128 custom ipow integer grid benchmark", "[metrics][custom][bench][ipow][f128]")
 {
-    bl::test::metrics::custom::run_pow10_benchmark<bl::f128>();
+    if (!bl::test::metrics::metrics_case_phase_enabled("bench"))
+    {
+        SUCCEED("metrics benchmark phase not selected");
+        return;
+    }
+    bl::test::metrics::custom::run_ipow_integer_grid_benchmark<bl::f128>();
 }
 
-TEST_CASE("f128 custom pow10 domain", "[metrics][custom][domain][f128]")
+TEST_CASE("f128 custom ipow integer grid domain", "[metrics][custom][domain][ipow][f128]")
 {
-    bl::test::metrics::custom::run_pow10_domain<bl::f128>();
+    if (!bl::test::metrics::metrics_case_phase_enabled("domain"))
+    {
+        SUCCEED("metrics domain phase not selected");
+        return;
+    }
+    bl::test::metrics::custom::run_ipow_integer_grid_domain<bl::f128>();
+}
+
+TEST_CASE("f128 custom special pow precision", "[metrics][custom][precision][accuracy][f128]")
+{
+    if (bl::test::metrics::custom::special_pow_complete_mode_for_phase("precision"))
+    {
+        bl::test::metrics::custom::run_special_pow_complete<bl::f128>();
+        return;
+    }
+    if (!bl::test::metrics::metrics_case_phase_enabled("precision"))
+    {
+        SUCCEED("metrics precision phase not selected");
+        return;
+    }
+    bl::test::metrics::custom::run_special_pow_precision<bl::f128>();
+}
+
+TEST_CASE("f128 custom special pow benchmark", "[metrics][custom][bench][f128]")
+{
+    if (bl::test::metrics::custom::special_pow_complete_mode_for_phase("benchmark"))
+    {
+        SUCCEED("custom pow complete mode handled by precision test");
+        return;
+    }
+    if (!bl::test::metrics::metrics_case_phase_enabled("bench"))
+    {
+        SUCCEED("metrics benchmark phase not selected");
+        return;
+    }
+    bl::test::metrics::custom::run_special_pow_benchmark<bl::f128>();
+}
+
+TEST_CASE("f128 custom special pow domain", "[metrics][custom][domain][f128]")
+{
+    if (bl::test::metrics::custom::special_pow_complete_mode_for_phase("domain"))
+    {
+        SUCCEED("custom pow complete mode handled by precision test");
+        return;
+    }
+    if (!bl::test::metrics::metrics_case_phase_enabled("domain"))
+    {
+        SUCCEED("metrics domain phase not selected");
+        return;
+    }
+    bl::test::metrics::custom::run_special_pow_domain<bl::f128>();
 }
 
 TEST_CASE("f256 custom round_to_decimals precision", "[metrics][custom][precision][accuracy][f256]")
@@ -716,17 +1318,77 @@ TEST_CASE("f256 custom round_to_decimals domain", "[metrics][custom][domain][f25
     bl::test::metrics::custom::run_round_to_decimals_domain<bl::f256>();
 }
 
-TEST_CASE("f256 custom pow10 precision", "[metrics][custom][precision][accuracy][f256]")
+TEST_CASE("f256 custom ipow integer grid precision", "[metrics][custom][precision][accuracy][ipow][f256]")
 {
-    bl::test::metrics::custom::run_pow10_precision<bl::f256>();
+    if (!bl::test::metrics::metrics_case_phase_enabled("precision"))
+    {
+        SUCCEED("metrics precision phase not selected");
+        return;
+    }
+    bl::test::metrics::custom::run_ipow_integer_grid_precision<bl::f256>();
 }
 
-TEST_CASE("f256 custom pow10 benchmark", "[metrics][custom][bench][f256]")
+TEST_CASE("f256 custom ipow integer grid benchmark", "[metrics][custom][bench][ipow][f256]")
 {
-    bl::test::metrics::custom::run_pow10_benchmark<bl::f256>();
+    if (!bl::test::metrics::metrics_case_phase_enabled("bench"))
+    {
+        SUCCEED("metrics benchmark phase not selected");
+        return;
+    }
+    bl::test::metrics::custom::run_ipow_integer_grid_benchmark<bl::f256>();
 }
 
-TEST_CASE("f256 custom pow10 domain", "[metrics][custom][domain][f256]")
+TEST_CASE("f256 custom ipow integer grid domain", "[metrics][custom][domain][ipow][f256]")
 {
-    bl::test::metrics::custom::run_pow10_domain<bl::f256>();
+    if (!bl::test::metrics::metrics_case_phase_enabled("domain"))
+    {
+        SUCCEED("metrics domain phase not selected");
+        return;
+    }
+    bl::test::metrics::custom::run_ipow_integer_grid_domain<bl::f256>();
+}
+
+TEST_CASE("f256 custom special pow precision", "[metrics][custom][precision][accuracy][f256]")
+{
+    if (bl::test::metrics::custom::special_pow_complete_mode_for_phase("precision"))
+    {
+        bl::test::metrics::custom::run_special_pow_complete<bl::f256>();
+        return;
+    }
+    if (!bl::test::metrics::metrics_case_phase_enabled("precision"))
+    {
+        SUCCEED("metrics precision phase not selected");
+        return;
+    }
+    bl::test::metrics::custom::run_special_pow_precision<bl::f256>();
+}
+
+TEST_CASE("f256 custom special pow benchmark", "[metrics][custom][bench][f256]")
+{
+    if (bl::test::metrics::custom::special_pow_complete_mode_for_phase("benchmark"))
+    {
+        SUCCEED("custom pow complete mode handled by precision test");
+        return;
+    }
+    if (!bl::test::metrics::metrics_case_phase_enabled("bench"))
+    {
+        SUCCEED("metrics benchmark phase not selected");
+        return;
+    }
+    bl::test::metrics::custom::run_special_pow_benchmark<bl::f256>();
+}
+
+TEST_CASE("f256 custom special pow domain", "[metrics][custom][domain][f256]")
+{
+    if (bl::test::metrics::custom::special_pow_complete_mode_for_phase("domain"))
+    {
+        SUCCEED("custom pow complete mode handled by precision test");
+        return;
+    }
+    if (!bl::test::metrics::metrics_case_phase_enabled("domain"))
+    {
+        SUCCEED("metrics domain phase not selected");
+        return;
+    }
+    bl::test::metrics::custom::run_special_pow_domain<bl::f256>();
 }

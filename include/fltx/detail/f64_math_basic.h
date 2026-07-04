@@ -617,21 +617,11 @@ namespace detail::_f64_impl
     );
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr double round_to_decimals(double x, int prec) noexcept
-{
-    return detail::_f64_impl::round_to_decimals(x, prec);
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr double round_to_precision(double x, int figures) noexcept
-{
-    return detail::_f64_impl::round_to_significant_figures(x, figures);
-}
-
 [[nodiscard]] BL_FORCE_INLINE constexpr double round_to(double x, int precision, round_format format) noexcept
 {
     return format == round_format::decimals
-        ? round_to_decimals(x, precision)
-        : round_to_precision(x, precision);
+        ? detail::_f64_impl::round_to_decimals(x, precision)
+        : detail::_f64_impl::round_to_significant_figures(x, precision);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr double nearbyint(double x) noexcept
@@ -712,6 +702,11 @@ namespace detail::_f64_impl
         x * y + z,
         detail::fp::fmadd_runtime(x, y, z)
     );
+}
+
+[[nodiscard]] BL_FORCE_INLINE constexpr double recip(double x) noexcept
+{
+    return 1.0 / x;
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr double fmin(double a, double b) noexcept

@@ -14,45 +14,28 @@
 namespace bl {
 
 BL_PUSH_PRECISE;
-[[nodiscard]] FLTX_CORE_INLINE constexpr f128_s operator+(const f128_s& a, const f128_s& b) noexcept
+[[nodiscard]] BL_FORCE_INLINE constexpr f128_s operator+(const f128_s& a, const f128_s& b) noexcept
 {
     const f128_s out = detail::_f128::add_inline(a, b);
     if (detail::fp::isinf_or_nan(out.hi)) [[unlikely]]
-    {
-        if (detail::fp::isinf_or_nan(a.hi, b.hi)) [[unlikely]]
-            return detail::_f128::add_special(a, b);
-        return detail::_f128::signed_infinity(signbit(a));
-    }
+        return detail::_f128::add_special(a, b);
     return out;
 }
 
-[[nodiscard]] FLTX_CORE_INLINE constexpr f128_s operator-(const f128_s& a, const f128_s& b) noexcept
+[[nodiscard]] BL_FORCE_INLINE constexpr f128_s operator-(const f128_s& a, const f128_s& b) noexcept
 {
     const f128_s out = detail::_f128::sub_inline(a, b);
     if (detail::fp::isinf_or_nan(out.hi)) [[unlikely]]
-    {
-        if (detail::fp::isinf_or_nan(a.hi, b.hi)) [[unlikely]]
-            return detail::_f128::sub_special(a, b);
-        return detail::_f128::signed_infinity(signbit(a));
-    }
+        return detail::_f128::sub_special(a, b);
     return out;
 }
 BL_POP_PRECISE;
-[[nodiscard]] FLTX_CORE_INLINE constexpr f128_s operator*(const f128_s& a, const f128_s& b) noexcept
+[[nodiscard]] BL_FORCE_INLINE constexpr f128_s operator*(const f128_s& a, const f128_s& b) noexcept
 {
-    const f128_s out = detail::_f128::mul_inline(a, b);
-    if (detail::fp::isinf_or_nan(out.hi)) [[unlikely]]
-    {
-        if (detail::fp::isinf_or_nan(a.hi, b.hi)) [[unlikely]]
-            return detail::_f128::mul_special(a, b);
-        return detail::_f128::signed_infinity(signbit(a) != signbit(b));
-    }
-    if (out.hi == 0.0 && ((a.hi == 0.0 && a.lo == 0.0) || (b.hi == 0.0 && b.lo == 0.0))) [[unlikely]]
-        return detail::_f128::signed_zero(signbit(a) != signbit(b));
-    return out;
+    return detail::_f128::mul_checked_inline(a, b);
 }
 
-[[nodiscard]] FLTX_CORE_INLINE constexpr f128_s operator/(const f128_s& a, const f128_s& b) noexcept
+[[nodiscard]] BL_FORCE_INLINE constexpr f128_s operator/(const f128_s& a, const f128_s& b) noexcept
 {
     if (detail::fp::iszero_or_inf_or_nan(b.hi)) [[unlikely]]
         return detail::_f128::div_special(a, b);
@@ -64,11 +47,7 @@ BL_POP_PRECISE;
 {
     const f128_s out = detail::_f128::add_double_inline(a, b);
     if (detail::fp::isinf_or_nan(out.hi)) [[unlikely]]
-    {
-        if (detail::fp::isinf_or_nan(a.hi, b)) [[unlikely]]
-            return detail::_f128::add_special(a, f128_s{ b, 0.0 });
-        return detail::_f128::signed_infinity(signbit(a));
-    }
+        return detail::_f128::add_special(a, f128_s{ b, 0.0 });
     return out;
 }
 
@@ -76,11 +55,7 @@ BL_POP_PRECISE;
 {
     const f128_s out = detail::_f128::sub_double_inline(a, b);
     if (detail::fp::isinf_or_nan(out.hi)) [[unlikely]]
-    {
-        if (detail::fp::isinf_or_nan(a.hi, b)) [[unlikely]]
-            return detail::_f128::sub_special(a, f128_s{ b, 0.0 });
-        return detail::_f128::signed_infinity(signbit(a));
-    }
+        return detail::_f128::sub_special(a, f128_s{ b, 0.0 });
     return out;
 }
 
@@ -88,13 +63,9 @@ BL_POP_PRECISE;
 {
     const f128_s out = detail::_f128::mul_double_inline(a, b);
     if (detail::fp::isinf_or_nan(out.hi)) [[unlikely]]
-    {
-        if (detail::fp::isinf_or_nan(a.hi, b)) [[unlikely]]
-            return detail::_f128::mul_special(a, f128_s{ b, 0.0 });
-        return detail::_f128::signed_infinity(signbit(a) != detail::fp::signbit(b));
-    }
+        return detail::_f128::mul_special(a, f128_s{ b, 0.0 });
     if (out.hi == 0.0 && ((a.hi == 0.0 && a.lo == 0.0) || b == 0.0)) [[unlikely]]
-        return detail::_f128::signed_zero(signbit(a) != detail::fp::signbit(b));
+        return detail::_f128::mul_special(a, f128_s{ b, 0.0 });
     return out;
 }
 

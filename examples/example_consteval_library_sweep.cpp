@@ -38,7 +38,7 @@ consteval f32 f32_test()
     constexpr f32 cbrt_result  = bl::cbrt(0.123f);
     constexpr f32 hypot_result = bl::hypot(0.3f, 0.4f);
     constexpr f32 pow_result   = bl::pow(0.123f, 4.56f);
-    constexpr f32 pow10_result = bl::pow10<f32>(2);
+    constexpr f32 pow10_result = bl::ipow(10.0f, 2);
                                       
     constexpr f32 exp_result   = bl::exp(0.123f);
     constexpr f32 exp2_result  = bl::exp2(0.123f);
@@ -133,7 +133,7 @@ consteval f64 f64_test()
     constexpr f64 cbrt_result  = bl::cbrt(0.123);
     constexpr f64 hypot_result = bl::hypot(0.3, 0.4);
     constexpr f64 pow_result   = bl::pow(0.123, 4.56);
-    constexpr f64 pow10_result = bl::pow10<f64>(2);
+    constexpr f64 pow10_result = bl::pow(10.0, 2);
                                       
     constexpr f64 exp_result   = bl::exp(0.123);
     constexpr f64 exp2_result  = bl::exp2(0.123);
@@ -228,7 +228,7 @@ consteval f128 f128_test()
     constexpr f128 cbrt_result  = bl::cbrt(0.123_dd);
     constexpr f128 hypot_result = bl::hypot(0.3_dd, 0.4_dd);
     constexpr f128 pow_result   = bl::pow(0.123_dd, 4.56_dd);
-    constexpr f128 pow10_result = bl::pow10<f128>(2);
+    constexpr f128 pow10_result = bl::pow(10.0_dd, 2);
                                       
     constexpr f128 exp_result   = bl::exp(0.123_dd);
     constexpr f128 exp2_result  = bl::exp2(0.123_dd);
@@ -323,7 +323,7 @@ consteval f256 f256_test()
     constexpr f256 cbrt_result  = bl::cbrt(0.123_qd);
     constexpr f256 hypot_result = bl::hypot(0.3_qd, 0.4_qd);
     constexpr f256 pow_result   = bl::pow(0.123_qd, 4.56_qd);
-    constexpr f256 pow10_result = bl::pow10<f256>(2);
+    constexpr f256 pow10_result = bl::pow(10.0_qd, 2);
                                       
     constexpr f256 exp_result   = bl::exp(0.123_qd);
     constexpr f256 exp2_result  = bl::exp2(0.123_qd);

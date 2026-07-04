@@ -63,6 +63,7 @@ namespace bl::test::metrics::io_metrics
                 reference_relative_error_scale(expected));
         }
         [[nodiscard]] static double finite_for_mean(double bits) noexcept { return f128_primary::finite_for_mean(bits); }
+        [[nodiscard]] static double cap_accuracy_bits(double bits) noexcept { return f128_primary::cap_accuracy_bits(bits); }
         template<class Value>
         [[nodiscard]] static double domain_ideal_bits_for(const perfect_ref& expected)
         {
@@ -105,6 +106,7 @@ namespace bl::test::metrics::io_metrics
                 reference_relative_error_scale(expected));
         }
         [[nodiscard]] static double finite_for_mean(double bits) noexcept { return f256_primary::finite_for_mean(bits); }
+        [[nodiscard]] static double cap_accuracy_bits(double bits) noexcept { return f256_primary::cap_accuracy_bits(bits); }
         template<class Value>
         [[nodiscard]] static double domain_ideal_bits_for(const perfect_ref& expected)
         {
@@ -1038,7 +1040,7 @@ namespace bl::test::metrics::io_metrics
                 bits = 0.0;
             }
 
-            worst_bits = std::min(worst_bits, bits);
+            worst_bits = std::min(worst_bits, Profile::cap_accuracy_bits(bits));
             total_bits += Profile::finite_for_mean(bits);
             domain_scores.push_back(domain_sample_score(bits, sample_ideal_bits));
         }

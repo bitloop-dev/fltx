@@ -1139,6 +1139,10 @@ namespace bl::test::metrics
             entries.end(),
             [](const metrics_case_report_entry& lhs, const metrics_case_report_entry& rhs)
             {
+                if (metrics_csv_group_order(lhs.record) != metrics_csv_group_order(rhs.record))
+                    return metrics_csv_group_order(lhs.record) < metrics_csv_group_order(rhs.record);
+                if (metrics_csv_row_order(lhs.record) != metrics_csv_row_order(rhs.record))
+                    return metrics_csv_row_order(lhs.record) < metrics_csv_row_order(rhs.record);
                 if (lhs.record.suite.operation.name != rhs.record.suite.operation.name)
                     return lhs.record.suite.operation.name < rhs.record.suite.operation.name;
                 return metrics_case_phase_rank(lhs.title) < metrics_case_phase_rank(rhs.title);
@@ -1238,6 +1242,9 @@ namespace bl::test::metrics
             0.01,
             metrics_console_columns_for_current_filter());
     }
+
+    void start_metrics_console_html_capture(std::ostream& out);
+    void write_and_stop_metrics_console_html_capture(std::ostream& out);
 }
 
 #endif

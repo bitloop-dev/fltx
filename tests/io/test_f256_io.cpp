@@ -109,7 +109,7 @@ namespace
     void check_roundtrip_case(const char* label, const f256& value)
     {
         const std::string text     = to_text(value);
-        const f256 reparsed        = to_f256(text);
+        const f256 reparsed        = bl::parse<f256>(text);
         const mpfr_check expected  = to_ref_exact(value);
         const mpfr_check got       = to_ref_exact(reparsed);
         const mpfr_check tolerance = comparison_tolerance(expected);
@@ -305,7 +305,7 @@ TEST_CASE("f256 parser handles special values, partial tokens, and invalid input
         REQUIRE(parsed.x3 == 0.0);
     }
 
-    REQUIRE(bl::iszero(to_f256("oops")));
+    REQUIRE(bl::iszero(bl::parse<f256>("oops", f256{ 0.0 })));
 }
 
 TEST_CASE("f256 fixed zero formatting respects precision", "[fltx][f256][io][format]")
@@ -345,7 +345,7 @@ TEST_CASE("f256 formats special values and stream flags consistently", "[fltx][f
     REQUIRE(bl::to_string(inf) == "inf");
     REQUIRE(bl::to_string(neg_inf) == "-inf");
     REQUIRE(bl::to_string(nan) == "nan");
-    REQUIRE(std::string(bl::to_static_string(to_f256("1.2500"), 4)) == "1.25");
+    REQUIRE(std::string(bl::to_static_string(bl::parse<f256>("1.2500"), 4)) == "1.25");
 
     std::ostringstream pos_upper;
     pos_upper << std::showpos << std::uppercase << inf;
@@ -435,7 +435,7 @@ TEST_CASE("f256 brute-force random io test", "[fltx][f256][io][rand]")
         const f256 value           = random_large_finite_for_f256(rng);
         const std::string expected = to_text(value);
 
-        const f256 parsed        = to_f256(expected);
+        const f256 parsed        = bl::parse<f256>(expected);
         const std::string actual = to_text(parsed);
 
         INFO("iteration: " << i);

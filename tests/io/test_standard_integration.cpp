@@ -38,6 +38,11 @@ namespace
     static_assert(bl::fltx_float<bl::f256>);
     static_assert(bl::fltx_floating_point<bl::f128>);
     static_assert(bl::fltx_floating_point<bl::f64>);
+
+    static_assert(!std::is_constructible_v<bl::f128, const char*>);
+    static_assert(!std::is_constructible_v<bl::f256, const char*>);
+    static_assert(!std::is_constructible_v<bl::f128, std::string>);
+    static_assert(!std::is_constructible_v<bl::f256, std::string>);
     static_assert(bl::fltx_arithmetic<bl::f256>);
     static_assert(bl::fltx_arithmetic<int>);
 
@@ -104,22 +109,6 @@ namespace
     }
 
     template<class T>
-    [[nodiscard]] constexpr T round_to_stream_precision(
-        T value,
-        int precision,
-        std::ios_base::fmtflags flags)
-    {
-        const auto floatfield = flags & std::ios_base::floatfield;
-        if (floatfield == std::ios_base::fixed)
-            return bl::round_to(value, precision, bl::decimals);
-        if (floatfield == std::ios_base::scientific)
-            return bl::round_to(value, precision + 1, bl::significant_figures);
-        if (floatfield == (std::ios_base::fixed | std::ios_base::scientific))
-            return value;
-        return bl::round_to(value, precision, bl::significant_figures);
-    }
-
-    template<class T>
     [[nodiscard]] constexpr bool constexpr_static_string_roundtrip(
         T value,
         int precision,
@@ -135,8 +124,8 @@ namespace
         if (bl::isinf(value))
             return parsed.value == value;
 
-        return round_to_stream_precision(parsed.value, precision, flags) ==
-               round_to_stream_precision(value, precision, flags);
+        return bl::round_to(parsed.value, precision, flags) ==
+               bl::round_to(value, precision, flags);
     }
 
     template<class T>
@@ -602,13 +591,13 @@ TEST_CASE("fltx precision_info can collapse fixed fractional digits", "[fltx][io
 {
     const bl::precision_info collapsed{ 15, 3, 4 };
 
-    REQUIRE(bl::to_string(bl::to_f128("123.123456789012345"), collapsed, std::ios_base::fixed) == "123.123...2345");
-    REQUIRE(bl::to_string(bl::to_f256("123.123456789012345"), collapsed, std::ios_base::fixed) == "123.123...2345");
+    REQUIRE(bl::to_string(bl::parse<bl::f128>("123.123456789012345"), collapsed, std::ios_base::fixed) == "123.123...2345");
+    REQUIRE(bl::to_string(bl::parse<bl::f256>("123.123456789012345"), collapsed, std::ios_base::fixed) == "123.123...2345");
 
     REQUIRE(bl::to_string(bl::f32{ 1.1234567f }, bl::precision_info{ 7, 1, 1 }, std::ios_base::fixed) == "1.1...7");
     REQUIRE(bl::to_string(bl::f64{ 1.123456789 }, bl::precision_info{ 9, 2, 3 }, std::ios_base::fixed) == "1.12...789");
 
-    const bl::f128 value = bl::to_f128("123.123456789012345");
+    const bl::f128 value = bl::parse<bl::f128>("123.123456789012345");
     REQUIRE(bl::to_string(value, collapsed) == bl::to_string(value, collapsed.digits));
     REQUIRE(bl::to_string(value, collapsed, std::ios_base::scientific) == bl::to_string(value, collapsed.digits, std::ios_base::scientific));
 }
@@ -645,8 +634,8 @@ TEST_CASE("fltx string output accepts std fmtflags", "[fltx][io][string]")
     static_assert(bl::to_static_string(bl::f32{ 123.25f }, 2, std::ios_base::fixed).view() == "123.25");
     static_assert(bl::to_static_string(bl::f64{ 123.25 }, 2, std::ios_base::scientific).view() == "1.23e+02");
 
-    const bl::f128 f128_value = bl::to_f128("123.25");
-    const bl::f256 f256_value = bl::to_f256("123.25");
+    const bl::f128 f128_value = bl::parse<bl::f128>("123.25");
+    const bl::f256 f256_value = bl::parse<bl::f256>("123.25");
 
     REQUIRE(bl::to_string(bl::f32{ 123.25f }, 2, std::ios_base::fixed) == "123.25");
     REQUIRE(bl::to_string(bl::f64{ 123.25 }, 2, std::ios_base::scientific) == "1.23e+02");
@@ -655,7 +644,7 @@ TEST_CASE("fltx string output accepts std fmtflags", "[fltx][io][string]")
 
     REQUIRE(bl::to_string(f128_value, 2, std::ios_base::fixed) == "123.25");
     REQUIRE(bl::to_string(f256_value, 2, std::ios_base::scientific) == "1.23e+02");
-    REQUIRE(bl::to_string(bl::to_f256("1.2500"), 6, std::ios_base::fmtflags{}) == "1.25");
+    REQUIRE(bl::to_string(bl::parse<bl::f256>("1.2500"), 6, std::ios_base::fmtflags{}) == "1.25");
     REQUIRE(bl::to_string(bl::f32{ 3.0f }, 2, (std::ios_base::fixed | std::ios_base::scientific)) == "0x1.800000p+1");
     REQUIRE(bl::to_string(bl::f64{ 3.0 }, 2, (std::ios_base::fixed | std::ios_base::scientific)) == "0x1.8000000000000p+1");
     REQUIRE(std::string(bl::to_static_string(bl::f128{ 1.0 }, 2, (std::ios_base::fixed | std::ios_base::scientific))) == "0x1.000000000000000000000000000p+0");
@@ -679,7 +668,7 @@ TEST_CASE("fltx string output accepts std fmtflags", "[fltx][io][string]")
     REQUIRE(upper_hex_stream.str() == "0X1.40000000000000000000000000000000000000000000000000000P+0");
 
     const bl::precision_info collapsed{ 8, 1, 1 };
-    REQUIRE(bl::to_string(bl::to_f128("1.12345678"), collapsed, std::ios_base::fixed) == "1.1...8");
+    REQUIRE(bl::to_string(bl::parse<bl::f128>("1.12345678"), collapsed, std::ios_base::fixed) == "1.1...8");
 }
 
 TEST_CASE("fltx typed float formats serialize and deserialize predictably", "[fltx][io][string][parse]")
@@ -750,12 +739,13 @@ TEST_CASE("fltx hash specializations support unordered containers", "[fltx][hash
     REQUIRE(found->second == 42);
 }
 
-TEST_CASE("fltx generic pow10 covers the float family", "[fltx][math][pow10]")
+TEST_CASE("fltx casted-base pow covers decimal powers across the float family", "[fltx][math][pow]")
 {
-    REQUIRE(bl::pow10<bl::f32>(3) == 1000.0f);
-    REQUIRE(bl::pow10<bl::f64>(3) == 1000.0);
-    REQUIRE(bl::pow10<bl::f128>(3) == bl::f128{ 1000.0 });
-    REQUIRE(bl::pow10<bl::f256>(3) == bl::f256{ 1000.0 });
+    REQUIRE(bl::pow(bl::f32{ 10 }, 3) == 1000.0);
+    REQUIRE(bl::ipow(bl::f32{ 10 }, 3) == 1000.0f);
+    REQUIRE(bl::pow(bl::f64{ 10 }, 3) == 1000.0);
+    REQUIRE(bl::pow(bl::f128{ 10 }, 3) == bl::f128{ 1000.0 });
+    REQUIRE(bl::pow(bl::f256{ 10 }, 3) == bl::f256{ 1000.0 });
 
     for (int exponent = -45; exponent <= 38; ++exponent)
     {
@@ -767,7 +757,7 @@ TEST_CASE("fltx generic pow10 covers the float family", "[fltx][math][pow10]")
 
         REQUIRE(ec == std::errc{});
         REQUIRE(ptr == token.data() + token.size());
-        REQUIRE(bl::pow10<bl::f32>(exponent) == expected);
+        REQUIRE(bl::ipow(bl::f32{ 10 }, exponent) == expected);
     }
 
     for (int exponent = -323; exponent <= 308; ++exponent)
@@ -780,7 +770,7 @@ TEST_CASE("fltx generic pow10 covers the float family", "[fltx][math][pow10]")
 
         REQUIRE(ec == std::errc{});
         REQUIRE(ptr == token.data() + token.size());
-        REQUIRE(bl::pow10<bl::f64>(exponent) == expected);
+        REQUIRE(bl::pow(bl::f64{ 10 }, exponent) == expected);
     }
 
     const int extended_exponents[] = { -32, -8, -3, -1, 0, 1, 3, 8, 32 };
@@ -789,11 +779,119 @@ TEST_CASE("fltx generic pow10 covers the float family", "[fltx][math][pow10]")
         CAPTURE(exponent);
         const std::string token = "1e" + std::to_string(exponent);
 
-        const bl::f128 expected_f128 = bl::to_f128(token);
-        const bl::f256 expected_f256 = bl::to_f256(token);
-        REQUIRE(close_to_decimal_power(bl::pow10<bl::f128>(exponent), expected_f128));
-        REQUIRE(close_to_decimal_power(bl::pow10<bl::f256>(exponent), expected_f256));
+        const bl::f128 expected_f128 = bl::parse<bl::f128>(token);
+        const bl::f256 expected_f256 = bl::parse<bl::f256>(token);
+        REQUIRE(close_to_decimal_power(bl::pow(bl::f128{ 10 }, exponent), expected_f128));
+        REQUIRE(close_to_decimal_power(bl::pow(bl::f256{ 10 }, exponent), expected_f256));
     }
+}
+
+namespace
+{
+    consteval void pow_static_contract_tests()
+    {
+        using namespace bl::literals;
+
+        static_assert(bl::pow(10, 4) == 10000);
+        static_assert(bl::pow(5, 4) == 625);
+        static_assert(bl::pow(2, 10) == 1024);
+        static_assert(bl::pow(3, 13) == 1594323);
+        static_assert(bl::pow(-3, 7) == -2187);
+        static_assert(bl::pow(-2, 5) == -32);
+        static_assert(bl::pow(-10, 3) == -1000);
+        static_assert(bl::pow(3.0, 13) == 1594323.0);
+        static_assert(bl::pow(3.0f, 7) == 2187.0);
+        static_assert(bl::ipow(3.0f, 7) == 2187.0f);
+
+        static_assert(std::same_as<decltype(bl::pow(bl::u8{ 4 }, bl::i16{ 3 })), bl::f64>);
+        static_assert(std::same_as<decltype(bl::pow(bl::i16{ 10 }, bl::u8{ 4 })), bl::f64>);
+        static_assert(std::same_as<decltype(bl::pow(10, bl::u8{ 9 })), bl::f64>);
+        static_assert(std::same_as<decltype(bl::pow(10, 12.0f)), bl::f64>);
+        static_assert(std::same_as<decltype(bl::pow(10, 12.0)), bl::f64>);
+        static_assert(std::same_as<decltype(bl::pow(10, 12.0_dd)), bl::f128>);
+        static_assert(std::same_as<decltype(bl::pow(10, 12.0_qd)), bl::f256>);
+        static_assert(std::same_as<decltype(bl::pow(10.0f, 12)), bl::f64>);
+        static_assert(std::same_as<decltype(bl::pow(10.0f, 12.0)), bl::f64>);
+        static_assert(std::same_as<decltype(bl::pow(10.0f, 12.0_dd)), bl::f128>);
+        static_assert(std::same_as<decltype(bl::pow(10.0f, 12.0_qd)), bl::f256>);
+        static_assert(std::same_as<decltype(bl::pow(10.0_dd, 12.0_qd)), bl::f256>);
+
+        static_assert(std::same_as<decltype(bl::ipow(bl::u8{ 4 }, bl::i16{ 3 })), bl::u8>);
+        static_assert(std::same_as<decltype(bl::ipow(bl::i16{ 10 }, bl::u8{ 4 })), bl::i16>);
+        static_assert(std::same_as<decltype(bl::ipow(10, bl::u8{ 9 })), int>);
+        static_assert(std::same_as<decltype(bl::ipow(10.0f, 12)), bl::f32>);
+
+        static_assert(bl::pow(bl::u8{ 4 }, bl::i16{ 3 }) == 64.0);
+        static_assert(bl::pow(bl::i16{ 10 }, bl::u8{ 4 }) == 10000.0);
+        static_assert(bl::pow(bl::u64{ bl::u8{ 10 } }, bl::u8{ 12 }) == 1000000000000.0);
+
+        static_assert(bl::ipow(bl::u8{ 4 }, bl::i16{ 3 }) == bl::u8{ 64 });
+        static_assert(bl::ipow(bl::i16{ 10 }, bl::u8{ 4 }) == bl::i16{ 10000 });
+        static_assert(bl::ipow(bl::u64{ bl::u8{ 10 } }, bl::u8{ 12 }) == 1000000000000ull);
+
+        static_assert(bl::pow(bl::u8{ 10 }, bl::u8{ 3 }) == 1000.0);
+        static_assert(bl::pow(bl::u8{ 10 }, 3) == 1000.0);
+        static_assert(bl::ipow(bl::u8{ 5 }, bl::u8{ 3 }) == bl::u8{ 125 });
+        static_assert(bl::ipow(bl::u8{ 5 }, 3) == bl::u8{ 125 });
+
+        constexpr bl::f128 f128_pow10 = bl::pow(bl::f128{ 10.0 }, 12);
+        constexpr bl::f128 f128_pow10_float_base = bl::pow(bl::f128{ 10 }, -6);
+        constexpr bl::f128 f128_pow5_float_base = bl::pow(bl::f128{ 5 }, 4);
+        constexpr bl::f128 f128_pow2_float_base = bl::pow(bl::f128{ 2 }, 12);
+        constexpr bl::f128 f128_neg_pow10 = bl::pow(bl::f128{ -10 }, 3);
+        constexpr bl::f128 f128_double_base = bl::pow(bl::f128{ 10.0 }, 6);
+        constexpr bl::f128 f128_pow5_scaled = bl::pow(bl::f128{ 5 }, -6);
+        constexpr bl::f128 f128_pow25_scaled = bl::pow(bl::f128{ 25 }, 60);
+
+        static_assert(f128_pow10 == bl::pow(bl::f128{ 10 }, 12));
+        static_assert(f128_pow10_float_base == bl::pow(bl::f128{ 10 }, -6));
+        static_assert(f128_pow5_float_base == bl::f128{ 625.0 });
+        static_assert(f128_pow2_float_base == bl::f128{ 4096.0 });
+        static_assert(f128_neg_pow10 == -bl::pow(bl::f128{ 10 }, 3));
+        static_assert(f128_double_base == bl::pow(bl::f128{ 10 }, 6));
+        static_assert(f128_pow5_scaled == bl::ldexp(bl::pow(bl::f128{ 10 }, -6), 6));
+        static_assert(f128_pow25_scaled == bl::ldexp(bl::pow(bl::f128{ 10 }, 120), -120));
+
+        constexpr bl::f256 f256_pow10 = bl::pow(bl::f256{ 10.0 }, 12);
+        constexpr bl::f256 f256_pow10_float_base = bl::pow(bl::f256{ 10 }, -6);
+        constexpr bl::f256 f256_pow5_float_base = bl::pow(bl::f256{ 5 }, 4);
+        constexpr bl::f256 f256_pow2_float_base = bl::pow(bl::f256{ 2 }, 12);
+        constexpr bl::f256 f256_neg_pow10 = bl::pow(bl::f256{ -10 }, 3);
+        constexpr bl::f256 f256_double_base = bl::pow(bl::f256{ 10.0 }, 6);
+        constexpr bl::f256 f256_pow5_scaled = bl::pow(bl::f256{ 5 }, -6);
+        constexpr bl::f256 f256_pow25_scaled = bl::pow(bl::f256{ 25 }, 60);
+
+        static_assert(f256_pow10 == bl::pow(bl::f256{ 10 }, 12));
+        static_assert(f256_pow10_float_base == bl::pow(bl::f256{ 10 }, -6));
+        static_assert(f256_pow5_float_base == bl::f256{ 625.0 });
+        static_assert(f256_pow2_float_base == bl::f256{ 4096.0 });
+        static_assert(f256_neg_pow10 == -bl::pow(bl::f256{ 10 }, 3));
+        static_assert(f256_double_base == bl::pow(bl::f256{ 10 }, 6));
+        static_assert(f256_pow5_scaled == bl::ldexp(bl::pow(bl::f256{ 10 }, -6), 6));
+        static_assert(f256_pow25_scaled == bl::ldexp(bl::pow(bl::f256{ 10 }, 120), -120));
+    }
+
+    static_assert((pow_static_contract_tests(), true));
+
+    [[nodiscard]] BL_NO_INLINE bool pow_extended_integral_results_are_finite()
+    {
+        return bl::isfinite(bl::pow(bl::f128{ 5 }, 400)) &&
+            bl::isfinite(bl::pow(bl::f128{ 5 }, -400)) &&
+            bl::isfinite(bl::pow(bl::f256{ 5 }, 400)) &&
+            bl::isfinite(bl::pow(bl::f256{ 5 }, -400));
+    }
+
+    [[nodiscard]] BL_NO_INLINE bool pow_fractional_result_is_in_expected_range()
+    {
+        const bl::f128 fractional = bl::pow(bl::f128{ 10 }, 2.5);
+        return fractional > bl::f128{ 316.0 } && fractional < bl::f128{ 317.0 };
+    }
+}
+
+TEST_CASE("fltx pow uses exact special bases for integral exponents", "[fltx][math][pow]")
+{
+    REQUIRE(pow_extended_integral_results_are_finite());
+    REQUIRE(pow_fractional_result_is_in_expected_range());
 }
 
 #if FLTX_HAS_STD_FORMAT

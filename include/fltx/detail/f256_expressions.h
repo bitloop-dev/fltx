@@ -484,11 +484,6 @@ namespace detail::_f256 // primitives and kernels
         return add_raw5_value_inline(mul_double_raw5_inline(value, scalar), add);
     }
 
-    BL_FORCE_INLINE constexpr f256_s add_mul_double_maybe_pow2_inline(const f256_s& add, const f256_s& value, double scalar) noexcept
-    {
-        return add_mul_double_inline(add, value, scalar);
-    }
-
     BL_FORCE_INLINE constexpr f256_s sub_mul_double_inline(const f256_s& min, const f256_s& value, double scalar) noexcept
     {
         const pow2_scale_info scale = exact_pow2_scale_info(scalar);
@@ -498,11 +493,6 @@ namespace detail::_f256 // primitives and kernels
         return add_raw5_value_inline(neg_raw5(mul_double_raw5_inline(value, scalar)), min);
     }
 
-    BL_FORCE_INLINE constexpr f256_s sub_mul_double_maybe_pow2_inline(const f256_s& min, const f256_s& value, double scalar) noexcept
-    {
-        return sub_mul_double_inline(min, value, scalar);
-    }
-
     BL_FORCE_INLINE constexpr f256_s mul_double_sub_inline(const f256_s& value, double scalar, const f256_s& sub) noexcept
     {
         const pow2_scale_info scale = exact_pow2_scale_info(scalar);
@@ -510,11 +500,6 @@ namespace detail::_f256 // primitives and kernels
             return sub_inline(scale_pow2_or_checked_inline(value, scalar, scale), sub);
 
         return add_raw5_value_inline(mul_double_raw5_inline(value, scalar), -sub);
-    }
-
-    BL_FORCE_INLINE constexpr f256_s mul_double_sub_maybe_pow2_inline(const f256_s& value, double scalar, const f256_s& sub) noexcept
-    {
-        return mul_double_sub_inline(value, scalar, sub);
     }
 
     BL_FORCE_INLINE constexpr f256_s mul_double_sub_pow2_inline(const f256_s& value, double scalar, const f256_s& sub) noexcept

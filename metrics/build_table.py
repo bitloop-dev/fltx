@@ -93,6 +93,101 @@ LEGACY_MIXED_WORKLOADS_GROUPS = {"Mixed workloads"}
 LEGACY_HIDDEN_GROUPS = {"Mandelbrot"}
 ARITHMETIC_GROUP_RE = re.compile(r"^f(?P<bits>128|256) <-> (?P<rhs>f128|f256|f64|f32|i64|i32)$")
 PRIMARY_METRICS_GROUP = "Primary"
+IO_AVERAGE_LABELS = {"to_string (average)", "parse (average)"}
+
+VISIBLE_TABLE_LABELS_BY_GROUP: dict[str, set[str]] = {
+    NATIVE_ARITHMETIC_GROUP: NATIVE_ARITHMETIC_LABELS,
+    MIXED_WORKLOADS_GROUP: {
+        "affine trig transform",
+        "mandelbrot kernel",
+        "mixed arithmetic",
+    },
+    "IO": IO_AVERAGE_LABELS,
+    "Rounding": {
+        "floor",
+        "ceil",
+        "trunc",
+        "round",
+        "nearbyint",
+        "rint",
+        "lround",
+        "llround",
+        "lrint",
+        "llrint",
+    },
+    "Remainders": {
+        "fmod",
+        "remainder",
+        "remquo",
+    },
+    "Floating-point utilities": {
+        "abs",
+        "fma",
+        "fmin",
+        "fmax",
+        "fdim",
+        "copysign",
+        "ldexp",
+        "scalbn",
+        "scalbln",
+        "frexp",
+        "modf",
+        "ilogb",
+        "logb",
+        "nextafter",
+        "nexttoward(type)",
+    },
+    "Roots & powers": {
+        "sqrt",
+        "cbrt",
+        "hypot",
+        "pow",
+    },
+    "Exponentials": {
+        "exp",
+        "exp2",
+        "expm1",
+    },
+    "Logarithms": {
+        "log",
+        "log2",
+        "log10",
+        "log1p",
+    },
+    "Trigonometric": {
+        "sin",
+        "cos",
+        "tan",
+        "asin",
+        "acos",
+        "atan",
+        "atan2",
+    },
+    "Hyperbolic": {
+        "sinh",
+        "cosh",
+        "tanh",
+    },
+    "Inverse hyperbolic": {
+        "asinh",
+        "acosh",
+        "atanh",
+    },
+    "Special functions": {
+        "erfc",
+        "erf",
+        "tgamma",
+        "lgamma",
+    },
+    "Comparisons": {
+        "operator==",
+        "operator!=",
+        "operator<",
+        "operator>",
+        "operator<=",
+        "operator>=",
+    },
+}
 
 
 @dataclass(frozen=True)
@@ -116,9 +211,6 @@ class BenchmarkTable:
     groups: list[str]
     rows_by_group: dict[str, list[str]]
     cells: dict[tuple[str, str, ColumnKey], BenchmarkCell]
-
-
-IO_AVERAGE_LABELS = {"to_string (average)", "parse (average)"}
 
 
 def normalize_key(value: str) -> str:
@@ -269,11 +361,15 @@ def read_csv(path: Path, fp_type: str) -> list[tuple[str, str, BenchmarkCell]]:
         return out
 
 
+def included_table_label(group: str, label: str) -> bool:
+    return label in VISIBLE_TABLE_LABELS_BY_GROUP.get(group, set())
+
+
 def visible_table_entry(fp_type: str, group: str, label: str) -> tuple[str, str] | None:
     arithmetic_match = ARITHMETIC_GROUP_RE.match(group)
     if arithmetic_match:
         native_group = f"{fp_type} <-> {fp_type}"
-        if group == native_group and label in NATIVE_ARITHMETIC_LABELS:
+        if group == native_group and included_table_label(NATIVE_ARITHMETIC_GROUP, label):
             return NATIVE_ARITHMETIC_GROUP, label
         return None
 
@@ -284,9 +380,14 @@ def visible_table_entry(fp_type: str, group: str, label: str) -> tuple[str, str]
         return None
 
     if group == MIXED_WORKLOADS_GROUP or group in LEGACY_MIXED_WORKLOADS_GROUPS:
-        return MIXED_WORKLOADS_GROUP, label
+        if included_table_label(MIXED_WORKLOADS_GROUP, label):
+            return MIXED_WORKLOADS_GROUP, label
+        return None
 
-    return group, label
+    if included_table_label(group, label):
+        return group, label
+
+    return None
 
 
 def average_or_none(values: list[float]) -> float | None:
@@ -942,21 +1043,30 @@ def render_svg_table(table: BenchmarkTable, show_title_legend: bool = True) -> s
     return "\n".join(parts)
 
 
-def default_res_root() -> Path:
-    return Path(__file__).resolve().parents[1]
+def default_metrics_root() -> Path:
+    return Path(__file__).resolve().parent
 
 
-def resolve_metrics_root(res_root: Path) -> Path:
-    if res_root.name.lower() == "metrics":
-        return res_root
-    return res_root / "metrics"
+def resolve_metrics_root(root: Path) -> Path:
+    root_name = root.name.lower()
+    if root_name == "data":
+        return root.parent
+    if root_name == "res":
+        return root.parent / "metrics"
+    if root_name == "metrics":
+        return root
+    if (root / "metrics" / "data").exists():
+        return root / "metrics"
+    return root
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Collect fltx metrics CSV files into one combined bl::f128/bl::f256 table file.")
-    parser.add_argument("--res-root", type=Path, default=default_res_root(), help="fltx/res root folder. Defaults to this script's parent res folder.")
-    parser.add_argument("--root", type=Path, default=None, help="Deprecated alias for --res-root.")
-    parser.add_argument("--output-dir", type=Path, default=None, help="Output directory. Defaults to <res-root>/metrics.")
+    parser.add_argument("--metrics-root", type=Path, default=default_metrics_root(), help="fltx/metrics root folder. Defaults to this script's parent folder.")
+    parser.add_argument("--data-dir", type=Path, default=None, help="Input metrics data directory. Defaults to <metrics-root>/data.")
+    parser.add_argument("--res-root", type=Path, default=None, help="Deprecated alias for the old fltx/res root. Maps to the sibling fltx/metrics tree.")
+    parser.add_argument("--root", type=Path, default=None, help="Deprecated root argument. Accepts either the new metrics root or the old res root.")
+    parser.add_argument("--output-dir", type=Path, default=None, help="Output directory. Defaults to <metrics-root>/generated.")
     parser.add_argument("--format", choices=("html", "svg", "both"), default="svg", help="Output format.")
     parser.add_argument(
         "--no-title-legend",
@@ -985,11 +1095,17 @@ def write_outputs(table: BenchmarkTable, output_dir: Path, output_format: str, s
 
 def main() -> None:
     args = parse_args()
-    res_root = (args.root if args.root is not None else args.res_root).resolve()
-    metrics_root = resolve_metrics_root(res_root)
-    output_dir = args.output_dir.resolve() if args.output_dir else metrics_root
+    root = args.metrics_root
+    if args.root is not None:
+        root = args.root
+    if args.res_root is not None:
+        root = args.res_root
 
-    table = discover_table(metrics_root)
+    metrics_root = resolve_metrics_root(root.resolve())
+    data_root = args.data_dir.resolve() if args.data_dir else metrics_root / "data"
+    output_dir = args.output_dir.resolve() if args.output_dir else metrics_root / "generated"
+
+    table = discover_table(data_root)
     for path in write_outputs(table, output_dir, args.format, args.show_title_legend):
         print(f"wrote {path}")
 

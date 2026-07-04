@@ -206,7 +206,7 @@ namespace detail::_f256 // primitives and kernels
 
         static constexpr value_type exact_uint64_to_value(std::uint64_t value, bool neg)
         {
-            value_type out = bl::to_f256(value);
+            value_type out = detail::_f256::integer_to_f256(value);
             return neg ? -out : out;
         }
 
@@ -232,19 +232,6 @@ namespace detail::_f256 // primitives and kernels
     }
 
 } // namespace detail::_f256
-
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s to_f256(const char* s) noexcept
-{
-    f256_s ret;
-    if (detail::_f256::parse(s, ret))
-        return ret;
-    return f256_s{ 0.0 };
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s to_f256(const std::string& s) noexcept
-{
-    return to_f256(s.c_str());
-}
 
 [[nodiscard]] BL_MSVC_NOINLINE constexpr bl::f256_io_string to_static_string(
     const f256_s& value,
@@ -288,13 +275,6 @@ namespace literals
     }
 
 } // namespace literals
-
-constexpr f256::f256(const char* text)
-{
-    const char* end = text;
-    if (!detail::_f256::parse(text, *this, &end))
-        throw "invalid f256";
-}
 
 } // namespace bl
 

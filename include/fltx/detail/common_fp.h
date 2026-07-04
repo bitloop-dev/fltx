@@ -29,8 +29,93 @@
 #  include <immintrin.h>
 #endif
 
+#if !defined(BL_FLTX_DETAIL_MSVC_X86_FMA_PREFLIGHT)
+#  if BL_FLTX_DETAIL_USE_SCALAR_X86_FMA && defined(_MSC_VER) && !defined(__EMSCRIPTEN__) && \
+      (defined(_M_X64) || defined(_M_AMD64) || defined(_M_IX86))
+#    define BL_FLTX_DETAIL_MSVC_X86_FMA_PREFLIGHT 1
+#  else
+#    define BL_FLTX_DETAIL_MSVC_X86_FMA_PREFLIGHT 0
+#  endif
+#endif
+
+#if BL_FLTX_DETAIL_MSVC_X86_FMA_PREFLIGHT
+#  include <cstdio>
+#  include <intrin.h>
+#  include <stdexcept>
+#endif
+
 namespace bl::detail::fp
 {
+
+#if BL_FLTX_DETAIL_MSVC_X86_FMA_PREFLIGHT
+[[nodiscard]] BL_NO_INLINE inline bool runtime_x86_fma_available() noexcept
+{
+    int regs[4]{};
+    __cpuid(regs, 0);
+    if (regs[0] < 1)
+        return false;
+
+    __cpuid(regs, 1);
+    constexpr int bit_fma = 1 << 12;
+    constexpr int bit_xsave = 1 << 26;
+    constexpr int bit_osxsave = 1 << 27;
+    constexpr int bit_avx = 1 << 28;
+    constexpr int required = bit_fma | bit_xsave | bit_osxsave | bit_avx;
+    if ((regs[2] & required) != required)
+        return false;
+
+    const unsigned __int64 xcr0 = _xgetbv(0);
+    return (xcr0 & 0x6) == 0x6;
+}
+
+[[noreturn]] BL_NO_INLINE inline void throw_runtime_x86_fma_unavailable()
+{
+    constexpr const char* message =
+        "fltx: FMA instructions are enabled by default for MSVC x86/x64, "
+        "but this CPU/OS/VM does not report usable FMA + AVX state. "
+        "Set FLTX_DISABLE_FMA_AVAILABLE=1 before including fltx headers, "
+        "or configure CMake with -DFLTX_DISABLE_FMA_AVAILABLE=ON, then rebuild.";
+
+    std::fputs(message, stderr);
+    std::fputc('\n', stderr);
+    throw std::runtime_error(message);
+}
+
+BL_NO_INLINE inline void verify_runtime_x86_fma_available()
+{
+    static const bool checked = []()
+    {
+        if (!runtime_x86_fma_available())
+            throw_runtime_x86_fma_unavailable();
+        return true;
+    }();
+
+    (void)checked;
+}
+
+}
+
+extern "C" BL_NO_INLINE inline void __cdecl fltx_msvc_x86_fma_preflight_initializer()
+{
+    bl::detail::fp::verify_runtime_x86_fma_available();
+}
+
+#pragma section(".CRT$XCT", read)
+extern "C"
+__declspec(allocate(".CRT$XCT"))
+__declspec(selectany)
+void (__cdecl* fltx_msvc_x86_fma_preflight_initializer_ptr)() =
+    fltx_msvc_x86_fma_preflight_initializer;
+
+#if defined(_M_IX86)
+#  pragma comment(linker, "/include:_fltx_msvc_x86_fma_preflight_initializer_ptr")
+#else
+#  pragma comment(linker, "/include:fltx_msvc_x86_fma_preflight_initializer_ptr")
+#endif
+
+namespace bl::detail::fp
+{
+#endif
 
 inline constexpr std::uint64_t exact_double_integer_limit = 9007199254740992ull;
 inline constexpr double exact_double_integer_limit_double = 9007199254740992.0;
@@ -501,6 +586,33 @@ BL_FORCE_INLINE constexpr void two_prod_precise_dekker(double a, double b, doubl
 }
 
 #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+inline constexpr double dekker_split_overflow_threshold = 0x1p996;
+inline constexpr double dekker_split_underflow_threshold = 0x1p-968;
+
+[[nodiscard]] BL_FORCE_INLINE constexpr bool dekker_product_needs_scaling(double a, double b) noexcept
+{
+    const double aa = absd(a);
+    const double ab = absd(b);
+    return aa > dekker_split_overflow_threshold || ab > dekker_split_overflow_threshold ||
+           (aa != 0.0 && aa < dekker_split_underflow_threshold) ||
+           (ab != 0.0 && ab < dekker_split_underflow_threshold);
+}
+
+template<class ExpUnsigned>
+[[nodiscard]] BL_FORCE_INLINE constexpr bool ipow_loop_needs_checked_dekker(double head, ExpUnsigned exp) noexcept
+{
+    if (exp <= ExpUnsigned{ 4 } || iszero_or_inf_or_nan(head)) [[likely]]
+        return false;
+
+    const double magnitude = absd(head);
+    if (magnitude <= 1.0)
+        return false;
+
+    const int frexp_exponent = frexp_exponent_limb(magnitude);
+    const int bits_per_power = frexp_exponent > 1 ? frexp_exponent : 1;
+    return exp > static_cast<ExpUnsigned>(996 / bits_per_power);
+}
+
 BL_MSVC_NOINLINE constexpr void two_prod_precise_dekker_scaled(double a, double b, double& p, double& err) noexcept
 {
     p = a * b;
@@ -511,19 +623,16 @@ BL_MSVC_NOINLINE constexpr void two_prod_precise_dekker_scaled(double a, double 
     }
 
     constexpr int scale = 28;
-    constexpr double split_overflow_threshold = 0x1p996;
-    constexpr double split_underflow_threshold = 0x1p-968;
-
     int a_scale = 0;
     int b_scale = 0;
-    if (absd(a) > split_overflow_threshold)
+    if (absd(a) > dekker_split_overflow_threshold)
         a_scale = -scale;
-    else if (a != 0.0 && absd(a) < split_underflow_threshold)
+    else if (a != 0.0 && absd(a) < dekker_split_underflow_threshold)
         a_scale = scale;
 
-    if (absd(b) > split_overflow_threshold)
+    if (absd(b) > dekker_split_overflow_threshold)
         b_scale = -scale;
-    else if (b != 0.0 && absd(b) < split_underflow_threshold)
+    else if (b != 0.0 && absd(b) < dekker_split_underflow_threshold)
         b_scale = scale;
 
     const int product_scale = a_scale + b_scale;
@@ -537,13 +646,7 @@ BL_MSVC_NOINLINE constexpr void two_prod_precise_dekker_scaled(double a, double 
 
 BL_FORCE_INLINE constexpr void two_prod_precise_dekker_checked(double a, double b, double& p, double& err) noexcept
 {
-    constexpr double split_overflow_threshold = 0x1p996;
-    constexpr double split_underflow_threshold = 0x1p-968;
-    const double aa = absd(a);
-    const double ab = absd(b);
-    if (aa > split_overflow_threshold || ab > split_overflow_threshold ||
-        (aa != 0.0 && aa < split_underflow_threshold) ||
-        (ab != 0.0 && ab < split_underflow_threshold)) [[unlikely]]
+    if (dekker_product_needs_scaling(a, b)) [[unlikely]]
     {
         two_prod_precise_dekker_scaled(a, b, p, err);
     }
@@ -551,6 +654,21 @@ BL_FORCE_INLINE constexpr void two_prod_precise_dekker_checked(double a, double 
     {
         two_prod_precise_dekker(a, b, p, err);
     }
+}
+#else
+[[nodiscard]] BL_FORCE_INLINE constexpr bool dekker_product_needs_scaling(double a, double b) noexcept
+{
+    (void)a;
+    (void)b;
+    return false;
+}
+
+template<class ExpUnsigned>
+[[nodiscard]] BL_FORCE_INLINE constexpr bool ipow_loop_needs_checked_dekker(double head, ExpUnsigned exp) noexcept
+{
+    (void)head;
+    (void)exp;
+    return false;
 }
 #endif
 BL_POP_PRECISE

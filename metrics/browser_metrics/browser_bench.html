@@ -258,7 +258,7 @@
     function collectOutputs() {
       try {
         const FS = window.Module.FS;
-        generatedFiles = walkFs(FS, "/res/bench").map((path) => {
+        generatedFiles = walkFs(FS, "/metrics/data").map((path) => {
           const isSvg = /\.svg$/i.test(path);
           return {
             path,

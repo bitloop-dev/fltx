@@ -180,21 +180,11 @@ namespace detail::_f32_impl
     );
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr float round_to_decimals(float x, int prec) noexcept
-{
-    return detail::_f32_impl::round_to_decimals(x, prec);
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr float round_to_precision(float x, int figures) noexcept
-{
-    return detail::_f32_impl::round_to_significant_figures(x, figures);
-}
-
 [[nodiscard]] BL_FORCE_INLINE constexpr float round_to(float x, int precision, round_format format) noexcept
 {
     return format == round_format::decimals
-        ? round_to_decimals(x, precision)
-        : round_to_precision(x, precision);
+        ? detail::_f32_impl::round_to_decimals(x, precision)
+        : detail::_f32_impl::round_to_significant_figures(x, precision);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float nearbyint(float x) noexcept
@@ -275,6 +265,11 @@ namespace detail::_f32_impl
         static_cast<float>(bl::fma(static_cast<double>(x), static_cast<double>(y), static_cast<double>(z))),
         detail::fp::fmadd_runtime(x, y, z)
     );
+}
+
+[[nodiscard]] BL_FORCE_INLINE constexpr float recip(float x) noexcept
+{
+    return 1.0f / x;
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float fmin(float a, float b) noexcept

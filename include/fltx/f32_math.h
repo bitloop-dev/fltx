@@ -10,16 +10,17 @@
 #ifndef F32_MATH_INCLUDED
 #define F32_MATH_INCLUDED
 
+#include "fltx/f64_math.h"
 #include "fltx/detail/f32_math_basic.h"
 #include "fltx/detail/f32_math_transcendental.h"
-#include "fltx/traits.h"
 
 namespace bl
 {
-    template<fltx_f32 T>
-    [[nodiscard]] BL_FORCE_INLINE constexpr std::remove_cv_t<T> pow10(int exponent) noexcept
+    template<class To>
+    requires detail::math::native_nexttoward_target<To>
+    [[nodiscard]] BL_FORCE_INLINE constexpr float nexttoward(float from, To to) noexcept
     {
-        return static_cast<std::remove_cv_t<T>>(detail::_f32_impl::pow10(exponent));
+        return bl::nexttoward(from, static_cast<long double>(to));
     }
 
 } // namespace bl

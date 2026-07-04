@@ -13,7 +13,7 @@ namespace bl::detail::_f256_runtime
 {
     BL_NO_INLINE f256_s mul_add_horner_step(const f256_s& a, const f256_s& b, const f256_s& c) noexcept
     {
-        return detail::_f256::mul_add_horner_step_inline(a, b, c);
+        return detail::_f256::mul_add_inline(a, b, c);
     }
 
     BL_NO_INLINE f256_s horner_forward(const f256_s* coeffs, std::size_t count, const f256_s& x) noexcept
@@ -154,11 +154,6 @@ namespace bl::detail::_f256_runtime
     }
 
     // powers
-    BL_NO_INLINE f256_s pow10_256(int k)
-    {
-        return detail::_f256_impl::pow10_256(k);
-    }
-
     BL_NO_INLINE f256_s pow(const f256_s& x, const f256_s& y)
     {
         return detail::_f256_impl::pow(x, y);
@@ -167,6 +162,16 @@ namespace bl::detail::_f256_runtime
     BL_NO_INLINE f256_s pow(const f256_s& x, double y)
     {
         return detail::_f256_impl::pow(x, y);
+    }
+
+    BL_NO_INLINE f256_s ipow_signed(const f256_s& x, std::intmax_t y)
+    {
+        return detail::_f256::ipow_integer(x, y);
+    }
+
+    BL_NO_INLINE f256_s ipow_unsigned(const f256_s& x, std::uintmax_t y)
+    {
+        return detail::_f256::ipow_integer(x, y);
     }
 
     // trigonometric

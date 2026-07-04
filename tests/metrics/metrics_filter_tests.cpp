@@ -320,7 +320,7 @@ TEST_CASE("metrics console report keeps custom rows out of primary results", "[m
     set_single_metrics_filter("[precision],[domain]");
 
     auto math_record = make_filter_test_record(bl::test::metrics::precision_type::f128, "add");
-    auto custom_record = make_filter_test_record(bl::test::metrics::precision_type::f128, "pow10<T>");
+    auto custom_record = make_filter_test_record(bl::test::metrics::precision_type::f128, "pow<T>(10)");
     custom_record.suite.domain = { "custom", bl::test::metrics::domain_role::primary };
 
     std::ostringstream out;
@@ -341,11 +341,11 @@ TEST_CASE("metrics console report keeps custom rows out of primary results", "[m
     CHECK(bl::test::metrics::metrics_csv_group(custom_record) == "Custom operations");
 
     const std::size_t add_row = text.find(" add ", primary_title);
-    const std::size_t pow10_row = text.find("pow10<T>", primary_title);
+    const std::size_t pow_row = text.find("pow<T>(10)", primary_title);
     REQUIRE(add_row != std::string::npos);
-    REQUIRE(pow10_row != std::string::npos);
+    REQUIRE(pow_row != std::string::npos);
     CHECK(add_row < custom_title);
-    CHECK(pow10_row > custom_title);
+    CHECK(pow_row > custom_title);
 }
 
 TEST_CASE("metrics bench-only console reports hide accuracy and domain columns", "[metrics][filters]")

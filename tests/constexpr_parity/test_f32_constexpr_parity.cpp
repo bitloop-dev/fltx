@@ -39,11 +39,16 @@ concept can_call_pow = requires(Base base, Exp exp)
     bl::pow(base, exp);
 };
 
-static_assert(std::is_same_v<decltype(bl::pow(2.0f, 5)), bl::f32>);
-static_assert(std::is_same_v<decltype(bl::pow(2, 5)), int>);
-static_assert(bl::pow(2.0f, 5) == 32.0f);
-static_assert(bl::pow(2, 5) == 32);
-static_assert(!can_call_pow<bl::f32, bl::f64>);
+static_assert(std::is_same_v<decltype(bl::pow(2.0f, 5)), bl::f64>);
+static_assert(std::is_same_v<decltype(bl::pow(2, 5)), bl::f64>);
+static_assert(std::is_same_v<decltype(bl::ipow(2.0f, 5)), bl::f32>);
+static_assert(std::is_same_v<decltype(bl::ipow(2, 5)), int>);
+static_assert(bl::pow(2.0f, 5) == 32.0);
+static_assert(bl::pow(2, 5) == 32.0);
+static_assert(bl::ipow(2.0f, 5) == 32.0f);
+static_assert(bl::ipow(2, 5) == 32);
+static_assert(can_call_pow<bl::f32, bl::f64>);
+static_assert(std::is_same_v<decltype(bl::pow(bl::f32{ 2.0f }, bl::f64{ 5.0 })), bl::f64>);
 static_assert(!can_call_pow<bl::f32, long double>);
 
 struct forced_path_scope
@@ -300,11 +305,27 @@ auto eval_runtime_path(Function&& function)
     return stream.str();
 }
 
+[[nodiscard]] std::string describe_bits(double value)
+{
+    std::ostringstream stream;
+    stream << std::hex << std::showbase << std::bit_cast<std::uint64_t>(value);
+    return stream.str();
+}
+
 [[nodiscard]] std::string describe(float value)
 {
     std::ostringstream stream;
     stream << std::setprecision(17) << value
            << " [decimal=" << std::setprecision(std::numeric_limits<float>::max_digits10) << std::scientific << value
+           << std::defaultfloat << ", bits=" << describe_bits(value) << "]";
+    return stream.str();
+}
+
+[[nodiscard]] std::string describe(double value)
+{
+    std::ostringstream stream;
+    stream << std::setprecision(17) << value
+           << " [decimal=" << std::setprecision(std::numeric_limits<double>::max_digits10) << std::scientific << value
            << std::defaultfloat << ", bits=" << describe_bits(value) << "]";
     return stream.str();
 }
@@ -331,6 +352,11 @@ describe(T value)
 [[nodiscard]] bool equal(float lhs, float rhs) noexcept
 {
     return std::bit_cast<std::uint32_t>(lhs) == std::bit_cast<std::uint32_t>(rhs);
+}
+
+[[nodiscard]] bool equal(double lhs, double rhs) noexcept
+{
+    return std::bit_cast<std::uint64_t>(lhs) == std::bit_cast<std::uint64_t>(rhs);
 }
 
 [[nodiscard]] bool equal(long double lhs, long double rhs) noexcept

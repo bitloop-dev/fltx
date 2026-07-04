@@ -104,6 +104,17 @@
       }
     },
     {
+      "name": "xcode",
+      "displayName": "Xcode",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin"},
+      "generator": "Xcode",
+      "binaryDir": "${sourceDir}/build/xcode",
+      "toolchainFile": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "CMAKE_CONFIGURATION_TYPES": "Debug;Release;RelWithDebInfo"
+      }
+    },
+    {
       "name": "macos-release",
       "displayName": "macOS Release",
       "generator": "Unix Makefiles",
@@ -123,6 +134,24 @@
     { "name": "04. mingw-release",    "configurePreset": "mingw-release" },
     { "name": "05. wasm32-release",   "configurePreset": "wasm32-release" },
     { "name": "06. macos-release",    "configurePreset": "macos-release" },
+    {
+      "name": "07. xcode-debug",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin"},
+      "configurePreset": "xcode",
+      "configuration": "Debug"
+    },
+    {
+      "name": "08. xcode-release",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin"},
+      "configurePreset": "xcode",
+      "configuration": "Release"
+    },
+    {
+      "name": "09. xcode-relwithdebinfo",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin"},
+      "configurePreset": "xcode",
+      "configuration": "RelWithDebInfo"
+    },
     { "name": "clang-debug",          "configurePreset": "clang-debug" },
     { "name": "clang-release",        "configurePreset": "clang-release" }
   ],
@@ -183,6 +212,27 @@
     {
       "name": "vs2026-relwithdebinfo",
       "configurePreset": "vs2026",
+      "configuration": "RelWithDebInfo",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "xcode-debug",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin"},
+      "configurePreset": "xcode",
+      "configuration": "Debug",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "xcode-release",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin"},
+      "configurePreset": "xcode",
+      "configuration": "Release",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "xcode-relwithdebinfo",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin"},
+      "configurePreset": "xcode",
       "configuration": "RelWithDebInfo",
       "output": { "outputOnFailure": true }
     }

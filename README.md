@@ -109,7 +109,25 @@ c = 1.000000000000000000000000000000000000000000000000000000000000000
 d = 0.841470984807896506652502321630298999622563060798371065672751710
 ```
 
-More examples are available in [examples/](examples/)
+More examples:
+
+| Example | Shows |
+|---|---|
+| [`example_basic.cpp`](examples/example_basic.cpp) | Basic `f128` / `f256` arithmetic, literals, and output. |
+| [`example_constexpr_io.cpp`](examples/example_constexpr_io.cpp) | Compile-time parsing, formatting, and string conversion. |
+| [`example_dispatch.cpp`](examples/example_dispatch.cpp) | Generic code dispatching across FLTX precision types. |
+| [`example_mandelbrot.cpp`](examples/example_mandelbrot.cpp) | Higher-precision numeric work in a small visual workload. |
+| [`example_consteval_ellipse.cpp`](examples/example_consteval_ellipse.cpp) | Consteval geometry using FLTX math. |
+| [`example_consteval_library_sweep.cpp`](examples/example_consteval_library_sweep.cpp) | Library-wide constexpr coverage across the supported function groups. |
+| [`example_random.cpp`](examples/example_random.cpp) | Random value generation for FLTX types. |
+| [`example_pow.cpp`](examples/example_pow.cpp) | `bl::pow` / `bl::ipow` overload behavior, return-type policy, and fast paths. |
+| [`example_newton_solver.cpp`](examples/example_newton_solver.cpp) | Generic Newton solving across `f64`, `f128`, and `f256`. |
+| [`example_charconv.cpp`](examples/example_charconv.cpp) | Buffer-oriented `to_chars` / `from_chars` parsing and formatting. |
+| [`example_std_integration.cpp`](examples/example_std_integration.cpp) | Standard-library integration with numbers, limits, hashing, comparisons, and optional `std::format`. |
+| [`example_storage_interop.cpp`](examples/example_storage_interop.cpp) | Using `f128_s` / `f256_s` storage forms at fixed-size API boundaries. |
+| [`example_special_values.cpp`](examples/example_special_values.cpp) | NaN, infinity, signed zero, classification, and layout helpers such as `frexp` / `modf`. |
+| [`example_polynomial.cpp`](examples/example_polynomial.cpp) | Polynomial evaluation with `fma` and precision-sensitive cancellation. |
+| [`example_consteval_coefficients.cpp`](examples/example_consteval_coefficients.cpp) | Compile-time generation of high-precision coefficient tables. |
 
 ## Installation
 
@@ -265,10 +283,10 @@ Supported function groups:
 | constexpr | Category | Functions |
 |---|---|---|
 | ✅ | Arithmetic | `abs`, `fabs`, `fma` |
-| ✅ | Rounding | `floor`, `ceil`, `trunc`, `round`, `lround`, `llround`, `nearbyint`, `rint`, `lrint`, `llrint` |
+| ✅ | Rounding | `floor`, `ceil`, `trunc`, `round`, `lround`, `llround`, `nearbyint`, `rint`, `lrint`, `llrint`, `round_to` |
 | ✅ | Remainders | `fmod`, `remainder`, `remquo` |
 | ✅ | Min / max / sign | `fmin`, `fmax`, `fdim`, `copysign`, `signbit` |
-| ✅ | Roots / powers | `sqrt`, `cbrt`, `hypot`, `pow` |
+| ✅ | Roots / powers | `sqrt`, `cbrt`, `hypot`, `pow`, `ipow` |
 | ✅ | Exp / log | `exp`, `exp2`, `expm1`, `log`, `log2`, `log10`, `log1p`, `logb`, `ilogb` |
 | ✅ | Trigonometry | `sin`, `cos`, `tan`, `sincos`, `asin`, `acos`, `atan`, `atan2` |
 | ✅ | Hyperbolic | `sinh`, `cosh`, `tanh`, `asinh`, `acosh`, `atanh` |
@@ -276,6 +294,9 @@ Supported function groups:
 | ✅ | Classification / comparison | `fpclassify`, `isfinite`, `isinf`, `isnan`, `isnormal`, `isunordered`, `isgreater`, `isgreaterequal`, `isless`, `islessequal`, `islessgreater`, `iszero` |
 | ✅ | Scaling / layout | `ldexp`, `scalbn`, `scalbln`, `frexp`, `modf`, `nextafter`, `nexttoward` |
 
+For an example of the library-wide constexpr capabilities, see [`example_consteval_library_sweep.cpp`](examples/example_consteval_library_sweep.cpp).
+
+Use `bl::round_to(x, precision, bl::decimals)` for decimal-place rounding and `bl::round_to(x, precision, bl::significant_figures)` for significant-figure rounding. Use `bl::pow(T{ base }, n)` or `bl::ipow(T{ base }, n)` for integral powers, including powers of ten.
 
 ## IO and Literals
 
@@ -332,6 +353,8 @@ Use:
 - `bl::parse<T>` for strict whole-string parsing that returns the parsed value.
 - `bl::parse<T>(text, fallback)` when a fallback value is enough.
 - `bl::try_parse<T>` when you need error and consumed-character details.
+
+String input is intentionally routed through the parsing APIs. Constructors for `f128` and `f256` are for numeric and storage-form values, not direct text parsing.
 
 Stream output supports `std::setprecision`, `std::fixed`, `std::scientific`, `std::showpoint`, `std::showpos`, and `std::uppercase`.
 
@@ -573,9 +596,9 @@ Tested on:
 - dd_real (qdpp)
 - qd_real (qdpp)
 
-<img src="res/metrics/metrics_table.svg" alt="fltx metrics table" width="100%">
+<img src="metrics/generated/metrics_table.svg" alt="fltx metrics table" width="100%">
 
-Checked-in metrics CSVs currently live under [res/metrics/](res/metrics/) for the platform/compiler combinations that have generated reports.
+Checked-in metrics CSVs currently live under [metrics/data/](metrics/data/) for the platform/compiler combinations that have generated reports. Generated summary tables are written to [metrics/generated/](metrics/generated/).
 
 ## f256 Expression Fusion
 

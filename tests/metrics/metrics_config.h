@@ -21,8 +21,8 @@ namespace bl::test::metrics::config
     constexpr double mixed_sample_count_scale     = 0.25;   // mixed workload generated sample scale (default 0.25)
     constexpr double mixed_iters_scale            = 0.02;   // mixed workload benchmark iteration scale (default 0.02)
 
-    constexpr std::size_t benchmark_warmup_trials = 1;
-    constexpr std::size_t benchmark_timing_trials = 5;
+    constexpr std::size_t benchmark_warmup_trials = 0;
+    constexpr std::size_t benchmark_timing_trials = 1;
 
     constexpr std::size_t integer_rounding_benchmark_sample_count_cap = 8192;
     constexpr std::size_t integer_rounding_benchmark_min_iterations_cap = 1500000;

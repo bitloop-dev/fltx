@@ -39,6 +39,37 @@ namespace
             bl::uniform_real_distribution<bl::f128>{ bl::f128{ -2.0 }, bl::f128{ 3.0 } });
     }
 
+    [[nodiscard]] constexpr auto constexpr_uniform_real_array_sample()
+    {
+        return bl::uniform_real_array<4>(
+            bl::f128{ -2.0 },
+            bl::f128{ 3.0 },
+            bl::mt19937_64{ 0x1020304050607080ull });
+    }
+
+    [[nodiscard]] constexpr auto constexpr_seed_uniform_real_array_sample()
+    {
+        return bl::uniform_real_array<4>(
+            bl::f128{ -2.0 },
+            bl::f128{ 3.0 },
+            0x1020304050607080ull);
+    }
+
+    [[nodiscard]] constexpr auto constexpr_default_seed_uniform_real_array_sample()
+    {
+        return bl::uniform_real_array<4>(bl::f128{ -2.0 }, bl::f128{ 3.0 });
+    }
+
+    [[nodiscard]] constexpr auto constexpr_explicit_type_uniform_real_array_sample()
+    {
+        return bl::uniform_real_array<4, bl::f128>(-2, 3);
+    }
+
+    [[nodiscard]] constexpr auto constexpr_unit_uniform_real_array_sample()
+    {
+        return bl::uniform_real_array<4, bl::f128>();
+    }
+
     [[nodiscard]] constexpr bl::f128 constexpr_canonical_sample()
     {
         bl::mt19937 rng{ 1234u };
@@ -85,6 +116,37 @@ namespace
         bl::mt19937_64 rng{ 0x3141592653589793ull };
         bl::normal_distribution<bl::f128> dist{ bl::f128{ 0.5 }, bl::f128{ 2.0 } };
         return dist(rng);
+    }
+
+    [[nodiscard]] constexpr auto constexpr_normal_array_sample()
+    {
+        return bl::normal_array<4>(
+            bl::f128{ 0.5 },
+            bl::f128{ 2.0 },
+            bl::mt19937_64{ 0x3141592653589793ull });
+    }
+
+    [[nodiscard]] constexpr auto constexpr_seed_normal_array_sample()
+    {
+        return bl::normal_array<4>(
+            bl::f128{ 0.5 },
+            bl::f128{ 2.0 },
+            0x3141592653589793ull);
+    }
+
+    [[nodiscard]] constexpr auto constexpr_default_seed_normal_array_sample()
+    {
+        return bl::normal_array<4>(bl::f128{ 0.5 }, bl::f128{ 2.0 });
+    }
+
+    [[nodiscard]] constexpr auto constexpr_explicit_type_normal_array_sample()
+    {
+        return bl::normal_array<4, bl::f128>(0, 1);
+    }
+
+    [[nodiscard]] constexpr auto constexpr_standard_normal_array_sample()
+    {
+        return bl::normal_array<4, bl::f128>();
     }
 
     [[nodiscard]] constexpr bl::f128 constexpr_lognormal_sample()
@@ -157,6 +219,17 @@ namespace
     static_assert(constexpr_random_array_sample()[0] < bl::f128{ 3.0 });
     static_assert(constexpr_random_array_sample()[3] >= bl::f128{ -2.0 });
     static_assert(constexpr_random_array_sample()[3] < bl::f128{ 3.0 });
+    static_assert(std::tuple_size_v<std::remove_cvref_t<decltype(constexpr_uniform_real_array_sample())>> == 4);
+    static_assert(constexpr_uniform_real_array_sample()[0] == constexpr_random_array_sample()[0]);
+    static_assert(constexpr_uniform_real_array_sample()[3] == constexpr_random_array_sample()[3]);
+    static_assert(constexpr_seed_uniform_real_array_sample()[0] == constexpr_random_array_sample()[0]);
+    static_assert(constexpr_seed_uniform_real_array_sample()[3] == constexpr_random_array_sample()[3]);
+    static_assert(constexpr_default_seed_uniform_real_array_sample()[0] >= bl::f128{ -2.0 });
+    static_assert(constexpr_default_seed_uniform_real_array_sample()[0] < bl::f128{ 3.0 });
+    static_assert(constexpr_explicit_type_uniform_real_array_sample()[0] >= bl::f128{ -2.0 });
+    static_assert(constexpr_explicit_type_uniform_real_array_sample()[0] < bl::f128{ 3.0 });
+    static_assert(constexpr_unit_uniform_real_array_sample()[0] >= bl::f128{ 0.0 });
+    static_assert(constexpr_unit_uniform_real_array_sample()[0] < bl::f128{ 1.0 });
     static_assert(constexpr_canonical_sample() >= bl::f128{ 0.0 });
     static_assert(constexpr_canonical_sample() < bl::f128{ 1.0 });
     static_assert(constexpr_float_sample() >= -0.5f);
@@ -168,6 +241,12 @@ namespace
     static_assert(constexpr_seed_seq_sample() != 0u);
     static_assert(constexpr_exponential_sample() >= bl::f128{ 0.0 });
     static_assert(constexpr_normal_sample() == constexpr_normal_sample());
+    static_assert(std::tuple_size_v<std::remove_cvref_t<decltype(constexpr_normal_array_sample())>> == 4);
+    static_assert(constexpr_normal_array_sample()[0] == constexpr_normal_sample());
+    static_assert(constexpr_seed_normal_array_sample()[0] == constexpr_normal_array_sample()[0]);
+    static_assert(constexpr_default_seed_normal_array_sample()[0] == constexpr_default_seed_normal_array_sample()[0]);
+    static_assert(constexpr_explicit_type_normal_array_sample()[0] == constexpr_explicit_type_normal_array_sample()[0]);
+    static_assert(constexpr_standard_normal_array_sample()[0] == constexpr_standard_normal_array_sample()[0]);
     static_assert(constexpr_lognormal_sample() > bl::f128{ 0.0 });
     static_assert(constexpr_non_power_canonical_sample() >= 0.0);
     static_assert(constexpr_non_power_canonical_sample() < 1.0);
@@ -206,6 +285,20 @@ TEST_CASE("bl random_array generates deterministic distribution samples", "[fltx
     bl::uniform_real_distribution<bl::f128> dist{ bl::f128{ -2.0 }, bl::f128{ 3.0 } };
 
     const auto values = bl::random_array<4>(rng, dist);
+    const auto uniform_values =
+        bl::uniform_real_array<4>(bl::f128{ -2.0 }, bl::f128{ 3.0 }, bl::mt19937_64{ 0x1020304050607080ull });
+    const auto seeded_uniform_values =
+        bl::uniform_real_array<4>(bl::f128{ -2.0 }, bl::f128{ 3.0 }, 0x1020304050607080ull);
+    REQUIRE(values == uniform_values);
+    REQUIRE(values == seeded_uniform_values);
+
+    const auto default_seed_values = bl::uniform_real_array<4>(bl::f128{ -2.0 }, bl::f128{ 3.0 });
+    const auto explicit_default_seed_values = bl::uniform_real_array<4>(
+        bl::f128{ -2.0 },
+        bl::f128{ 3.0 },
+        bl::mt19937_64{ 0 });
+    REQUIRE(default_seed_values == explicit_default_seed_values);
+
     for (const bl::f128& value : values)
     {
         REQUIRE(value >= bl::f128{ -2.0 });
@@ -214,6 +307,25 @@ TEST_CASE("bl random_array generates deterministic distribution samples", "[fltx
 
     for (const bl::f128& value : values)
         REQUIRE(value == dist(rng));
+}
+
+TEST_CASE("bl normal_array generates deterministic distribution samples", "[fltx][random][f128][constexpr]")
+{
+    bl::mt19937_64 rng{ 0x3141592653589793ull };
+    bl::normal_distribution<bl::f128> dist{ bl::f128{ 0.5 }, bl::f128{ 2.0 } };
+
+    const auto values = bl::random_array<4>(rng, dist);
+    const auto engine_values =
+        bl::normal_array<4>(bl::f128{ 0.5 }, bl::f128{ 2.0 }, bl::mt19937_64{ 0x3141592653589793ull });
+    const auto seed_values =
+        bl::normal_array<4>(bl::f128{ 0.5 }, bl::f128{ 2.0 }, 0x3141592653589793ull);
+    REQUIRE(values == engine_values);
+    REQUIRE(values == seed_values);
+
+    const auto default_seed_values = bl::normal_array<4>(bl::f128{ 0.5 }, bl::f128{ 2.0 });
+    const auto explicit_default_seed_values =
+        bl::normal_array<4>(bl::f128{ 0.5 }, bl::f128{ 2.0 }, bl::mt19937_64{ 0 });
+    REQUIRE(default_seed_values == explicit_default_seed_values);
 }
 
 TEST_CASE("bl seed_seq and mersenne twister seed sequence match std output", "[fltx][random][f128][constexpr]")

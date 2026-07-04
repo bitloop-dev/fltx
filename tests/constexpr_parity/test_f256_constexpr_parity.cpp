@@ -45,10 +45,12 @@ concept can_call_pow = requires(Base base, Exp exp)
 };
 
 static_assert(std::is_same_v<decltype(bl::pow(bl::f256{ 2.0 }, 5)), bl::f256>);
+static_assert(std::is_same_v<decltype(bl::ipow(bl::f256{ 2.0 }, 5)), bl::f256>);
 static_assert(std::is_same_v<decltype(bl::pow(bl::f256{ 2.0 }, 5.0f)), bl::f256>);
 static_assert(std::is_same_v<decltype(bl::pow(bl::f256{ 2.0 }, 5.0)), bl::f256>);
 static_assert(std::is_same_v<decltype(bl::pow(bl::f256{ 2.0 }, bl::f128{ 5.0 })), bl::f256>);
-static_assert(!can_call_pow<bl::f128, bl::f256>);
+static_assert(can_call_pow<bl::f128, bl::f256>);
+static_assert(std::is_same_v<decltype(bl::pow(bl::f128{ 2.0 }, bl::f256{ 5.0 })), bl::f256>);
 static_assert(!can_call_pow<bl::f256, long double>);
 
 struct forced_path_scope
@@ -523,8 +525,7 @@ template<typename... Values>
 [[nodiscard]] bool test_can_use_constexpr_recip_dekker_multiply(const char* test_name) noexcept
 {
     return
-        string_equals(test_name, "recip") ||
-        string_equals(test_name, "inv");
+        string_equals(test_name, "recip");
 }
 
 template<typename... Values>
@@ -908,7 +909,6 @@ FLTX_TEST_BINARY(isless, gen_binary_any)
 FLTX_TEST_BINARY(islessequal, gen_binary_any)
 FLTX_TEST_BINARY(islessgreater, gen_binary_any)
 FLTX_TEST_UNARY(recip, gen_unary_nonzero)
-FLTX_TEST_UNARY(inv, gen_unary_nonzero)
 
 TEST_CASE("f256 constexpr parity: clamp", "[fltx][constexpr][parity][f256][clamp]")
 {
@@ -929,7 +929,7 @@ TEST_CASE("f256 constexpr parity: round_to_decimals", "[fltx][constexpr][parity]
 {
     run_tuple_test("round_to_decimals", gen_round_digits_args, [](const value_type& x, int digits)
     {
-        return bl::round_to_decimals(x, digits);
+        return bl::round_to(x, digits, bl::decimals);
     });
 }
 
@@ -969,7 +969,7 @@ TEST_CASE("f256 constexpr parity: pow(int)", "[fltx][constexpr][parity][f256][po
 
 TEST_CASE("f256 constexpr parity: pow10", "[fltx][constexpr][parity][f256][pow10]")
 {
-    run_tuple_test("pow10", gen_pow10_args, [](int exponent) { return bl::pow10<value_type>(exponent); });
+    run_tuple_test("pow10", gen_pow10_args, [](int exponent) { return bl::pow(value_type{ 10 }, exponent); });
 }
 
 TEST_CASE("f256 constexpr parity: sincos", "[fltx][constexpr][parity][f256][sincos]")

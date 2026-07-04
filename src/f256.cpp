@@ -229,21 +229,6 @@ namespace bl::detail::_f256_runtime
 
     } // namespace
 
-    f256_s floor(const f256_s& a)
-    {
-        return detail::_f256_impl::floor(a);
-    }
-
-    f256_s ceil(const f256_s& a)
-    {
-        return detail::_f256_impl::ceil(a);
-    }
-
-    f256_s trunc(const f256_s& a)
-    {
-        return detail::_f256_impl::trunc(a);
-    }
-
     f256_s to_f256(uint64_t u) noexcept
     {
         return detail::_f256_impl::to_f256(u);
@@ -531,17 +516,17 @@ namespace bl::detail::_f256_runtime
 
     f256_s add_mul_double(const f256_s& addend, const f256_s& value, double scalar) noexcept
     {
-        return detail::_f256::add_mul_double_maybe_pow2_inline(addend, value, scalar);
+        return detail::_f256::add_mul_double_inline(addend, value, scalar);
     }
 
     f256_s sub_mul_double(const f256_s& minuend, const f256_s& value, double scalar) noexcept
     {
-        return detail::_f256::sub_mul_double_maybe_pow2_inline(minuend, value, scalar);
+        return detail::_f256::sub_mul_double_inline(minuend, value, scalar);
     }
 
     f256_s mul_double_sub(const f256_s& value, double scalar, const f256_s& subtrahend) noexcept
     {
-        return detail::_f256::mul_double_sub_maybe_pow2_inline(value, scalar, subtrahend);
+        return detail::_f256::mul_double_sub_inline(value, scalar, subtrahend);
     }
 
     f256_s mul_double_add_mul_double(const f256_s& a, double a_scalar, const f256_s& b, double b_scalar) noexcept
@@ -626,17 +611,17 @@ namespace bl::detail::_f256_runtime
 
     f256_s add_mul_double_div(const f256_s& addend, const f256_s& value, double scalar, const f256_s& denominator) noexcept
     {
-        return detail::_f256::div_inline(detail::_f256::add_mul_double_maybe_pow2_inline(addend, value, scalar), denominator);
+        return detail::_f256::div_inline(detail::_f256::add_mul_double_inline(addend, value, scalar), denominator);
     }
 
     f256_s sub_mul_double_div(const f256_s& minuend, const f256_s& value, double scalar, const f256_s& denominator) noexcept
     {
-        return detail::_f256::div_inline(detail::_f256::sub_mul_double_maybe_pow2_inline(minuend, value, scalar), denominator);
+        return detail::_f256::div_inline(detail::_f256::sub_mul_double_inline(minuend, value, scalar), denominator);
     }
 
     f256_s mul_double_sub_div(const f256_s& value, double scalar, const f256_s& subtrahend, const f256_s& denominator) noexcept
     {
-        return detail::_f256::div_inline(detail::_f256::mul_double_sub_maybe_pow2_inline(value, scalar, subtrahend), denominator);
+        return detail::_f256::div_inline(detail::_f256::mul_double_sub_inline(value, scalar, subtrahend), denominator);
     }
 
     f256_s mul_add_div_add_double(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator, double scalar) noexcept
@@ -686,17 +671,17 @@ namespace bl::detail::_f256_runtime
 
     f256_s add_mul_double_div_add_double(const f256_s& addend, const f256_s& value, double value_scalar, const f256_s& denominator, double denominator_scalar) noexcept
     {
-        return detail::_f256::div_inline(detail::_f256::add_mul_double_maybe_pow2_inline(addend, value, value_scalar), detail::_f256::add_double_inline(denominator, denominator_scalar));
+        return detail::_f256::div_inline(detail::_f256::add_mul_double_inline(addend, value, value_scalar), detail::_f256::add_double_inline(denominator, denominator_scalar));
     }
 
     f256_s sub_mul_double_div_add_double(const f256_s& minuend, const f256_s& value, double value_scalar, const f256_s& denominator, double denominator_scalar) noexcept
     {
-        return detail::_f256::div_inline(detail::_f256::sub_mul_double_maybe_pow2_inline(minuend, value, value_scalar), detail::_f256::add_double_inline(denominator, denominator_scalar));
+        return detail::_f256::div_inline(detail::_f256::sub_mul_double_inline(minuend, value, value_scalar), detail::_f256::add_double_inline(denominator, denominator_scalar));
     }
 
     f256_s mul_double_sub_div_add_double(const f256_s& value, double value_scalar, const f256_s& subtrahend, const f256_s& denominator, double denominator_scalar) noexcept
     {
-        return detail::_f256::div_inline(detail::_f256::mul_double_sub_maybe_pow2_inline(value, value_scalar, subtrahend), detail::_f256::add_double_inline(denominator, denominator_scalar));
+        return detail::_f256::div_inline(detail::_f256::mul_double_sub_inline(value, value_scalar, subtrahend), detail::_f256::add_double_inline(denominator, denominator_scalar));
     }
 
 } // namespace bl::detail::_f256_runtime

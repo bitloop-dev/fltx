@@ -736,14 +736,6 @@ namespace detail::_f64_impl
 
 
 // pow
-[[nodiscard]] BL_FORCE_INLINE constexpr double pow(double x, float y) noexcept
-{
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::pow(x, static_cast<double>(y)),
-        std::pow(x, static_cast<double>(y))
-    );
-}
-
 [[nodiscard]] BL_FORCE_INLINE constexpr double pow(double x, double y) noexcept
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
@@ -752,10 +744,73 @@ namespace detail::_f64_impl
     );
 }
 
-template<class Exp>
-requires fltx_pow_wider_floating_exponent<double, Exp>
-[[nodiscard]] BL_FORCE_INLINE constexpr double pow(double, const Exp&) noexcept = delete;
+template<detail::fp::non_bool_integral Exp>
+[[nodiscard]] BL_FORCE_INLINE constexpr double ipow(double x, Exp y) noexcept
+{
+    int exponent = 0;
+    if (detail::fp::try_int_exponent(y, exponent))
+    {
+        const bool negative_base = x < 0.0;
+        const double magnitude = negative_base ? -x : x;
+        double value{};
 
+        if (magnitude == 2.0)
+        {
+            if (exponent >= std::numeric_limits<double>::max_exponent)
+                value = std::numeric_limits<double>::infinity();
+            else if (exponent < std::numeric_limits<double>::min_exponent - std::numeric_limits<double>::digits)
+                value = 0.0;
+            else
+                value = detail::fp::ldexp(1.0, exponent);
+
+            return (negative_base && detail::fp::is_odd_integral(y)) ? -value : value;
+        }
+
+        if (magnitude == 10.0)
+        {
+            value = detail::_f64_impl::pow10(exponent);
+            return (negative_base && detail::fp::is_odd_integral(y)) ? -value : value;
+        }
+    }
+
+    using U = std::make_unsigned_t<std::remove_cvref_t<Exp>>;
+    const U magnitude = detail::fp::unsigned_abs(y);
+    const double powered = detail::fp::ipow_nonneg_fast<double, U>(x, magnitude);
+
+    if constexpr (std::signed_integral<std::remove_cvref_t<Exp>>)
+    {
+        if (y < 0)
+            return 1.0 / powered;
+    }
+
+    return powered;
+}
+
+template<detail::fp::non_bool_integral Exp>
+[[nodiscard]] BL_FORCE_INLINE constexpr double pow(double x, Exp y) noexcept
+{
+    return bl::ipow(x, y);
+}
+
+[[nodiscard]] BL_FORCE_INLINE constexpr long double pow(long double, long double) noexcept = delete;
+
+template<class Exp>
+requires (fltx_arithmetic<detail::math::clean_t<Exp>> && !std::same_as<detail::math::clean_t<Exp>, long double>)
+[[nodiscard]] BL_FORCE_INLINE constexpr long double pow(long double, Exp) noexcept = delete;
+
+template<class Base>
+requires (std::is_arithmetic_v<detail::math::clean_t<Base>> && !std::same_as<detail::math::clean_t<Base>, long double>)
+[[nodiscard]] BL_FORCE_INLINE constexpr long double pow(Base, long double) noexcept = delete;
+
+template<class Base, class Exp>
+requires (detail::math::f64_promoted_math_args<Base, Exp> &&
+    !(std::same_as<detail::math::clean_t<Base>, f64> && detail::fp::non_bool_integral<Exp>))
+[[nodiscard]] BL_FORCE_INLINE constexpr auto pow(Base x, Exp y) noexcept
+{
+    using P = detail::math::promoted_t<Base, Exp>;
+    using E = detail::math::promoted_pow_exponent_t<P, Exp>;
+    return bl::pow(detail::math::promoted_cast<P>(x), detail::math::promoted_cast<E>(y));
+}
 
 // trig
 [[nodiscard]] BL_FORCE_INLINE constexpr double sin(double x) noexcept

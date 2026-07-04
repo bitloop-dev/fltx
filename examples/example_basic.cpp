@@ -6,6 +6,13 @@
 using namespace bl;
 using namespace bl::literals;
 
+consteval float test()
+{
+    float ip{};
+    static_cast<void>(bl::modf(12.5f, &ip));
+    return ip;
+}
+
 int main()
 {
     constexpr f256 a = 1_qd / 3_qd;

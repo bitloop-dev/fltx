@@ -12,6 +12,7 @@
 
 #include "fltx/detail/f128_math_basic.h"
 #include "fltx/detail/f128_math_transcendental.h"
+#include "fltx/detail/math_promotion.h"
 #include "fltx/round_options.h"
 #include "fltx/traits.h"
 
@@ -76,27 +77,20 @@ namespace bl {
 #endif
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f128 round_to_decimals(f128_s v, int prec)
-{
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f128_impl::round_to_decimals(v, prec),
-        detail::_f128_runtime::round_to_decimals(v, prec)
-    );
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr f128 round_to_precision(f128_s v, int figures)
-{
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f128_impl::round_to_significant_figures(v, figures),
-        detail::_f128_runtime::round_to_significant_figures(v, figures)
-    );
-}
-
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 round_to(f128_s v, int precision, round_format format)
 {
-    return format == round_format::decimals
-        ? round_to_decimals(v, precision)
-        : round_to_precision(v, precision);
+    if (format == round_format::decimals)
+    {
+        BL_CONSTEXPR_RUNTIME_DISPATCH(
+            detail::_f128_impl::round_to_decimals(v, precision),
+            detail::_f128_runtime::round_to_decimals(v, precision)
+        );
+    }
+
+    BL_CONSTEXPR_RUNTIME_DISPATCH(
+        detail::_f128_impl::round_to_significant_figures(v, precision),
+        detail::_f128_runtime::round_to_significant_figures(v, precision)
+    );
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 nearbyint(const f128_s& a)
@@ -110,7 +104,7 @@ namespace bl {
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 rint(const f128_s& x)
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f128_impl::rint(x),
+        detail::_f128::nearbyint_generic(x),
         detail::_f128_impl::nearbyint_runtime(x)
     );
 }
@@ -189,8 +183,8 @@ namespace bl {
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 remainder(const f128_s& x, const f128_s& y)
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f128_impl::remainder(x, y),
-        detail::_f128_runtime::remainder(x, y)
+        detail::_f128_impl::remquo(x, y, nullptr),
+        detail::_f128_runtime::remquo(x, y, nullptr)
     );
 }
 
@@ -234,12 +228,12 @@ namespace bl {
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 scalbn(const f128_s& x, int e) noexcept
 {
-    return detail::_f128_impl::scalbn(x, e);
+    return detail::_f128_impl::ldexp(x, e);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 scalbln(const f128_s& x, long e) noexcept
 {
-    return detail::_f128_impl::scalbln(x, e);
+    return detail::_f128_impl::ldexp(x, static_cast<int>(e));
 }
 
 // adjacent values
@@ -250,12 +244,12 @@ namespace bl {
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 nexttoward(const f128_s& from, long double to) noexcept
 {
-    return detail::_f128_impl::nexttoward(from, to);
+    return detail::_f128_impl::nextafter(from, f128_s{ static_cast<double>(to) });
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 nexttoward(const f128_s& from, const f128_s& to) noexcept
 {
-    return detail::_f128_impl::nexttoward(from, to);
+    return detail::_f128_impl::nextafter(from, to);
 }
 
 // exp / log
@@ -320,15 +314,6 @@ namespace bl {
     );
 }
 
-template<fltx_f128 T>
-[[nodiscard]] BL_FORCE_INLINE constexpr std::remove_cv_t<T> pow10(int k)
-{
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        static_cast<std::remove_cv_t<T>>(detail::_f128_impl::pow10_128(k)),
-        static_cast<std::remove_cv_t<T>>(detail::_f128_runtime::pow10_128(k))
-    );
-}
-
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 pow(const f128_s& x, const f128_s& y)
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
@@ -338,28 +323,28 @@ template<fltx_f128 T>
 }
 
 template<detail::fp::non_bool_integral Exp>
-[[nodiscard]] BL_FORCE_INLINE constexpr f128 pow(const f128_s& x, Exp y)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f128 ipow(const f128_s& x, Exp y)
 {
-    using U = std::make_unsigned_t<std::remove_cvref_t<Exp>>;
-
-    const U magnitude = detail::fp::unsigned_abs(y);
-    const f128_s powered = detail::fp::ipow_nonneg<f128_s, U>(x, magnitude);
-
     if constexpr (std::signed_integral<std::remove_cvref_t<Exp>>)
     {
-        if (y < 0)
-            return f128{ f128_s{ 1.0 } / powered };
+        BL_CONSTEXPR_RUNTIME_DISPATCH(
+            f128{ detail::_f128::ipow_integer(x, y) },
+            f128{ detail::_f128_runtime::ipow_signed(x, static_cast<std::intmax_t>(y)) }
+        );
     }
-
-    return f128{ powered };
+    else
+    {
+        BL_CONSTEXPR_RUNTIME_DISPATCH(
+            f128{ detail::_f128::ipow_integer(x, y) },
+            f128{ detail::_f128_runtime::ipow_unsigned(x, static_cast<std::uintmax_t>(y)) }
+        );
+    }
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f128 pow(const f128_s& x, float y)
+template<detail::fp::non_bool_integral Exp>
+[[nodiscard]] BL_FORCE_INLINE constexpr f128 pow(const f128_s& x, Exp y)
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f128_impl::pow(x, static_cast<double>(y)),
-        detail::_f128_runtime::pow(x, static_cast<double>(y))
-    );
+    return bl::ipow(x, y);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 pow(const f128_s& x, double y)
@@ -372,9 +357,15 @@ template<detail::fp::non_bool_integral Exp>
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 pow(const f128_s&, long double) = delete;
 
-template<class Exp>
-requires fltx_pow_wider_floating_exponent<f128_s, Exp>
-[[nodiscard]] BL_FORCE_INLINE constexpr f128 pow(const f128_s&, const Exp&) = delete;
+template<class Base, class Exp>
+requires (detail::math::f128_promoted_math_args<Base, Exp> &&
+    !(fltx_f128<Base> && detail::fp::non_bool_integral<Exp>))
+[[nodiscard]] BL_FORCE_INLINE constexpr auto pow(Base x, Exp y)
+{
+    using P = detail::math::promoted_t<Base, Exp>;
+    using E = detail::math::promoted_pow_exponent_t<P, Exp>;
+    return bl::pow(detail::math::promoted_cast<P>(x), detail::math::promoted_cast<E>(y));
+}
 
 // trig
 [[nodiscard]] BL_FORCE_INLINE constexpr bool sincos(const f128_s& x, f128_s& s_out, f128_s& c_out)
@@ -554,6 +545,178 @@ template<class Value> requires (std::same_as<std::remove_cvref_t<Value>, f128> |
         detail::_f128_impl::tgamma(x),
         detail::_f128_runtime::tgamma(x)
     );
+}
+
+// type promotions
+#define BL_FLTX_F128_PROMOTED_UNARY(NAME) \
+    template<class T> \
+    requires detail::math::f128_promoted_math_args<T> \
+    [[nodiscard]] BL_FORCE_INLINE constexpr auto NAME(T x) \
+    { \
+        using P = detail::math::promoted_t<T>; \
+        return bl::NAME(detail::math::promoted_cast<P>(x)); \
+    }
+
+#define BL_FLTX_F128_PROMOTED_BINARY(NAME) \
+    template<class T, class U> \
+    requires detail::math::f128_promoted_math_args<T, U> \
+    [[nodiscard]] BL_FORCE_INLINE constexpr auto NAME(T x, U y) \
+    { \
+        using P = detail::math::promoted_t<T, U>; \
+        return bl::NAME(detail::math::promoted_cast<P>(x), detail::math::promoted_cast<P>(y)); \
+    }
+
+#define BL_FLTX_F128_PROMOTED_TERNARY(NAME) \
+    template<class T, class U, class V> \
+    requires detail::math::f128_promoted_math_args<T, U, V> \
+    [[nodiscard]] BL_FORCE_INLINE constexpr auto NAME(T x, U y, V z) \
+    { \
+        using P = detail::math::promoted_t<T, U, V>; \
+        return bl::NAME(detail::math::promoted_cast<P>(x), detail::math::promoted_cast<P>(y), detail::math::promoted_cast<P>(z)); \
+    }
+
+BL_FLTX_F128_PROMOTED_UNARY(abs)
+BL_FLTX_F128_PROMOTED_UNARY(fabs)
+BL_FLTX_F128_PROMOTED_UNARY(signbit)
+BL_FLTX_F128_PROMOTED_UNARY(isnan)
+BL_FLTX_F128_PROMOTED_UNARY(isinf)
+BL_FLTX_F128_PROMOTED_UNARY(isfinite)
+BL_FLTX_F128_PROMOTED_UNARY(iszero)
+BL_FLTX_F128_PROMOTED_UNARY(fpclassify)
+BL_FLTX_F128_PROMOTED_UNARY(isnormal)
+
+BL_FLTX_F128_PROMOTED_UNARY(floor)
+BL_FLTX_F128_PROMOTED_UNARY(ceil)
+BL_FLTX_F128_PROMOTED_UNARY(trunc)
+BL_FLTX_F128_PROMOTED_UNARY(round)
+BL_FLTX_F128_PROMOTED_UNARY(nearbyint)
+BL_FLTX_F128_PROMOTED_UNARY(rint)
+BL_FLTX_F128_PROMOTED_UNARY(lround)
+BL_FLTX_F128_PROMOTED_UNARY(llround)
+BL_FLTX_F128_PROMOTED_UNARY(lrint)
+BL_FLTX_F128_PROMOTED_UNARY(llrint)
+
+BL_FLTX_F128_PROMOTED_BINARY(fmod)
+BL_FLTX_F128_PROMOTED_BINARY(remainder)
+BL_FLTX_F128_PROMOTED_TERNARY(fma)
+BL_FLTX_F128_PROMOTED_BINARY(fmin)
+BL_FLTX_F128_PROMOTED_BINARY(fmax)
+BL_FLTX_F128_PROMOTED_BINARY(fdim)
+BL_FLTX_F128_PROMOTED_BINARY(copysign)
+
+BL_FLTX_F128_PROMOTED_UNARY(ilogb)
+BL_FLTX_F128_PROMOTED_UNARY(logb)
+BL_FLTX_F128_PROMOTED_BINARY(nextafter)
+
+BL_FLTX_F128_PROMOTED_UNARY(exp)
+BL_FLTX_F128_PROMOTED_UNARY(exp2)
+BL_FLTX_F128_PROMOTED_UNARY(expm1)
+BL_FLTX_F128_PROMOTED_UNARY(log)
+BL_FLTX_F128_PROMOTED_UNARY(log2)
+BL_FLTX_F128_PROMOTED_UNARY(log10)
+BL_FLTX_F128_PROMOTED_UNARY(log1p)
+BL_FLTX_F128_PROMOTED_UNARY(sqrt)
+BL_FLTX_F128_PROMOTED_UNARY(cbrt)
+BL_FLTX_F128_PROMOTED_BINARY(hypot)
+
+BL_FLTX_F128_PROMOTED_UNARY(sin)
+BL_FLTX_F128_PROMOTED_UNARY(cos)
+BL_FLTX_F128_PROMOTED_UNARY(tan)
+BL_FLTX_F128_PROMOTED_UNARY(atan)
+BL_FLTX_F128_PROMOTED_BINARY(atan2)
+BL_FLTX_F128_PROMOTED_UNARY(asin)
+BL_FLTX_F128_PROMOTED_UNARY(acos)
+
+BL_FLTX_F128_PROMOTED_UNARY(sinh)
+BL_FLTX_F128_PROMOTED_UNARY(cosh)
+BL_FLTX_F128_PROMOTED_UNARY(tanh)
+BL_FLTX_F128_PROMOTED_UNARY(asinh)
+BL_FLTX_F128_PROMOTED_UNARY(acosh)
+BL_FLTX_F128_PROMOTED_UNARY(atanh)
+
+BL_FLTX_F128_PROMOTED_UNARY(erf)
+BL_FLTX_F128_PROMOTED_UNARY(erfc)
+BL_FLTX_F128_PROMOTED_UNARY(lgamma)
+BL_FLTX_F128_PROMOTED_UNARY(tgamma)
+
+BL_FLTX_F128_PROMOTED_BINARY(isunordered)
+BL_FLTX_F128_PROMOTED_BINARY(isgreater)
+BL_FLTX_F128_PROMOTED_BINARY(isgreaterequal)
+BL_FLTX_F128_PROMOTED_BINARY(isless)
+BL_FLTX_F128_PROMOTED_BINARY(islessequal)
+BL_FLTX_F128_PROMOTED_BINARY(islessgreater)
+
+#undef BL_FLTX_F128_PROMOTED_TERNARY
+#undef BL_FLTX_F128_PROMOTED_BINARY
+#undef BL_FLTX_F128_PROMOTED_UNARY
+
+template<class T, class U>
+requires detail::math::f128_promoted_math_args<T, U>
+[[nodiscard]] BL_FORCE_INLINE constexpr auto remquo(T x, U y, int* quo)
+{
+    using P = detail::math::promoted_t<T, U>;
+    return bl::remquo(detail::math::promoted_cast<P>(x), detail::math::promoted_cast<P>(y), quo);
+}
+
+template<class T>
+requires detail::math::f128_promoted_math_args<T>
+[[nodiscard]] BL_FORCE_INLINE constexpr auto ldexp(T x, int exp)
+{
+    using P = detail::math::promoted_t<T>;
+    return bl::ldexp(detail::math::promoted_cast<P>(x), exp);
+}
+
+template<class T>
+requires detail::math::f128_promoted_math_args<T>
+[[nodiscard]] BL_FORCE_INLINE constexpr auto scalbn(T x, int exp)
+{
+    using P = detail::math::promoted_t<T>;
+    return bl::scalbn(detail::math::promoted_cast<P>(x), exp);
+}
+
+template<class T>
+requires detail::math::f128_promoted_math_args<T>
+[[nodiscard]] BL_FORCE_INLINE constexpr auto scalbln(T x, long exp)
+{
+    using P = detail::math::promoted_t<T>;
+    return bl::scalbln(detail::math::promoted_cast<P>(x), exp);
+}
+
+template<class T>
+requires detail::math::f128_promoted_math_args<T>
+[[nodiscard]] BL_FORCE_INLINE constexpr auto frexp(T x, int* exp)
+{
+    using P = detail::math::promoted_t<T>;
+    return bl::frexp(detail::math::promoted_cast<P>(x), exp);
+}
+
+template<class T>
+requires detail::math::f128_promoted_math_args<T>
+[[nodiscard]] BL_FORCE_INLINE constexpr auto modf(T x, detail::math::promoted_t<T>* iptr)
+{
+    using P = detail::math::promoted_t<T>;
+    return bl::modf(detail::math::promoted_cast<P>(x), iptr);
+}
+
+template<class From, class To>
+requires detail::math::f128_nexttoward_args<From, To>
+[[nodiscard]] BL_FORCE_INLINE constexpr auto nexttoward(From from, To to)
+{
+    using P = detail::math::promoted_t<From>;
+    const P promoted_from = detail::math::promoted_cast<P>(from);
+
+    if constexpr (std::same_as<detail::math::clean_t<To>, long double>)
+        return bl::nexttoward(promoted_from, to);
+    else
+        return bl::nexttoward(promoted_from, detail::math::promoted_cast<P>(to));
+}
+
+template<class T>
+requires detail::math::f128_promoted_math_args<T>
+[[nodiscard]] BL_FORCE_INLINE constexpr bool sincos(T x, detail::math::promoted_t<T>& s_out, detail::math::promoted_t<T>& c_out)
+{
+    using P = detail::math::promoted_t<T>;
+    return bl::sincos(detail::math::promoted_cast<P>(x), s_out, c_out);
 }
 
 } // namespace bl

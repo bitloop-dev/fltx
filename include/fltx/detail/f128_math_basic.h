@@ -12,7 +12,7 @@
 #ifndef F128_DETAIL_MATH_BASIC_INCLUDED
 #define F128_DETAIL_MATH_BASIC_INCLUDED
 #include "fltx/detail/f128_math_kernels.h"
-#include "fltx/detail/f128_pow10_table.h"
+#include "fltx/detail/pow_tables.h"
 #include "fltx/detail/simd.h"
 
 namespace bl {
@@ -30,6 +30,49 @@ namespace detail::_f128
 
 namespace detail::_f128
 {
+    inline constexpr int pow10_f128_min_exponent = detail::pow_tables::pow10_min_exponent;
+    inline constexpr int pow10_f128_max_exponent = detail::pow_tables::pow10_max_exponent;
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s pow_table_entry_to_f128(
+        const detail::pow_table_entry& row) noexcept
+    {
+        return f128_s{ row.x0, row.x1 };
+    }
+
+    BL_PUSH_PRECISE;
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s fma_residual_pairwise_inline(
+        const f128_s& x,
+        const f128_s& y,
+        const f128_s& z,
+        double p0,
+        double q0,
+        double p1,
+        double q1,
+        double p2,
+        double q2,
+        double hi) noexcept
+    {
+        double s{}, e{};
+        double d{}, de{};
+        double h{}, he{};
+        two_sum_precise(p0, z.hi, s, e);
+        two_sum_precise(s, -hi, d, de);
+        two_sum_precise(d, e, h, he);
+
+        double a{}, ae{};
+        double b{}, be{};
+        double c{}, ce{};
+        double lo{}, le{};
+        two_sum_precise(p1, p2, a, ae);
+        two_sum_precise(q0, z.lo, b, be);
+        two_sum_precise(a, b, c, ce);
+        two_sum_precise(h, c, lo, le);
+
+        const double tail = de + he + ae + be + ce + le + q1 + q2 + (x.lo * y.lo);
+        return renorm(hi, lo + tail);
+    }
+    BL_POP_PRECISE;
+
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s nearbyint_generic(const f128_s& a)
     {
         if (detail::fp::iszero_or_inf_or_nan(a.hi))
@@ -114,6 +157,9 @@ namespace detail::_f128_impl
         double rounded = std::round(a.hi);
         if (rounded == a.hi)
         {
+            if (a.lo != 0.0 && detail::_f128::absd(a.hi) >= detail::fp::double_integer_threshold)
+                return detail::_f128::round_half_away_zero(a);
+
             const double rounded_lo = std::round(a.lo);
             if (rounded_lo != 0.0)
             {
@@ -249,7 +295,7 @@ namespace detail::_f128_impl
 
     if (ax.hi > 0x1p-500 && ax.hi < 0x1p500)
     {
-        const f128_s sum = add_inline(sqr_dd_inline(ax), sqr_dd_inline(ay));
+        const f128_s sum = add_inline(sqr_inline(ax), sqr_inline(ay));
         return F128_CANONICALIZE_MATH_RESULT(hypot_sqrt_sum(sum));
     }
 
@@ -395,7 +441,8 @@ namespace detail::_f128_impl
     if (k > detail::_f128::pow10_f128_max_exponent) [[unlikely]]
         return std::numeric_limits<f128_s>::infinity();
 
-    return detail::_f128::pow10_f128_table[k - detail::_f128::pow10_f128_min_exponent];
+    return detail::_f128::pow_table_entry_to_f128(
+        detail::pow_tables::pow10_table[k - detail::_f128::pow10_f128_min_exponent]);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::nearbyint(const f128_s& a)
@@ -404,11 +451,6 @@ namespace detail::_f128_impl
         detail::_f128::nearbyint_generic(a),
         detail::_f128_impl::nearbyint_runtime(a)
     );
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::rint(const f128_s& x)
-{
-    return detail::_f128_impl::nearbyint(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr long detail::_f128_impl::lround(const f128_s& x)
@@ -453,7 +495,37 @@ namespace detail::_f128_impl
     if (detail::fp::isinf_or_nan(x.hi) || detail::fp::isinf_or_nan(y.hi) || detail::fp::isinf_or_nan(z.hi)) [[unlikely]]
         return f128_s{ std::fma(x.hi, y.hi, z.hi), 0.0 };
 
-    return F128_CANONICALIZE_MATH_RESULT(add_inline(mul_dd_inline(x, y), z));
+    double p0{}, q0{};
+    double p1{}, q1{};
+    double p2{}, q2{};
+    two_prod_precise(x.hi, y.hi, p0, q0);
+    two_prod_precise(x.hi, y.lo, p1, q1);
+    two_prod_precise(x.lo, y.hi, p2, q2);
+
+    double p12{}, e12{};
+    double p012{}, e012{};
+    two_sum_precise(p1, p2, p12, e12);
+    two_sum_precise(q0, p12, p012, e012);
+
+    double hi{}, hi_err{};
+    double mid{}, mid_err{};
+    double lo{}, lo_err{};
+    two_sum_precise(p0, z.hi, hi, hi_err);
+    two_sum_precise(p012, z.lo, mid, mid_err);
+    two_sum_precise(hi_err, mid, lo, lo_err);
+
+    const double tail = lo_err + mid_err + e12 + e012 + q1 + q2 + (x.lo * y.lo);
+    const f128_s rough = renorm(hi, lo + tail);
+
+    const double product_magnitude = detail::fp::absd(p0);
+    if (detail::fp::isfinite(p0) && product_magnitude != 0.0
+        && detail::fp::absd(rough.hi) <= product_magnitude * 0x1p-10) [[unlikely]]
+    {
+        return F128_CANONICALIZE_MATH_RESULT(
+            detail::_f128::fma_residual_pairwise_inline(x, y, z, p0, q0, p1, q1, p2, q2, rough.hi));
+    }
+
+    return F128_CANONICALIZE_MATH_RESULT(rough);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::fmin(const f128_s& a, const f128_s& b)
@@ -543,12 +615,19 @@ namespace detail::_f128_impl
         return ispositive(x) ? fast : -fast;
     }
 
-    return fmod_reduced_or_exact(x, y);
-}
+    const double q = detail::fp::trunc(ax.hi / ay.hi);
+    if (q >= 0x1p50 && q < 0x1p53)
+    {
+        f128_s exact{};
+        if (fmod_exact_candidate_quotient_abs(ax, ay, static_cast<std::uint64_t>(q), exact))
+        {
+            if (iszero(exact))
+                return f128_s{ signbit(x.hi) ? -0.0 : 0.0 };
+            return ispositive(x) ? exact : -exact;
+        }
+    }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::remainder(const f128_s& x, const f128_s& y)
-{
-    return detail::_f128_impl::remquo(x, y, nullptr);
+    return fmod_reduced_or_exact(x, y);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::remquo(const f128_s& x, const f128_s& y, int* quo)
@@ -777,16 +856,6 @@ namespace detail::_f128_impl
     return f128_s{ static_cast<double>(ilogb_finite_fast(x)), 0.0 };
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::scalbn(const f128_s& x, int e) noexcept
-{
-    return detail::_f128_impl::ldexp(x, e);
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::scalbln(const f128_s& x, long e) noexcept
-{
-    return detail::_f128_impl::ldexp(x, static_cast<int>(e));
-}
-
 // adjacent values
 [[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::nextafter(const f128_s& from, const f128_s& to) noexcept
 {
@@ -811,16 +880,6 @@ namespace detail::_f128_impl
         from.hi,
         detail::fp::nextafter(from.lo, toward)
     );
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::nexttoward(const f128_s& from, long double to) noexcept
-{
-    return detail::_f128_impl::nextafter(from, f128_s{ static_cast<double>(to) });
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::nexttoward(const f128_s& from, const f128_s& to) noexcept
-{
-    return detail::_f128_impl::nextafter(from, to);
 }
 
 } // namespace bl

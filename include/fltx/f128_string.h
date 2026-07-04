@@ -757,19 +757,6 @@ namespace detail::_f128 // primitives and kernels
 
 } // namespace detail::_f128
 
-[[nodiscard]] BL_MSVC_NOINLINE constexpr f128_s to_f128(const char* s) noexcept
-{
-    f128_s ret;
-    if (detail::_f128::parse(s, ret))
-        return ret;
-    return f128_s{ 0 };
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr f128_s to_f128(const std::string& s) noexcept
-{
-    return to_f128(s.c_str());
-}
-
 [[nodiscard]] constexpr bl::f128_io_string to_static_string(
     const f128_s& value,
     int precision = std::numeric_limits<f128_s>::digits10,
@@ -812,13 +799,6 @@ namespace literals
     }
 
 } // namespace literals
-
-constexpr f128::f128(const char* text)
-{
-    const char* end = text;
-    if (!detail::_f128::parse(text, *this, &end))
-        throw "invalid f128";
-}
 
 } // namespace bl
 

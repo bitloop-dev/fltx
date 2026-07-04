@@ -1398,36 +1398,34 @@ TEST_CASE("f64 rounding matches MPFR references", "[fltx][f64][precision][math][
         check_exact_integer_result("llrint", bl::llrint(input), std::llrint(input), input);
     }
 
-    REQUIRE(bl::round_to_decimals(1.2345, 2) == 1.23);
-    REQUIRE(bl::round_to_decimals(1.2345, 3) == 1.234);
-    REQUIRE(bl::round_to_decimals(1.125, 2) == 1.12);
-    REQUIRE(bl::round_to_decimals(1.375, 2) == 1.38);
-    REQUIRE(bl::round_to_decimals(-1.375, 2) == -1.38);
-    REQUIRE(bl::round_to_decimals(1.25, 0) == 1.25);
-    REQUIRE(bl::round_to_precision(12345.0, 3) == 12300.0);
-    REQUIRE(bl::round_to_precision(0.012345, 3) == 0.0123);
-    REQUIRE(bl::round_to_precision(12500.0, 2) == 12000.0);
-    REQUIRE(bl::round_to_precision(13500.0, 2) == 14000.0);
-    REQUIRE(bl::round_to(1.2345, 2, bl::decimals) == bl::round_to_decimals(1.2345, 2));
-    REQUIRE(bl::round_to(12345.0, 3, bl::significant_figures) == bl::round_to_precision(12345.0, 3));
+    REQUIRE(bl::round_to(1.2345, 2, bl::decimals) == 1.23);
+    REQUIRE(bl::round_to(1.2345, 3, bl::decimals) == 1.234);
+    REQUIRE(bl::round_to(1.125, 2, bl::decimals) == 1.12);
+    REQUIRE(bl::round_to(1.375, 2, bl::decimals) == 1.38);
+    REQUIRE(bl::round_to(-1.375, 2, bl::decimals) == -1.38);
+    REQUIRE(bl::round_to(1.25, 0, bl::decimals) == 1.25);
+    REQUIRE(bl::round_to(12345.0, 3, bl::significant_figures) == 12300.0);
+    REQUIRE(bl::round_to(0.012345, 3, bl::significant_figures) == 0.0123);
+    REQUIRE(bl::round_to(12500.0, 2, bl::significant_figures) == 12000.0);
+    REQUIRE(bl::round_to(13500.0, 2, bl::significant_figures) == 14000.0);
 
-    constexpr double constexpr_rounded = bl::round_to_decimals(1.375, 2);
+    constexpr double constexpr_rounded = bl::round_to(1.375, 2, bl::decimals);
     static_assert(constexpr_rounded == 1.38);
-    constexpr double constexpr_precision_rounded = bl::round_to_precision(12345.0, 3);
+    constexpr double constexpr_precision_rounded = bl::round_to(12345.0, 3, bl::significant_figures);
     static_assert(constexpr_precision_rounded == 12300.0);
     constexpr double constexpr_round_to = bl::round_to(12345.0, 3, bl::significant_figures);
     static_assert(constexpr_round_to == 12300.0);
 
-    static_assert(bl::pow10<bl::f64>(0) == 1.0);
-    static_assert(bl::pow10<bl::f64>(3) == 1000.0);
-    static_assert(bl::pow10<bl::f64>(-3) == 1e-3);
+    static_assert(bl::pow(bl::f64{ 10 }, 0) == 1.0);
+    static_assert(bl::pow(bl::f64{ 10 }, 3) == 1000.0);
+    static_assert(bl::pow(bl::f64{ 10 }, -3) == 1e-3);
 
-    REQUIRE(bl::pow10<bl::f64>(308) == 1e308);
-    REQUIRE(bl::isinf(bl::pow10<bl::f64>(309)));
-    REQUIRE(bl::pow10<bl::f64>(-323) == 1e-323);
-    REQUIRE(bl::pow10<bl::f64>(-324) == 0.0);
+    REQUIRE(bl::pow(bl::f64{ 10 }, 308) == 1e308);
+    REQUIRE(bl::isinf(bl::pow(bl::f64{ 10 }, 309)));
+    REQUIRE(bl::pow(bl::f64{ 10 }, -323) == 1e-323);
+    REQUIRE(bl::pow(bl::f64{ 10 }, -324) == 0.0);
 
-    REQUIRE(bl::log10(bl::pow10<bl::f64>(20)) == 20.0);
+    REQUIRE(bl::log10(bl::pow(bl::f64{ 10 }, 20)) == 20.0);
 
     std::mt19937_64 rng(random_seed);
     print_random_run("random rounding inputs", random_sample_count);
@@ -1978,6 +1976,16 @@ TEST_CASE("f64 decomposition and stepping functions match reference semantics", 
 TEST_CASE("f64 utility helpers match reference semantics", "[fltx][f64][precision][math][utility]")
 {
     accuracy_report_scope report("f64 utility helpers match reference semantics");
+
+    static_assert(bl::recip(4.0) == 0.25);
+
+    check_unary_op("recip", 2.5, exact_tol(),
+        [](double x) { return bl::recip(x); },
+        [](double x) { return 1.0 / x; });
+
+    check_unary_op("recip.neg", -0.125, exact_tol(),
+        [](double x) { return bl::recip(x); },
+        [](double x) { return 1.0 / x; });
 
     constexpr std::array<std::pair<double, double>, 10> pairs{{
         { -0.0, 0.0 },

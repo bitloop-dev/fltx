@@ -34,7 +34,7 @@ namespace detail::_f128 // primitives and kernels
         return { negative ? -0.0 : 0.0, 0.0 };
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s add_special(const f128_s& a, const f128_s& b) noexcept
+    [[nodiscard]] BL_NO_INLINE constexpr f128_s add_special(const f128_s& a, const f128_s& b) noexcept
     {
         if (detail::fp::isnan(a.hi) || detail::fp::isnan(b.hi))
             return quiet_nan();
@@ -45,15 +45,18 @@ namespace detail::_f128 // primitives and kernels
             return quiet_nan();
         if (a_inf)
             return signed_infinity(signbit(a.hi));
-        return signed_infinity(signbit(b.hi));
+        if (b_inf)
+            return signed_infinity(signbit(b.hi));
+
+        return signed_infinity(signbit(a));
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s sub_special(const f128_s& a, const f128_s& b) noexcept
+    [[nodiscard]] BL_NO_INLINE constexpr f128_s sub_special(const f128_s& a, const f128_s& b) noexcept
     {
         return add_special(a, f128_s{ -b.hi, -b.lo });
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_special(const f128_s& a, const f128_s& b) noexcept
+    [[nodiscard]] BL_NO_INLINE constexpr f128_s mul_special(const f128_s& a, const f128_s& b) noexcept
     {
         if (detail::fp::isnan(a.hi) || detail::fp::isnan(b.hi))
             return quiet_nan();
@@ -63,10 +66,14 @@ namespace detail::_f128 // primitives and kernels
         if ((a_inf && b.hi == 0.0) || (b_inf && a.hi == 0.0))
             return quiet_nan();
 
-        return signed_infinity(bl::signbit(a) != bl::signbit(b));
+        const bool negative = bl::signbit(a) != bl::signbit(b);
+        if ((a.hi == 0.0 && a.lo == 0.0) || (b.hi == 0.0 && b.lo == 0.0))
+            return signed_zero(negative);
+
+        return signed_infinity(negative);
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s div_special(const f128_s& a, const f128_s& b) noexcept
+    [[nodiscard]] BL_NO_INLINE constexpr f128_s div_special(const f128_s& a, const f128_s& b) noexcept
     {
         if (detail::fp::isnan(a.hi) || detail::fp::isnan(b.hi))
             return quiet_nan();
@@ -229,18 +236,78 @@ namespace detail::_f128 // primitives and kernels
     }
 #endif
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_dd_inline(const f128_s& a, const f128_s& b) noexcept
-    {
-        return mul_inline(a, b);
-    }
-
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s sqr_dd_inline(const f128_s& a) noexcept
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s sqr_inline(const f128_s& a) noexcept
     {
         double p{}, e{};
         two_prod_precise(a.hi, a.hi, p, e);
         e += (a.hi + a.hi) * a.lo;
+        e += a.lo * a.lo;
         detail::fp::quick_two_sum_precise(p, e, p, e);
         return { p, e };
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s finish_mul_checked_inline(
+        const f128_s& a,
+        const f128_s& b,
+        const f128_s& out) noexcept
+    {
+        if (detail::fp::isinf_or_nan(out.hi)) [[unlikely]]
+            return mul_special(a, b);
+        if (out.hi == 0.0 && ((a.hi == 0.0 && a.lo == 0.0) || (b.hi == 0.0 && b.lo == 0.0))) [[unlikely]]
+            return mul_special(a, b);
+        return out;
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_checked_inline(const f128_s& a, const f128_s& b) noexcept
+    {
+        return finish_mul_checked_inline(a, b, mul_inline(a, b));
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_dekker_checked_inline(const f128_s& a, const f128_s& b) noexcept
+    {
+        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        return finish_mul_checked_inline(a, b, mul_inline_checked(a, b));
+        #else
+        return mul_checked_inline(a, b);
+        #endif
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_accurate_inline(const f128_s& a, const f128_s& b) noexcept
+    {
+        if (detail::fp::isinf_or_nan(a.hi) || detail::fp::isinf_or_nan(b.hi)) [[unlikely]]
+            return mul_checked_inline(a, b);
+
+        double p0{}, q0{};
+        two_prod_precise(a.hi, b.hi, p0, q0);
+        if (detail::fp::isinf_or_nan(p0)) [[unlikely]]
+            return mul_checked_inline(a, b);
+
+        double p1{}, q1{};
+        double p2{}, q2{};
+        two_prod_precise(a.hi, b.lo, p1, q1);
+        two_prod_precise(a.lo, b.hi, p2, q2);
+
+        double p12{}, e12{};
+        double p012{}, e012{};
+        two_sum_precise(p1, p2, p12, e12);
+        two_sum_precise(q0, p12, p012, e012);
+
+        const double tail = e12 + e012 + q1 + q2 + (a.lo * b.lo);
+        return renorm(p0, p012 + tail);
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s sqr_dekker_checked_inline(const f128_s& a) noexcept
+    {
+        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        double p{}, e{};
+        detail::fp::two_prod_precise_checked(a.hi, a.hi, p, e);
+        e += (a.hi + a.hi) * a.lo;
+        e += a.lo * a.lo;
+        detail::fp::quick_two_sum_precise(p, e, p, e);
+        return finish_mul_checked_inline(a, a, f128_s{ p, e });
+        #else
+        return sqr_inline(a);
+        #endif
     }
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s div_inline(const f128_s& a, const f128_s& b) noexcept
@@ -547,8 +614,6 @@ namespace detail::_f128 // primitives and kernels
 
     return y;
 }
-
-[[nodiscard]] BL_FORCE_INLINE constexpr f128 inv(const f128_s& a) { return recip(a); }
 
 } // namespace bl
 

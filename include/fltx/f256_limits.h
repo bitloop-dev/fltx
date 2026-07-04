@@ -25,7 +25,7 @@ struct std::numeric_limits<bl::f256_s>
 
     static constexpr int digits       = 212;
     static constexpr int digits10     = 63;
-    static constexpr int max_digits10 = 66;
+    static constexpr int max_digits10 = 67;
 
     static constexpr bool is_signed  = true;
     static constexpr bool is_integer = false;

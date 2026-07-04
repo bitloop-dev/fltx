@@ -61,41 +61,34 @@ function(fltx_apply_fast_math_options _TARGET)
     endif()
 
     target_compile_definitions(${_TARGET} PRIVATE
-        $<$<CONFIG:Release>:BL_FAST_MATH>
-        $<$<AND:$<CONFIG:Release>,$<BOOL:${FLTX_DISABLE_FMA_AVAILABLE}>>:FLTX_DISABLE_FMA_AVAILABLE=1>
-        $<$<AND:$<CONFIG:Release>,$<BOOL:${FLTX_SIMD_FMA_TWO_PROD}>,$<NOT:$<BOOL:${FLTX_DISABLE_FMA_AVAILABLE}>>>:BL_FLTX_SIMD_USE_FMA_TWO_PROD=1>
-        $<$<AND:$<CONFIG:Release>,$<OR:$<BOOL:${FLTX_DISABLE_FMA_AVAILABLE}>,$<NOT:$<BOOL:${FLTX_SIMD_FMA_TWO_PROD}>>>>:BL_FLTX_SIMD_USE_FMA_TWO_PROD=0>
+        BL_FAST_MATH
+        $<$<BOOL:${FLTX_DISABLE_FMA_AVAILABLE}>:FLTX_DISABLE_FMA_AVAILABLE=1>
+        $<$<AND:$<BOOL:${FLTX_SIMD_FMA_TWO_PROD}>,$<NOT:$<BOOL:${FLTX_DISABLE_FMA_AVAILABLE}>>>:BL_FLTX_SIMD_USE_FMA_TWO_PROD=1>
+        $<$<OR:$<BOOL:${FLTX_DISABLE_FMA_AVAILABLE}>,$<NOT:$<BOOL:${FLTX_SIMD_FMA_TWO_PROD}>>>:BL_FLTX_SIMD_USE_FMA_TWO_PROD=0>
     )
 
     if(MSVC)
         target_compile_options(${_TARGET} PRIVATE
-            $<$<CONFIG:Release>:/fp:fast>
+            /fp:fast
         )
 
         if(_FLTX_FAST_MATH_ENABLE_AVX2)
             target_compile_options(${_TARGET} PRIVATE
-                $<$<CONFIG:Release>:/arch:AVX2>
+                /arch:AVX2
             )
         endif()
     else()
         target_compile_options(${_TARGET} PRIVATE
+            -ffp-contract=fast
+            -fno-math-errno
+            -fno-trapping-math
             $<$<CONFIG:Release>:-O3>
-            $<$<CONFIG:Release>:-ffp-contract=fast>
-            $<$<CONFIG:Release>:-fno-math-errno>
-            $<$<CONFIG:Release>:-fno-trapping-math>
         )
 
         if(_FLTX_FAST_MATH_ENABLE_AVX2)
             target_compile_options(${_TARGET} PRIVATE
-                $<$<CONFIG:Release>:-mavx2>
-                $<$<CONFIG:Release>:-mfma>
-            )
-        endif()
-
-        if(FLTX_FAST_MATH_NATIVE)
-            target_compile_options(${_TARGET} PRIVATE
-                $<$<CONFIG:Release>:-march=native>
-                $<$<CONFIG:Release>:-mtune=native>
+                -mavx2
+                -mfma
             )
         endif()
 

@@ -16,6 +16,7 @@
 #include <sstream>
 #include <string>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -1399,36 +1400,35 @@ TEST_CASE("f32 rounding matches MPFR references", "[fltx][f32][precision][math][
         check_exact_integer_result("llrint", bl::llrint(input), std::llrint(input), input);
     }
 
-    REQUIRE(bl::round_to_decimals(1.2345f, 2) == 1.23f);
-    REQUIRE(bl::round_to_decimals(1.2345f, 3) == 1.235f);
-    REQUIRE(bl::round_to_decimals(1.125f, 2) == 1.12f);
-    REQUIRE(bl::round_to_decimals(1.375f, 2) == 1.38f);
-    REQUIRE(bl::round_to_decimals(-1.375f, 2) == -1.38f);
-    REQUIRE(bl::round_to_decimals(1.25f, 0) == 1.25f);
-    REQUIRE(bl::round_to_precision(12345.0f, 3) == 12300.0f);
-    REQUIRE(bl::round_to_precision(0.012345f, 3) == 0.0123f);
-    REQUIRE(bl::round_to_precision(12500.0f, 2) == 12000.0f);
-    REQUIRE(bl::round_to_precision(13500.0f, 2) == 14000.0f);
-    REQUIRE(bl::round_to(1.2345f, 2, bl::decimals) == bl::round_to_decimals(1.2345f, 2));
-    REQUIRE(bl::round_to(12345.0f, 3, bl::significant_figures) == bl::round_to_precision(12345.0f, 3));
+    REQUIRE(bl::round_to(1.2345f, 2, bl::decimals) == 1.23f);
+    REQUIRE(bl::round_to(1.2345f, 3, bl::decimals) == 1.235f);
+    REQUIRE(bl::round_to(1.125f, 2, bl::decimals) == 1.12f);
+    REQUIRE(bl::round_to(1.375f, 2, bl::decimals) == 1.38f);
+    REQUIRE(bl::round_to(-1.375f, 2, bl::decimals) == -1.38f);
+    REQUIRE(bl::round_to(1.25f, 0, bl::decimals) == 1.25f);
+    REQUIRE(bl::round_to(12345.0f, 3, bl::significant_figures) == 12300.0f);
+    REQUIRE(bl::round_to(0.012345f, 3, bl::significant_figures) == 0.0123f);
+    REQUIRE(bl::round_to(12500.0f, 2, bl::significant_figures) == 12000.0f);
+    REQUIRE(bl::round_to(13500.0f, 2, bl::significant_figures) == 14000.0f);
 
-    constexpr float constexpr_rounded = bl::round_to_decimals(1.375f, 2);
+    constexpr float constexpr_rounded = bl::round_to(1.375f, 2, bl::decimals);
     static_assert(constexpr_rounded == 1.38f);
-    constexpr float constexpr_precision_rounded = bl::round_to_precision(12345.0f, 3);
+    constexpr float constexpr_precision_rounded = bl::round_to(12345.0f, 3, bl::significant_figures);
     static_assert(constexpr_precision_rounded == 12300.0f);
     constexpr float constexpr_round_to = bl::round_to(12345.0f, 3, bl::significant_figures);
     static_assert(constexpr_round_to == 12300.0f);
 
-    static_assert(bl::pow10<bl::f32>(0) == 1.0f);
-    static_assert(bl::pow10<bl::f32>(3) == 1000.0f);
-    static_assert(bl::pow10<bl::f32>(-3) == 1e-3f);
+    static_assert(bl::ipow(bl::f32{ 10 }, 0) == 1.0f);
+    static_assert(bl::ipow(bl::f32{ 10 }, 3) == 1000.0f);
+    static_assert(bl::ipow(bl::f32{ 10 }, -3) == 1e-3f);
+    static_assert(std::is_same_v<decltype(bl::pow(bl::f32{ 10 }, 3)), bl::f64>);
 
-    REQUIRE(bl::pow10<bl::f32>(38) == 1e38f);
-    REQUIRE(bl::isinf(bl::pow10<bl::f32>(39)));
-    REQUIRE(bl::pow10<bl::f32>(-45) == 1e-45f);
-    REQUIRE(bl::pow10<bl::f32>(-46) == 0.0f);
+    REQUIRE(bl::ipow(bl::f32{ 10 }, 38) == 1e38f);
+    REQUIRE(bl::isinf(bl::ipow(bl::f32{ 10 }, 39)));
+    REQUIRE(bl::ipow(bl::f32{ 10 }, -45) == 1e-45f);
+    REQUIRE(bl::ipow(bl::f32{ 10 }, -46) == 0.0f);
 
-    REQUIRE(bl::log10(bl::pow10<bl::f32>(10)) == 10.0f);
+    REQUIRE(bl::log10(bl::ipow(bl::f32{ 10 }, 10)) == 10.0f);
 
     std::mt19937_64 rng(random_seed);
     print_random_run("random rounding inputs", random_sample_count);
@@ -1979,6 +1979,16 @@ TEST_CASE("f32 decomposition and stepping functions match reference semantics", 
 TEST_CASE("f32 utility helpers match reference semantics", "[fltx][f32][precision][math][utility]")
 {
     accuracy_report_scope report("f32 utility helpers match reference semantics");
+
+    static_assert(bl::recip(4.0f) == 0.25f);
+
+    check_unary_op("recip", 2.5f, exact_tol(),
+        [](float x) { return bl::recip(x); },
+        [](float x) { return 1.0f / x; });
+
+    check_unary_op("recip.neg", -0.125f, exact_tol(),
+        [](float x) { return bl::recip(x); },
+        [](float x) { return 1.0f / x; });
 
     constexpr std::array<std::pair<float, float>, 10> pairs{{
         { -0.0f, 0.0f },

@@ -106,7 +106,7 @@ namespace bl::test::metrics
         #ifdef FLTX_METRICS_OUTPUT_ROOT
         std::filesystem::path output_path = std::filesystem::path(FLTX_METRICS_OUTPUT_ROOT);
         #else
-        std::filesystem::path output_path = std::filesystem::path("res") / "metrics";
+        std::filesystem::path output_path = std::filesystem::path("metrics") / "data";
         #endif
         output_path /= std::string(metrics_os_name());
 
@@ -244,6 +244,41 @@ namespace bl::test::metrics
         return 100;
     }
 
+    [[nodiscard]] inline int metrics_custom_pow_row_order(std::string_view operation) noexcept
+    {
+        constexpr std::string_view prefix = "pow<T>(";
+        if (!operation.starts_with(prefix))
+            return -1;
+
+        std::size_t pos = prefix.size();
+        int base = 0;
+        bool saw_digit = false;
+        while (pos < operation.size() && operation[pos] >= '0' && operation[pos] <= '9')
+        {
+            saw_digit = true;
+            base = base * 10 + (operation[pos] - '0');
+            ++pos;
+        }
+
+        if (!saw_digit)
+            return -1;
+        if (pos >= operation.size() || (operation[pos] != ')' && operation[pos] != ','))
+            return -1;
+
+        const bool outside =
+            operation.find(" outside ", pos) != std::string_view::npos ||
+            operation.find(", out[", pos) != std::string_view::npos ||
+            operation.find(", outside[", pos) != std::string_view::npos ||
+            operation.find("fallback", pos) != std::string_view::npos;
+
+        return (outside ? 100000 : 100) + base;
+    }
+
+    [[nodiscard]] inline int metrics_custom_ipow_row_order(std::string_view operation) noexcept
+    {
+        return operation.starts_with("ipow<T>(") ? 50000 : -1;
+    }
+
     [[nodiscard]] inline int metrics_csv_row_order(const metrics_record& record)
     {
         const std::string_view operation = record.suite.operation.name;
@@ -259,7 +294,8 @@ namespace bl::test::metrics
         if (operation.starts_with("parse<") || operation.starts_with("parse(")) return 1100;
         if (operation == "parse (average)") return 2000;
         if (operation == "round_to_decimals") return 0;
-        if (operation == "pow10<T>") return 1;
+        if (const int ipow_row_order = metrics_custom_ipow_row_order(operation); ipow_row_order >= 0) return ipow_row_order;
+        if (const int pow_row_order = metrics_custom_pow_row_order(operation); pow_row_order >= 0) return pow_row_order;
         if (operation == "floor") return 0;
         if (operation == "ceil") return 1;
         if (operation == "trunc") return 2;

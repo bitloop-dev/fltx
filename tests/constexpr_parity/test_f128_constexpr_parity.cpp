@@ -44,6 +44,7 @@ concept can_call_pow = requires(Base base, Exp exp)
 };
 
 static_assert(std::is_same_v<decltype(bl::pow(bl::f128{ 2.0 }, 5)), bl::f128>);
+static_assert(std::is_same_v<decltype(bl::ipow(bl::f128{ 2.0 }, 5)), bl::f128>);
 static_assert(std::is_same_v<decltype(bl::pow(bl::f128{ 2.0 }, 5.0f)), bl::f128>);
 static_assert(std::is_same_v<decltype(bl::pow(bl::f128{ 2.0 }, 5.0)), bl::f128>);
 static_assert(!can_call_pow<bl::f128, long double>);
@@ -490,8 +491,7 @@ template<typename... Values>
 [[nodiscard]] bool test_can_use_constexpr_recip_dekker_multiply(const char* test_name) noexcept
 {
     return
-        string_equals(test_name, "recip") ||
-        string_equals(test_name, "inv");
+        string_equals(test_name, "recip");
 }
 
 template<typename... Values>
@@ -888,7 +888,7 @@ TEST_CASE("f128 constexpr parity: round_to_decimals", "[fltx][constexpr][parity]
 {
     run_tuple_test("round_to_decimals", gen_round_digits_args, [](const value_type& x, int digits)
     {
-        return bl::round_to_decimals(x, digits);
+        return bl::round_to(x, digits, bl::decimals);
     });
 }
 
@@ -924,7 +924,7 @@ TEST_CASE("f128 constexpr parity: pow(int)", "[fltx][constexpr][parity][f128][po
 
 TEST_CASE("f128 constexpr parity: pow10", "[fltx][constexpr][parity][f128][pow10]")
 {
-    run_tuple_test("pow10", gen_pow10_args, [](int exponent) { return bl::pow10<value_type>(exponent); });
+    run_tuple_test("pow10", gen_pow10_args, [](int exponent) { return bl::pow(value_type{ 10 }, exponent); });
 }
 
 TEST_CASE("f128 constexpr parity: sincos", "[fltx][constexpr][parity][f128][sincos]")

@@ -12,6 +12,7 @@
 
 #include <fltx/f256_math.h>
 #include <fltx/f256_io.h>
+#include <fltx/charconv.h>
 
 using namespace bl;
 
@@ -68,7 +69,7 @@ namespace
 
     [[nodiscard]] f256 make_f256(const char* text)
     {
-        return to_f256(text);
+        return bl::parse<f256>(text);
     }
 
     [[nodiscard]] mpfr_ref to_ref_exact(const f256_s& value)

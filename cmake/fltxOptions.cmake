@@ -86,11 +86,19 @@ fltx_define_cache_string(
     ON OFF AUTO
 )
 
-fltx_define_cache_bool(
-    FLTX_FAST_MATH_NATIVE
-    OFF
-    "Tune fast-math builds for the local host CPU with -march=native/-mtune=native where supported."
-)
+# Consume the removed native-tuning option so old caches and -D uses are cleaned quietly.
+if(DEFINED FLTX_FAST_MATH_NATIVE OR DEFINED CACHE{FLTX_FAST_MATH_NATIVE})
+    set(_FLTX_REMOVED_FAST_MATH_NATIVE "${FLTX_FAST_MATH_NATIVE}")
+    unset(FLTX_FAST_MATH_NATIVE CACHE)
+    unset(FLTX_FAST_MATH_NATIVE)
+    unset(_FLTX_REMOVED_FAST_MATH_NATIVE)
+endif()
+if(DEFINED _FLTX_FAST_MATH_NATIVE_DEFAULT_VALUE OR DEFINED CACHE{_FLTX_FAST_MATH_NATIVE_DEFAULT_VALUE})
+    set(_FLTX_REMOVED_FAST_MATH_NATIVE_DEFAULT_VALUE "${_FLTX_FAST_MATH_NATIVE_DEFAULT_VALUE}")
+    unset(_FLTX_FAST_MATH_NATIVE_DEFAULT_VALUE CACHE)
+    unset(_FLTX_FAST_MATH_NATIVE_DEFAULT_VALUE)
+    unset(_FLTX_REMOVED_FAST_MATH_NATIVE_DEFAULT_VALUE)
+endif()
 
 set(_FLTX_DISABLE_FMA_AVAILABLE_DEFAULT OFF)
 if(DEFINED CACHE{FLTX_FMA_AVAILABLE})
@@ -162,7 +170,6 @@ fltx_define_cache_bool(
 )
 
 mark_as_advanced(
-    FLTX_FAST_MATH_NATIVE
     FLTX_DISABLE_FMA_AVAILABLE
     FLTX_SIMD_FMA_TWO_PROD
     FLTX_MSVC_TIMING_REPORTS

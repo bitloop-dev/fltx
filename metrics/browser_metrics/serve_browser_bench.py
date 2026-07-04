@@ -12,7 +12,10 @@ from urllib.parse import unquote
 
 
 ROOT = Path(__file__).resolve().parents[2]
-METRICS_DIR = ROOT / "res" / "metrics"
+METRICS_ROOT = ROOT / "metrics"
+METRICS_DATA_DIR = METRICS_ROOT / "data"
+METRICS_GENERATED_DIR = METRICS_ROOT / "generated"
+BUILD_TABLE_SCRIPT = METRICS_ROOT / "build_table.py"
 
 
 def resolve_output_path(raw_path: str) -> Path:
@@ -22,14 +25,17 @@ def resolve_output_path(raw_path: str) -> Path:
 
     if ".." in pure.parts:
         raise ValueError("parent directory segments are not allowed")
-    if len(pure.parts) < 3 or pure.parts[0] != "res" or pure.parts[1] != "metrics":
-        raise ValueError("path must be under res/metrics")
-    if pure.suffix.lower() not in {".csv", ".svg"}:
-        raise ValueError("only csv and svg metrics outputs can be saved")
+    if len(pure.parts) < 3 or pure.parts[0] != "metrics" or pure.parts[1] not in {"data", "generated"}:
+        raise ValueError("path must be under metrics/data or metrics/generated")
+    if pure.suffix.lower() not in {".csv", ".svg", ".html"}:
+        raise ValueError("only csv, svg, and html metrics outputs can be saved")
 
     target = (ROOT / Path(*pure.parts)).resolve()
-    if not target.is_relative_to(METRICS_DIR.resolve()):
-        raise ValueError("path resolves outside res/metrics")
+    if not (
+        target.is_relative_to(METRICS_DATA_DIR.resolve()) or
+        target.is_relative_to(METRICS_GENERATED_DIR.resolve())
+    ):
+        raise ValueError("path resolves outside metrics output directories")
     return target
 
 
@@ -43,7 +49,7 @@ class BrowserMetricsHandler(SimpleHTTPRequestHandler):
     def do_GET(self) -> None:
         if self.path == "/":
             self.send_response(302)
-            self.send_header("Location", "/res/metrics/metrics_table.svg")
+            self.send_header("Location", "/metrics/generated/metrics_table.svg")
             self.end_headers()
             return
         super().do_GET()
@@ -83,7 +89,7 @@ class BrowserMetricsHandler(SimpleHTTPRequestHandler):
     def build_table(self) -> None:
         try:
             result = subprocess.run(
-                [sys.executable, str(METRICS_DIR / "build_table.py"), "--format", "svg"],
+                [sys.executable, str(BUILD_TABLE_SCRIPT), "--format", "svg"],
                 cwd=ROOT,
                 text=True,
                 stdout=subprocess.PIPE,

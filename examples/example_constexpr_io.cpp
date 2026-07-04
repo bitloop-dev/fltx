@@ -8,58 +8,111 @@
 
 using namespace bl;
 
-constexpr f256 round_to_stream_precision(f256 value, int precision, std::ios_base::fmtflags flags)
-{
-    const auto floatfield = flags & std::ios_base::floatfield;
-
-    if (floatfield == std::ios_base::fixed)
-        return bl::round_to(value, precision, bl::decimals);
-
-    if (floatfield == std::ios_base::scientific)
-        return bl::round_to(value, precision + 1, bl::significant_figures);
-
-    if (floatfield == (std::ios_base::fixed | std::ios_base::scientific))
-        return value; // hexfloat
-
-    return bl::round_to(value, precision, bl::significant_figures);
-}
-
 int main()
 {
-    constexpr int digits = std::numeric_limits<f256>::digits10;
-
+    // ----- try switching format mode -----
     constexpr auto mode = std::ios_base::fixed;
-    // constexpr auto mode = std::ios_base::scientific;
-    // constexpr auto mode = std::ios_base::fmtflags{}; // defaultfloat
-    // constexpr auto mode = std::ios_base::fixed | std::ios_base::scientific; // hexfloat
+    // constexpr auto mode = std::ios_base::scientific;                         // scientific
+    // constexpr auto mode = std::ios_base::fmtflags{};                         // defaultfloat
+    // constexpr auto mode = std::ios_base::fixed | std::ios_base::scientific;  // hexfloat
 
-    constexpr auto flags =
-        mode |
+    // ----- try switching base flags -----
+    constexpr auto base_flags =
         std::ios_base::showpoint |
         std::ios_base::showpos |
         std::ios_base::uppercase;
 
+    // sets cout stream flags
+    constexpr auto flags = mode | base_flags;
     std::cout.setf(flags & std::ios_base::floatfield, std::ios_base::floatfield);
-    std::cout.setf(
-        flags & (std::ios_base::showpoint | std::ios_base::showpos | std::ios_base::uppercase),
-        std::ios_base::showpoint | std::ios_base::showpos | std::ios_base::uppercase);
+    std::cout.setf(flags & base_flags, base_flags);
+
+    // use enough decimal digits for an exact f256 text round-trip
+    constexpr int digits = std::numeric_limits<f256>::max_digits10;
     std::cout << std::setprecision(digits);
 
-    // calculate pi/2
+    // calculate 10+pi/2
     constexpr f256 value = 10 + std::numbers::pi_v<f256> / 2;
-    std::cout << "value:  " << value << "\n";
+    std::cout << "value:             " << value << "\n\n";
 
-    // to compile-time string
-    constexpr auto txt = bl::to_static_string(value, digits, flags);
-    std::cout << "txt:    " << txt << "\n";
+    // compile-time text round-trip
+    {
+        constexpr auto txt_static = bl::to_static_string(value, digits, flags);
+        std::cout << "txt (static):      " << txt_static << "\n";
 
-    // parse back to f256 value
-    constexpr f256 parsed = bl::parse<f256>(txt);
-    std::cout << "parsed: " << parsed << "\n\n";
+        // parse back to f256 value
+        constexpr f256 parsed_static = bl::parse<f256>(txt_static);
+        std::cout << "parsed (static):   " << parsed_static << "\n\n";
 
-    constexpr f256 a = round_to_stream_precision(value, digits, flags);
-    constexpr f256 b = round_to_stream_precision(parsed, digits, flags);
+        if (parsed_static != value)
+            return 1;
+    }
 
-    return (a == b) ? 0 : 1;
+    // runtime text round-trip
+    {
+        auto txt_runtime = bl::to_string(value, digits, flags);
+        std::cout << "txt (runtime):     " << txt_runtime << "\n";
+
+        // parse back to f256 value
+        f256 parsed_runtime = bl::parse<f256>(txt_runtime);
+        std::cout << "parsed (runtime):  " << parsed_runtime << "\n\n";
+
+        if (parsed_runtime != value)
+            return 1;
+    }
+
+    return 0;
 }
 
+
+// ----- Verify every viable stream flag combination round-trips at max_digits10 -----
+
+template<std::ios_base::fmtflags flags>
+consteval bool static_roundtrip_ok()
+{
+    constexpr int digits = std::numeric_limits<f256>::max_digits10;
+    constexpr f256 value = 10 + std::numbers::pi_v<f256> / 2;
+    constexpr auto txt_static = bl::to_static_string(value, digits, flags);
+    constexpr f256 parsed_static = bl::parse<f256>(txt_static);
+    return parsed_static == value;
+}
+
+template<std::ios_base::fmtflags... flags>
+consteval bool all_static_roundtrips_ok()
+{
+    return (static_roundtrip_ok<flags>() && ...);
+}
+
+static_assert(all_static_roundtrips_ok <
+    std::ios_base::fmtflags{},
+    std::ios_base::showpoint,
+    std::ios_base::showpos,
+    std::ios_base::uppercase,
+    std::ios_base::showpoint | std::ios_base::showpos,
+    std::ios_base::showpoint | std::ios_base::uppercase,
+    std::ios_base::showpos | std::ios_base::uppercase,
+    std::ios_base::showpoint | std::ios_base::showpos | std::ios_base::uppercase,
+    std::ios_base::fixed,
+    std::ios_base::fixed | std::ios_base::showpoint,
+    std::ios_base::fixed | std::ios_base::showpos,
+    std::ios_base::fixed | std::ios_base::uppercase,
+    std::ios_base::fixed | std::ios_base::showpoint | std::ios_base::showpos,
+    std::ios_base::fixed | std::ios_base::showpoint | std::ios_base::uppercase,
+    std::ios_base::fixed | std::ios_base::showpos | std::ios_base::uppercase,
+    std::ios_base::fixed | std::ios_base::showpoint | std::ios_base::showpos | std::ios_base::uppercase,
+    std::ios_base::scientific,
+    std::ios_base::scientific | std::ios_base::showpoint,
+    std::ios_base::scientific | std::ios_base::showpos,
+    std::ios_base::scientific | std::ios_base::uppercase,
+    std::ios_base::scientific | std::ios_base::showpoint | std::ios_base::showpos,
+    std::ios_base::scientific | std::ios_base::showpoint | std::ios_base::uppercase,
+    std::ios_base::scientific | std::ios_base::showpos | std::ios_base::uppercase,
+    std::ios_base::scientific | std::ios_base::showpoint | std::ios_base::showpos | std::ios_base::uppercase,
+    std::ios_base::fixed | std::ios_base::scientific,
+    std::ios_base::fixed | std::ios_base::scientific | std::ios_base::showpoint,
+    std::ios_base::fixed | std::ios_base::scientific | std::ios_base::showpos,
+    std::ios_base::fixed | std::ios_base::scientific | std::ios_base::uppercase,
+    std::ios_base::fixed | std::ios_base::scientific | std::ios_base::showpoint | std::ios_base::showpos,
+    std::ios_base::fixed | std::ios_base::scientific | std::ios_base::showpoint | std::ios_base::uppercase,
+    std::ios_base::fixed | std::ios_base::scientific | std::ios_base::showpos | std::ios_base::uppercase,
+    std::ios_base::fixed | std::ios_base::scientific | std::ios_base::showpoint | std::ios_base::showpos | std::ios_base::uppercase > ());

@@ -17,6 +17,7 @@
 
 #include <fltx/f128_math.h>
 #include <fltx/f128_io.h>
+#include <fltx/charconv.h>
 #include <fltx/random.h>
 
 using namespace bl;
@@ -213,7 +214,7 @@ namespace
     [[nodiscard]] f128 round_ref_to_f128(const mpfr_ref& value)
     {
         const std::string text = to_text(value);
-        return to_f128(text.c_str());
+        return bl::parse<f128>(text.c_str());
     }
 
     [[nodiscard]] mpfr_ref nominal_ulp_size(const f128& reference, const f128& fallback)
@@ -461,8 +462,8 @@ namespace
     template<typename F128Op, typename RefOp>
     void check_binary_op(const char* op_name, const char* lhs_text, const char* rhs_text, F128Op&& f128_op, RefOp&& ref_op)
     {
-        const f128 lhs = to_f128(lhs_text);
-        const f128 rhs = to_f128(rhs_text);
+        const f128 lhs = bl::parse<f128>(lhs_text);
+        const f128 rhs = bl::parse<f128>(rhs_text);
 
         const f128 got          = f128_op(lhs, rhs);
         const mpfr_ref got_ref  = to_ref_exact(got);
@@ -506,7 +507,7 @@ namespace
         F128Op&& f128_op,
         RefOp&& ref_op)
     {
-        const f128 value         = to_f128(value_text);
+        const f128 value         = bl::parse<f128>(value_text);
         const mpfr_ref value_ref = to_ref_exact(value);
         const mpfr_ref scalar_ref{ static_cast<double>(scalar) };
 
@@ -547,7 +548,7 @@ namespace
     template<typename F128Op, typename RefOp>
     void check_unary_op(const char* op_name, const char* input_text, F128Op&& f128_op, RefOp&& ref_op)
     {
-        const f128 input = to_f128(input_text);
+        const f128 input = bl::parse<f128>(input_text);
 
         const f128 got           = f128_op(input);
         const mpfr_ref input_ref = to_ref_exact(input);
@@ -596,7 +597,7 @@ namespace
         F128Op&& f128_op,
         RefOp&& ref_op)
     {
-        const f128 input = to_f128(input_text);
+        const f128 input = bl::parse<f128>(input_text);
 
         const f128 got           = f128_op(input);
         const mpfr_ref input_ref = to_ref_exact(input);
@@ -650,8 +651,8 @@ namespace
         F128Op&& f128_op,
         RefOp&& ref_op)
     {
-        const f128 lhs = to_f128(lhs_text);
-        const f128 rhs = to_f128(rhs_text);
+        const f128 lhs = bl::parse<f128>(lhs_text);
+        const f128 rhs = bl::parse<f128>(rhs_text);
 
         const f128 got          = f128_op(lhs, rhs);
         const mpfr_ref got_ref  = to_ref_exact(got);
@@ -931,7 +932,7 @@ namespace
         INFO("input_text: " << input_text);
         INFO("exponent: " << exponent);
 
-        const f128 input_value  = to_f128(input_text.c_str());
+        const f128 input_value  = bl::parse<f128>(input_text.c_str());
         const f128 got          = bl::ldexp(input_value, exponent);
         const mpfr_ref got_ref  = to_ref_exact(got);
         const mpfr_ref expected = ref_ldexp(to_ref_exact(input_value), exponent);
@@ -1088,7 +1089,7 @@ namespace
         const mpfr_ref& rel_tolerance)
     {
         const std::string input_text = to_scientific_text(input, printed_digits + 4);
-        const f128 input_value       = to_f128(input_text.c_str());
+        const f128 input_value       = bl::parse<f128>(input_text.c_str());
 
         f128 got_s{};
         f128 got_c{};
@@ -1148,8 +1149,8 @@ namespace
         const std::string lhs_text = to_scientific_text(x, printed_digits + 4);
         const std::string rhs_text = to_scientific_text(y, printed_digits + 4);
 
-        const f128 lhs = to_f128(lhs_text.c_str());
-        const f128 rhs = to_f128(rhs_text.c_str());
+        const f128 lhs = bl::parse<f128>(lhs_text.c_str());
+        const f128 rhs = bl::parse<f128>(rhs_text.c_str());
 
         int got_quo             = 0;
         const f128 got          = bl::remquo(lhs, rhs, &got_quo);
@@ -1218,6 +1219,75 @@ TEST_CASE("f128 matches MPFR for + - * /", "[fltx][f128][precision][arithmetic]"
         check_binary_op("divide", lhs, rhs,
             [](const f128& a, const f128& b) { return a / b; },
             [](const mpfr_ref& a, const mpfr_ref& b) { return a / b; });
+    }
+}
+
+TEST_CASE("f128 arithmetic handles special values", "[fltx][f128][precision][arithmetic][special]")
+{
+    static_assert(bl::isinf(std::numeric_limits<f128>::infinity() + f128{ 1.0 }));
+    static_assert(bl::isnan(std::numeric_limits<f128>::infinity() + f128{ -std::numeric_limits<double>::infinity(), 0.0 }));
+
+    const f128 pos_inf = std::numeric_limits<f128>::infinity();
+    const f128 neg_inf{ -std::numeric_limits<double>::infinity(), 0.0 };
+    const f128 nan = std::numeric_limits<f128>::quiet_NaN();
+    const f128 finite = bl::parse<f128>("2.5");
+    const f128 neg_finite = bl::parse<f128>("-2.5");
+    const f128 pos_zero{ 0.0, 0.0 };
+    const f128 neg_zero{ -0.0, 0.0 };
+    const f128 max_double{ std::numeric_limits<double>::max(), 0.0 };
+
+    {
+        const f128 got = pos_inf + finite;
+        REQUIRE(bl::isinf(got));
+        REQUIRE(!bl::signbit(got));
+    }
+    {
+        const f128 got = finite + neg_inf;
+        REQUIRE(bl::isinf(got));
+        REQUIRE(bl::signbit(got));
+    }
+    {
+        REQUIRE(bl::isnan(pos_inf + neg_inf));
+        REQUIRE(bl::isnan(pos_inf - pos_inf));
+        REQUIRE(bl::isnan(nan + finite));
+    }
+    {
+        const f128 got = max_double + max_double;
+        REQUIRE(bl::isinf(got));
+        REQUIRE(!bl::signbit(got));
+    }
+    {
+        const f128 got = -max_double - max_double;
+        REQUIRE(bl::isinf(got));
+        REQUIRE(bl::signbit(got));
+    }
+    {
+        REQUIRE(bl::isnan(pos_inf * pos_zero));
+        REQUIRE(bl::isnan(neg_inf * neg_zero));
+    }
+    {
+        const f128 got = pos_zero * neg_finite;
+        REQUIRE(bl::iszero(got));
+        REQUIRE(bl::signbit(got));
+    }
+    {
+        const f128 got = neg_zero * neg_finite;
+        REQUIRE(bl::iszero(got));
+        REQUIRE(!bl::signbit(got));
+    }
+    {
+        const f128 got = finite / pos_zero;
+        REQUIRE(bl::isinf(got));
+        REQUIRE(!bl::signbit(got));
+    }
+    {
+        const f128 got = finite / neg_zero;
+        REQUIRE(bl::isinf(got));
+        REQUIRE(bl::signbit(got));
+    }
+    {
+        REQUIRE(bl::isnan(pos_zero / pos_zero));
+        REQUIRE(bl::isnan(pos_inf / pos_inf));
     }
 }
 
@@ -1339,8 +1409,8 @@ TEST_CASE("f128 integer overloads preserve exact integer values", "[fltx][f128][
 {
     auto check_signed = [](auto rhs, const char* label)
     {
-        const f128 base            = to_f128("1.2345678901234567890123456789012345");
-        const f128 rhs_value       = to_f128(static_cast<std::int64_t>(rhs));
+        const f128 base            = bl::parse<f128>("1.2345678901234567890123456789012345");
+        const f128 rhs_value       = f128{ static_cast<std::int64_t>(rhs) };
         const bool rhs_fits_double = detail::_f128::integer_fits_exact_double(rhs);
         const double rhs_double    = static_cast<double>(rhs);
 
@@ -1381,8 +1451,8 @@ TEST_CASE("f128 integer overloads preserve exact integer values", "[fltx][f128][
 
     auto check_unsigned = [](auto rhs, const char* label)
     {
-        const f128 base            = to_f128("1.2345678901234567890123456789012345");
-        const f128 rhs_value       = to_f128(static_cast<std::uint64_t>(rhs));
+        const f128 base            = bl::parse<f128>("1.2345678901234567890123456789012345");
+        const f128 rhs_value       = f128{ static_cast<std::uint64_t>(rhs) };
         const bool rhs_fits_double = detail::_f128::integer_fits_exact_double(rhs);
         const double rhs_double    = static_cast<double>(rhs);
 
@@ -1816,7 +1886,7 @@ TEST_CASE("f128 floor ceil trunc and round match MPFR on random finite inputs", 
 TEST_CASE("f128 fmod matches MPFR for fixed values", "[fltx][f128][precision][math][fmod]")
 {
     accuracy_report_scope report_scope{ "f128 fmod matches MPFR for fixed values" };
-    const std::array<std::pair<const char*, const char*>, 12> cases = {{
+    const std::array<std::pair<const char*, const char*>, 13> cases = {{
         { "5.25", "2" },
         { "-5.25", "2" },
         { "5.25", "-2" },
@@ -1828,6 +1898,7 @@ TEST_CASE("f128 fmod matches MPFR for fixed values", "[fltx][f128][precision][ma
         { "1e-20", "3e-21" },
         { "-1e20", "3.125" },
         { "-1.8529511283991559001345365170060183648e+06", "-9.2032434723707283356667078971731995853e+04" },
+        { "2.2843535110878586111232612598588360697e+18", "-1.1727146690153494379557900838722061025e+03" },
         { "2.0070307529846201810885555445715861468e+22", "-6.6186399950942319874533902621549657056e+21" }
     }};
 
@@ -2214,7 +2285,8 @@ TEST_CASE("f128 log2 matches MPFR on random positive inputs", "[fltx][f128][prec
 TEST_CASE("f128 log10 matches MPFR for fixed values", "[fltx][f128][precision][transcendental][log10]")
 {
     accuracy_report_scope report_scope{ "f128 log10 matches MPFR for fixed values" };
-    const std::array<const char*, 8> cases = {{
+    const std::array<const char*, 9> cases = {{
+        "0x0.0000000000002p-1022",
         "0.125",
         "0.5",
         "0.999999999999999999999999999999",
@@ -2287,6 +2359,43 @@ TEST_CASE("f128 pow matches MPFR for fixed values", "[fltx][f128][precision][tra
     check_pow_case("large_base_negative_exp", mpfr_ref{ "1e10" }, mpfr_ref{ -2 }, abs_tolerance, rel_tolerance);
 }
 
+TEST_CASE("f128 casted-base integer pow uses compact table fast paths and simple fallback", "[fltx][f128][precision][pow]")
+{
+    accuracy_report_scope report_scope{ "f128 casted-base integer pow uses compact table fast paths and simple fallback" };
+
+    auto check_case = [](int base, int exponent, ulp_count max_ulp)
+    {
+        const f128 got = bl::pow(f128{ base }, exponent);
+        const mpfr_ref expected = ref_powi(mpfr_ref{ base }, exponent);
+        const ulp_distance_result distance = true_ulp_distance_from_reference(got, expected);
+
+        CAPTURE(base);
+        CAPTURE(exponent);
+        CAPTURE(to_text(got));
+        CAPTURE(to_text(expected));
+        CAPTURE(distance.value);
+
+        CHECK(distance.exact);
+        CHECK(distance.value <= max_ulp);
+    };
+
+    for (int base = 1; base <= 256; ++base)
+    {
+        for (int exponent = -32; exponent <= 32; ++exponent)
+            check_case(base, exponent, 4);
+    }
+
+    check_case(5, 300, 1);
+    check_case(25, 150, 1);
+    check_case(125, 100, 4);
+    check_case(250, 100, 4);
+
+    check_case(65537, 2, 1);
+    check_case(-7, 15, 1);
+    check_case(-251, 31, 4);
+    check_case(-256, 32, 1);
+}
+
 TEST_CASE("f128 pow matches MPFR on random positive-base inputs", "[fltx][f128][precision][transcendental][pow]")
 {
     accuracy_report_scope report_scope{ "f128 pow matches MPFR on random positive-base inputs" };
@@ -2350,28 +2459,28 @@ TEST_CASE("f128 utility math helpers behave correctly for fixed values", "[fltx]
         [](const mpfr_ref& x, const mpfr_ref& y) { return x > y ? (x - y) : mpfr_ref{ 0 }; });
 
     {
-        const f128 got = bl::abs(to_f128("-123.5"));
-        require_exact_value("abs", got, to_f128("123.5"));
+        const f128 got = bl::abs(bl::parse<f128>("-123.5"));
+        require_exact_value("abs", got, bl::parse<f128>("123.5"));
     }
     {
-        const f128 got = bl::fabs(to_f128("-0.25"));
-        require_exact_value("fabs", got, to_f128("0.25"));
+        const f128 got = bl::fabs(bl::parse<f128>("-0.25"));
+        require_exact_value("fabs", got, bl::parse<f128>("0.25"));
     }
     {
-        const f128 got = bl::clamp(to_f128("-5"), to_f128("-2"), to_f128("3"));
-        require_exact_value("clamp.low", got, to_f128("-2"));
+        const f128 got = bl::clamp(bl::parse<f128>("-5"), bl::parse<f128>("-2"), bl::parse<f128>("3"));
+        require_exact_value("clamp.low", got, bl::parse<f128>("-2"));
     }
     {
-        const f128 got = bl::clamp(to_f128("1.5"), to_f128("-2"), to_f128("3"));
-        require_exact_value("clamp.mid", got, to_f128("1.5"));
+        const f128 got = bl::clamp(bl::parse<f128>("1.5"), bl::parse<f128>("-2"), bl::parse<f128>("3"));
+        require_exact_value("clamp.mid", got, bl::parse<f128>("1.5"));
     }
     {
-        const f128 got = bl::clamp(to_f128("5"), to_f128("-2"), to_f128("3"));
-        require_exact_value("clamp.high", got, to_f128("3"));
+        const f128 got = bl::clamp(bl::parse<f128>("5"), bl::parse<f128>("-2"), bl::parse<f128>("3"));
+        require_exact_value("clamp.high", got, bl::parse<f128>("3"));
     }
     {
-        const f128 got          = bl::fma(to_f128("1.25"), to_f128("2.5"), to_f128("-0.5"));
-        const mpfr_ref expected = to_ref_exact(to_f128("1.25")) * to_ref_exact(to_f128("2.5")) + to_ref_exact(to_f128("-0.5"));
+        const f128 got          = bl::fma(bl::parse<f128>("1.25"), bl::parse<f128>("2.5"), bl::parse<f128>("-0.5"));
+        const mpfr_ref expected = to_ref_exact(bl::parse<f128>("1.25")) * to_ref_exact(bl::parse<f128>("2.5")) + to_ref_exact(bl::parse<f128>("-0.5"));
         const mpfr_ref diff     = abs_ref(to_ref_exact(got) - expected);
         mpfr_ref scale = abs_ref(expected);
         if (scale < 1)
@@ -2382,8 +2491,8 @@ TEST_CASE("f128 utility math helpers behave correctly for fixed values", "[fltx]
     }
     {
         const f128 nan = std::numeric_limits<f128>::quiet_NaN();
-        const f128 pos = to_f128("2.5");
-        const f128 neg = to_f128("-3.5");
+        const f128 pos = bl::parse<f128>("2.5");
+        const f128 neg = bl::parse<f128>("-3.5");
         const f128 pos_zero{ 0.0, 0.0 };
         const f128 neg_zero{ -0.0, 0.0 };
 
@@ -2394,35 +2503,35 @@ TEST_CASE("f128 utility math helpers behave correctly for fixed values", "[fltx]
         require_exact_value("fmin.zero", bl::fmin(pos_zero, neg_zero), neg_zero);
         require_exact_value("fmax.zero", bl::fmax(pos_zero, neg_zero), pos_zero);
 
-        require_exact_value("copysign.pos_to_neg", bl::copysign(to_f128("1.25"), neg), to_f128("-1.25"));
-        require_exact_value("copysign.neg_to_pos", bl::copysign(to_f128("-1.25"), pos), to_f128("1.25"));
+        require_exact_value("copysign.pos_to_neg", bl::copysign(bl::parse<f128>("1.25"), neg), bl::parse<f128>("-1.25"));
+        require_exact_value("copysign.neg_to_pos", bl::copysign(bl::parse<f128>("-1.25"), pos), bl::parse<f128>("1.25"));
     }
     {
         REQUIRE(bl::isnan(std::numeric_limits<f128>::quiet_NaN()));
         REQUIRE(bl::isinf(std::numeric_limits<f128>::infinity()));
-        REQUIRE(bl::isfinite(to_f128("1.25")));
+        REQUIRE(bl::isfinite(bl::parse<f128>("1.25")));
         REQUIRE(bl::iszero(f128{ 0.0, 0.0 }));
-        REQUIRE(bl::ispositive(to_f128("0.25")));
-        REQUIRE(!bl::ispositive(to_f128("-0.25")));
+        REQUIRE(bl::ispositive(bl::parse<f128>("0.25")));
+        REQUIRE(!bl::ispositive(bl::parse<f128>("-0.25")));
         REQUIRE(bl::signbit(f128{ -0.0, 0.0 }));
         REQUIRE(!bl::signbit(f128{ 0.0, 0.0 }));
         REQUIRE(bl::fpclassify(std::numeric_limits<f128>::quiet_NaN()) == FP_NAN);
         REQUIRE(bl::fpclassify(std::numeric_limits<f128>::infinity()) == FP_INFINITE);
         REQUIRE(bl::fpclassify(f128{ 0.0, 0.0 }) == FP_ZERO);
-        REQUIRE(bl::isnormal(to_f128("1.0")));
-        REQUIRE(bl::isunordered(std::numeric_limits<f128>::quiet_NaN(), to_f128("1.0")));
-        REQUIRE(bl::isgreater(to_f128("2.0"), to_f128("1.0")));
-        REQUIRE(bl::isgreaterequal(to_f128("2.0"), to_f128("2.0")));
-        REQUIRE(bl::isless(to_f128("1.0"), to_f128("2.0")));
-        REQUIRE(bl::islessequal(to_f128("2.0"), to_f128("2.0")));
-        REQUIRE(bl::islessgreater(to_f128("1.0"), to_f128("2.0")));
+        REQUIRE(bl::isnormal(bl::parse<f128>("1.0")));
+        REQUIRE(bl::isunordered(std::numeric_limits<f128>::quiet_NaN(), bl::parse<f128>("1.0")));
+        REQUIRE(bl::isgreater(bl::parse<f128>("2.0"), bl::parse<f128>("1.0")));
+        REQUIRE(bl::isgreaterequal(bl::parse<f128>("2.0"), bl::parse<f128>("2.0")));
+        REQUIRE(bl::isless(bl::parse<f128>("1.0"), bl::parse<f128>("2.0")));
+        REQUIRE(bl::islessequal(bl::parse<f128>("2.0"), bl::parse<f128>("2.0")));
+        REQUIRE(bl::islessgreater(bl::parse<f128>("1.0"), bl::parse<f128>("2.0")));
     }
 
     {
         const std::array<int, 9> exponents = {{ -8, -3, -1, 0, 1, 3, 8, 16, 32 }};
         for (int exponent : exponents)
         {
-            const f128 got          = bl::pow10<bl::f128>(exponent);
+            const f128 got          = bl::pow(bl::f128{ 10 }, exponent);
             const mpfr_ref expected = ref_pow10(exponent);
             const mpfr_ref got_ref  = to_ref_exact(got);
             mpfr_ref scale = abs_ref(expected);
@@ -2438,30 +2547,30 @@ TEST_CASE("f128 utility math helpers behave correctly for fixed values", "[fltx]
         }
     }
     {
-        require_exact_value("round_to_decimals.2", bl::round_to_decimals(to_f128("1.2345"), 2), to_f128("1.23"));
-        require_exact_value("round_to_decimals.3", bl::round_to_decimals(to_f128("1.2345"), 3), to_f128("1.234"));
-        require_exact_value("round_to_decimals.tie_even", bl::round_to_decimals(to_f128("1.1875"), 3), to_f128("1.188"));
-        require_exact_value("round_to_precision.large", bl::round_to_precision(to_f128("12345"), 3), to_f128("12300"));
-        require_exact_value("round_to_precision.small", bl::round_to_precision(to_f128("0.012345"), 3), to_f128("0.0123"));
-        require_exact_value("round_to_precision.tie_even_down", bl::round_to_precision(to_f128("12500"), 2), to_f128("12000"));
-        require_exact_value("round_to_precision.tie_even_up", bl::round_to_precision(to_f128("13500"), 2), to_f128("14000"));
-        require_exact_value("round_to.decimals", bl::round_to(to_f128("1.2345"), 2, bl::decimals), to_f128("1.23"));
-        require_exact_value("round_to.significant_figures", bl::round_to(to_f128("12345"), 3, bl::significant_figures), to_f128("12300"));
-        static_assert(bl::round_to_precision(to_f128("12345"), 3) == to_f128("12300"));
-        static_assert(bl::round_to(to_f128("12345"), 3, bl::significant_figures) == to_f128("12300"));
-        REQUIRE(bl::lround(to_f128("2.5")) == 3L);
-        REQUIRE(bl::lround(to_f128("-2.5")) == -3L);
-        REQUIRE(bl::llround(to_f128("2.5")) == 3LL);
-        REQUIRE(bl::llround(to_f128("-2.5")) == -3LL);
-        REQUIRE(bl::lrint(to_f128("2.5")) == 2L);
-        REQUIRE(bl::lrint(to_f128("3.5")) == 4L);
-        REQUIRE(bl::llrint(to_f128("-2.5")) == -2LL);
-        REQUIRE(bl::llrint(to_f128("-3.5")) == -4LL);
-        REQUIRE(bl::llround(to_f128("4503599627370495.5")) == 4503599627370496LL);
-        REQUIRE(bl::llround(to_f128("-4503599627370495.5")) == -4503599627370496LL);
-        REQUIRE(bl::llround(to_f128("4503599627370496.5")) == 4503599627370497LL);
-        REQUIRE(bl::llrint(to_f128("4503599627370496.5")) == 4503599627370496LL);
-        REQUIRE(bl::llrint(to_f128("4503599627370497.5")) == 4503599627370498LL);
+        require_exact_value("round_to_decimals.2", bl::round_to(bl::parse<f128>("1.2345"), 2, bl::decimals), bl::parse<f128>("1.23"));
+        require_exact_value("round_to_decimals.3", bl::round_to(bl::parse<f128>("1.2345"), 3, bl::decimals), bl::parse<f128>("1.234"));
+        require_exact_value("round_to_decimals.tie_even", bl::round_to(bl::parse<f128>("1.1875"), 3, bl::decimals), bl::parse<f128>("1.188"));
+        require_exact_value("round_to_precision.large", bl::round_to(bl::parse<f128>("12345"), 3, bl::significant_figures), bl::parse<f128>("12300"));
+        require_exact_value("round_to_precision.small", bl::round_to(bl::parse<f128>("0.012345"), 3, bl::significant_figures), bl::parse<f128>("0.0123"));
+        require_exact_value("round_to_precision.tie_even_down", bl::round_to(bl::parse<f128>("12500"), 2, bl::significant_figures), bl::parse<f128>("12000"));
+        require_exact_value("round_to_precision.tie_even_up", bl::round_to(bl::parse<f128>("13500"), 2, bl::significant_figures), bl::parse<f128>("14000"));
+        require_exact_value("round_to.decimals", bl::round_to(bl::parse<f128>("1.2345"), 2, bl::decimals), bl::parse<f128>("1.23"));
+        require_exact_value("round_to.significant_figures", bl::round_to(bl::parse<f128>("12345"), 3, bl::significant_figures), bl::parse<f128>("12300"));
+        static_assert(bl::round_to(bl::parse<f128>("12345"), 3, bl::significant_figures) == bl::parse<f128>("12300"));
+        static_assert(bl::round_to(bl::parse<f128>("12345"), 3, bl::significant_figures) == bl::parse<f128>("12300"));
+        REQUIRE(bl::lround(bl::parse<f128>("2.5")) == 3L);
+        REQUIRE(bl::lround(bl::parse<f128>("-2.5")) == -3L);
+        REQUIRE(bl::llround(bl::parse<f128>("2.5")) == 3LL);
+        REQUIRE(bl::llround(bl::parse<f128>("-2.5")) == -3LL);
+        REQUIRE(bl::lrint(bl::parse<f128>("2.5")) == 2L);
+        REQUIRE(bl::lrint(bl::parse<f128>("3.5")) == 4L);
+        REQUIRE(bl::llrint(bl::parse<f128>("-2.5")) == -2LL);
+        REQUIRE(bl::llrint(bl::parse<f128>("-3.5")) == -4LL);
+        REQUIRE(bl::llround(bl::parse<f128>("4503599627370495.5")) == 4503599627370496LL);
+        REQUIRE(bl::llround(bl::parse<f128>("-4503599627370495.5")) == -4503599627370496LL);
+        REQUIRE(bl::llround(bl::parse<f128>("4503599627370496.5")) == 4503599627370497LL);
+        REQUIRE(bl::llrint(bl::parse<f128>("4503599627370496.5")) == 4503599627370496LL);
+        REQUIRE(bl::llrint(bl::parse<f128>("4503599627370497.5")) == 4503599627370498LL);
     }
 }
 
@@ -2477,7 +2586,7 @@ TEST_CASE("f128 public math results remain canonical on edge-shaped inputs", "[f
     const f128 domain    = detail::_f128::renorm(0.625, std::ldexp(1.0, -62));
     const f128 positive  = detail::_f128::renorm(1.125, std::ldexp(1.0, -60));
     const f128 gamma_arg = detail::_f128::renorm(1.75, std::ldexp(1.0, -62));
-    const f128 target    = to_f128("2.0");
+    const f128 target    = bl::parse<f128>("2.0");
 
     require_canonical_value("operator+", a + b);
     require_canonical_value("operator-", a - b);
@@ -2510,7 +2619,7 @@ TEST_CASE("f128 public math results remain canonical on edge-shaped inputs", "[f
     require_canonical_value("cbrt", bl::cbrt(b));
     require_canonical_value("hypot", bl::hypot(a, b));
     require_canonical_value("pow", bl::pow(positive, domain));
-    require_canonical_value("pow10", bl::pow10<bl::f128>(-3));
+    require_canonical_value("pow10", bl::pow(bl::f128{ 10 }, -3));
 
     require_canonical_value("exp", bl::exp(domain));
     require_canonical_value("exp2", bl::exp2(domain));
@@ -2552,7 +2661,7 @@ TEST_CASE("f128 public math results remain canonical on edge-shaped inputs", "[f
     require_canonical_value("nextafter", bl::nextafter(a, target));
     require_canonical_value("nexttoward.f128", bl::nexttoward(a, target));
     require_canonical_value("nexttoward.longdouble", bl::nexttoward(a, static_cast<long double>(2.0)));
-    require_canonical_value("round_to_decimals", bl::round_to_decimals(to_f128("1.23456789"), 5));
+    require_canonical_value("round_to_decimals", bl::round_to(bl::parse<f128>("1.23456789"), 5, bl::decimals));
 
     require_canonical_value("erf", bl::erf(domain));
     require_canonical_value("erfc", bl::erfc(domain));
@@ -2944,12 +3053,12 @@ TEST_CASE("f128 nearbyint and rint match ties-to-even references", "[fltx][f128]
     }
 
     {
-        const f128 got = bl::nearbyint(to_f128("-0.5"));
+        const f128 got = bl::nearbyint(bl::parse<f128>("-0.5"));
         REQUIRE(bl::iszero(got));
         REQUIRE(bl::signbit(got));
     }
     {
-        const f128 got = bl::rint(to_f128("-0.5"));
+        const f128 got = bl::rint(bl::parse<f128>("-0.5"));
         REQUIRE(bl::iszero(got));
         REQUIRE(bl::signbit(got));
     }
@@ -3366,7 +3475,7 @@ TEST_CASE("f128 decomposition and stepping functions behave correctly", "[fltx][
     accuracy_report_scope report_scope{ "f128 decomposition and stepping functions behave correctly" };
 
     {
-        const f128 input         = to_f128("123.456");
+        const f128 input         = bl::parse<f128>("123.456");
         int exponent             = 0;
         const f128 mantissa      = bl::frexp(input, &exponent);
         const f128 rebuilt       = bl::ldexp(mantissa, exponent);
@@ -3409,7 +3518,7 @@ TEST_CASE("f128 decomposition and stepping functions behave correctly", "[fltx][
         }
     }
     {
-        const f128 input = to_f128("-123.456");
+        const f128 input = bl::parse<f128>("-123.456");
         f128 ip{};
         const f128 frac         = bl::modf(input, &ip);
         const mpfr_ref sum_diff = abs_ref((to_ref_exact(frac) + to_ref_exact(ip)) - to_ref_exact(input));
@@ -3420,31 +3529,31 @@ TEST_CASE("f128 decomposition and stepping functions behave correctly", "[fltx][
         require_exact_value("modf.integer", ip, bl::trunc(input));
     }
     {
-        const f128 input = to_f128("8.0");
+        const f128 input = bl::parse<f128>("8.0");
         REQUIRE(bl::ilogb(input) == 3);
-        require_exact_value("logb", bl::logb(input), to_f128("3.0"));
+        require_exact_value("logb", bl::logb(input), bl::parse<f128>("3.0"));
     }
     {
-        const f128 input = to_f128("1.5");
+        const f128 input = bl::parse<f128>("1.5");
         require_exact_value("scalbn", bl::scalbn(input, 5), bl::ldexp(input, 5));
         require_exact_value("scalbln", bl::scalbln(input, -5), bl::ldexp(input, -5));
     }
     {
-        const f128 from     = to_f128("1.25");
-        const f128 to       = to_f128("2.0");
+        const f128 from     = bl::parse<f128>("1.25");
+        const f128 to       = bl::parse<f128>("2.0");
         const f128 expected = f128{ from.hi, std::nextafter(from.lo, std::numeric_limits<double>::infinity()) };
         require_exact_value("nextafter.up", bl::nextafter(from, to), expected);
         require_exact_value("nexttoward.f128", bl::nexttoward(from, to), expected);
         require_exact_value("nexttoward.longdouble", bl::nexttoward(from, static_cast<long double>(2.0)), expected);
     }
     {
-        const f128 from     = to_f128("1.25");
-        const f128 to       = to_f128("-2.0");
+        const f128 from     = bl::parse<f128>("1.25");
+        const f128 to       = bl::parse<f128>("-2.0");
         const f128 expected = f128{ from.hi, std::nextafter(from.lo, -std::numeric_limits<double>::infinity()) };
         require_exact_value("nextafter.down", bl::nextafter(from, to), expected);
     }
     {
-        const f128 got = bl::nextafter(f128{ 0.0, 0.0 }, to_f128("-1.0"));
+        const f128 got = bl::nextafter(f128{ 0.0, 0.0 }, bl::parse<f128>("-1.0"));
         require_exact_value("nextafter.zero", got, f128{ -std::numeric_limits<double>::denorm_min(), 0.0 });
     }
     {

@@ -18,6 +18,7 @@
 
 #include <fltx/f128_string.h>
 #include <fltx/f256_string.h>
+#include <fltx/charconv.h>
 
 #include "metrics_f128_primary.h"
 #include "metrics_f256_primary.h"
@@ -45,13 +46,13 @@ namespace bl::test::metrics::mixed_workloads
     template<>
     [[nodiscard]] inline bl::f128 parse_constant<bl::f128>(const char* text)
     {
-        return bl::f128{ bl::to_f128(text) };
+        return bl::parse<bl::f128>(text);
     }
 
     template<>
     [[nodiscard]] inline bl::f256 parse_constant<bl::f256>(const char* text)
     {
-        return bl::f256{ bl::to_f256(text) };
+        return bl::parse<bl::f256>(text);
     }
 
     template<>
@@ -126,7 +127,7 @@ namespace bl::test::metrics::mixed_workloads
 
         [[nodiscard]] static mixed_value_sample parse_value(std::string_view label, std::string text)
         {
-            const fltx_type value{ bl::to_f128(text.c_str()) };
+            const fltx_type value = bl::parse<bl::f128>(text);
             return { label, std::move(text), f128_primary::make_runtime_value(label, value) };
         }
 
@@ -159,6 +160,7 @@ namespace bl::test::metrics::mixed_workloads
         }
 
         [[nodiscard]] static double finite_for_mean(double bits) noexcept { return f128_primary::finite_for_mean(bits); }
+        [[nodiscard]] static double cap_accuracy_bits(double bits) noexcept { return f128_primary::cap_accuracy_bits(bits); }
         [[nodiscard]] static std::size_t benchmark_repetitions(std::size_t sample_count) noexcept
         {
             return f128_primary::benchmark_repetitions(sample_count);
@@ -185,7 +187,7 @@ namespace bl::test::metrics::mixed_workloads
 
         [[nodiscard]] static mixed_value_sample parse_value(std::string_view label, std::string text)
         {
-            const fltx_type value{ bl::to_f256(text.c_str()) };
+            const fltx_type value = bl::parse<bl::f256>(text);
             return { label, std::move(text), f256_primary::make_runtime_value(label, value) };
         }
 
@@ -218,6 +220,7 @@ namespace bl::test::metrics::mixed_workloads
         }
 
         [[nodiscard]] static double finite_for_mean(double bits) noexcept { return f256_primary::finite_for_mean(bits); }
+        [[nodiscard]] static double cap_accuracy_bits(double bits) noexcept { return f256_primary::cap_accuracy_bits(bits); }
         [[nodiscard]] static std::size_t benchmark_repetitions(std::size_t sample_count) noexcept
         {
             return f256_primary::benchmark_repetitions(sample_count);
@@ -297,7 +300,7 @@ namespace bl::test::metrics::mixed_workloads
     template<>
     [[nodiscard]] inline bl::f128 mixed_sqr<bl::f128>(const bl::f128& value)
     {
-        return bl::detail::_f128::sqr_dd_inline(value);
+        return bl::detail::_f128::sqr_inline(value);
     }
 
     template<>
@@ -1170,7 +1173,7 @@ namespace bl::test::metrics::mixed_workloads
                 const double bits = actual_iter == expected_iter
                     ? std::numeric_limits<double>::infinity()
                     : Profile::matching_bits(perfect_ref{ actual_iter }, perfect_ref{ expected_iter });
-                worst_bits = std::min(worst_bits, bits);
+                worst_bits = std::min(worst_bits, Profile::cap_accuracy_bits(bits));
                 total_bits += Profile::finite_for_mean(bits);
                 domain_scores.push_back(domain_sample_score(bits, Profile::domain_target_bits));
             }

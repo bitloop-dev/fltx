@@ -20,6 +20,90 @@ namespace bl {
 
 namespace detail::_f128 // primitives and kernels
 {
+    // polynomial evaluation helpers
+    BL_FORCE_INLINE constexpr f128_s horner_forward_inline(const f128_s* coeffs, std::size_t count, const f128_s& x) noexcept
+    {
+        if (count == 0)
+            return {};
+
+        f128_s p = coeffs[0];
+        for (std::size_t i = 1; i < count; ++i)
+            p = mul_add_inline(p, x, coeffs[i]);
+        return p;
+    }
+
+    BL_FORCE_INLINE constexpr f128_s horner_forward(const f128_s* coeffs, std::size_t count, const f128_s& x) noexcept
+    {
+        if (bl::detail::use_constexpr_math())
+        {
+            return horner_forward_inline(coeffs, count, x);
+        }
+
+        return detail::_f128_runtime::horner_forward(coeffs, count, x);
+    }
+
+    BL_FORCE_INLINE constexpr f128_s horner_reverse_inline(const f128_s* coeffs, std::size_t count, const f128_s& x) noexcept
+    {
+        if (count == 0)
+            return {};
+
+        f128_s p = coeffs[count - 1];
+        for (std::size_t i = count - 1; i > 0; --i)
+            p = mul_add_inline(p, x, coeffs[i - 1]);
+        return p;
+    }
+
+    BL_FORCE_INLINE constexpr f128_s horner_reverse(const f128_s* coeffs, std::size_t count, const f128_s& x) noexcept
+    {
+        if (bl::detail::use_constexpr_math())
+        {
+            return horner_reverse_inline(coeffs, count, x);
+        }
+
+        return detail::_f128_runtime::horner_reverse(coeffs, count, x);
+    }
+
+    BL_FORCE_INLINE constexpr void horner_pair_forward_inline(
+        const f128_s* left_coeffs,
+        const f128_s* right_coeffs,
+        std::size_t count,
+        const f128_s& x,
+        f128_s& left_out,
+        f128_s& right_out) noexcept
+    {
+        if (count == 0)
+        {
+            left_out = f128_s{};
+            right_out = f128_s{};
+            return;
+        }
+
+        f128_s left  = left_coeffs[0];
+        f128_s right = right_coeffs[0];
+        for (std::size_t i = 1; i < count; ++i)
+            mul_add_pair_same_rhs_inline(left, right, x, left_coeffs[i], right_coeffs[i], left, right);
+
+        left_out = left;
+        right_out = right;
+    }
+
+    BL_FORCE_INLINE constexpr void horner_pair_forward(
+        const f128_s* left_coeffs,
+        const f128_s* right_coeffs,
+        std::size_t count,
+        const f128_s& x,
+        f128_s& left_out,
+        f128_s& right_out) noexcept
+    {
+        if (bl::detail::use_constexpr_math())
+        {
+            horner_pair_forward_inline(left_coeffs, right_coeffs, count, x, left_out, right_out);
+            return;
+        }
+
+        detail::_f128_runtime::horner_pair_forward(left_coeffs, right_coeffs, count, x, left_out, right_out);
+    }
+
     // expm1/log1p functions
     BL_MSVC_NOINLINE constexpr f128_s log1p_series_reduced(const f128_s& x)
     {
@@ -140,10 +224,29 @@ namespace detail::_f128 // primitives and kernels
                 : static_cast<int>(x - 0.5));
     }
 
-    BL_MSVC_NOINLINE constexpr f128_s exp_general_scaled(const f128_s& x, bool sub_one) noexcept
+    BL_FORCE_INLINE constexpr bool exp_overflows(const f128_s& x) noexcept
     {
-        const double nd = exp_nearest_integer(x.hi);
-        const int n = static_cast<int>(nd);
+        if (x.hi != exp_overflow_cutoff.hi)
+            return x.hi > exp_overflow_cutoff.hi;
+        return x > exp_overflow_cutoff;
+    }
+
+    BL_FORCE_INLINE constexpr bool exp_underflows_to_zero(const f128_s& x) noexcept
+    {
+        if (x.hi != exp_zero_cutoff.hi)
+            return x.hi < exp_zero_cutoff.hi;
+        return x < exp_zero_cutoff;
+    }
+
+    BL_FORCE_INLINE constexpr int exp_reduction_integer(const f128_s& x) noexcept
+    {
+        int n = static_cast<int>(exp_nearest_integer(x.hi));
+        return n > 709 ? 709 : n;
+    }
+
+    BL_MSVC_NOINLINE constexpr f128_s exp_general_scaled_with_n(const f128_s& x, bool sub_one, int n) noexcept
+    {
+        const double nd = static_cast<double>(n);
         const f128_s reduced = sub_double_inline(x, nd);
         const f128_s r = mul_pwr2_inline(reduced, 0.0078125);
 
@@ -170,6 +273,11 @@ namespace detail::_f128 // primitives and kernels
         return sub_one ? sub_double_inline(scaled, 1.0) : scaled;
     }
 
+    BL_MSVC_NOINLINE constexpr f128_s exp_general_scaled(const f128_s& x, bool sub_one) noexcept
+    {
+        return exp_general_scaled_with_n(x, sub_one, exp_reduction_integer(x));
+    }
+
     BL_MSVC_NOINLINE constexpr f128_s _exp(const f128_s& x)
     {
         if (isnan(x))
@@ -177,10 +285,10 @@ namespace detail::_f128 // primitives and kernels
         if (isinf(x))
             return (x.hi < 0.0) ? f128_s{ 0.0 } : std::numeric_limits<f128_s>::infinity();
 
-        if (x.hi > 709.782712893384)
+        if (exp_overflows(x))
             return std::numeric_limits<f128_s>::infinity();
 
-        if (x.hi < -745.133219101941)
+        if (exp_underflows_to_zero(x))
             return f128_s{ 0.0 };
 
         if (iszero(x))
@@ -205,7 +313,7 @@ namespace detail::_f128 // primitives and kernels
         const double kd = exp_nearest_integer(x.hi);
         const int k = static_cast<int>(kd);
         const f128_s reduced = sub_double_inline(x, kd);
-        const f128_s r = mul_pwr2_inline(mul_dd_inline(reduced, std::numbers::ln2_v<f128_s>), 0.0078125);
+        const f128_s r = mul_pwr2_inline(mul_inline(reduced, std::numbers::ln2_v<f128_s>), 0.0078125);
 
         f128_s e = expm1_tiny(r);
         e = mul_add_inline(e, e, mul_pwr2_inline(e, 2.0));
@@ -267,9 +375,329 @@ namespace detail::_f128 // primitives and kernels
     }
 
     // power functions
-    BL_FORCE_INLINE constexpr f128_s powi(f128_s base, int64_t exp)
+    [[nodiscard]] BL_FORCE_INLINE constexpr bool f128_try_pow10_ldexp_chunks(
+        int pow5_count,
+        int binary_exponent_per_input_exponent,
+        int exponent,
+        f128_s& out) noexcept
     {
-        return detail::fp::powi_by_squaring(base, exp);
+        if (pow5_count <= 0)
+            return false;
+        if (exponent == 0)
+        {
+            out = f128_s{ 1.0 };
+            return true;
+        }
+
+        const int chunk_limit = exponent > 0
+            ? detail::_f128::pow10_f128_max_exponent / pow5_count
+            : (-detail::_f128::pow10_f128_min_exponent) / pow5_count;
+        if (chunk_limit <= 0)
+            return false;
+
+        f128_s value{ 1.0 };
+        int remaining = exponent;
+        while (remaining != 0)
+        {
+            const int chunk = remaining > 0
+                ? ((remaining > chunk_limit) ? chunk_limit : remaining)
+            : ((remaining < -chunk_limit) ? -chunk_limit : remaining);
+
+            int decimal_exponent = 0;
+            if (!detail::fp::checked_exponent_product(pow5_count, chunk, decimal_exponent))
+                return false;
+            if (decimal_exponent < detail::_f128::pow10_f128_min_exponent ||
+                decimal_exponent > detail::_f128::pow10_f128_max_exponent)
+            {
+                return false;
+            }
+
+            int binary_exponent = 0;
+            if (!detail::fp::checked_exponent_product(binary_exponent_per_input_exponent, chunk, binary_exponent))
+                return false;
+
+            const f128_s term = detail::_f128_impl::ldexp(
+                detail::_f128_impl::pow10_128(decimal_exponent),
+                binary_exponent);
+            value = mul_inline(value, term);
+            if (detail::fp::isinf_or_nan(value.hi))
+                return false;
+
+            remaining -= chunk;
+        }
+
+        out = value;
+        return true;
+    }
+
+    template<detail::fp::non_bool_integral Exp>
+    [[nodiscard]] BL_FORCE_INLINE constexpr bool try_special_pow_components(
+        bool pow10_base,
+        int pow2_log2,
+        bool negative_base,
+        Exp y,
+        f128_s& out)
+    {
+        int exponent = 0;
+        if (!detail::fp::try_int_exponent(y, exponent))
+            return false;
+
+        f128_s value{};
+        if (pow10_base)
+        {
+            value = detail::_f128_impl::pow10_128(exponent);
+        }
+        else
+        {
+            int binary_exponent = 0;
+            if (!detail::fp::checked_exponent_product(pow2_log2, exponent, binary_exponent))
+                return false;
+
+            if (binary_exponent >= std::numeric_limits<double>::max_exponent)
+                value = std::numeric_limits<f128_s>::infinity();
+            else if (binary_exponent < std::numeric_limits<double>::min_exponent - std::numeric_limits<double>::digits)
+                value = f128_s{ 0.0 };
+            else
+                value = detail::_f128_impl::ldexp(f128_s{ 1.0 }, binary_exponent);
+        }
+
+        out = (negative_base && detail::fp::is_odd_integral(y)) ? -value : value;
+        return true;
+    }
+
+    template<detail::fp::non_bool_integral Base, detail::fp::non_bool_integral Exp>
+    [[nodiscard]] BL_FORCE_INLINE constexpr bool try_integral_pow_finite_raw(Base x, Exp y, f128_s& out) noexcept
+    {
+        using UBase = std::make_unsigned_t<std::remove_cvref_t<Base>>;
+
+        const UBase magnitude_base = detail::fp::unsigned_abs(x);
+        const bool negative_base = x < Base{ 0 };
+
+        if (magnitude_base == UBase{ 10 })
+            return try_special_pow_components(true, 0, negative_base, y, out);
+
+        int pow2_log2 = 0;
+        if (detail::fp::try_unsigned_power_of_two_log2(magnitude_base, pow2_log2))
+            return try_special_pow_components(false, pow2_log2, negative_base, y, out);
+
+        int pow5_count = 0;
+        if (!detail::fp::factor_power_of_two_five(magnitude_base, pow2_log2, pow5_count))
+            return false;
+
+        int exponent = 0;
+        if (!detail::fp::try_int_exponent(y, exponent))
+            return false;
+
+        int decimal_exponent = 0;
+        if (!detail::fp::checked_exponent_product(pow5_count, exponent, decimal_exponent))
+            return false;
+
+        const int binary_exponent_per_input_exponent = pow2_log2 - pow5_count;
+        f128_s value{};
+        if (decimal_exponent >= detail::_f128::pow10_f128_min_exponent &&
+            decimal_exponent <= detail::_f128::pow10_f128_max_exponent)
+        {
+            int binary_exponent = 0;
+            if (!detail::fp::checked_exponent_product(binary_exponent_per_input_exponent, exponent, binary_exponent))
+                return false;
+
+            value = detail::_f128_impl::ldexp(
+                detail::_f128_impl::pow10_128(decimal_exponent),
+                binary_exponent);
+        }
+        else if (!f128_try_pow10_ldexp_chunks(
+            pow5_count,
+            binary_exponent_per_input_exponent,
+            exponent,
+            value))
+        {
+            return false;
+        }
+
+        out = (negative_base && detail::fp::is_odd_integral(y)) ? -value : value;
+        return true;
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s pow_mul_adaptive(const f128_s& a, const f128_s& b) noexcept
+    {
+        return detail::fp::dekker_product_needs_scaling(a.hi, b.hi)
+            ? mul_dekker_checked_inline(a, b)
+            : mul_checked_inline(a, b);
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s pow_sqr_adaptive(const f128_s& a) noexcept
+    {
+        return detail::fp::dekker_product_needs_scaling(a.hi, a.hi)
+            ? sqr_dekker_checked_inline(a)
+            : sqr_inline(a);
+    }
+
+    template<bool Checked, class ExpUnsigned>
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s powi_nonnegative_impl(f128_s base, ExpUnsigned exp) noexcept
+    {
+        if (exp == ExpUnsigned{ 0 })
+            return f128_s{ 1.0 };
+        if (exp == ExpUnsigned{ 1 })
+            return base;
+        if (exp == ExpUnsigned{ 2 })
+            return Checked ? pow_sqr_adaptive(base) : sqr_inline(base);
+        if (exp == ExpUnsigned{ 3 })
+        {
+            const f128_s squared = Checked ? pow_sqr_adaptive(base) : sqr_inline(base);
+            return Checked ? pow_mul_adaptive(squared, base) : mul_checked_inline(squared, base);
+        }
+        if (exp == ExpUnsigned{ 4 })
+        {
+            const f128_s squared = Checked ? pow_sqr_adaptive(base) : sqr_inline(base);
+            return Checked ? pow_sqr_adaptive(squared) : sqr_inline(squared);
+        }
+
+        f128_s result{ 1.0 };
+        while (exp != ExpUnsigned{ 0 })
+        {
+            if ((exp & ExpUnsigned{ 1 }) != ExpUnsigned{ 0 })
+                result = Checked ? pow_mul_adaptive(result, base) : mul_checked_inline(result, base);
+
+            exp >>= 1;
+            if (exp != ExpUnsigned{ 0 })
+                base = Checked ? pow_sqr_adaptive(base) : sqr_inline(base);
+        }
+
+        return result;
+    }
+
+    template<class ExpUnsigned>
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s powi_nonnegative_unchecked(f128_s base, ExpUnsigned exp) noexcept
+    {
+        if (exp == ExpUnsigned{ 0 })
+            return f128_s{ 1.0 };
+        if (exp == ExpUnsigned{ 1 })
+            return base;
+        if (exp == ExpUnsigned{ 2 })
+            return sqr_inline(base);
+        if (exp == ExpUnsigned{ 3 })
+            return mul_inline(sqr_inline(base), base);
+        if (exp == ExpUnsigned{ 4 })
+            return sqr_inline(sqr_inline(base));
+
+        f128_s result{ 1.0 };
+        while (exp != ExpUnsigned{ 0 })
+        {
+            if ((exp & ExpUnsigned{ 1 }) != ExpUnsigned{ 0 })
+                result = mul_inline(result, base);
+
+            exp >>= 1;
+            if (exp != ExpUnsigned{ 0 })
+                base = sqr_inline(base);
+        }
+
+        return result;
+    }
+
+    template<class ExpUnsigned>
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s powi_nonnegative_fast(f128_s base, ExpUnsigned exp) noexcept
+    {
+        if (detail::fp::ipow_loop_needs_checked_dekker(base.hi, exp)) [[unlikely]]
+            return powi_nonnegative_impl<true>(base, exp);
+        return powi_nonnegative_impl<false>(base, exp);
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s reciprocal_pow_result(const f128_s& value) noexcept
+    {
+        if (detail::fp::iszero_or_inf_or_nan(value.hi)) [[unlikely]]
+            return div_special(f128_s{ 1.0 }, value);
+
+        return div_double_inline(1.0, value);
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr bool try_exact_integer_pow_base_value(const f128_s& value, std::int64_t& out) noexcept
+    {
+        if (value.lo != 0.0 || !detail::fp::isfinite(value.hi))
+            return false;
+
+        const bool negative = value.hi < 0.0;
+        const double magnitude = negative ? -value.hi : value.hi;
+        if (magnitude > detail::fp::exact_double_integer_limit_double)
+            return false;
+
+        const double integral = detail::fp::trunc(magnitude);
+        if (integral != magnitude)
+            return false;
+
+        out = static_cast<std::int64_t>(integral);
+        if (negative)
+            out = -out;
+        return true;
+    }
+
+    template<detail::fp::non_bool_integral Exp>
+    [[nodiscard]] BL_FORCE_INLINE constexpr bool try_exact_integer_pow_base(const f128_s& x, Exp y, f128_s& out) noexcept
+    {
+        std::int64_t integer_base = 0;
+        if (!try_exact_integer_pow_base_value(x, integer_base))
+            return false;
+
+        if (detail::_f128::try_integral_pow_finite_raw(integer_base, y, out))
+            return true;
+
+        using U = std::make_unsigned_t<std::remove_cvref_t<Exp>>;
+        const U magnitude = detail::fp::unsigned_abs(y);
+        const bool split_safe = detail::fp::integral_pow_split_safe(integer_base, magnitude) ||
+            !detail::fp::ipow_loop_needs_checked_dekker(x.hi, magnitude);
+
+        if constexpr (std::signed_integral<std::remove_cvref_t<Exp>>)
+        {
+            if (y < 0)
+            {
+                if (detail::fp::integral_pow_reciprocal_underflows_binary64(integer_base, magnitude))
+                {
+                    const bool negative_zero = detail::fp::negative_integral_pow_result_is_negative(integer_base, magnitude);
+                    out = f128_s{ negative_zero ? -0.0 : 0.0 };
+                    return true;
+                }
+
+                if (split_safe)
+                {
+                    const f128_s powered = detail::_f128::powi_nonnegative_unchecked(x, magnitude);
+                    out = detail::_f128::reciprocal_pow_result(powered);
+                    return true;
+                }
+
+                const f128_s reciprocal = detail::_f128::reciprocal_pow_result(x);
+                out = (integer_base != 0)
+                    ? detail::_f128::powi_nonnegative_unchecked(reciprocal, magnitude)
+                    : detail::_f128::powi_nonnegative_impl<false>(reciprocal, magnitude);
+                return true;
+            }
+        }
+
+        out = split_safe
+            ? detail::_f128::powi_nonnegative_unchecked(x, magnitude)
+            : detail::_f128::powi_nonnegative_fast<U>(x, magnitude);
+        return true;
+    }
+
+    template<detail::fp::non_bool_integral Exp>
+    [[nodiscard]] BL_MSVC_NOINLINE constexpr f128_s ipow_integer(const f128_s& x, Exp y)
+    {
+        using U = std::make_unsigned_t<std::remove_cvref_t<Exp>>;
+
+        f128_s special{};
+        if (detail::_f128::try_exact_integer_pow_base(x, y, special))
+            return special;
+
+        const U magnitude = detail::fp::unsigned_abs(y);
+
+        if constexpr (std::signed_integral<std::remove_cvref_t<Exp>>)
+        {
+            if (y < 0)
+            {
+                const f128_s reciprocal = detail::_f128::reciprocal_pow_result(x);
+                return detail::_f128::powi_nonnegative_impl<false>(reciprocal, magnitude);
+            }
+        }
+
+        return detail::_f128::powi_nonnegative_fast<U>(x, magnitude);
     }
 
     BL_FORCE_INLINE constexpr f128_s polish_eighth_root(const f128_s& x, const f128_s& y)
@@ -359,7 +787,7 @@ namespace detail::_f128 // primitives and kernels
         const std::uint64_t whole = magnitude / 8u;
         const int rem = static_cast<int>(magnitude & 7u);
 
-        f128_s result = (whole == 0u) ? f128_s{ 1.0 } : powi(x, static_cast<int64_t>(whole));
+        f128_s result = (whole == 0u) ? f128_s{ 1.0 } : detail::fp::powi_by_squaring(x, static_cast<int64_t>(whole));
         if (rem != 0)
             result = mul_inline(result, pow_positive_eighth_fraction(x, rem));
         if (neg)
@@ -385,140 +813,144 @@ namespace detail::_f128 // primitives and kernels
         return _log(x);
     }
 
+    BL_FORCE_INLINE constexpr f128_s pow_log_product_accurate(const f128_s& y, const f128_s& log_x)
+    {
+        return mul_accurate_inline(y, log_x);
+    }
+
     // sine/cosine functions
     BL_FORCE_INLINE constexpr bool remainder_pio2(const f128_s& x, long long& n_out, f128_s& r_out)
-	{
-	    const double ax = fabs(x.hi);
-	    if (detail::fp::isinf_or_nan(ax))
-	        return false;
-
-	    if (ax > 7.0e15)
-	        return false;
-
-	    const f128_s t = mul_inline(x, invpi2);
-
-	    double qd = nearbyint_ties_even(t.hi);
-	    if (detail::fp::isinf_or_nan(qd) ||
-	        qd < static_cast<double>(std::numeric_limits<long long>::min()) ||
-	        qd > static_cast<double>(std::numeric_limits<long long>::max()))
-	    {
-	        return false;
-	    }
-
-	    const f128_s delta = sub_double_inline(t, qd);
-	    if (delta.hi > 0.5 || (delta.hi == 0.5 && delta.lo > 0.0))
-	        qd += 1.0;
-	    else if (delta.hi < -0.5 || (delta.hi == -0.5 && delta.lo < 0.0))
-	        qd -= 1.0;
-
-	    if (qd < static_cast<double>(std::numeric_limits<long long>::min()) ||
-	        qd > static_cast<double>(std::numeric_limits<long long>::max()))
-	    {
-	        return false;
-	    }
-
-	    constexpr f128_s pi_2_hi{ pi_2_hi_d };
-	    constexpr f128_s pi_2_mid{ pi_2_mid_d };
-	    constexpr f128_s pi_2_lo{ pi_2_lo_d };
-	    constexpr f128_s pi_4{ pi_4_hi };
-
-	    long long n = static_cast<long long>(qd);
-	    const double q = static_cast<double>(n);
-
-	    f128_s r = x;
-	    r = sub_inline(r, mul_double_inline(pi_2_hi, q));
-	    r = sub_inline(r, mul_double_inline(pi_2_mid, q));
-	    r = sub_inline(r, mul_double_inline(pi_2_lo, q));
-
-	    if (r > pi_4)
-	    {
-	        ++n;
-	        r = sub_inline(r, pi_2_hi);
-	        r = sub_inline(r, pi_2_mid);
-	        r = sub_inline(r, pi_2_lo);
-	    }
-	    else if (r < -pi_4)
-	    {
-	        --n;
-	        r = add_inline(r, pi_2_hi);
-	        r = add_inline(r, pi_2_mid);
-	        r = add_inline(r, pi_2_lo);
-	    }
-
-	    n_out = n;
-	    r_out = r;
-	    return true;
-	}
-
-    BL_FORCE_INLINE constexpr f128_s horner_forward_inline(const f128_s* coeffs, std::size_t count, const f128_s& x) noexcept
     {
-        if (count == 0)
-            return {};
+        const double ax = fabs(x.hi);
+        if (detail::fp::isinf_or_nan(ax))
+            return false;
 
-        f128_s p = coeffs[0];
-        for (std::size_t i = 1; i < count; ++i)
-            p = mul_add_inline(p, x, coeffs[i]);
-        return p;
-    }
+        if (ax > 7.0e15)
+            return false;
 
-    BL_FORCE_INLINE constexpr f128_s horner_reverse_inline(const f128_s* coeffs, std::size_t count, const f128_s& x) noexcept
-    {
-        if (count == 0)
-            return {};
+        const f128_s t = mul_inline(x, invpi2);
 
-        f128_s p = coeffs[count - 1];
-        for (std::size_t i = count - 1; i > 0; --i)
-            p = mul_add_inline(p, x, coeffs[i - 1]);
-        return p;
-    }
-
-    BL_FORCE_INLINE constexpr void horner_pair_forward_inline(const f128_s* left_coeffs, const f128_s* right_coeffs, std::size_t count, const f128_s& x, f128_s& left_out, f128_s& right_out) noexcept
-    {
-        if (count == 0)
+        double qd = nearbyint_ties_even(t.hi);
+        if (detail::fp::isinf_or_nan(qd) ||
+            qd < static_cast<double>(std::numeric_limits<long long>::min()) ||
+            qd > static_cast<double>(std::numeric_limits<long long>::max()))
         {
-            left_out = f128_s{};
-            right_out = f128_s{};
-            return;
+            return false;
         }
 
-        f128_s left  = left_coeffs[0];
-        f128_s right = right_coeffs[0];
-        for (std::size_t i = 1; i < count; ++i)
-            mul_add_pair_same_rhs_inline(left, right, x, left_coeffs[i], right_coeffs[i], left, right);
+        const f128_s delta = sub_double_inline(t, qd);
+        if (delta.hi > 0.5 || (delta.hi == 0.5 && delta.lo > 0.0))
+            qd += 1.0;
+        else if (delta.hi < -0.5 || (delta.hi == -0.5 && delta.lo < 0.0))
+            qd -= 1.0;
 
-        left_out = left;
-        right_out = right;
-    }
-
-    BL_FORCE_INLINE constexpr f128_s horner_forward(const f128_s* coeffs, std::size_t count, const f128_s& x) noexcept
-    {
-        if (bl::detail::use_constexpr_math())
+        if (qd < static_cast<double>(std::numeric_limits<long long>::min()) ||
+            qd > static_cast<double>(std::numeric_limits<long long>::max()))
         {
-            return horner_forward_inline(coeffs, count, x);
+            return false;
         }
 
-        return detail::_f128_runtime::horner_forward(coeffs, count, x);
-    }
+        constexpr f128_s pi_2_hi{ pi_2_hi_d };
+        constexpr f128_s pi_2_mid{ pi_2_mid_d };
+        constexpr f128_s pi_2_lo{ pi_2_lo_d };
+        constexpr f128_s pi_4{ pi_4_hi };
 
-    BL_FORCE_INLINE constexpr f128_s horner_reverse(const f128_s* coeffs, std::size_t count, const f128_s& x) noexcept
-    {
-        if (bl::detail::use_constexpr_math())
+        long long n = static_cast<long long>(qd);
+        const double q = static_cast<double>(n);
+
+        f128_s r = x;
+        r = sub_inline(r, mul_double_inline(pi_2_hi, q));
+        r = sub_inline(r, mul_double_inline(pi_2_mid, q));
+        r = sub_inline(r, mul_double_inline(pi_2_lo, q));
+
+        if (r > pi_4)
         {
-            return horner_reverse_inline(coeffs, count, x);
+            ++n;
+            r = sub_inline(r, pi_2_hi);
+            r = sub_inline(r, pi_2_mid);
+            r = sub_inline(r, pi_2_lo);
+        }
+        else if (r < -pi_4)
+        {
+            --n;
+            r = add_inline(r, pi_2_hi);
+            r = add_inline(r, pi_2_mid);
+            r = add_inline(r, pi_2_lo);
         }
 
-        return detail::_f128_runtime::horner_reverse(coeffs, count, x);
+        n_out = n;
+        r_out = r;
+        return true;
     }
 
-    BL_FORCE_INLINE constexpr void horner_pair_forward(const f128_s* left_coeffs, const f128_s* right_coeffs, std::size_t count, const f128_s& x, f128_s& left_out, f128_s& right_out) noexcept
+    BL_MSVC_NOINLINE constexpr bool remainder_pio2_payne_hanek(const f128_s& x, long long& n_out, f128_s& r_out)
     {
-        if (bl::detail::use_constexpr_math())
+        detail::exact_decimal::biguint magnitude;
+        int binary_exp = 0;
+        bool unused_neg = false;
+        if (!detail::exact_decimal::exact_binary_components<f128_decimal_traits>(mag(x), magnitude, binary_exp, unused_neg))
         {
-            horner_pair_forward_inline(left_coeffs, right_coeffs, count, x, left_out, right_out);
-            return;
+            n_out = 0;
+            r_out = signbit(x) ? f128_s{ -0.0, 0.0 } : f128_s{ 0.0, 0.0 };
+            return true;
         }
 
-        detail::_f128_runtime::horner_pair_forward(left_coeffs, right_coeffs, count, x, left_out, right_out);
+        const detail::exact_decimal::biguint two_over_pi = detail::exact_decimal::from_words(
+            detail::trig_reduce::two_over_pi_fixed_words,
+            static_cast<int>(sizeof(detail::trig_reduce::two_over_pi_fixed_words) / sizeof(detail::trig_reduce::two_over_pi_fixed_words[0])));
+        static_assert(sizeof(detail::trig_reduce::two_over_pi_fixed_words) / sizeof(detail::trig_reduce::two_over_pi_fixed_words[0]) <= detail::exact_decimal::biguint::max_words);
+        static_assert(detail::exact_decimal::biguint::max_words * 32 >= detail::trig_reduce::two_over_pi_fixed_bits + 105);
+
+        const detail::exact_decimal::biguint product = detail::exact_decimal::mul_big(magnitude, two_over_pi);
+        const int scale_bits = detail::trig_reduce::two_over_pi_fixed_bits - binary_exp;
+        if (scale_bits <= 0)
+            return false;
+
+        const detail::exact_decimal::biguint rem = detail::exact_decimal::low_bits_copy(product, scale_bits);
+        const bool half_bit = rem.get_bit(scale_bits - 1);
+        const bool sticky = detail::exact_decimal::any_low_bits_set(rem, scale_bits - 1);
+        const bool integer_odd = product.get_bit(scale_bits);
+        const bool round_up = half_bit && (sticky || integer_odd);
+
+        unsigned n_mod4 =
+            (product.get_bit(scale_bits) ? 1u : 0u) |
+            (product.get_bit(scale_bits + 1) ? 2u : 0u);
+        if (round_up)
+            n_mod4 = (n_mod4 + 1u) & 3u;
+
+        detail::exact_decimal::biguint y_coeff = rem;
+        bool y_neg = false;
+        if (round_up)
+        {
+            y_coeff.clear();
+            y_coeff.set_bit(scale_bits);
+            y_coeff.sub_inplace(rem);
+            y_neg = !y_coeff.is_zero();
+        }
+
+        f128_s r = exact_dyadic_to_f128_fmod_big(y_coeff, -scale_bits, y_neg);
+        r = mul_inline(r, pi_2);
+
+        if (r > pi_4)
+        {
+            r = sub_inline(r, pi_2);
+            n_mod4 = (n_mod4 + 1u) & 3u;
+        }
+        else if (r < -pi_4)
+        {
+            r = add_inline(r, pi_2);
+            n_mod4 = (n_mod4 + 3u) & 3u;
+        }
+
+        if (signbit(x))
+        {
+            r = -r;
+            n_mod4 = (4u - n_mod4) & 3u;
+        }
+
+        n_out = static_cast<long long>(n_mod4);
+        r_out = r;
+        return true;
     }
 
     BL_FORCE_INLINE constexpr f128_s sin_kernel_small(const f128_s& x)
@@ -614,11 +1046,6 @@ namespace detail::_f128 // primitives and kernels
         const f128_s pc = horner_forward(f128_cos_coeffs_pi4, f128_trig_coeff_count_pi4, t);
 
         return mul_add_double_rhs_inline(t, pc, 1.0);
-    }
-
-    BL_FORCE_INLINE constexpr void sincos_kernel_pi4(const f128_s& x, f128_s& s_out, f128_s& c_out)
-    {
-        sincos_kernel_pi64_reduced(x, s_out, c_out);
     }
 
     // inverse trig functions
@@ -1150,7 +1577,8 @@ namespace detail::_f128
 
         for (int k = k0 - 2; k <= k0 + 2; ++k)
         {
-            if (x == detail::_f128_impl::pow10_128(k))
+            const f128_s pow10 = detail::_f128_impl::pow10_128(k);
+            if (pow10.hi >= std::numeric_limits<double>::min() && x == pow10)
                 return f128_s{ static_cast<double>(k), 0.0 };
         }
     }
@@ -1172,10 +1600,10 @@ namespace detail::_f128
             ? f128_s{ -1.0, 0.0 }
             : std::numeric_limits<f128_s>::infinity();
 
-    if (x.hi > 709.782712893384)
+    if (exp_overflows(x))
         return std::numeric_limits<f128_s>::infinity();
 
-    if (x.hi < -745.133219101941)
+    if (exp_underflows_to_zero(x))
         return f128_s{ -1.0, 0.0 };
 
     return F128_CANONICALIZE_MATH_RESULT(exp_general_scaled(x, true));
@@ -1203,7 +1631,6 @@ namespace detail::_f128
     const f128_s u = add_double_inline(x, 1.0);
     return F128_CANONICALIZE_MATH_RESULT(_log(u));
 }
-
 
 // roots
 [[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::cbrt(const f128_s& x)
@@ -1253,7 +1680,7 @@ namespace detail::_f128
 
     int64_t yi64{};
     if (y_is_int && try_get_int64(yi, yi64))
-        return powi(x, yi64);
+        return detail::fp::powi_by_squaring(x, yi64);
 
     int64_t dyadic_exponent{};
     if (try_get_pow_dyadic_eighth_exponent(x, y, dyadic_exponent))
@@ -1264,11 +1691,11 @@ namespace detail::_f128
         if (!y_is_int)
             return std::numeric_limits<f128_s>::quiet_NaN();
 
-        const f128_s magnitude = pow_from_log_product(mul_inline(y, log_for_pow_positive(-x)));
+        const f128_s magnitude = pow_from_log_product(pow_log_product_accurate(y, log_for_pow_positive(-x)));
         return is_odd_integer(yi) ? -magnitude : magnitude;
     }
 
-    return F128_CANONICALIZE_MATH_RESULT(pow_from_log_product(mul_inline(y, log_for_pow_positive(x))));
+    return F128_CANONICALIZE_MATH_RESULT(pow_from_log_product(pow_log_product_accurate(y, log_for_pow_positive(x))));
 }
 
 [[nodiscard]] BL_MSVC_NOINLINE constexpr f128_s detail::_f128_impl::pow(const f128_s& x, double y)
@@ -1312,7 +1739,7 @@ namespace detail::_f128
     const bool y_is_int = (yi == y);
 
     if (y_is_int && absd(yi) < 0x1p63)
-        return powi(x, static_cast<int64_t>(yi));
+        return detail::fp::powi_by_squaring(x, static_cast<int64_t>(yi));
 
     int64_t dyadic_exponent{};
     if (try_get_pow_dyadic_eighth_exponent(x, y, dyadic_exponent))
@@ -1370,7 +1797,7 @@ namespace detail::_f128
 
     if (ax <= pi_4_hi)
     {
-        sincos_kernel_pi4(x, s_out, c_out);
+        sincos_kernel_pi64_reduced(x, s_out, c_out);
         s_out = F128_CANONICALIZE_MATH_RESULT(s_out);
         c_out = F128_CANONICALIZE_MATH_RESULT(c_out);
         return true;
@@ -1379,10 +1806,13 @@ namespace detail::_f128
     long long n = 0;
     f128_s r{};
     if (!remainder_pio2(x, n, r))
-        return false;
+    {
+        if (!remainder_pio2_payne_hanek(x, n, r))
+            return false;
+    }
 
     f128_s sr{}, cr{};
-    sincos_kernel_pi4(r, sr, cr);
+    sincos_kernel_pi64_reduced(r, sr, cr);
 
     switch ((int)(n & 3))
     {
@@ -1413,14 +1843,8 @@ namespace detail::_f128
     f128_s r{};
     if (!remainder_pio2(x, n, r))
     {
-        if (bl::detail::use_constexpr_math())
-        {
-            return F128_CANONICALIZE_MATH_RESULT(f128_s{ detail::fp::sin(static_cast<double>(x)) });
-        }
-        else
-        {
-            return F128_CANONICALIZE_MATH_RESULT(f128_s{ std::sin((double)x) });
-        }
+        if (!remainder_pio2_payne_hanek(x, n, r))
+            return f128_s{ std::numeric_limits<double>::quiet_NaN() };
     }
 
     switch ((int)(n & 3))
@@ -1445,14 +1869,8 @@ namespace detail::_f128
     f128_s r{};
     if (!remainder_pio2(x, n, r))
     {
-        if (bl::detail::use_constexpr_math())
-        {
-            return F128_CANONICALIZE_MATH_RESULT(f128_s{ detail::fp::cos(static_cast<double>(x)) });
-        }
-        else
-        {
-            return F128_CANONICALIZE_MATH_RESULT(f128_s{ std::cos((double)x) });
-        }
+        if (!remainder_pio2_payne_hanek(x, n, r))
+            return f128_s{ std::numeric_limits<double>::quiet_NaN() };
     }
 
     switch ((int)(n & 3))

@@ -372,8 +372,6 @@ struct f256 : public f256_s
     constexpr f256(uint64_t u) noexcept : f256_s{} { static_cast<f256_s&>(*this) = static_cast<uint64_t>(u); }
     constexpr f256(int32_t  v) noexcept : f256((int64_t)v) {}
     constexpr f256(uint32_t u) noexcept : f256((int64_t)u) {}
-    constexpr f256(const char*);
-
     constexpr f256(f128_s f) noexcept;
     constexpr f256(const f256_s& f) noexcept : f256_s{ f.x0, f.x1, f.x2, f.x3 } {}
 

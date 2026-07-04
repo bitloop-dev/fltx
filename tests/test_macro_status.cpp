@@ -105,6 +105,20 @@ namespace
             std::fputs("not defined", stderr);
             #endif
 
+            std::fputs("\nFLTX_ASSUME_X86_FMA_AVAILABLE = ", stderr);
+            #if defined(FLTX_ASSUME_X86_FMA_AVAILABLE) && FLTX_ASSUME_X86_FMA_AVAILABLE
+            std::fputs("ON", stderr);
+            #else
+            std::fputs("OFF", stderr);
+            #endif
+
+            std::fputs("\nBL_FLTX_ASSUMED_X86_FMA = ", stderr);
+            #if defined(BL_FLTX_ASSUMED_X86_FMA)
+            std::fputs("defined", stderr);
+            #else
+            std::fputs("not defined", stderr);
+            #endif
+
             std::fputs("\nFLTX_CONSTEXPR_PARITY = ", stderr);
             #if defined(FLTX_CONSTEXPR_PARITY)
             std::fputs("defined", stderr);

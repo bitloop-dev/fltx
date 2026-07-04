@@ -43,11 +43,6 @@ namespace bl::detail::_f256_runtime
         return detail::_f256_impl::nearbyint_runtime(a);
     }
 
-    BL_NO_INLINE f256_s rint(const f256_s& x)
-    {
-        return detail::_f256_impl::rint(x);
-    }
-
     BL_NO_INLINE long lround(const f256_s& x)
     {
         return detail::_f256_impl::lround(x);
@@ -74,11 +69,6 @@ namespace bl::detail::_f256_runtime
         return detail::_f256_impl::fmod(x, y);
     }
 
-    BL_NO_INLINE f256_s remainder(const f256_s& x, const f256_s& y)
-    {
-        return detail::_f256_impl::remainder(x, y);
-    }
-
     BL_NO_INLINE f256_s remquo(const f256_s& x, const f256_s& y, int* quo)
     { 
         return detail::_f256_impl::remquo(x, y, quo); 
@@ -88,37 +78,6 @@ namespace bl::detail::_f256_runtime
     BL_NO_INLINE f256_s modf(const f256_s& x, f256_s* iptr) noexcept
     {
         return detail::_f256_impl::modf(x, iptr);
-    }
-
-    // decomposition and scaling
-    BL_NO_INLINE f256_s ldexp(const f256_s& a, int e)
-    {
-        return detail::_f256_impl::ldexp(a, e);
-    }
-
-    BL_NO_INLINE f256_s frexp(const f256_s& x, int* exp) noexcept
-    {
-        return detail::_f256_impl::frexp(x, exp);
-    }
-
-    BL_NO_INLINE int ilogb(const f256_s& x) noexcept 
-    { 
-        return detail::_f256_impl::ilogb(x);
-    }
-
-    BL_NO_INLINE f256_s logb(const f256_s& x) noexcept 
-    { 
-        return detail::_f256_impl::logb(x); 
-    }
-
-    BL_NO_INLINE f256_s scalbn(const f256_s& x, int e) noexcept 
-    { 
-        return detail::_f256_impl::scalbn(x, e); 
-    }
-
-    BL_NO_INLINE f256_s scalbln(const f256_s& x, long e) noexcept
-    { 
-        return detail::_f256_impl::scalbln(x, e); 
     }
 
 } // namespace bl::detail::_f256_runtime

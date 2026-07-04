@@ -30,6 +30,37 @@ namespace
         return dist(rng);
     }
 
+    [[nodiscard]] constexpr auto constexpr_uniform_real_array_sample()
+    {
+        return bl::uniform_real_array<4>(
+            bl::f256{ -2.0 },
+            bl::f256{ 3.0 },
+            bl::mt19937_64{ 0x1020304050607080ull });
+    }
+
+    [[nodiscard]] constexpr auto constexpr_seed_uniform_real_array_sample()
+    {
+        return bl::uniform_real_array<4>(
+            bl::f256{ -2.0 },
+            bl::f256{ 3.0 },
+            0x1020304050607080ull);
+    }
+
+    [[nodiscard]] constexpr auto constexpr_default_seed_uniform_real_array_sample()
+    {
+        return bl::uniform_real_array<4>(bl::f256{ -2.0 }, bl::f256{ 3.0 });
+    }
+
+    [[nodiscard]] constexpr auto constexpr_explicit_type_uniform_real_array_sample()
+    {
+        return bl::uniform_real_array<4, bl::f256>(-2, 3);
+    }
+
+    [[nodiscard]] constexpr auto constexpr_unit_uniform_real_array_sample()
+    {
+        return bl::uniform_real_array<4, bl::f256>();
+    }
+
     [[nodiscard]] constexpr bl::f256 constexpr_canonical_sample()
     {
         bl::mt19937 rng{ 1234u };
@@ -50,6 +81,37 @@ namespace
         return dist(rng);
     }
 
+    [[nodiscard]] constexpr auto constexpr_normal_array_sample()
+    {
+        return bl::normal_array<4>(
+            bl::f256{ 0.5 },
+            bl::f256{ 2.0 },
+            bl::mt19937_64{ 0x3141592653589793ull });
+    }
+
+    [[nodiscard]] constexpr auto constexpr_seed_normal_array_sample()
+    {
+        return bl::normal_array<4>(
+            bl::f256{ 0.5 },
+            bl::f256{ 2.0 },
+            0x3141592653589793ull);
+    }
+
+    [[nodiscard]] constexpr auto constexpr_default_seed_normal_array_sample()
+    {
+        return bl::normal_array<4>(bl::f256{ 0.5 }, bl::f256{ 2.0 });
+    }
+
+    [[nodiscard]] constexpr auto constexpr_explicit_type_normal_array_sample()
+    {
+        return bl::normal_array<4, bl::f256>(0, 1);
+    }
+
+    [[nodiscard]] constexpr auto constexpr_standard_normal_array_sample()
+    {
+        return bl::normal_array<4, bl::f256>();
+    }
+
     [[nodiscard]] constexpr bl::f256 constexpr_lognormal_sample()
     {
         bl::mt19937_64 rng{ 0x2718281828459045ull };
@@ -62,10 +124,27 @@ namespace
     static_assert(constexpr_unit_sample() < bl::f256{ 1.0 });
     static_assert(constexpr_interval_sample() >= bl::f256{ -2.0 });
     static_assert(constexpr_interval_sample() < bl::f256{ 3.0 });
+    static_assert(std::tuple_size_v<std::remove_cvref_t<decltype(constexpr_uniform_real_array_sample())>> == 4);
+    static_assert(constexpr_uniform_real_array_sample()[0] >= bl::f256{ -2.0 });
+    static_assert(constexpr_uniform_real_array_sample()[0] < bl::f256{ 3.0 });
+    static_assert(constexpr_seed_uniform_real_array_sample()[0] == constexpr_uniform_real_array_sample()[0]);
+    static_assert(constexpr_seed_uniform_real_array_sample()[3] == constexpr_uniform_real_array_sample()[3]);
+    static_assert(constexpr_default_seed_uniform_real_array_sample()[0] >= bl::f256{ -2.0 });
+    static_assert(constexpr_default_seed_uniform_real_array_sample()[0] < bl::f256{ 3.0 });
+    static_assert(constexpr_explicit_type_uniform_real_array_sample()[0] >= bl::f256{ -2.0 });
+    static_assert(constexpr_explicit_type_uniform_real_array_sample()[0] < bl::f256{ 3.0 });
+    static_assert(constexpr_unit_uniform_real_array_sample()[0] >= bl::f256{ 0.0 });
+    static_assert(constexpr_unit_uniform_real_array_sample()[0] < bl::f256{ 1.0 });
     static_assert(constexpr_canonical_sample() >= bl::f256{ 0.0 });
     static_assert(constexpr_canonical_sample() < bl::f256{ 1.0 });
     static_assert(constexpr_exponential_sample() >= bl::f256{ 0.0 });
     static_assert(constexpr_normal_sample() == constexpr_normal_sample());
+    static_assert(std::tuple_size_v<std::remove_cvref_t<decltype(constexpr_normal_array_sample())>> == 4);
+    static_assert(constexpr_normal_array_sample()[0] == constexpr_normal_sample());
+    static_assert(constexpr_seed_normal_array_sample()[0] == constexpr_normal_array_sample()[0]);
+    static_assert(constexpr_default_seed_normal_array_sample()[0] == constexpr_default_seed_normal_array_sample()[0]);
+    static_assert(constexpr_explicit_type_normal_array_sample()[0] == constexpr_explicit_type_normal_array_sample()[0]);
+    static_assert(constexpr_standard_normal_array_sample()[0] == constexpr_standard_normal_array_sample()[0]);
     static_assert(constexpr_lognormal_sample() > bl::f256{ 0.0 });
 
 }
@@ -75,6 +154,21 @@ TEST_CASE("bl f256 uniform_real_distribution is deterministic and bounded", "[fl
     bl::mt19937_64 left_rng{ 42u };
     bl::mt19937_64 right_rng{ 42u };
     bl::uniform_real_distribution<bl::f256> dist{ bl::f256{ -1.25 }, bl::f256{ 2.5 } };
+
+    const auto explicit_values = bl::random_array<4>(
+        bl::mt19937_64{ 0x1020304050607080ull },
+        bl::uniform_real_distribution<bl::f256>{ bl::f256{ 0.0 }, bl::f256{ 1.0 } });
+    const auto helper_values =
+        bl::uniform_real_array<4>(bl::f256{ 0.0 }, bl::f256{ 1.0 }, bl::mt19937_64{ 0x1020304050607080ull });
+    const auto seed_values =
+        bl::uniform_real_array<4>(bl::f256{ 0.0 }, bl::f256{ 1.0 }, 0x1020304050607080ull);
+    REQUIRE(explicit_values == helper_values);
+    REQUIRE(explicit_values == seed_values);
+
+    const auto default_seed_values = bl::uniform_real_array<4>(bl::f256{ 0.0 }, bl::f256{ 1.0 });
+    const auto explicit_default_seed_values =
+        bl::uniform_real_array<4>(bl::f256{ 0.0 }, bl::f256{ 1.0 }, bl::mt19937_64{ 0 });
+    REQUIRE(default_seed_values == explicit_default_seed_values);
 
     auto& out = Catch::cout();
     bl::test::random_print::ostream_state_guard out_state{ out };
@@ -96,6 +190,25 @@ TEST_CASE("bl f256 uniform_real_distribution is deterministic and bounded", "[fl
         REQUIRE(left < bl::f256{ 2.5 });
     }
     bl::test::random_print::print_aligned_samples(out, samples);
+}
+
+TEST_CASE("bl f256 normal_array generates deterministic distribution samples", "[fltx][random][f256][constexpr]")
+{
+    bl::mt19937_64 rng{ 0x3141592653589793ull };
+    bl::normal_distribution<bl::f256> dist{ bl::f256{ 0.5 }, bl::f256{ 2.0 } };
+
+    const auto values = bl::random_array<4>(rng, dist);
+    const auto engine_values =
+        bl::normal_array<4>(bl::f256{ 0.5 }, bl::f256{ 2.0 }, bl::mt19937_64{ 0x3141592653589793ull });
+    const auto seed_values =
+        bl::normal_array<4>(bl::f256{ 0.5 }, bl::f256{ 2.0 }, 0x3141592653589793ull);
+    REQUIRE(values == engine_values);
+    REQUIRE(values == seed_values);
+
+    const auto default_seed_values = bl::normal_array<4>(bl::f256{ 0.5 }, bl::f256{ 2.0 });
+    const auto explicit_default_seed_values =
+        bl::normal_array<4>(bl::f256{ 0.5 }, bl::f256{ 2.0 }, bl::mt19937_64{ 0 });
+    REQUIRE(default_seed_values == explicit_default_seed_values);
 }
 
 TEST_CASE("bl f256 uniform_real_distribution exposes standard-shaped params", "[fltx][random][f256][constexpr]")

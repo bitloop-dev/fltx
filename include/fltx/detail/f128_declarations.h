@@ -26,13 +26,11 @@ namespace detail::_f128_runtime
     BL_NO_INLINE f128_s hypot(const f128_s& x, const f128_s& y);
 
     // rounding and decimals
-    BL_NO_INLINE f128_s trunc(const f128_s& a);
     BL_NO_INLINE f128_s round(const f128_s& a);
     BL_NO_INLINE f128_s round_to_decimals(f128_s v, int prec);
     BL_NO_INLINE f128_s round_to_significant_figures(f128_s v, int figures);
     BL_NO_INLINE f128_s nearbyint_slow(const f128_s& a);
     BL_NO_INLINE f128_s nearbyint(const f128_s& a);
-    BL_NO_INLINE f128_s rint(const f128_s& x);
     BL_NO_INLINE long lround(const f128_s& x);
     BL_NO_INLINE long long llround(const f128_s& x);
     BL_NO_INLINE long lrint(const f128_s& x);
@@ -40,14 +38,10 @@ namespace detail::_f128_runtime
 
     // remainders
     BL_NO_INLINE f128_s fmod(const f128_s& x, const f128_s& y);
-    BL_NO_INLINE f128_s remainder(const f128_s& x, const f128_s& y);
     BL_NO_INLINE f128_s remquo(const f128_s& x, const f128_s& y, int* quo);
 
     // fractional decomposition
     BL_NO_INLINE f128_s modf(const f128_s& x, f128_s* iptr) noexcept;
-
-    // decomposition and scaling
-    BL_NO_INLINE f128_s ldexp(const f128_s& x, int e);
 
     // exp / log
     BL_NO_INLINE f128_s exp(const f128_s& x);
@@ -59,9 +53,10 @@ namespace detail::_f128_runtime
     BL_NO_INLINE f128_s log1p(const f128_s& x);
 
     // pow
-    BL_NO_INLINE f128_s pow10_128(int k);
     BL_NO_INLINE f128_s pow(const f128_s& x, const f128_s& y);
     BL_NO_INLINE f128_s pow(const f128_s& x, double y);
+    BL_NO_INLINE f128_s ipow_signed(const f128_s& x, std::intmax_t y);
+    BL_NO_INLINE f128_s ipow_unsigned(const f128_s& x, std::uintmax_t y);
 
     // trig
     BL_NO_INLINE bool sincos(const f128_s& x, f128_s& s_out, f128_s& c_out);
@@ -113,7 +108,6 @@ namespace detail::_f128_impl
     BL_FORCE_INLINE constexpr f128_s round_to_significant_figures(f128_s v, int figures);
     BL_FORCE_INLINE constexpr f128_s nearbyint(const f128_s& a);
     BL_FORCE_INLINE f128_s nearbyint_runtime(const f128_s& a) noexcept;
-    BL_FORCE_INLINE constexpr f128_s rint(const f128_s& x);
     BL_FORCE_INLINE constexpr long lround(const f128_s& x);
     BL_FORCE_INLINE constexpr long long llround(const f128_s& x);
     BL_FORCE_INLINE constexpr long lrint(const f128_s& x);
@@ -128,7 +122,6 @@ namespace detail::_f128_impl
 
     // remainders
     BL_FORCE_INLINE constexpr f128_s fmod(const f128_s& x, const f128_s& y);
-    BL_FORCE_INLINE constexpr f128_s remainder(const f128_s& x, const f128_s& y);
     BL_FORCE_INLINE constexpr f128_s remquo(const f128_s& x, const f128_s& y, int* quo);
 
     // fractional decomposition
@@ -139,13 +132,9 @@ namespace detail::_f128_impl
     BL_FORCE_INLINE constexpr f128_s frexp(const f128_s& x, int* exp) noexcept;
     BL_FORCE_INLINE constexpr int ilogb(const f128_s& x) noexcept;
     BL_FORCE_INLINE constexpr f128_s logb(const f128_s& x) noexcept;
-    BL_FORCE_INLINE constexpr f128_s scalbn(const f128_s& x, int e) noexcept;
-    BL_FORCE_INLINE constexpr f128_s scalbln(const f128_s& x, long e) noexcept;
 
     // adjacent values
     BL_FORCE_INLINE constexpr f128_s nextafter(const f128_s& from, const f128_s& to) noexcept;
-    BL_FORCE_INLINE constexpr f128_s nexttoward(const f128_s& from, long double to) noexcept;
-    BL_FORCE_INLINE constexpr f128_s nexttoward(const f128_s& from, const f128_s& to) noexcept;
 
     // exp / log
     BL_FORCE_INLINE constexpr double log_as_double(f128_s a);

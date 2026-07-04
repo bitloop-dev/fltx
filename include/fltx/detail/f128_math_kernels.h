@@ -708,6 +708,8 @@ namespace detail::_f128 // primitives and kernels
             return false;
 
         quotient = static_cast<std::uint64_t>(q);
+        if (q >= 0x1p50)
+            return false;
 
         if (q < 0x1p48 && abs_double_is_power_of_two(q))
         {
@@ -736,6 +738,15 @@ namespace detail::_f128 // primitives and kernels
             f128_s r = fmod_sub_mul_scalar_compact(ax, ay, q);
             if (fmod_normalize_remainder_with_quotient(r, ay, compact_quotient))
             {
+                const f128_s edge_slack = mul_double_inline(ay, 0x1p-80);
+                const f128_s half = mul_double_inline(ay, 0.5);
+                if (r <= edge_slack ||
+                    sub_inline(ay, r) <= edge_slack ||
+                    mag(sub_inline(r, half)) <= edge_slack)
+                {
+                    return false;
+                }
+
                 out = r;
                 quotient = compact_quotient;
                 return true;
@@ -869,12 +880,93 @@ namespace detail::_f128 // primitives and kernels
         return out;
     }
 
+    BL_MSVC_NOINLINE constexpr bool fmod_exact_candidate_quotient_abs(
+        const f128_s& ax,
+        const f128_s& ay,
+        std::uint64_t quotient,
+        f128_s& out)
+    {
+        if (quotient == 0)
+            return false;
+
+        detail::exact_decimal::biguint mx;
+        detail::exact_decimal::biguint my;
+        int ex = 0;
+        int ey = 0;
+        bool unused_neg = false;
+
+        if (!detail::exact_decimal::exact_binary_components<f128_decimal_traits>(ax, mx, ex, unused_neg) ||
+            !detail::exact_decimal::exact_binary_components<f128_decimal_traits>(ay, my, ey, unused_neg))
+        {
+            return false;
+        }
+
+        const int common_exp = (ex < ey) ? ex : ey;
+
+        detail::exact_decimal::biguint numerator = mx;
+        numerator.shl_bits(ex - common_exp);
+
+        detail::exact_decimal::biguint product = detail::exact_decimal::mul_small_u64_big(my, quotient);
+        product.shl_bits(ey - common_exp);
+
+        detail::exact_decimal::biguint modulus = my;
+        modulus.shl_bits(ey - common_exp);
+
+        detail::exact_decimal::biguint remainder;
+        bool remainder_negative = false;
+        const int cmp = numerator.compare(product);
+        if (cmp >= 0)
+        {
+            remainder = numerator;
+            remainder.sub_inplace(product);
+        }
+        else
+        {
+            remainder = product;
+            remainder.sub_inplace(numerator);
+            remainder_negative = true;
+        }
+
+        for (int i = 0; i < 4; ++i)
+        {
+            if (remainder_negative)
+            {
+                const int mag_cmp = remainder.compare(modulus);
+                if (mag_cmp <= 0)
+                {
+                    detail::exact_decimal::biguint adjusted = modulus;
+                    adjusted.sub_inplace(remainder);
+                    remainder = adjusted;
+                    remainder_negative = false;
+                }
+                else
+                {
+                    remainder.sub_inplace(modulus);
+                }
+                continue;
+            }
+
+            if (remainder.compare(modulus) >= 0)
+            {
+                remainder.sub_inplace(modulus);
+                continue;
+            }
+
+            out = exact_dyadic_to_f128_fmod_big(remainder, common_exp, false);
+            if (iszero(out))
+                out = f128_s{ 0.0 };
+            return true;
+        }
+
+        return false;
+    }
+
     BL_FORCE_INLINE constexpr f128_s fmod_reduced_or_exact(const f128_s& x, const f128_s& y)
     {
         const f128_s ay = mag(y);
         f128_s r = mag(x);
 
-        constexpr int exact_reduction_exponent_gap = 52;
+        constexpr int exact_reduction_exponent_gap = 49;
         if (frexp_exponent_limb(r.hi) - frexp_exponent_limb(ay.hi) > exact_reduction_exponent_gap)
             return fmod_exact_biguint(x, y);
 
@@ -1087,7 +1179,15 @@ namespace detail::_f128 // primitives and kernels
         if (x < detail::_f128_impl::to_f128(lo_i) || x > detail::_f128_impl::to_f128(hi_i))
             return false;
 
-        const std::int64_t base = static_cast<std::int64_t>(x.hi);
+        std::int64_t base = static_cast<std::int64_t>(x.hi);
+        if (static_cast<double>(base) == x.hi)
+        {
+            if (x.hi < 0.0 && x.lo > 0.0)
+                ++base;
+            else if (x.hi > 0.0 && x.lo < 0.0)
+                --base;
+        }
+
         const f128_s frac     = sub_double_inline(x, static_cast<double>(base));
         const f128_s abs_frac = mag(frac);
         std::int64_t rounded = base;
@@ -1095,7 +1195,7 @@ namespace detail::_f128 // primitives and kernels
         if (abs_frac > f128_s{ 0.5 } || (!ties_to_even && abs_frac == f128_s{ 0.5 }) ||
             (ties_to_even && abs_frac == f128_s{ 0.5 } && (base & 1ll) != 0))
         {
-            rounded += (x.hi < 0.0 || (x.hi == 0.0 && signbit(x.hi))) ? -1 : 1;
+            rounded += bl::signbit(frac) ? -1 : 1;
         }
 
         if (rounded < lo_i || rounded > hi_i)

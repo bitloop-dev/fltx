@@ -12,13 +12,30 @@
 #ifndef F256_DETAIL_MATH_BASIC_INCLUDED
 #define F256_DETAIL_MATH_BASIC_INCLUDED
 #include "fltx/detail/f256_math_kernels.h"
-#include "fltx/detail/f256_pow10_table.h"
+#include "fltx/detail/pow_tables.h"
 #include "fltx/detail/simd.h"
 
 namespace bl {
 
 namespace detail::_f256
 {
+    inline constexpr int pow10_f256_min_exponent = detail::pow_tables::pow10_min_exponent;
+    inline constexpr int pow10_f256_max_exponent = detail::pow_tables::pow10_max_exponent;
+
+    static_assert(sizeof(detail::pow_table_entry) == sizeof(f256_s));
+    static_assert(alignof(detail::pow_table_entry) == alignof(f256_s));
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s pow_table_entry_to_f256(
+        const detail::pow_table_entry& row) noexcept
+    {
+        if consteval
+        {
+            return f256_s{ row.x0, row.x1, row.x2, row.x3 };
+        }
+
+        return std::bit_cast<f256_s>(row);
+    }
+
     [[nodiscard]] BL_FORCE_INLINE constexpr double floor_limb(double x) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
@@ -31,7 +48,7 @@ namespace detail::_f256
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
             detail::fp::ceil(x),
-            -std::floor(-x)
+            std::ceil(x)
         );
     }
 }
@@ -214,7 +231,7 @@ namespace detail::_f256
             return canonicalize_rounded_zero(renorm(x0, x1, x2, x3), a);
         }
 
-        return x0 == 0.0 ? signed_zero_like(a) : f256_s{ x0 };
+        return f256_s{ x0 };
     }
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s trunc_limbwise(const f256_s& a) noexcept
@@ -309,7 +326,7 @@ namespace detail::_f256_impl
             return x0 == 0.0 ? detail::_f256::signed_zero_like(a) : f256_s{ x0 };
         }
 
-        return detail::_f256::round_half_away_zero_limbwise(a);
+        return detail::_f256::round_half_away_zero(a);
     }
 
     [[nodiscard]] BL_FORCE_INLINE f256_s nearbyint_runtime(const f256_s& a) noexcept
@@ -416,28 +433,18 @@ namespace detail::_f256_impl
 }
 
 // rounding and decimals
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::floor(const f256_s& a)
-{
-    return detail::_f256::floor_limbwise(a);
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::ceil(const f256_s& a)
-{
-    return detail::_f256::ceil_limbwise(a);
-}
-
 [[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::trunc(const f256_s& a)
 {
     if (detail::fp::isinf_or_nan(a.x0)) [[unlikely]]
         return a;
 
-    return detail::fp::signbit(a.x0) ? detail::_f256_impl::ceil(a) : detail::_f256_impl::floor(a);
+    return detail::fp::signbit(a.x0) ? detail::_f256::ceil_limbwise(a) : detail::_f256::floor_limbwise(a);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::round(const f256_s& a)
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f256::round_half_away_zero_limbwise(a),
+        detail::_f256::round_half_away_zero(a),
         detail::_f256_impl::round_runtime(a)
     );
 }
@@ -495,7 +502,8 @@ namespace detail::_f256_impl
     if (k > detail::_f256::pow10_f256_max_exponent) [[unlikely]]
         return std::numeric_limits<f256_s>::infinity();
 
-    return detail::_f256::pow10_f256_table[k - detail::_f256::pow10_f256_min_exponent];
+    return detail::_f256::pow_table_entry_to_f256(
+        detail::pow_tables::pow10_table[k - detail::_f256::pow10_f256_min_exponent]);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::nearbyint(const f256_s& a)
@@ -504,11 +512,6 @@ namespace detail::_f256_impl
         detail::_f256::nearbyint_limbwise(a),
         detail::_f256_impl::nearbyint_runtime(a)
     );
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::rint(const f256_s& x)
-{
-    return detail::_f256_impl::nearbyint(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr long detail::_f256_impl::lround(const f256_s& x)
@@ -649,11 +652,6 @@ namespace detail::_f256_impl
     return F256_CANONICALIZE_MATH_RESULT(fmod_reduced_or_exact(x, y));
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::remainder(const f256_s& x, const f256_s& y)
-{
-    return detail::_f256_impl::remquo(x, y, nullptr);
-}
-
 [[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::remquo(const f256_s& x, const f256_s& y, int* quo)
 {
     if (quo)
@@ -704,7 +702,7 @@ namespace detail::_f256_impl
     }
 
     std::uint64_t quotient_mod = 0;
-    r_abs = fmod_exact_abs_with_quotient_mod(ax, ay, quotient_mod);
+    r_abs = fmod_exact_fixed_limb_abs_with_quotient_mod(ax, ay, quotient_mod);
     const f256_s half = mul_double_inline(ay, 0.5);
     const int half_cmp = detail::_f256::fmod_compare_remainder_to_half(r_abs, half);
 
@@ -833,16 +831,6 @@ namespace detail::_f256_impl
     return f256_s{ static_cast<double>(detail::_f256_impl::ilogb(x)), 0.0, 0.0, 0.0 };
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::scalbn(const f256_s& x, int e) noexcept
-{
-    return detail::_f256_impl::ldexp(x, e);
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::scalbln(const f256_s& x, long e) noexcept
-{
-    return detail::_f256_impl::ldexp(x, static_cast<int>(e));
-}
-
 // adjacent values
 [[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::nextafter(const f256_s& from, const f256_s& to) noexcept
 {
@@ -866,16 +854,6 @@ namespace detail::_f256_impl
     return normalize_nextafter_tail(
         from,
         detail::fp::nextafter(from.x3, toward));
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::nexttoward(const f256_s& from, long double to) noexcept
-{
-    return detail::_f256_impl::nextafter(from, f256_s{ static_cast<double>(to), 0.0, 0.0, 0.0 });
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::nexttoward(const f256_s& from, const f256_s& to) noexcept
-{
-    return detail::_f256_impl::nextafter(from, to);
 }
 
 } // namespace bl

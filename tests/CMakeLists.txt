@@ -45,7 +45,7 @@ file(GLOB FLTX_TESTS_CONSTEXPR_PARITY_SOURCE   CONFIGURE_DEPENDS "${CMAKE_CURREN
 set(FLTX_TEST_MACRO_STATUS_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/test_macro_status.cpp")
 set(FLTX_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/../include")
 set(FLTX_PUBLIC_TREE_INCLUDE_DIR "${FLTX_INCLUDE_DIR}/fltx")
-get_filename_component(FLTX_METRICS_OUTPUT_ROOT_NATIVE "${CMAKE_CURRENT_SOURCE_DIR}/../res/metrics" ABSOLUTE)
+get_filename_component(FLTX_METRICS_OUTPUT_ROOT_NATIVE "${CMAKE_CURRENT_SOURCE_DIR}/../metrics/data" ABSOLUTE)
 file(TO_CMAKE_PATH "${FLTX_METRICS_OUTPUT_ROOT_NATIVE}" FLTX_METRICS_OUTPUT_ROOT)
 
 function (organizeMetricsTestsSourceGroups)
@@ -382,8 +382,10 @@ set(FLTX_METRICS_STATUS_DEFINITIONS "")
 if(FLTX_METRICS_BENCHMARK_ONLY_FLTX)
     list(APPEND FLTX_METRICS_STATUS_DEFINITIONS FLTX_METRICS_BENCHMARK_ONLY_FLTX)
 endif()
+# Metrics sources can run as precise consumer code, but the status banner reports
+# the FLTX internal runtime-library build mode.
 addFltxTestMacroStatus(metrics_tests
-    FAST_MATH_MODE ${FLTX_METRICS_FAST_MATH_MODE}
+    FAST_MATH_MODE ${FLTX_FAST_MATH_MODE}
     DEFINITIONS ${FLTX_METRICS_STATUS_DEFINITIONS}
 )
 addFltxTestMacroStatus(metrics_fastmath_tests
@@ -392,7 +394,7 @@ addFltxTestMacroStatus(metrics_fastmath_tests
 )
 if(FLTX_BUILD_SIMULATED_CONSTEVAL_METRICS)
     addFltxTestMacroStatus(metrics_consteval_tests
-        FAST_MATH_MODE ${FLTX_METRICS_FAST_MATH_MODE}
+        FAST_MATH_MODE ${FLTX_FAST_MATH_MODE}
         DEFINITIONS
             FLTX_SIMULATE_FIXED_CONSTEVAL_MODE
             ${FLTX_METRICS_STATUS_DEFINITIONS}
