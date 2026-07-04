@@ -922,6 +922,8 @@ TEST_CASE("f128 constexpr parity: pow(int)", "[fltx][constexpr][parity][f128][po
     run_tuple_test("pow_int", gen_pow_int_args, [](const value_type& x, int y) { return bl::pow(x, y); });
 }
 
+FLTX_TEST_VALUE_INT(ipow, gen_pow_int_args)
+
 TEST_CASE("f128 constexpr parity: pow10", "[fltx][constexpr][parity][f128][pow10]")
 {
     run_tuple_test("pow10", gen_pow10_args, [](int exponent) { return bl::pow(value_type{ 10 }, exponent); });

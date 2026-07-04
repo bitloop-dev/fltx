@@ -716,6 +716,8 @@ TEST_CASE("f64 constexpr parity: pow(int)", "[fltx][constexpr][parity][f64][pow_
     run_tuple_test("pow_int", gen_pow_int_args, [](double x, int y) { return bl::pow(x, y); });
 }
 
+FLTX_TEST_UNARY_INT(ipow, gen_pow_int_args)
+
 FLTX_TEST_UNARY(erf, gen_unary_any)
 FLTX_TEST_UNARY(erfc, gen_unary_any)
 FLTX_TEST_UNARY(lgamma, gen_unary_gamma)
