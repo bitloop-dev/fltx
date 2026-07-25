@@ -595,7 +595,7 @@ namespace bl::test::metrics
         if (metrics_verbose_enabled())
         {
             out << "\n[metrics report]\n"
-                << precision_name << " csv = " << output_path << '\n';
+                << precision_name << " csv = " << metrics_report_display_path(output_path) << '\n';
         }
     }
 

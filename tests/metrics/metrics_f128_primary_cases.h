@@ -35,38 +35,35 @@
 #define FLTX_PRIMARY_CASE_ORDER_ceil "032"
 #define FLTX_PRIMARY_CASE_ORDER_trunc "033"
 #define FLTX_PRIMARY_CASE_ORDER_round "034"
-#define FLTX_PRIMARY_CASE_ORDER_nearbyint "035"
-#define FLTX_PRIMARY_CASE_ORDER_rint "036"
-#define FLTX_PRIMARY_CASE_ORDER_lround "037"
-#define FLTX_PRIMARY_CASE_ORDER_llround "038"
-#define FLTX_PRIMARY_CASE_ORDER_lrint "039"
-#define FLTX_PRIMARY_CASE_ORDER_llrint "040"
-#define FLTX_PRIMARY_CASE_ORDER_fmod "041"
-#define FLTX_PRIMARY_CASE_ORDER_remainder "042"
-#define FLTX_PRIMARY_CASE_ORDER_remquo "043"
-#define FLTX_PRIMARY_CASE_ORDER_fmin "044"
-#define FLTX_PRIMARY_CASE_ORDER_fmax "045"
-#define FLTX_PRIMARY_CASE_ORDER_fdim "046"
-#define FLTX_PRIMARY_CASE_ORDER_copysign "047"
-#define FLTX_PRIMARY_CASE_ORDER_ldexp "048"
-#define FLTX_PRIMARY_CASE_ORDER_scalbn "049"
-#define FLTX_PRIMARY_CASE_ORDER_scalbln "050"
-#define FLTX_PRIMARY_CASE_ORDER_nextafter "051"
-#define FLTX_PRIMARY_CASE_ORDER_nexttoward "052"
-#define FLTX_PRIMARY_CASE_ORDER_ilogb "053"
-#define FLTX_PRIMARY_CASE_ORDER_logb "054"
-#define FLTX_PRIMARY_CASE_ORDER_frexp "055"
-#define FLTX_PRIMARY_CASE_ORDER_modf "056"
-#define FLTX_PRIMARY_CASE_ORDER_erf "057"
-#define FLTX_PRIMARY_CASE_ORDER_erfc "058"
-#define FLTX_PRIMARY_CASE_ORDER_lgamma "059"
-#define FLTX_PRIMARY_CASE_ORDER_tgamma "060"
-#define FLTX_PRIMARY_CASE_ORDER_equal "061"
-#define FLTX_PRIMARY_CASE_ORDER_not_equal "062"
-#define FLTX_PRIMARY_CASE_ORDER_less "063"
-#define FLTX_PRIMARY_CASE_ORDER_greater "064"
-#define FLTX_PRIMARY_CASE_ORDER_less_equal "065"
-#define FLTX_PRIMARY_CASE_ORDER_greater_equal "066"
+#define FLTX_PRIMARY_CASE_ORDER_roundeven "035"
+#define FLTX_PRIMARY_CASE_ORDER_lround "036"
+#define FLTX_PRIMARY_CASE_ORDER_llround "037"
+#define FLTX_PRIMARY_CASE_ORDER_fmod "038"
+#define FLTX_PRIMARY_CASE_ORDER_remainder "039"
+#define FLTX_PRIMARY_CASE_ORDER_remquo "040"
+#define FLTX_PRIMARY_CASE_ORDER_fmin "041"
+#define FLTX_PRIMARY_CASE_ORDER_fmax "042"
+#define FLTX_PRIMARY_CASE_ORDER_fdim "043"
+#define FLTX_PRIMARY_CASE_ORDER_copysign "044"
+#define FLTX_PRIMARY_CASE_ORDER_ldexp "045"
+#define FLTX_PRIMARY_CASE_ORDER_scalbn "046"
+#define FLTX_PRIMARY_CASE_ORDER_scalbln "047"
+#define FLTX_PRIMARY_CASE_ORDER_nextafter "048"
+#define FLTX_PRIMARY_CASE_ORDER_nexttoward "049"
+#define FLTX_PRIMARY_CASE_ORDER_ilogb "050"
+#define FLTX_PRIMARY_CASE_ORDER_logb "051"
+#define FLTX_PRIMARY_CASE_ORDER_frexp "052"
+#define FLTX_PRIMARY_CASE_ORDER_modf "053"
+#define FLTX_PRIMARY_CASE_ORDER_erf "054"
+#define FLTX_PRIMARY_CASE_ORDER_erfc "055"
+#define FLTX_PRIMARY_CASE_ORDER_lgamma "056"
+#define FLTX_PRIMARY_CASE_ORDER_tgamma "057"
+#define FLTX_PRIMARY_CASE_ORDER_equal "058"
+#define FLTX_PRIMARY_CASE_ORDER_not_equal "059"
+#define FLTX_PRIMARY_CASE_ORDER_less "060"
+#define FLTX_PRIMARY_CASE_ORDER_greater "061"
+#define FLTX_PRIMARY_CASE_ORDER_less_equal "062"
+#define FLTX_PRIMARY_CASE_ORDER_greater_equal "063"
 
 #define FLTX_PRIMARY_CASE_ORDER(NAME) FLTX_PRIMARY_CASE_ORDER_##NAME
 
@@ -104,12 +101,9 @@
 #define FLTX_PRIMARY_CASE_QDPP_EXTRA_SUPPORTED_ceil true
 #define FLTX_PRIMARY_CASE_QDPP_EXTRA_SUPPORTED_trunc true
 #define FLTX_PRIMARY_CASE_QDPP_EXTRA_SUPPORTED_round true
-#define FLTX_PRIMARY_CASE_QDPP_EXTRA_SUPPORTED_nearbyint true
-#define FLTX_PRIMARY_CASE_QDPP_EXTRA_SUPPORTED_rint true
+#define FLTX_PRIMARY_CASE_QDPP_EXTRA_SUPPORTED_roundeven true
 #define FLTX_PRIMARY_CASE_QDPP_EXTRA_SUPPORTED_lround false
 #define FLTX_PRIMARY_CASE_QDPP_EXTRA_SUPPORTED_llround false
-#define FLTX_PRIMARY_CASE_QDPP_EXTRA_SUPPORTED_lrint false
-#define FLTX_PRIMARY_CASE_QDPP_EXTRA_SUPPORTED_llrint false
 #define FLTX_PRIMARY_CASE_QDPP_EXTRA_SUPPORTED_fmod true
 #define FLTX_PRIMARY_CASE_QDPP_EXTRA_SUPPORTED_remainder true
 #define FLTX_PRIMARY_CASE_QDPP_EXTRA_SUPPORTED_remquo false
@@ -174,12 +168,9 @@
     UNARY(ceil, "[rounding][ceil]", bits_90, make_rounding_samples, call_ceil) \
     UNARY(trunc, "[rounding][trunc]", bits_90, make_rounding_samples, call_trunc) \
     UNARY(round, "[rounding][round]", bits_90, make_rounding_samples, call_round) \
-    UNARY(nearbyint, "[nearbyint]", bits_90, make_rounding_samples, call_nearbyint) \
-    UNARY(rint, "[rint]", bits_90, make_rounding_samples, call_rint) \
+    UNARY(roundeven, "[rounding][roundeven]", bits_90, make_rounding_samples, call_roundeven) \
     UNARY_INTEGER(lround, "[rounding][lround]", bits_90, make_long_rounding_samples, call_lround, call_lround_reference) \
     UNARY_INTEGER(llround, "[rounding][llround]", bits_90, make_long_long_rounding_samples, call_llround, call_llround_reference) \
-    UNARY_INTEGER(lrint, "[rounding][lrint]", bits_90, make_long_rounding_samples, call_lrint, call_lrint_reference) \
-    UNARY_INTEGER(llrint, "[rounding][llrint]", bits_90, make_long_long_rounding_samples, call_llrint, call_llrint_reference) \
     BINARY(fmod, "[fmod]", domain_ideal_bits, make_remainder_samples, call_fmod, call_fmod) \
     BINARY(remainder, "[remainder]", bits_80, make_remainder_samples, call_remainder, call_remainder) \
     BINARY(remquo, "[remquo]", bits_40, make_remainder_samples, call_remquo_value, call_remainder) \

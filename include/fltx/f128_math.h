@@ -13,7 +13,6 @@
 #include "fltx/detail/f128_math_basic.h"
 #include "fltx/detail/f128_math_transcendental.h"
 #include "fltx/detail/math_promotion.h"
-#include "fltx/round_options.h"
 #include "fltx/traits.h"
 
 namespace bl {
@@ -26,7 +25,7 @@ namespace bl {
 // roots
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 sqrt(f128_s a)
 {
-    #if defined(BL_FAST_MATH)
+    #if defined(FLTX_FAST_MATH)
     return detail::_f128_impl::sqrt(a);
     #else
     BL_CONSTEXPR_RUNTIME_DISPATCH(
@@ -68,83 +67,67 @@ namespace bl {
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 round(const f128_s& a)
 {
 #if defined(_MSC_VER) && !defined(__clang__)
-    return detail::_f128_impl::round(a);
+    return detail::_f128_impl::round_nearest_away_from_zero(a);
 #else
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f128_impl::round(a),
-        detail::_f128_runtime::round(a)
+        detail::_f128_impl::round_nearest_away_from_zero(a),
+        detail::_f128_runtime::round_nearest_away_from_zero(a)
     );
 #endif
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f128 round_to(f128_s v, int precision, round_format format)
+[[nodiscard]] BL_FORCE_INLINE constexpr f128 roundeven(const f128_s& x)
 {
-    if (format == round_format::decimals)
-    {
-        BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_f128_impl::round_to_decimals(v, precision),
-            detail::_f128_runtime::round_to_decimals(v, precision)
-        );
-    }
+    return detail::_f128_impl::round_nearest_even(x);
+}
 
+[[nodiscard]] BL_FORCE_INLINE constexpr f128 round_to_decimals(f128_s v, int precision)
+{
+    BL_CONSTEXPR_RUNTIME_DISPATCH(
+        detail::_f128_impl::round_to_decimals(v, precision),
+        detail::_f128_runtime::round_to_decimals(v, precision)
+    );
+}
+
+[[nodiscard]] BL_FORCE_INLINE constexpr f128 round_to_significant_figures(
+    f128_s v,
+    int precision)
+{
     BL_CONSTEXPR_RUNTIME_DISPATCH(
         detail::_f128_impl::round_to_significant_figures(v, precision),
         detail::_f128_runtime::round_to_significant_figures(v, precision)
     );
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f128 nearbyint(const f128_s& a)
-{
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f128_impl::nearbyint(a),
-        detail::_f128_impl::nearbyint_runtime(a)
-    );
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr f128 rint(const f128_s& x)
-{
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f128::nearbyint_generic(x),
-        detail::_f128_impl::nearbyint_runtime(x)
-    );
-}
-
 [[nodiscard]] BL_FORCE_INLINE constexpr long lround(const f128_s& x)
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f128_impl::lround(x),
-        detail::_f128_runtime::lround(x)
+        detail::_f128_impl::lround_nearest_away_from_zero(x),
+        detail::_f128_runtime::lround_nearest_away_from_zero(x)
     );
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr long long llround(const f128_s& x)
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f128_impl::llround(x),
-        detail::_f128_runtime::llround(x)
-    );
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr long lrint(const f128_s& x)
-{
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f128_impl::lrint(x),
-        detail::_f128_runtime::lrint(x)
-    );
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr long long llrint(const f128_s& x)
-{
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f128_impl::llrint(x),
-        detail::_f128_runtime::llrint(x)
+        detail::_f128_impl::llround_nearest_away_from_zero(x),
+        detail::_f128_runtime::llround_nearest_away_from_zero(x)
     );
 }
 
 // arithmetic and comparisons
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 fma(const f128_s& x, const f128_s& y, const f128_s& z)
 {
+#if FLTX_HAS_COMPILED_X86_FMA_BACKEND && !FLTX_TU_HAS_X86_FMA
+    BL_CONSTEXPR_RUNTIME_DISPATCH(
+        detail::_f128_impl::fma(x, y, z),
+        detail::fp::runtime_hardware_fma_enabled()
+            ? detail::_f128_runtime::fma_x86(x, y, z)
+            : detail::_f128_impl::fma(x, y, z)
+    );
+#else
     return detail::_f128_impl::fma(x, y, z);
+#endif
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 fmin(const f128_s& a, const f128_s& b)
@@ -548,7 +531,7 @@ template<class Value> requires (std::same_as<std::remove_cvref_t<Value>, f128> |
 }
 
 // type promotions
-#define BL_FLTX_F128_PROMOTED_UNARY(NAME) \
+#define FLTX_F128_PROMOTED_UNARY(NAME) \
     template<class T> \
     requires detail::math::f128_promoted_math_args<T> \
     [[nodiscard]] BL_FORCE_INLINE constexpr auto NAME(T x) \
@@ -557,7 +540,7 @@ template<class Value> requires (std::same_as<std::remove_cvref_t<Value>, f128> |
         return bl::NAME(detail::math::promoted_cast<P>(x)); \
     }
 
-#define BL_FLTX_F128_PROMOTED_BINARY(NAME) \
+#define FLTX_F128_PROMOTED_BINARY(NAME) \
     template<class T, class U> \
     requires detail::math::f128_promoted_math_args<T, U> \
     [[nodiscard]] BL_FORCE_INLINE constexpr auto NAME(T x, U y) \
@@ -566,7 +549,7 @@ template<class Value> requires (std::same_as<std::remove_cvref_t<Value>, f128> |
         return bl::NAME(detail::math::promoted_cast<P>(x), detail::math::promoted_cast<P>(y)); \
     }
 
-#define BL_FLTX_F128_PROMOTED_TERNARY(NAME) \
+#define FLTX_F128_PROMOTED_TERNARY(NAME) \
     template<class T, class U, class V> \
     requires detail::math::f128_promoted_math_args<T, U, V> \
     [[nodiscard]] BL_FORCE_INLINE constexpr auto NAME(T x, U y, V z) \
@@ -575,80 +558,77 @@ template<class Value> requires (std::same_as<std::remove_cvref_t<Value>, f128> |
         return bl::NAME(detail::math::promoted_cast<P>(x), detail::math::promoted_cast<P>(y), detail::math::promoted_cast<P>(z)); \
     }
 
-BL_FLTX_F128_PROMOTED_UNARY(abs)
-BL_FLTX_F128_PROMOTED_UNARY(fabs)
-BL_FLTX_F128_PROMOTED_UNARY(signbit)
-BL_FLTX_F128_PROMOTED_UNARY(isnan)
-BL_FLTX_F128_PROMOTED_UNARY(isinf)
-BL_FLTX_F128_PROMOTED_UNARY(isfinite)
-BL_FLTX_F128_PROMOTED_UNARY(iszero)
-BL_FLTX_F128_PROMOTED_UNARY(fpclassify)
-BL_FLTX_F128_PROMOTED_UNARY(isnormal)
+FLTX_F128_PROMOTED_UNARY(abs)
+FLTX_F128_PROMOTED_UNARY(fabs)
+FLTX_F128_PROMOTED_UNARY(signbit)
+FLTX_F128_PROMOTED_UNARY(isnan)
+FLTX_F128_PROMOTED_UNARY(isinf)
+FLTX_F128_PROMOTED_UNARY(isfinite)
+FLTX_F128_PROMOTED_UNARY(iszero)
+FLTX_F128_PROMOTED_UNARY(fpclassify)
+FLTX_F128_PROMOTED_UNARY(isnormal)
 
-BL_FLTX_F128_PROMOTED_UNARY(floor)
-BL_FLTX_F128_PROMOTED_UNARY(ceil)
-BL_FLTX_F128_PROMOTED_UNARY(trunc)
-BL_FLTX_F128_PROMOTED_UNARY(round)
-BL_FLTX_F128_PROMOTED_UNARY(nearbyint)
-BL_FLTX_F128_PROMOTED_UNARY(rint)
-BL_FLTX_F128_PROMOTED_UNARY(lround)
-BL_FLTX_F128_PROMOTED_UNARY(llround)
-BL_FLTX_F128_PROMOTED_UNARY(lrint)
-BL_FLTX_F128_PROMOTED_UNARY(llrint)
+FLTX_F128_PROMOTED_UNARY(floor)
+FLTX_F128_PROMOTED_UNARY(ceil)
+FLTX_F128_PROMOTED_UNARY(trunc)
+FLTX_F128_PROMOTED_UNARY(round)
+FLTX_F128_PROMOTED_UNARY(roundeven)
+FLTX_F128_PROMOTED_UNARY(lround)
+FLTX_F128_PROMOTED_UNARY(llround)
 
-BL_FLTX_F128_PROMOTED_BINARY(fmod)
-BL_FLTX_F128_PROMOTED_BINARY(remainder)
-BL_FLTX_F128_PROMOTED_TERNARY(fma)
-BL_FLTX_F128_PROMOTED_BINARY(fmin)
-BL_FLTX_F128_PROMOTED_BINARY(fmax)
-BL_FLTX_F128_PROMOTED_BINARY(fdim)
-BL_FLTX_F128_PROMOTED_BINARY(copysign)
+FLTX_F128_PROMOTED_BINARY(fmod)
+FLTX_F128_PROMOTED_BINARY(remainder)
+FLTX_F128_PROMOTED_TERNARY(fma)
+FLTX_F128_PROMOTED_BINARY(fmin)
+FLTX_F128_PROMOTED_BINARY(fmax)
+FLTX_F128_PROMOTED_BINARY(fdim)
+FLTX_F128_PROMOTED_BINARY(copysign)
 
-BL_FLTX_F128_PROMOTED_UNARY(ilogb)
-BL_FLTX_F128_PROMOTED_UNARY(logb)
-BL_FLTX_F128_PROMOTED_BINARY(nextafter)
+FLTX_F128_PROMOTED_UNARY(ilogb)
+FLTX_F128_PROMOTED_UNARY(logb)
+FLTX_F128_PROMOTED_BINARY(nextafter)
 
-BL_FLTX_F128_PROMOTED_UNARY(exp)
-BL_FLTX_F128_PROMOTED_UNARY(exp2)
-BL_FLTX_F128_PROMOTED_UNARY(expm1)
-BL_FLTX_F128_PROMOTED_UNARY(log)
-BL_FLTX_F128_PROMOTED_UNARY(log2)
-BL_FLTX_F128_PROMOTED_UNARY(log10)
-BL_FLTX_F128_PROMOTED_UNARY(log1p)
-BL_FLTX_F128_PROMOTED_UNARY(sqrt)
-BL_FLTX_F128_PROMOTED_UNARY(cbrt)
-BL_FLTX_F128_PROMOTED_BINARY(hypot)
+FLTX_F128_PROMOTED_UNARY(exp)
+FLTX_F128_PROMOTED_UNARY(exp2)
+FLTX_F128_PROMOTED_UNARY(expm1)
+FLTX_F128_PROMOTED_UNARY(log)
+FLTX_F128_PROMOTED_UNARY(log2)
+FLTX_F128_PROMOTED_UNARY(log10)
+FLTX_F128_PROMOTED_UNARY(log1p)
+FLTX_F128_PROMOTED_UNARY(sqrt)
+FLTX_F128_PROMOTED_UNARY(cbrt)
+FLTX_F128_PROMOTED_BINARY(hypot)
 
-BL_FLTX_F128_PROMOTED_UNARY(sin)
-BL_FLTX_F128_PROMOTED_UNARY(cos)
-BL_FLTX_F128_PROMOTED_UNARY(tan)
-BL_FLTX_F128_PROMOTED_UNARY(atan)
-BL_FLTX_F128_PROMOTED_BINARY(atan2)
-BL_FLTX_F128_PROMOTED_UNARY(asin)
-BL_FLTX_F128_PROMOTED_UNARY(acos)
+FLTX_F128_PROMOTED_UNARY(sin)
+FLTX_F128_PROMOTED_UNARY(cos)
+FLTX_F128_PROMOTED_UNARY(tan)
+FLTX_F128_PROMOTED_UNARY(atan)
+FLTX_F128_PROMOTED_BINARY(atan2)
+FLTX_F128_PROMOTED_UNARY(asin)
+FLTX_F128_PROMOTED_UNARY(acos)
 
-BL_FLTX_F128_PROMOTED_UNARY(sinh)
-BL_FLTX_F128_PROMOTED_UNARY(cosh)
-BL_FLTX_F128_PROMOTED_UNARY(tanh)
-BL_FLTX_F128_PROMOTED_UNARY(asinh)
-BL_FLTX_F128_PROMOTED_UNARY(acosh)
-BL_FLTX_F128_PROMOTED_UNARY(atanh)
+FLTX_F128_PROMOTED_UNARY(sinh)
+FLTX_F128_PROMOTED_UNARY(cosh)
+FLTX_F128_PROMOTED_UNARY(tanh)
+FLTX_F128_PROMOTED_UNARY(asinh)
+FLTX_F128_PROMOTED_UNARY(acosh)
+FLTX_F128_PROMOTED_UNARY(atanh)
 
-BL_FLTX_F128_PROMOTED_UNARY(erf)
-BL_FLTX_F128_PROMOTED_UNARY(erfc)
-BL_FLTX_F128_PROMOTED_UNARY(lgamma)
-BL_FLTX_F128_PROMOTED_UNARY(tgamma)
+FLTX_F128_PROMOTED_UNARY(erf)
+FLTX_F128_PROMOTED_UNARY(erfc)
+FLTX_F128_PROMOTED_UNARY(lgamma)
+FLTX_F128_PROMOTED_UNARY(tgamma)
 
-BL_FLTX_F128_PROMOTED_BINARY(isunordered)
-BL_FLTX_F128_PROMOTED_BINARY(isgreater)
-BL_FLTX_F128_PROMOTED_BINARY(isgreaterequal)
-BL_FLTX_F128_PROMOTED_BINARY(isless)
-BL_FLTX_F128_PROMOTED_BINARY(islessequal)
-BL_FLTX_F128_PROMOTED_BINARY(islessgreater)
+FLTX_F128_PROMOTED_BINARY(isunordered)
+FLTX_F128_PROMOTED_BINARY(isgreater)
+FLTX_F128_PROMOTED_BINARY(isgreaterequal)
+FLTX_F128_PROMOTED_BINARY(isless)
+FLTX_F128_PROMOTED_BINARY(islessequal)
+FLTX_F128_PROMOTED_BINARY(islessgreater)
 
-#undef BL_FLTX_F128_PROMOTED_TERNARY
-#undef BL_FLTX_F128_PROMOTED_BINARY
-#undef BL_FLTX_F128_PROMOTED_UNARY
+#undef FLTX_F128_PROMOTED_TERNARY
+#undef FLTX_F128_PROMOTED_BINARY
+#undef FLTX_F128_PROMOTED_UNARY
 
 template<class T, class U>
 requires detail::math::f128_promoted_math_args<T, U>

@@ -12,16 +12,16 @@
 #include "fltx/detail/common_fp.h"
 #include "fltx/detail/simd.h"
 
-#if !defined(BL_F128_ENABLE_SIMD)
-#  if BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD
-#    define BL_F128_ENABLE_SIMD 1
+#if !defined(FLTX_F128_ENABLE_SIMD)
+#  if FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD
+#    define FLTX_F128_ENABLE_SIMD 1
 #  else
-#    define BL_F128_ENABLE_SIMD 0
+#    define FLTX_F128_ENABLE_SIMD 0
 #  endif
 #endif
 
-#if BL_F128_ENABLE_SIMD && !(BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD)
-#  error "BL_F128_ENABLE_SIMD requires AArch64 NEON or wasm128 SIMD support."
+#if FLTX_F128_ENABLE_SIMD && !(FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD)
+#  error "FLTX_F128_ENABLE_SIMD requires AArch64 NEON or wasm128 SIMD support."
 #endif
 
 namespace bl {
@@ -49,14 +49,14 @@ namespace detail::_f128 // primitives and kernels
 
     BL_FORCE_INLINE constexpr bool f128_runtime_product_pair_simd_enabled() noexcept
     {
-        #if BL_F128_ENABLE_SIMD && !defined(FMA_AVAILABLE) && (BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD)
+        #if FLTX_F128_ENABLE_SIMD && (FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD)
         return !bl::detail::use_constexpr_math();
         #else
         return false;
         #endif
     }
 
-    #if BL_F128_ENABLE_SIMD && (BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD)
+    #if FLTX_F128_ENABLE_SIMD && (FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD)
     namespace simd = bl::detail::simd;
     #endif
 

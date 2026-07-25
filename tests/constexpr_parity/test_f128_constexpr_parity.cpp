@@ -884,17 +884,17 @@ FLTX_TEST_UNARY(ceil, gen_unary_any)
 FLTX_TEST_UNARY(trunc, gen_unary_any)
 FLTX_TEST_BINARY(fmod, gen_binary_rhs_nonzero)
 FLTX_TEST_UNARY(round, gen_unary_any)
+FLTX_TEST_UNARY(roundeven, gen_unary_any)
 TEST_CASE("f128 constexpr parity: round_to_decimals", "[fltx][constexpr][parity][f128][round_to_decimals]")
 {
     run_tuple_test("round_to_decimals", gen_round_digits_args, [](const value_type& x, int digits)
     {
-        return bl::round_to(x, digits, bl::decimals);
+        return bl::round_to_decimals(x, digits);
     });
 }
 
 FLTX_TEST_BINARY(remainder, gen_binary_rhs_nonzero)
 FLTX_TEST_UNARY(sqrt, gen_unary_positive)
-FLTX_TEST_UNARY(nearbyint, gen_unary_any)
 FLTX_TEST_UNARY(log_as_double, gen_unary_positive)
 FLTX_TEST_VALUE_INT(ldexp, gen_ldexp_args)
 FLTX_TEST_UNARY(exp, gen_unary_any)
@@ -957,11 +957,8 @@ FLTX_TEST_UNARY(acosh, gen_unary_ge_one)
 FLTX_TEST_UNARY(atanh, gen_unary_unit)
 FLTX_TEST_UNARY(cbrt, gen_unary_any)
 FLTX_TEST_BINARY(hypot, gen_binary_any)
-FLTX_TEST_UNARY(rint, gen_unary_any)
 FLTX_TEST_UNARY(lround, gen_unary_any)
 FLTX_TEST_UNARY(llround, gen_unary_any)
-FLTX_TEST_UNARY(lrint, gen_unary_any)
-FLTX_TEST_UNARY(llrint, gen_unary_any)
 
 TEST_CASE("f128 constexpr parity: remquo", "[fltx][constexpr][parity][f128][remquo]")
 {

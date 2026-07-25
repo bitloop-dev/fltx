@@ -46,22 +46,12 @@ namespace bl::test::metrics::qdpp
         return ::aint(value);
     }
 
-    [[nodiscard]] inline dd_real nearbyint(const dd_real& value)
+    [[nodiscard]] inline dd_real roundeven(const dd_real& value)
     {
         return ::nint(value);
     }
 
-    [[nodiscard]] inline qd_real nearbyint(const qd_real& value)
-    {
-        return ::nint(value);
-    }
-
-    [[nodiscard]] inline dd_real rint(const dd_real& value)
-    {
-        return ::nint(value);
-    }
-
-    [[nodiscard]] inline qd_real rint(const qd_real& value)
+    [[nodiscard]] inline qd_real roundeven(const qd_real& value)
     {
         return ::nint(value);
     }

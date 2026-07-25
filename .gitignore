@@ -50,10 +50,10 @@ __pycache__/
 build/
 TestResults/
 CMakeUserPresets.json
+VSWorkspaceSettings.json
 
 # Local Codex scratch/output
 .codex/
-AGENTS.md
-AGENTS.MD
 docs/
 tools/
+AGENTS.md

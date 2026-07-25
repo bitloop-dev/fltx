@@ -429,18 +429,6 @@ namespace bl::test::metrics
         return static_cast<long long>(round_away_from_zero_integer_reference(x));
     }
 
-    template<class T>
-    [[nodiscard]] BL_FORCE_INLINE long call_lrint_reference(const T& x)
-    {
-        return static_cast<long>(round_nearest_even_integer_reference(x));
-    }
-
-    template<class T>
-    [[nodiscard]] BL_FORCE_INLINE long long call_llrint_reference(const T& x)
-    {
-        return static_cast<long long>(round_nearest_even_integer_reference(x));
-    }
-
     template<class T, class FallbackFn>
     [[nodiscard]] BL_FORCE_INLINE T call_unary_reference(
         std::string_view operation,
@@ -449,7 +437,7 @@ namespace bl::test::metrics
     {
         if (operation == "round")
             return round_away_from_zero_integer_reference(x);
-        if (operation == "nearbyint" || operation == "rint")
+        if (operation == "roundeven")
             return round_nearest_even_integer_reference(x);
         return fallback(x);
     }

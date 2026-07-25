@@ -25,7 +25,7 @@ namespace detail::_f256 // primitives and kernels
     using detail::exact_decimal::low_bits_copy;
     using detail::exact_decimal::shr_bits_copy;
     using detail::fp::fmod;
-    using detail::fp::nearbyint_ties_even;
+    using detail::fp::round_nearest_even_value;
     using detail::fp::sqrt_seed;
     using detail::fp::trunc;
     using detail::fp::frexp_exponent_limb;
@@ -968,6 +968,13 @@ namespace detail::_f256 // primitives and kernels
         if (xi != x)
             return false;
 
+        constexpr std::int64_t int64_min = std::numeric_limits<std::int64_t>::lowest();
+        if (xi == detail::_f256_impl::to_f256(int64_min))
+        {
+            out = int64_min;
+            return true;
+        }
+
         if (absd(xi.x0) >= 0x1p63)
             return false;
 
@@ -1075,7 +1082,7 @@ namespace detail::_f256 // primitives and kernels
         if (mod2 < 0.0)
             mod2 += 2.0;
 
-        return detail::fp::double_integer_is_odd(nearbyint_ties_even(mod2));
+        return detail::fp::double_integer_is_odd(round_nearest_even_value(mod2));
     }
 
     // sqrt kernels
@@ -1211,7 +1218,7 @@ namespace detail::_f256 // primitives and kernels
         double p01{}, q01{};
         double p11{}, q11{};
 
-        #if BL_F256_ENABLE_SIMD
+        #if FLTX_F256_ENABLE_SIMD
         if (f256_runtime_simd_enabled())
         {
             simd::f64x2 p00p01{}, q00q01{};
@@ -1261,7 +1268,7 @@ namespace detail::_f256 // primitives and kernels
         double p11{}, q11{};
         double p12{}, q12{};
 
-        #if BL_F256_ENABLE_SIMD
+        #if FLTX_F256_ENABLE_SIMD
         if (f256_runtime_simd_enabled())
         {
             simd::f64x2 p00p12{}, q00q12{};
@@ -1461,7 +1468,7 @@ namespace detail::_f256 // primitives and kernels
     }
 
     // rounding helpers
-    BL_FORCE_INLINE constexpr f256_s round_half_away_zero(const f256_s& x) noexcept
+    BL_FORCE_INLINE constexpr f256_s round_nearest_away_from_zero(const f256_s& x) noexcept
     {
         if (detail::fp::iszero_or_inf_or_nan(x.x0))
             return x;
@@ -1581,7 +1588,7 @@ namespace detail::_f256 // primitives and kernels
         }
         else
         {
-            #if BL_F256_ENABLE_SIMD
+            #if FLTX_F256_ENABLE_SIMD
             if (f256_runtime_simd_enabled())
             {
                 const simd::f64x2 scale = simd::f64x2_splat(s);

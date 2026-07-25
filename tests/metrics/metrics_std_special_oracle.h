@@ -14,6 +14,20 @@
 
 namespace bl::test::metrics
 {
+    [[nodiscard]] inline double deterministic_nearest_even(double x) noexcept
+    {
+        if (detail::fp::iszero_or_inf_or_nan(x) || detail::fp::absd(x) >= detail::fp::double_integer_threshold)
+            return x;
+
+        const double lower = std::floor(x);
+        const double fraction = x - lower;
+        double result = lower;
+        if (fraction > 0.5 || (fraction == 0.5 && std::fmod(lower, 2.0) != 0.0))
+            result = lower + 1.0;
+
+        return result == 0.0 ? std::copysign(0.0, x) : result;
+    }
+
     [[nodiscard]] inline double sample_as_double(const value_sample& sample) noexcept
     {
         return sample.hi;
@@ -79,22 +93,17 @@ namespace bl::test::metrics
             return std::trunc(x);
         if (operation == "round")
             return std::round(x);
-        if (operation == "nearbyint")
-        {
-            if (detail::fp::iszero_or_inf_or_nan(x))
-                return x;
-            return std::nearbyint(x);
-        }
-        if (operation == "rint")
-        {
-            if (detail::fp::iszero_or_inf_or_nan(x))
-                return x;
-            return std::rint(x);
-        }
+        if (operation == "roundeven")
+            return deterministic_nearest_even(x);
         if (operation == "logb")
             return std::logb(x);
         if (operation == "modf")
         {
+            if (detail::fp::isnan(x))
+                return x;
+            if (detail::fp::isinf(x))
+                return detail::fp::signbit(x) ? -0.0 : 0.0;
+
             double integer_part = 0.0;
             return std::modf(x, &integer_part);
         }
@@ -185,8 +194,7 @@ namespace bl::test::metrics
 
     [[nodiscard]] constexpr inline bool is_rounding_integer_operation(std::string_view operation) noexcept
     {
-        return operation == "lround" || operation == "llround" ||
-               operation == "lrint" || operation == "llrint";
+        return operation == "lround" || operation == "llround";
     }
 
     [[nodiscard]] inline long long stdlib_unary_integer_special_result(std::string_view operation, double x)
@@ -198,10 +206,6 @@ namespace bl::test::metrics
             return static_cast<long long>(std::lround(x));
         if (operation == "llround")
             return std::llround(x);
-        if (operation == "lrint")
-            return static_cast<long long>(std::lrint(x));
-        if (operation == "llrint")
-            return std::llrint(x);
         if (operation == "ilogb")
             return static_cast<long long>(std::ilogb(x));
 

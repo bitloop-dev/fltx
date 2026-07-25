@@ -830,7 +830,7 @@ namespace detail::_f128 // primitives and kernels
 
         const f128_s t = mul_inline(x, invpi2);
 
-        double qd = nearbyint_ties_even(t.hi);
+        double qd = round_nearest_even_value(t.hi);
         if (detail::fp::isinf_or_nan(qd) ||
             qd < static_cast<double>(std::numeric_limits<long long>::min()) ||
             qd > static_cast<double>(std::numeric_limits<long long>::max()))
@@ -1004,7 +1004,7 @@ namespace detail::_f128 // primitives and kernels
 
     BL_FORCE_INLINE constexpr void sincos_kernel_pi64_reduced(const f128_s& x, f128_s& s_out, f128_s& c_out)
     {
-        int k = static_cast<int>(nearbyint_ties_even(x.hi * 20.371832715762604));
+        int k = static_cast<int>(round_nearest_even_value(x.hi * 20.371832715762604));
         if (k < -16)
             k = -16;
         else if (k > 16)
@@ -1061,7 +1061,7 @@ namespace detail::_f128 // primitives and kernels
 
     BL_FORCE_INLINE constexpr f128_s atan_core_unit(const f128_s& z)
     {
-        int k = static_cast<int>(nearbyint_ties_even(z.hi * 16.0));
+        int k = static_cast<int>(round_nearest_even_value(z.hi * 16.0));
         if (k <= 0)
             return atan_series_reduced(z);
         if (k > 16)
@@ -1442,7 +1442,7 @@ namespace detail::_f128 // primitives and kernels
 
     BL_MSVC_NOINLINE constexpr f128_s sinpi_reduced(const f128_s& x) noexcept
     {
-        const f128_s n = detail::_f128_impl::nearbyint(x);
+        const f128_s n = detail::_f128_impl::round_nearest_even(x);
         const f128_s r = sub_inline(x, n);
         f128_s out = detail::_f128_impl::sin(mul_inline(std::numbers::pi_v<f128_s>, r));
         if (is_odd_integer(n))
@@ -1957,14 +1957,28 @@ namespace detail::_f128
 
     if (ax >= ay)
     {
-        f128_s a = detail::_f128::_atan(detail::_f128::div_inline(y, x));
+        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        const f128_s ratio = detail::fp::dekker_product_needs_scaling(y.hi, x.hi)
+            ? detail::_f128::div_inline_checked(y, x)
+            : detail::_f128::div_inline(y, x);
+        #else
+        const f128_s ratio = detail::_f128::div_inline(y, x);
+        #endif
+        f128_s a = detail::_f128::_atan(ratio);
 
         if (x.hi < 0.0)
             a = detail::_f128::add_inline(a, (y.hi < 0.0) ? -std::numbers::pi_v<f128_s> : std::numbers::pi_v<f128_s>);
         return F128_CANONICALIZE_MATH_RESULT(a);
     }
 
-    const f128_s a = detail::_f128::_atan(detail::_f128::div_inline(x, y));
+    #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+    const f128_s ratio = detail::fp::dekker_product_needs_scaling(x.hi, y.hi)
+        ? detail::_f128::div_inline_checked(x, y)
+        : detail::_f128::div_inline(x, y);
+    #else
+    const f128_s ratio = detail::_f128::div_inline(x, y);
+    #endif
+    const f128_s a = detail::_f128::_atan(ratio);
     return F128_CANONICALIZE_MATH_RESULT(
         (y.hi < 0.0) ? detail::_f128::sub_inline(-detail::_f128::pi_2, a) : detail::_f128::sub_inline(detail::_f128::pi_2, a));
 }

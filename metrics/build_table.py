@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Iterable
 
 
-METRICS_FILE_RE = re.compile(r"(?P<compiler>.+)_(?P<type>f128|f256)\.csv$", re.IGNORECASE)
+METRICS_FILE_RE = re.compile(r"(?P<compiler>.+)_(?P<type>f128|f256)(?P<suffix>(?:_[^._]+)*)\.csv$", re.IGNORECASE)
 
 TABLE_TITLE = "fltx metrics"
 TABLE_SUBTITLE = "Nanoseconds per iteration for bl::f128/bl::f256 metrics, colored by speed ratio vs the stronger available reference."
@@ -108,12 +108,9 @@ VISIBLE_TABLE_LABELS_BY_GROUP: dict[str, set[str]] = {
         "ceil",
         "trunc",
         "round",
-        "nearbyint",
-        "rint",
+        "roundeven",
         "lround",
         "llround",
-        "lrint",
-        "llrint",
     },
     "Remainders": {
         "fmod",
@@ -205,6 +202,14 @@ class BenchmarkCell:
     reference_name: str | None = None
 
 
+@dataclass(frozen=True)
+class MetricsCsvCandidate:
+    path: Path
+    fp_type: str
+    column: ColumnKey
+    suffix_parts: tuple[str, ...]
+
+
 @dataclass
 class BenchmarkTable:
     columns: list[ColumnKey]
@@ -274,6 +279,28 @@ def fp_type_label(key: str) -> str:
 
 def compiler_label(key: str) -> str:
     return COMPILER_LABELS.get(key, key)
+
+
+def metrics_suffix_parts(value: str) -> tuple[str, ...]:
+    text = value.strip("_")
+    if not text:
+        return ()
+    return tuple(part.lower() for part in text.split("_") if part)
+
+
+def metrics_file_priority(candidate: MetricsCsvCandidate) -> tuple[int, int, int, int, str]:
+    suffixes = set(candidate.suffix_parts)
+    non_default_variant = int(bool(suffixes & {"fast", "consteval"}))
+    filtered = int("filtered" in suffixes)
+    known_suffixes = {"fast", "consteval", "filtered"}
+    unknown_suffix_count = len(suffixes - known_suffixes)
+    return (
+        non_default_variant,
+        filtered,
+        unknown_suffix_count,
+        len(candidate.suffix_parts),
+        str(candidate.path).lower(),
+    )
 
 
 def column_sort_key(column: ColumnKey) -> tuple[int, str, int, str, int, str]:
@@ -420,6 +447,7 @@ def discover_table(metrics_root: Path) -> BenchmarkTable:
     groups: list[str] = []
     rows_by_group: dict[str, list[str]] = {}
     cell_buckets: dict[tuple[str, str, ColumnKey], list[BenchmarkCell]] = {}
+    candidates_by_column: dict[ColumnKey, MetricsCsvCandidate] = {}
 
     for path in sorted(metrics_root.rglob("*.csv")):
         match = METRICS_FILE_RE.match(path.name)
@@ -429,10 +457,24 @@ def discover_table(metrics_root: Path) -> BenchmarkTable:
         fp_type = match.group("type").lower()
         platform = platform_key(path, match.group("compiler"))
         column = ColumnKey(fp_type, platform, compiler_key(match.group("compiler"), platform))
-        entries = read_csv(path, fp_type)
+        candidate = MetricsCsvCandidate(
+            path=path,
+            fp_type=fp_type,
+            column=column,
+            suffix_parts=metrics_suffix_parts(match.group("suffix")),
+        )
+        existing = candidates_by_column.get(column)
+        if existing is None or metrics_file_priority(candidate) < metrics_file_priority(existing):
+            candidates_by_column[column] = candidate
+
+    for candidate in sorted(
+        candidates_by_column.values(),
+        key=lambda item: (column_sort_key(item.column), metrics_file_priority(item)),
+    ):
+        entries = read_csv(candidate.path, candidate.fp_type)
         has_visible_entries = False
         for group, label, cell in entries:
-            visible_entry = visible_table_entry(fp_type, group, label)
+            visible_entry = visible_table_entry(candidate.fp_type, group, label)
             if visible_entry is None:
                 continue
 
@@ -443,10 +485,10 @@ def discover_table(metrics_root: Path) -> BenchmarkTable:
                 rows_by_group[visible_group] = []
             if visible_label not in rows_by_group[visible_group]:
                 rows_by_group[visible_group].append(visible_label)
-            cell_buckets.setdefault((visible_group, visible_label, column), []).append(cell)
+            cell_buckets.setdefault((visible_group, visible_label, candidate.column), []).append(cell)
 
         if has_visible_entries:
-            columns.add(column)
+            columns.add(candidate.column)
 
     cells = {
         key: average_cells(values)

@@ -50,7 +50,7 @@ namespace detail::_f256 // primitives and kernels
         double t0{}, t1{};
         double s0{}, s1{}, s2{};
 
-        #if BL_F256_ENABLE_SIMD && (BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD)
+        #if FLTX_F256_ENABLE_SIMD && (FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD)
         if (f256_runtime_simd_enabled())
         {
             simd::f64x2 p01{}, q01{};
@@ -71,12 +71,12 @@ namespace detail::_f256 // primitives and kernels
         else
         #endif
         {
-            two_prod_precise(a.x0, a.x0, p0, q0);
-            two_prod_precise(a.x0, a.x1, p1, q1);
-            two_prod_precise(a.x0, a.x2, p3, q3);
-            two_prod_precise(a.x1, a.x1, p4, q4);
-            two_prod_precise(a.x0, a.x3, p6, q6);
-            two_prod_precise(a.x1, a.x2, p7, q7);
+            detail::fp::two_prod_precise(a.x0, a.x0, p0, q0);
+            detail::fp::two_prod_precise(a.x0, a.x1, p1, q1);
+            detail::fp::two_prod_precise(a.x0, a.x2, p3, q3);
+            detail::fp::two_prod_precise(a.x1, a.x1, p4, q4);
+            detail::fp::two_prod_precise(a.x0, a.x3, p6, q6);
+            detail::fp::two_prod_precise(a.x1, a.x2, p7, q7);
         }
         p2 = p1;
         q2 = q1;
@@ -114,86 +114,73 @@ namespace detail::_f256 // primitives and kernels
         return { p0, p1, s0, t0, t1 };
     }
 
-    BL_FORCE_INLINE constexpr f256_raw5 mul_raw5_inline(const f256_s& a, const f256_s& b) noexcept
+    [[nodiscard]] BL_FORCE_INLINE constexpr f256_raw5 mul_raw5_from_products(
+        const f256_s& a,
+        const f256_s& b,
+        product_terms products) noexcept
     {
-        using namespace detail::_f256;
-
-        if (&a == &b)
-            return sqr_raw5_inline(a);
-
-        double p0{}, p1{}, p2{}, p3{}, p4{}, p5{};
-        double q0{}, q1{}, q2{}, q3{}, q4{}, q5{};
-        double p6{}, p7{}, p8{}, p9{};
-        double q6{}, q7{}, q8{}, q9{};
         double r0{}, r1{};
         double t0{}, t1{};
         double s0{}, s1{}, s2{};
 
-        #if BL_F256_ENABLE_SIMD && (BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD)
-        if (f256_runtime_simd_enabled())
-        {
-            simd::f64x2 p01{}, q01{};
-            simd::f64x2 p23{}, q23{};
-            simd::f64x2 p45{}, q45{};
-            simd::f64x2 p67{}, q67{};
-            simd::f64x2 p89{}, q89{};
+        three_sum(products.p[1], products.p[2], products.q[0]);
+        three_sum(products.p[2], products.q[1], products.q[2]);
+        three_sum(products.p[3], products.p[4], products.p[5]);
 
-            simd::f64x2_two_prod_precise(simd::f64x2_set(a.x0, a.x0), simd::f64x2_set(b.x0, b.x1), p01, q01);
-            simd::f64x2_two_prod_precise(simd::f64x2_set(a.x1, a.x0), simd::f64x2_set(b.x0, b.x2), p23, q23);
-            simd::f64x2_two_prod_precise(simd::f64x2_set(a.x1, a.x2), simd::f64x2_set(b.x1, b.x0), p45, q45);
-            simd::f64x2_two_prod_precise(simd::f64x2_set(a.x0, a.x1), simd::f64x2_set(b.x3, b.x2), p67, q67);
-            simd::f64x2_two_prod_precise(simd::f64x2_set(a.x2, a.x3), simd::f64x2_set(b.x1, b.x0), p89, q89);
-
-            simd::f64x2_store(p01, p0, p1);
-            simd::f64x2_store(q01, q0, q1);
-            simd::f64x2_store(p23, p2, p3);
-            simd::f64x2_store(q23, q2, q3);
-            simd::f64x2_store(p45, p4, p5);
-            simd::f64x2_store(q45, q4, q5);
-            simd::f64x2_store(p67, p6, p7);
-            simd::f64x2_store(q67, q6, q7);
-            simd::f64x2_store(p89, p8, p9);
-            simd::f64x2_store(q89, q8, q9);
-        }
-        else
-        #endif
-        {
-            two_prod_precise(a.x0, b.x0, p0, q0);
-            two_prod_precise(a.x0, b.x1, p1, q1);
-            two_prod_precise(a.x1, b.x0, p2, q2);
-            two_prod_precise(a.x0, b.x2, p3, q3);
-            two_prod_precise(a.x1, b.x1, p4, q4);
-            two_prod_precise(a.x2, b.x0, p5, q5);
-            two_prod_precise(a.x0, b.x3, p6, q6);
-            two_prod_precise(a.x1, b.x2, p7, q7);
-            two_prod_precise(a.x2, b.x1, p8, q8);
-            two_prod_precise(a.x3, b.x0, p9, q9);
-        }
-
-        three_sum(p1, p2, q0);
-        three_sum(p2, q1, q2);
-        three_sum(p3, p4, p5);
-
-        two_sum_precise(p2, p3, s0, t0);
-        two_sum_precise(q1, p4, s1, t1);
-        s2 = q2 + p5;
+        two_sum_precise(products.p[2], products.p[3], s0, t0);
+        two_sum_precise(products.q[1], products.p[4], s1, t1);
+        s2 = products.q[2] + products.p[5];
         two_sum_precise(s1, t0, s1, t0);
         s2 += (t0 + t1);
 
-        two_sum_precise(q0, q3, q0, q3);
-        two_sum_precise(q4, q5, q4, q5);
-        two_sum_precise(p6, p7, p6, p7);
-        two_sum_precise(p8, p9, p8, p9);
+        two_sum_precise(products.q[0], products.q[3], products.q[0], products.q[3]);
+        two_sum_precise(products.q[4], products.q[5], products.q[4], products.q[5]);
+        two_sum_precise(products.p[6], products.p[7], products.p[6], products.p[7]);
+        two_sum_precise(products.p[8], products.p[9], products.p[8], products.p[9]);
 
-        two_sum_precise(q0, q4, t0, t1);  t1 += (q3 + q5);
-        two_sum_precise(p6, p8, r0, r1);  r1 += (p7 + p9);
-        two_sum_precise(t0, r0, q3, q4);  q4 += (t1 + r1);
+        two_sum_precise(products.q[0], products.q[4], t0, t1);
+        t1 += products.q[3] + products.q[5];
+        two_sum_precise(products.p[6], products.p[8], r0, r1);
+        r1 += products.p[7] + products.p[9];
+        two_sum_precise(t0, r0, products.q[3], products.q[4]);
+        products.q[4] += t1 + r1;
 
-        two_sum_precise(q3, s1, t0, t1);
-        t1 += q4;
-        t1 += a.x1 * b.x3 + a.x2 * b.x2 + a.x3 * b.x1 + q6 + q7 + q8 + q9 + s2;
+        two_sum_precise(products.q[3], s1, t0, t1);
+        t1 += products.q[4];
+        t1 += a.x1 * b.x3 + a.x2 * b.x2 + a.x3 * b.x1
+            + products.q[6] + products.q[7] + products.q[8] + products.q[9] + s2;
 
-        return { p0, p1, s0, t0, t1 };
+        return { products.p[0], products.p[1], s0, t0, t1 };
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE f256_raw5 mul_raw5_hardware_inline(
+        const f256_s& a,
+        const f256_s& b) noexcept
+    {
+        product_terms products{};
+        fill_mul_products_fma(a, b, products);
+        return mul_raw5_from_products(a, b, products);
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f256_raw5 mul_raw5_dekker_inline(
+        const f256_s& a,
+        const f256_s& b) noexcept
+    {
+        product_terms products{};
+        fill_mul_products_dekker(a, b, products);
+        return mul_raw5_from_products(a, b, products);
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f256_raw5 mul_raw5_inline(
+        const f256_s& a,
+        const f256_s& b) noexcept
+    {
+        if (&a == &b)
+            return sqr_raw5_inline(a);
+
+        product_terms products{};
+        fill_mul_products_auto(a, b, products);
+        return mul_raw5_from_products(a, b, products);
     }
 
     BL_FORCE_INLINE constexpr f256_raw5 neg_raw5(f256_raw5 v) noexcept
@@ -210,7 +197,7 @@ namespace detail::_f256 // primitives and kernels
 
     BL_FORCE_INLINE constexpr f256_s scale_pow2_inline(const f256_s& a, int exponent, bool negative) noexcept
     {
-        #if defined(BL_FAST_MATH)
+        #if defined(FLTX_FAST_MATH)
         if (!bl::detail::use_constexpr_math())
         {
             const double scale = bl::detail::fp::scalbn(negative ? -1.0 : 1.0, exponent);
@@ -223,7 +210,7 @@ namespace detail::_f256 // primitives and kernels
         const double x2 = bl::detail::fp::scalbn(a.x2, exponent);
         const double x3 = bl::detail::fp::scalbn(a.x3, exponent);
 
-        #if !defined(BL_FAST_MATH)
+        #if !defined(FLTX_FAST_MATH)
         if (!finite_scaled_limb_is_safe(a.x0, x0) ||
             !finite_scaled_limb_is_safe(a.x1, x1) ||
             !finite_scaled_limb_is_safe(a.x2, x2) ||
@@ -242,7 +229,7 @@ namespace detail::_f256 // primitives and kernels
 
     BL_FORCE_INLINE constexpr f256_s scale_pow2_or_checked_inline(const f256_s& a,double scalar,pow2_scale_info scale) noexcept
     {
-        #if defined(BL_FAST_MATH)
+        #if defined(FLTX_FAST_MATH)
         if (!bl::detail::use_constexpr_math())
             return scale_unchecked_inline(a, scalar);
         #endif
@@ -333,6 +320,22 @@ namespace detail::_f256 // primitives and kernels
     BL_FORCE_INLINE constexpr f256_s mul_add_inline(const f256_s& a, const f256_s& b, const f256_s& c) noexcept
     {
         return add_raw5_value_inline(mul_raw5_inline(a, b), c);
+    }
+
+    BL_FORCE_INLINE f256_s mul_add_hardware_inline(
+        const f256_s& a,
+        const f256_s& b,
+        const f256_s& c) noexcept
+    {
+        return add_raw5_value_inline(mul_raw5_hardware_inline(a, b), c);
+    }
+
+    BL_FORCE_INLINE constexpr f256_s mul_add_dekker_inline(
+        const f256_s& a,
+        const f256_s& b,
+        const f256_s& c) noexcept
+    {
+        return add_raw5_value_inline(mul_raw5_dekker_inline(a, b), c);
     }
 
     BL_FORCE_INLINE constexpr f256_s mul_add_double_rhs_inline(const f256_s& a, const f256_s& b, double c) noexcept
@@ -442,7 +445,7 @@ namespace detail::_f256 // primitives and kernels
         double q0{}, q1{}, q2{};
         double s0{}, s1{}, s2{}, s3{}, s4{};
 
-        #if BL_F256_ENABLE_SIMD && (BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD)
+        #if FLTX_F256_ENABLE_SIMD && (FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD)
         if (f256_runtime_simd_enabled())
         {
             simd::f64x2 p01{}, q01{};

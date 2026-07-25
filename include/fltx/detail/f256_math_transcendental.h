@@ -16,7 +16,7 @@
 
 namespace bl {
 
-[[nodiscard]] BL_FORCE_INLINE constexpr double detail::_f256_impl::log_as_double(f256_s a) noexcept;
+[[nodiscard]] BL_MSVC_NOINLINE constexpr double detail::_f256_impl::log_as_double(f256_s a) noexcept;
 
 namespace detail::_f256 // primitives and kernels
 {
@@ -196,16 +196,16 @@ namespace detail::_f256 // primitives and kernels
         return factor;
     }
 
-    BL_FORCE_INLINE constexpr f256_s div_refined_once(const f256_s& a, const f256_s& b) noexcept
+    BL_MSVC_NOINLINE constexpr f256_s div_refined_once(const f256_s& a, const f256_s& b) noexcept
     {
         const f256_s q = div_inline(a, b);
-        return add_inline(q, div_inline(sub_inline(a, mul_inline(b, q)), b));
+        return add_inline(q, div_inline(sub_inline(a, mul_checked_inline(b, q)), b));
     }
 
-    BL_FORCE_INLINE constexpr f256_s div_refined_once(double a, const f256_s& b) noexcept
+    BL_MSVC_NOINLINE constexpr f256_s div_refined_once(double a, const f256_s& b) noexcept
     {
         const f256_s q = div_double_inline(a, b);
-        return add_inline(q, div_inline(sub_double_inline(a, mul_inline(b, q)), b));
+        return add_inline(q, div_inline(sub_double_inline(a, mul_checked_inline(b, q)), b));
     }
 
     BL_FORCE_INLINE constexpr bool exp_overflows(const f256_s& x) noexcept
@@ -224,8 +224,25 @@ namespace detail::_f256 // primitives and kernels
 
     BL_FORCE_INLINE constexpr int exp_reduction_integer(const f256_s& x) noexcept
     {
-        int n = static_cast<int>(nearbyint_ties_even(x.x0));
+        int n = static_cast<int>(round_nearest_even_value(x.x0));
         return n > 709 ? 709 : n;
+    }
+
+    BL_MSVC_NOINLINE constexpr f256_s double_expm1_argument_five_times(f256_s value) noexcept
+    {
+        value = mul_add_inline(value, value, mul_double_inline(value, 2.0));
+        value = mul_add_inline(value, value, mul_double_inline(value, 2.0));
+        value = mul_add_inline(value, value, mul_double_inline(value, 2.0));
+        value = mul_add_inline(value, value, mul_double_inline(value, 2.0));
+        value = mul_add_inline(value, value, mul_double_inline(value, 2.0));
+        return value;
+    }
+
+    BL_MSVC_NOINLINE constexpr f256_s double_expm1_argument_twice(f256_s value) noexcept
+    {
+        value = mul_add_inline(value, value, mul_double_inline(value, 2.0));
+        value = mul_add_inline(value, value, mul_double_inline(value, 2.0));
+        return value;
     }
 
     BL_MSVC_NOINLINE constexpr f256_s exp_general_scaled_with_n(const f256_s& x, bool sub_one, int n) noexcept
@@ -233,12 +250,7 @@ namespace detail::_f256 // primitives and kernels
         f256_s reduced = sub_double_inline(x, static_cast<double>(n));
 
         const f256_s r = mul_double_inline(reduced, 0.03125);
-        f256_s e = expm1_tiny_fast(r);
-        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
-        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
-        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
-        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
-        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
+        f256_s e = double_expm1_argument_five_times(expm1_tiny_fast(r));
 
         if (n == 0)
             return sub_one ? e : add_scalar_precise(e, 1.0);
@@ -264,14 +276,8 @@ namespace detail::_f256 // primitives and kernels
         f256_s reduced = sub_double_inline(x, static_cast<double>(n));
 
         const f256_s r = mul_double_inline(reduced, 0.0078125);
-        f256_s e = expm1_tiny_fast(r);
-        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
-        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
-        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
-        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
-        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
-        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
-        e = mul_add_inline(e, e, mul_double_inline(e, 2.0));
+        f256_s e = double_expm1_argument_five_times(expm1_tiny_fast(r));
+        e = double_expm1_argument_twice(e);
 
         if (n == 0)
             return sub_one ? e : add_scalar_precise(e, 1.0);
@@ -323,7 +329,7 @@ namespace detail::_f256 // primitives and kernels
     BL_MSVC_NOINLINE constexpr f256_s exp_from_reduced_64(const f256_s& x, bool base2) noexcept
     {
         const f256_s t = base2 ? x : mul_inline(x, std::numbers::log2e_v<f256_s>);
-        const int m = static_cast<int>(nearbyint_ties_even(t.x0 * 64.0));
+        const int m = static_cast<int>(round_nearest_even_value(t.x0 * 64.0));
         int n = m / 64;
         int j = m - n * 64;
         if (j < 0)
@@ -393,7 +399,7 @@ namespace detail::_f256 // primitives and kernels
             log2_m = std::log2(m.x0);
         }
 
-        int j = static_cast<int>(nearbyint_ties_even(log2_m * 64.0));
+        int j = static_cast<int>(round_nearest_even_value(log2_m * 64.0));
         if (j < 0)
             j = 0;
         else if (j > 64)
@@ -675,49 +681,76 @@ namespace detail::_f256 // primitives and kernels
         return true;
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s pow_mul_adaptive(const f256_s& a, const f256_s& b) noexcept
+    [[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s pow_mul_adaptive(const f256_s& a, const f256_s& b) noexcept
     {
         return detail::fp::dekker_product_needs_scaling(a.x0, b.x0)
             ? mul_dekker_checked_inline(a, b)
             : mul_checked_inline(a, b);
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s pow_sqr_adaptive(const f256_s& a) noexcept
+    [[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s pow_sqr_adaptive(const f256_s& a) noexcept
     {
         return detail::fp::dekker_product_needs_scaling(a.x0, a.x0)
             ? mul_dekker_checked_inline(a, a)
             : sqr_inline(a);
     }
 
-    template<bool Checked, class ExpUnsigned>
-    [[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s powi_nonnegative_impl(f256_s base, ExpUnsigned exp) noexcept
+    template<class ExpUnsigned>
+    [[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s powi_nonnegative_checked(f256_s base, ExpUnsigned exp) noexcept
     {
         if (exp == ExpUnsigned{ 0 })
             return f256_s{ 1.0 };
         if (exp == ExpUnsigned{ 1 })
             return base;
         if (exp == ExpUnsigned{ 2 })
-            return Checked ? pow_sqr_adaptive(base) : sqr_inline(base);
+            return pow_sqr_adaptive(base);
         if (exp == ExpUnsigned{ 3 })
         {
-            const f256_s squared = Checked ? pow_sqr_adaptive(base) : sqr_inline(base);
-            return Checked ? pow_mul_adaptive(squared, base) : mul_checked_inline(squared, base);
+            const f256_s squared = pow_sqr_adaptive(base);
+            return pow_mul_adaptive(squared, base);
         }
         if (exp == ExpUnsigned{ 4 })
         {
-            const f256_s squared = Checked ? pow_sqr_adaptive(base) : sqr_inline(base);
-            return Checked ? pow_sqr_adaptive(squared) : sqr_inline(squared);
+            return pow_sqr_adaptive(pow_sqr_adaptive(base));
         }
 
         f256_s result{ 1.0 };
         while (exp != ExpUnsigned{ 0 })
         {
             if ((exp & ExpUnsigned{ 1 }) != ExpUnsigned{ 0 })
-                result = Checked ? pow_mul_adaptive(result, base) : mul_checked_inline(result, base);
+                result = pow_mul_adaptive(result, base);
 
             exp >>= 1;
             if (exp != ExpUnsigned{ 0 })
-                base = Checked ? pow_sqr_adaptive(base) : sqr_inline(base);
+                base = pow_sqr_adaptive(base);
+        }
+
+        return result;
+    }
+
+    template<class ExpUnsigned>
+    [[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s powi_nonnegative(f256_s base, ExpUnsigned exp) noexcept
+    {
+        if (exp == ExpUnsigned{ 0 })
+            return f256_s{ 1.0 };
+        if (exp == ExpUnsigned{ 1 })
+            return base;
+        if (exp == ExpUnsigned{ 2 })
+            return sqr_inline(base);
+        if (exp == ExpUnsigned{ 3 })
+            return mul_checked_inline(sqr_inline(base), base);
+        if (exp == ExpUnsigned{ 4 })
+            return sqr_inline(sqr_inline(base));
+
+        f256_s result{ 1.0 };
+        while (exp != ExpUnsigned{ 0 })
+        {
+            if ((exp & ExpUnsigned{ 1 }) != ExpUnsigned{ 0 })
+                result = mul_checked_inline(result, base);
+
+            exp >>= 1;
+            if (exp != ExpUnsigned{ 0 })
+                base = sqr_inline(base);
         }
 
         return result;
@@ -755,8 +788,8 @@ namespace detail::_f256 // primitives and kernels
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s powi_nonnegative_fast(f256_s base, ExpUnsigned exp) noexcept
     {
         if (detail::fp::ipow_loop_needs_checked_dekker(base.x0, exp)) [[unlikely]]
-            return powi_nonnegative_impl<true>(base, exp);
-        return powi_nonnegative_impl<false>(base, exp);
+            return powi_nonnegative_checked(base, exp);
+        return powi_nonnegative(base, exp);
     }
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s reciprocal_pow_result(const f256_s& value) noexcept
@@ -820,7 +853,7 @@ namespace detail::_f256 // primitives and kernels
                 const f256_s reciprocal = detail::_f256::reciprocal_pow_result(x);
                 out = (integer_base != 0)
                     ? detail::_f256::powi_nonnegative_unchecked(reciprocal, magnitude)
-                    : detail::_f256::powi_nonnegative_impl<false>(reciprocal, magnitude);
+                    : detail::_f256::powi_nonnegative(reciprocal, magnitude);
                 return true;
             }
         }
@@ -847,14 +880,14 @@ namespace detail::_f256 // primitives and kernels
             if (y < 0)
             {
                 const f256_s reciprocal = detail::_f256::reciprocal_pow_result(x);
-                return detail::_f256::powi_nonnegative_impl<false>(reciprocal, magnitude);
+                return detail::_f256::powi_nonnegative(reciprocal, magnitude);
             }
         }
 
         return detail::_f256::powi_nonnegative_fast<U>(x, magnitude);
     }
 
-    BL_FORCE_INLINE constexpr f256_s polish_eighth_root(const f256_s& x, const f256_s& y)
+    BL_MSVC_NOINLINE constexpr f256_s polish_eighth_root(const f256_s& x, const f256_s& y)
     {
         if (iszero(y))
             return y;
@@ -868,7 +901,7 @@ namespace detail::_f256 // primitives and kernels
         return add_inline(y, correction);
     }
 
-    BL_FORCE_INLINE constexpr f256_s pow_positive_eighth_fraction(const f256_s& x, int numerator)
+    BL_MSVC_NOINLINE constexpr f256_s pow_positive_eighth_fraction(const f256_s& x, int numerator)
     {
         const f256_s r2 = detail::_f256_impl::sqrt(x);
         if (numerator == 4)
@@ -1036,7 +1069,7 @@ namespace detail::_f256 // primitives and kernels
 
     // sine/cosine functions
 
-    BL_FORCE_INLINE constexpr bool remainder_pi2(const f256_s& x, long long& n_out, f256_s& r_out)
+    BL_MSVC_NOINLINE constexpr bool remainder_pi2(const f256_s& x, long long& n_out, f256_s& r_out)
     {
         if (detail::fp::isinf_or_nan(x.x0))
             return false;
@@ -1048,7 +1081,7 @@ namespace detail::_f256 // primitives and kernels
             return true;
         }
 
-        const f256_s q = detail::_f256_impl::nearbyint(mul_inline(x, invpi2));
+        const f256_s q = detail::_f256_impl::round_nearest_even(mul_inline(x, invpi2));
         const double qd = q.x0;
 
         if (detail::fp::isinf_or_nan(qd) || detail::fp::absd(qd) >= 0x1p52 ||
@@ -1081,7 +1114,7 @@ namespace detail::_f256 // primitives and kernels
         return true;
     }
 
-    #if BL_F256_ENABLE_SIMD
+    #if FLTX_F256_ENABLE_SIMD
     BL_FORCE_INLINE constexpr f256_s mul_from_two_prod_terms(
         double p0, double p1, double p2, double p3, double p4, double p5,
         double p6, double p7, double p8, double p9,
@@ -1252,7 +1285,7 @@ namespace detail::_f256 // primitives and kernels
 
     BL_MSVC_NOINLINE constexpr void sincos_kernel_pi64_reduced(const f256_s& r, f256_s& s_out, f256_s& c_out)
     {
-        int k = static_cast<int>(nearbyint_ties_even(r.x0 * 20.371832715762604));
+        int k = static_cast<int>(round_nearest_even_value(r.x0 * 20.371832715762604));
         if (k < -16)
             k = -16;
         else if (k > 16)
@@ -1359,7 +1392,7 @@ namespace detail::_f256 // primitives and kernels
     {
         using namespace detail::_f256;
 
-        int k = static_cast<int>(nearbyint_ties_even(z.x0 * 16.0));
+        int k = static_cast<int>(round_nearest_even_value(z.x0 * 16.0));
         if (k <= 0)
             return atan_series_reduced(z);
         if (k > 16)
@@ -1495,6 +1528,31 @@ namespace detail::_f256 // primitives and kernels
         return erf_cheb_eval(x, f256_erfc_cheb_3_4, 7.0);
     }
 
+    [[nodiscard]] BL_MSVC_NOINLINE constexpr bool erfc_continued_fraction_step(
+        f256_s& b,
+        f256_s& c,
+        f256_s& d,
+        f256_s& h,
+        double an,
+        const f256_s& tiny,
+        const f256_s& convergence) noexcept
+    {
+        b = add_double_inline(b, 2.0);
+
+        d = add_mul_double_inline(b, d, an);
+        if (mag(d) < tiny)
+            d = tiny;
+
+        c = add_inline(b, div_double_inline(an, c));
+        if (mag(c) < tiny)
+            c = tiny;
+
+        d = div_double_inline(1.0, d);
+        const f256_s delta = mul_inline(d, c);
+        h = mul_inline(h, delta);
+        return mag(sub_double_inline(delta, 1.0)) <= convergence;
+    }
+
     [[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s erfc_positive_cf(const f256_s& x)
     {
         const f256_s z = sqr_inline(x);
@@ -1510,21 +1568,7 @@ namespace detail::_f256 // primitives and kernels
         double an_step = -2.5;
         for (int i = 1; i <= 160; ++i)
         {
-            b = add_double_inline(b, 2.0);
-
-            d = add_mul_double_inline(b, d, an);
-            if (mag(d) < tiny)
-                d = tiny;
-
-            c = add_inline(b, div_double_inline(an, c));
-            if (mag(c) < tiny)
-                c = tiny;
-
-            d = div_double_inline(1.0, d);
-            const f256_s delta = mul_inline(d, c);
-            h = mul_inline(h, delta);
-
-            if (mag(sub_double_inline(delta, 1.0)) <= convergence)
+            if (erfc_continued_fraction_step(b, c, d, h, an, tiny, convergence))
                 break;
 
             an += an_step;
@@ -1661,7 +1705,7 @@ namespace detail::_f256 // primitives and kernels
 
     BL_MSVC_NOINLINE constexpr f256_s sinpi_reduced(const f256_s& x) noexcept
     {
-        const f256_s n = detail::_f256_impl::nearbyint(x);
+        const f256_s n = detail::_f256_impl::round_nearest_even(x);
         const f256_s r = sub_inline(x, n);
         f256_s out = detail::_f256_impl::sin(mul_inline(std::numbers::pi_v<f256_s>, r));
         if (is_odd_integer(n))
@@ -1707,7 +1751,7 @@ namespace detail::_f256
         );
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s cbrt_tail_step(const f256_s& ax, const f256_s& current) noexcept
+    [[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s cbrt_tail_step(const f256_s& ax, const f256_s& current) noexcept
     {
         const double inv_derivative = 1.0 / (3.0 * current.x0 * current.x0);
         const f256_s current_squared = sqr_inline(current);
@@ -1718,18 +1762,18 @@ namespace detail::_f256
 } // namespace detail::_f256
 
 // exponential functions
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::exp(const f256_s& x)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::exp(const f256_s& x)
 {
     return F256_CANONICALIZE_MATH_RESULT(_exp(x));
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::exp2(const f256_s& x)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::exp2(const f256_s& x)
 {
     return F256_CANONICALIZE_MATH_RESULT(_exp2(x));
 }
 
 // logarithm functions
-[[nodiscard]] BL_FORCE_INLINE constexpr double detail::_f256_impl::log_as_double(f256_s a) noexcept
+[[nodiscard]] BL_MSVC_NOINLINE constexpr double detail::_f256_impl::log_as_double(f256_s a) noexcept
 {
     const double hi = a.x0;
     if (hi <= 0.0)
@@ -1744,12 +1788,12 @@ namespace detail::_f256
     return detail::fp::log(hi) + detail::fp::log1p(lo / hi);
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::log(const f256_s& a)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::log(const f256_s& a)
 {
     return F256_CANONICALIZE_MATH_RESULT(_log(a));
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::log2(const f256_s& a)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::log2(const f256_s& a)
 {
     if (isnan(a))
         return a;
@@ -1767,7 +1811,7 @@ namespace detail::_f256
     return F256_CANONICALIZE_MATH_RESULT(mul_inline(_log(a), std::numbers::log2e_v<f256_s>));
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::log10(const f256_s& a)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::log10(const f256_s& a)
 {
     if (isnan(a))
         return a;
@@ -1795,12 +1839,12 @@ namespace detail::_f256
 }
 
 // expm1/log1p functions
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::expm1(const f256_s& x)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::expm1(const f256_s& x)
 {
     return F256_CANONICALIZE_MATH_RESULT(_expm1(x));
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::log1p(const f256_s& x)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::log1p(const f256_s& x)
 {
     if (isnan(x))
         return x;
@@ -1839,7 +1883,7 @@ namespace detail::_f256
 
 
 // roots
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::cbrt(const f256_s& x)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::cbrt(const f256_s& x)
 {
     if (detail::fp::iszero_or_inf_or_nan(x.x0))
         return x;
@@ -1968,17 +2012,17 @@ namespace detail::_f256
 }
 
 // inverse trig functions
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::atan(const f256_s& x)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::atan(const f256_s& x)
 {
     return F256_CANONICALIZE_MATH_RESULT(_atan(x));
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::asin(const f256_s& x)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::asin(const f256_s& x)
 {
     return F256_CANONICALIZE_MATH_RESULT(_asin(x));
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::acos(const f256_s& x)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::acos(const f256_s& x)
 {
     if (isnan(x))
         return x;
@@ -1995,7 +2039,7 @@ namespace detail::_f256
 }
 
 // sine/cosine functions
-[[nodiscard]] BL_FORCE_INLINE constexpr bool detail::_f256_impl::sincos(const f256_s& x, f256_s& s_out, f256_s& c_out)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr bool detail::_f256_impl::sincos(const f256_s& x, f256_s& s_out, f256_s& c_out)
 {
     if (iszero(x))
     {
@@ -2010,7 +2054,7 @@ namespace detail::_f256
     return ret;
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::sin(const f256_s& x)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::sin(const f256_s& x)
 {
     if (iszero(x))
         return x;
@@ -2035,7 +2079,7 @@ namespace detail::_f256
     }
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::cos(const f256_s& x)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::cos(const f256_s& x)
 {
     const double ax = detail::_f256::fabs(x.x0);
     if (detail::fp::isinf_or_nan(ax))
@@ -2059,7 +2103,7 @@ namespace detail::_f256
 }
 
 // tangent and atan2
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::tan(const f256_s& x)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::tan(const f256_s& x)
 {
     if (iszero(x))
         return x;
@@ -2071,7 +2115,7 @@ namespace detail::_f256
     return f256_s{ std::numeric_limits<double>::quiet_NaN(), 0.0, 0.0, 0.0 };
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::atan2(const f256_s& y, const f256_s& x)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::atan2(const f256_s& y, const f256_s& x)
 {
     if (detail::fp::isnan(x.x0) || detail::fp::isnan(y.x0))
         return std::numeric_limits<f256_s>::quiet_NaN();
@@ -2141,7 +2185,7 @@ namespace detail::_f256
 }
 
 // sinh/cosh/tanh
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::sinh(const f256_s& x)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::sinh(const f256_s& x)
 {
     if (detail::fp::iszero_or_inf_or_nan(x.x0))
         return x;
@@ -2169,7 +2213,7 @@ namespace detail::_f256
     return F256_CANONICALIZE_MATH_RESULT(out);
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::cosh(const f256_s& x)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::cosh(const f256_s& x)
 {
     if (isnan(x))
         return x;
@@ -2188,7 +2232,7 @@ namespace detail::_f256
         mul_double_inline(add_inline(ex, inv_ex), 0.5));
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::tanh(const f256_s& x)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::tanh(const f256_s& x)
 {
     using namespace detail::_f256;
     if (detail::fp::iszero_or_nan(x.x0))
@@ -2275,7 +2319,7 @@ namespace detail::_f256
     return F256_CANONICALIZE_MATH_RESULT(out);
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::atanh(const f256_s& x)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::atanh(const f256_s& x)
 {
     if (detail::fp::iszero_or_nan(x.x0))
         return x;
@@ -2307,7 +2351,7 @@ namespace detail::_f256
 }
 
 // erf/erfc functions
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::erf(const f256_s& x)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::erf(const f256_s& x)
 {
     if (isnan(x))
         return x;
@@ -2380,7 +2424,7 @@ namespace detail::_f256
 }
 
 // gamma functions
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::lgamma(const f256_s& x)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::lgamma(const f256_s& x)
 {
     if (isnan(x))
         return x;
@@ -2405,7 +2449,7 @@ namespace detail::_f256
     return F256_CANONICALIZE_MATH_RESULT(out);
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f256_s detail::_f256_impl::tgamma(const f256_s& x)
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256_s detail::_f256_impl::tgamma(const f256_s& x)
 {
     if (isnan(x))
         return x;

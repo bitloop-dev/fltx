@@ -33,8 +33,7 @@ namespace detail::_f128
     inline constexpr int pow10_f128_min_exponent = detail::pow_tables::pow10_min_exponent;
     inline constexpr int pow10_f128_max_exponent = detail::pow_tables::pow10_max_exponent;
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s pow_table_entry_to_f128(
-        const detail::pow_table_entry& row) noexcept
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s pow_table_entry_to_f128(const detail::pow_table_entry& row) noexcept
     {
         return f128_s{ row.x0, row.x1 };
     }
@@ -73,39 +72,111 @@ namespace detail::_f128
     }
     BL_POP_PRECISE;
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s nearbyint_generic(const f128_s& a)
+    struct fma_products
     {
-        if (detail::fp::iszero_or_inf_or_nan(a.hi))
-            return a;
+        double p0, q0;
+        double p1, q1;
+        double p2, q2;
+    };
 
-        if (detail::_f128::absd(a.hi) < 0x1p52)
+    [[nodiscard]] BL_FORCE_INLINE fma_products fma_products_hardware(
+        const f128_s& x,
+        const f128_s& y) noexcept
+    {
+        fma_products products{};
+        detail::fp::two_prod_fma(x.hi, y.hi, products.p0, products.q0);
+        detail::fp::two_prod_fma(x.hi, y.lo, products.p1, products.q1);
+        detail::fp::two_prod_fma(x.lo, y.hi, products.p2, products.q2);
+        return products;
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr fma_products fma_products_dekker(
+        const f128_s& x,
+        const f128_s& y) noexcept
+    {
+        fma_products products{};
+        detail::fp::two_prod_precise_dekker(x.hi, y.hi, products.p0, products.q0);
+        detail::fp::two_prod_precise_dekker(x.hi, y.lo, products.p1, products.q1);
+        detail::fp::two_prod_precise_dekker(x.lo, y.hi, products.p2, products.q2);
+        return products;
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr fma_products fma_products_auto(
+        const f128_s& x,
+        const f128_s& y) noexcept
+    {
+        fma_products products{};
+        detail::fp::two_prod_precise(x.hi, y.hi, products.p0, products.q0);
+        detail::fp::two_prod_precise(x.hi, y.lo, products.p1, products.q1);
+        detail::fp::two_prod_precise(x.lo, y.hi, products.p2, products.q2);
+        return products;
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s fma_finite_from_products(
+        const f128_s& x,
+        const f128_s& y,
+        const f128_s& z,
+        fma_products products) noexcept
+    {
+        const double p0 = products.p0;
+        const double q0 = products.q0;
+        const double p1 = products.p1;
+        const double q1 = products.q1;
+        const double p2 = products.p2;
+        const double q2 = products.q2;
+
+        double p12{}, e12{};
+        double p012{}, e012{};
+        two_sum_precise(p1, p2, p12, e12);
+        two_sum_precise(q0, p12, p012, e012);
+
+        double hi{}, hi_err{};
+        double mid{}, mid_err{};
+        double lo{}, lo_err{};
+        two_sum_precise(p0, z.hi, hi, hi_err);
+        two_sum_precise(p012, z.lo, mid, mid_err);
+        two_sum_precise(hi_err, mid, lo, lo_err);
+
+        const double tail = lo_err + mid_err + e12 + e012 + q1 + q2 + (x.lo * y.lo);
+        const f128_s rough = renorm(hi, lo + tail);
+
+        const double product_magnitude = detail::fp::absd(p0);
+        if (detail::fp::isfinite(p0) && product_magnitude != 0.0
+            && detail::fp::absd(rough.hi) <= product_magnitude * 0x1p-10) [[unlikely]]
         {
-            const auto base = static_cast<long long>(a.hi);
-            const double base_d = static_cast<double>(base);
-            const double frac_hi = a.hi - base_d;
-            const double frac_lo = a.lo;
-            const double abs_frac_hi = detail::_f128::absd(frac_hi);
-            const double abs_frac_lo = detail::_f128::absd(frac_lo);
-
-            long long rounded = base;
-            if (abs_frac_hi > 0.5 + abs_frac_lo)
-            {
-                rounded += (frac_hi < 0.0 || (frac_hi == 0.0 && detail::_f128::signbit(frac_lo))) ? -1 : 1;
-            }
-            else if (abs_frac_hi >= 0.5 - abs_frac_lo)
-            {
-                const f128_s frac = sub_double_inline(a, base_d);
-                const f128_s abs_frac = detail::_f128::mag(frac);
-                if (abs_frac > f128_s{ 0.5 } || (abs_frac == f128_s{ 0.5 } && (base & 1ll) != 0))
-                    rounded += signbit(frac) ? -1 : 1;
-            }
-
-            f128_s out{ static_cast<double>(rounded), 0.0 };
-            if (iszero(out))
-                return f128_s{ signbit(a) ? -0.0 : 0.0, 0.0 };
-            return out;
+            return F128_CANONICALIZE_MATH_RESULT(
+                fma_residual_pairwise_inline(x, y, z, p0, q0, p1, q1, p2, q2, rough.hi));
         }
 
+        return F128_CANONICALIZE_MATH_RESULT(rough);
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE f128_s fma_finite_hardware(
+        const f128_s& x,
+        const f128_s& y,
+        const f128_s& z) noexcept
+    {
+        return fma_finite_from_products(x, y, z, fma_products_hardware(x, y));
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s fma_finite_dekker(
+        const f128_s& x,
+        const f128_s& y,
+        const f128_s& z) noexcept
+    {
+        return fma_finite_from_products(x, y, z, fma_products_dekker(x, y));
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s fma_finite_auto(
+        const f128_s& x,
+        const f128_s& y,
+        const f128_s& z) noexcept
+    {
+        return fma_finite_from_products(x, y, z, fma_products_auto(x, y));
+    }
+
+    [[nodiscard]] BL_NO_INLINE constexpr f128_s round_nearest_even_large(const f128_s& a)
+    {
         f128_s t = detail::_f128_impl::floor(a);
         f128_s frac = sub_inline(a, t);
 
@@ -128,11 +199,79 @@ namespace detail::_f128
 
         return t;
     }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s round_nearest_even(const f128_s& a)
+    {
+        if (detail::fp::iszero_or_inf_or_nan(a.hi))
+            return a;
+
+        if (detail::_f128::absd(a.hi) < 0x1p52)
+        {
+            auto base = static_cast<long long>(a.hi);
+            if (static_cast<double>(base) == a.hi)
+            {
+                if (a.hi < 0.0 && a.lo > 0.0)
+                    ++base;
+                else if (a.hi > 0.0 && a.lo < 0.0)
+                    --base;
+            }
+
+            const double base_d = static_cast<double>(base);
+            const double frac_hi = a.hi - base_d;
+            const double abs_frac_lo = detail::_f128::absd(a.lo);
+            long long rounded = base;
+            // Canonical double-double ties can be resolved from the low word
+            // directly. Keep the exact expansion fallback for noncanonical input.
+            if (frac_hi == 0.5 && abs_frac_lo <= 0.5)
+            {
+                if (a.lo > 0.0 || (a.lo == 0.0 && (base & 1ll) != 0))
+                    ++rounded;
+            }
+            else if (frac_hi == -0.5 && abs_frac_lo <= 0.5)
+            {
+                if (a.lo < 0.0 || (a.lo == 0.0 && (base & 1ll) != 0))
+                    --rounded;
+            }
+            else
+            {
+                const double abs_frac_hi = detail::_f128::absd(frac_hi);
+                if (abs_frac_hi > 0.5 + abs_frac_lo)
+                {
+                    rounded += (frac_hi < 0.0 ||
+                                (frac_hi == 0.0 && detail::_f128::signbit(a.lo))) ? -1 : 1;
+                }
+                else if (abs_frac_hi >= 0.5 - abs_frac_lo)
+                {
+                    const f128_s frac = sub_double_inline(a, base_d);
+                    const f128_s abs_frac = detail::_f128::mag(frac);
+                    if (abs_frac > f128_s{ 0.5 } ||
+                        (abs_frac == f128_s{ 0.5 } && (base & 1ll) != 0))
+                    {
+                        rounded += signbit(frac) ? -1 : 1;
+                    }
+                }
+            }
+
+            f128_s out{ static_cast<double>(rounded), 0.0 };
+            if (iszero(out))
+                return f128_s{ signbit(a) ? -0.0 : 0.0, 0.0 };
+            return out;
+        }
+
+        return round_nearest_even_large(a);
+    }
 }
 
 namespace detail::_f128_impl
 {
-    [[nodiscard]] BL_FORCE_INLINE f128_s round_runtime(const f128_s& a) noexcept
+    [[nodiscard]] inline BL_NO_INLINE f128_s round_nearest_away_from_zero_integral_head(
+        const f128_s& a) noexcept
+    {
+        return detail::_f128::round_nearest_away_from_zero(a);
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE f128_s round_nearest_away_from_zero_runtime(
+        const f128_s& a) noexcept
     {
         #if defined(__EMSCRIPTEN__)
         if (detail::fp::isinf_or_nan(a.hi)) [[unlikely]]
@@ -143,6 +282,9 @@ namespace detail::_f128_impl
             double rounded = static_cast<double>(static_cast<long long>(detail::fp::absd(a.hi) + 0.5));
             if (detail::fp::signbit(a.hi))
                 rounded = -rounded;
+
+            if (rounded == a.hi && a.lo != 0.0)
+                return round_nearest_away_from_zero_integral_head(a);
 
             const double delta = rounded - a.hi;
             if ((delta == 0.5 && a.lo < 0.0) || (delta == -0.5 && a.lo > 0.0))
@@ -157,17 +299,8 @@ namespace detail::_f128_impl
         double rounded = std::round(a.hi);
         if (rounded == a.hi)
         {
-            if (a.lo != 0.0 && detail::_f128::absd(a.hi) >= detail::fp::double_integer_threshold)
-                return detail::_f128::round_half_away_zero(a);
-
-            const double rounded_lo = std::round(a.lo);
-            if (rounded_lo != 0.0)
-            {
-                double hi{};
-                double lo{};
-                detail::fp::quick_two_sum_precise(rounded, rounded_lo, hi, lo);
-                return f128_s{ hi, lo };
-            }
+            if (a.lo != 0.0)
+                return round_nearest_away_from_zero_integral_head(a);
             return f128_s{ rounded, 0.0 };
         }
 
@@ -180,48 +313,6 @@ namespace detail::_f128_impl
         return f128_s{ rounded, 0.0 };
     }
 
-    [[nodiscard]] BL_FORCE_INLINE f128_s nearbyint_runtime(const f128_s& a) noexcept
-    {
-        if (detail::fp::iszero_or_inf_or_nan(a.hi)) [[unlikely]]
-            return a;
-
-        if (detail::_f128::absd(a.hi) < detail::fp::double_integer_threshold)
-        {
-            #if BL_FLTX_HAS_SSE2
-            double rounded = static_cast<double>(_mm_cvtsd_si64(_mm_set_sd(a.hi)));
-            #elif defined(__EMSCRIPTEN__)
-            double rounded = std::nearbyint(a.hi);
-            #else
-            double rounded = std::round(a.hi);
-            #endif
-
-            const double delta = rounded - a.hi;
-
-            #if !BL_FLTX_HAS_SSE2 && !defined(__EMSCRIPTEN__)
-            if (delta == 0.5)
-            {
-                if (a.lo == 0.0 && detail::fp::double_integer_is_odd(rounded))
-                    rounded -= 1.0;
-            }
-            else if (delta == -0.5)
-            {
-                if (a.lo == 0.0 && detail::fp::double_integer_is_odd(rounded))
-                    rounded += 1.0;
-            }
-            #endif
-
-            if (delta == 0.5 && a.lo < 0.0)
-                rounded -= 1.0;
-            else if (delta == -0.5 && a.lo > 0.0)
-                rounded += 1.0;
-
-            if (rounded == 0.0)
-                return f128_s{ bl::signbit(a) ? -0.0 : 0.0, 0.0 };
-            return f128_s{ rounded, 0.0 };
-        }
-
-        return detail::_f128_runtime::nearbyint_slow(a);
-    }
 }
 
 // roots
@@ -380,11 +471,12 @@ namespace detail::_f128_impl
     return (a.hi < 0.0) ? detail::_f128_impl::ceil(a) : detail::_f128_impl::floor(a);
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::round(const f128_s& a)
+[[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::round_nearest_away_from_zero(
+    const f128_s& a)
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        round_half_away_zero(a),
-        detail::_f128_impl::round_runtime(a)
+        detail::_f128::round_nearest_away_from_zero(a),
+        detail::_f128_impl::round_nearest_away_from_zero_runtime(a)
     );
 }
 
@@ -445,48 +537,29 @@ namespace detail::_f128_impl
         detail::pow_tables::pow10_table[k - detail::_f128::pow10_f128_min_exponent]);
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::nearbyint(const f128_s& a)
+[[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::round_nearest_even(const f128_s& a)
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f128::nearbyint_generic(a),
-        detail::_f128_impl::nearbyint_runtime(a)
-    );
+    return detail::_f128::round_nearest_even(a);
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr long detail::_f128_impl::lround(const f128_s& x)
+[[nodiscard]] BL_FORCE_INLINE constexpr long detail::_f128_impl::lround_nearest_away_from_zero(
+    const f128_s& x)
 {
     long out = 0;
     if (detail::_f128::try_round_to_signed_integer(x, false, out))
         return out;
 
-    return to_signed_integer_or_zero<long>(round_half_away_zero(x));
+    return to_signed_integer_or_zero<long>(detail::_f128::round_nearest_away_from_zero(x));
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr long long detail::_f128_impl::llround(const f128_s& x)
+[[nodiscard]] BL_FORCE_INLINE constexpr long long detail::_f128_impl::llround_nearest_away_from_zero(
+    const f128_s& x)
 {
     long long out = 0;
     if (detail::_f128::try_round_to_signed_integer(x, false, out))
         return out;
 
-    return to_signed_integer_or_zero<long long>(round_half_away_zero(x));
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr long detail::_f128_impl::lrint(const f128_s& x)
-{
-    long out = 0;
-    if (detail::_f128::try_round_to_signed_integer(x, true, out))
-        return out;
-
-    return to_signed_integer_or_zero<long>(detail::_f128_impl::nearbyint(x));
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr long long detail::_f128_impl::llrint(const f128_s& x)
-{
-    long long out = 0;
-    if (detail::_f128::try_round_to_signed_integer(x, true, out))
-        return out;
-
-    return to_signed_integer_or_zero<long long>(detail::_f128_impl::nearbyint(x));
+    return to_signed_integer_or_zero<long long>(detail::_f128::round_nearest_away_from_zero(x));
 }
 
 // arithmetic and comparisons
@@ -495,37 +568,19 @@ namespace detail::_f128_impl
     if (detail::fp::isinf_or_nan(x.hi) || detail::fp::isinf_or_nan(y.hi) || detail::fp::isinf_or_nan(z.hi)) [[unlikely]]
         return f128_s{ std::fma(x.hi, y.hi, z.hi), 0.0 };
 
-    double p0{}, q0{};
-    double p1{}, q1{};
-    double p2{}, q2{};
-    two_prod_precise(x.hi, y.hi, p0, q0);
-    two_prod_precise(x.hi, y.lo, p1, q1);
-    two_prod_precise(x.lo, y.hi, p2, q2);
-
-    double p12{}, e12{};
-    double p012{}, e012{};
-    two_sum_precise(p1, p2, p12, e12);
-    two_sum_precise(q0, p12, p012, e012);
-
-    double hi{}, hi_err{};
-    double mid{}, mid_err{};
-    double lo{}, lo_err{};
-    two_sum_precise(p0, z.hi, hi, hi_err);
-    two_sum_precise(p012, z.lo, mid, mid_err);
-    two_sum_precise(hi_err, mid, lo, lo_err);
-
-    const double tail = lo_err + mid_err + e12 + e012 + q1 + q2 + (x.lo * y.lo);
-    const f128_s rough = renorm(hi, lo + tail);
-
-    const double product_magnitude = detail::fp::absd(p0);
-    if (detail::fp::isfinite(p0) && product_magnitude != 0.0
-        && detail::fp::absd(rough.hi) <= product_magnitude * 0x1p-10) [[unlikely]]
+    #if FLTX_DETAIL_MSVC_GUARDED_X86_FMA
+    if (!bl::detail::is_constant_evaluated() && !bl::detail::use_constexpr_parity())
     {
-        return F128_CANONICALIZE_MATH_RESULT(
-            detail::_f128::fma_residual_pairwise_inline(x, y, z, p0, q0, p1, q1, p2, q2, rough.hi));
+        const bool use_hardware_fma = detail::fp::runtime_hardware_fma_enabled();
+        return use_hardware_fma
+            ? detail::_f128::fma_finite_hardware(x, y, z)
+            : detail::_f128::fma_finite_dekker(x, y, z);
     }
 
-    return F128_CANONICALIZE_MATH_RESULT(rough);
+    return detail::_f128::fma_finite_dekker(x, y, z);
+    #else
+    return detail::_f128::fma_finite_auto(x, y, z);
+    #endif
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::fmin(const f128_s& a, const f128_s& b)

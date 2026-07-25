@@ -1,14 +1,8 @@
 cmake_minimum_required(VERSION 3.21)
 project(fltx_binary_size LANGUAGES CXX)
 
-if(NOT DEFINED FLTX_OPTIONS_INCLUDED)
-    include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/fltxOptions.cmake")
-endif()
-if(NOT COMMAND fltx_apply_fast_math_options)
-    include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/fltxFastMath.cmake")
-endif()
-if(NOT COMMAND fltx_apply_simd_options)
-    include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/fltxSimd.cmake")
+if(NOT DEFINED FLTX_BUILD_POLICY_INCLUDED)
+    include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/fltxBuildPolicy.cmake")
 endif()
 if(NOT COMMAND fltx_enable_msvc_parallel_compile)
     include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/fltxMsvcParallel.cmake")
@@ -49,8 +43,8 @@ function(fltx_binary_size_prepare_target _TARGET _FAMILY _GROUP _LABEL)
     target_include_directories(${_TARGET} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/../unit_build_tests/${_FAMILY}_math"
     )
-    fltx_apply_fast_math_options(${_TARGET})
-    fltx_apply_simd_options(${_TARGET})
+    fltx_configure_public_header_contract(${_TARGET} PRIVATE)
+    fltx_configure_consumer_fast_math(${_TARGET} MODE AUTO)
     fltx_binary_size_apply_size_link_options(${_TARGET})
     fltx_enable_msvc_parallel_compile(${_TARGET})
 

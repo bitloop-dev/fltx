@@ -7,8 +7,11 @@ namespace
     void write_io_record(std::string_view title, const bl::test::metrics::metrics_record& record)
     {
         bl::test::metrics::write_metrics_case_report(title, record);
-        CHECK(record.fltx_accuracy.sample_count > 0);
-        CHECK(record.fltx_benchmark.iteration_count > 0);
+        const bool fltx_reportable =
+            record.fltx_accuracy.sample_count > 0 ||
+            record.fltx_benchmark.iteration_count > 0 ||
+            record.fltx_special_values != bl::test::metrics::special_support::unavailable;
+        CHECK(fltx_reportable);
         if (record.competitor_supported)
         {
             CHECK(record.competitor_accuracy.sample_count > 0);

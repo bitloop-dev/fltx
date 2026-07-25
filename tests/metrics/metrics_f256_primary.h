@@ -37,9 +37,7 @@ namespace bl::test::metrics::f256_primary
     using perfect_ref = references::perfect_ref;
     using competitor_ref = references::competitor_ref;
     using extra_competitor_ref = references::extra_competitor_ref;
-    using bl::test::metrics::call_llrint_reference;
     using bl::test::metrics::call_llround_reference;
-    using bl::test::metrics::call_lrint_reference;
     using bl::test::metrics::call_lround_reference;
     using bl::test::metrics::call_unary_reference;
 
@@ -89,13 +87,13 @@ namespace bl::test::metrics::f256_primary
     [[nodiscard]] inline bool is_short_rounding_benchmark(std::string_view operation) noexcept
     {
         return operation == "floor" || operation == "ceil" || operation == "trunc" ||
-               operation == "round" || operation == "nearbyint" || operation == "rint";
+               operation == "round" || operation.starts_with("round_");
     }
 
     [[nodiscard]] inline bool is_integer_rounding_benchmark(std::string_view operation) noexcept
     {
         return operation == "lround" || operation == "llround" ||
-               operation == "lrint" || operation == "llrint";
+               operation.starts_with("lround_") || operation.starts_with("llround_");
     }
 
     [[nodiscard]] inline bool is_short_utility_benchmark(std::string_view operation) noexcept
@@ -824,26 +822,19 @@ namespace bl::test::metrics::f256_primary
     template<class T>
     [[nodiscard]] BL_FORCE_INLINE T call_round(const T& x) { using boost::multiprecision::round; using std::round; return round(x); }
 
-    [[nodiscard]] BL_FORCE_INLINE extra_competitor_ref call_nearbyint(const extra_competitor_ref& x)
+    [[nodiscard]] BL_FORCE_INLINE fltx_type call_roundeven(const fltx_type& x) { return bl::roundeven(x); }
+    [[nodiscard]] BL_FORCE_INLINE extra_competitor_ref call_roundeven(const extra_competitor_ref& x)
     {
-        return qdpp::nearbyint(x);
+        return qdpp::roundeven(x);
     }
 
     template<class T>
-    [[nodiscard]] BL_FORCE_INLINE T call_nearbyint(const T& x)
+    [[nodiscard]] BL_FORCE_INLINE T call_roundeven(const T& x)
     {
         using boost::multiprecision::nearbyint;
         using std::nearbyint;
         return nearbyint(x);
     }
-
-    [[nodiscard]] BL_FORCE_INLINE extra_competitor_ref call_rint(const extra_competitor_ref& x)
-    {
-        return qdpp::rint(x);
-    }
-
-    template<class T>
-    [[nodiscard]] BL_FORCE_INLINE T call_rint(const T& x) { using boost::multiprecision::rint; using std::rint; return rint(x); }
 
     template<class T>
     [[nodiscard]] BL_FORCE_INLINE long call_lround(const T& x)
@@ -859,22 +850,6 @@ namespace bl::test::metrics::f256_primary
         using boost::multiprecision::llround;
         using std::llround;
         return llround(x);
-    }
-
-    template<class T>
-    [[nodiscard]] BL_FORCE_INLINE long call_lrint(const T& x)
-    {
-        using boost::multiprecision::lrint;
-        using std::lrint;
-        return lrint(x);
-    }
-
-    template<class T>
-    [[nodiscard]] BL_FORCE_INLINE long long call_llrint(const T& x)
-    {
-        using boost::multiprecision::llrint;
-        using std::llrint;
-        return llrint(x);
     }
 
     template<class T>
@@ -2629,7 +2604,7 @@ namespace bl::test::metrics::f256_primary
         if (operation == "tgamma")
             return domain_value_kind::tgamma_argument;
         if (operation == "lround" || operation == "llround" ||
-            operation == "lrint" || operation == "llrint")
+            operation.starts_with("lround_") || operation.starts_with("llround_"))
             return domain_value_kind::integer_rounding_argument;
         if (operation == "ilogb")
             return domain_value_kind::nonzero_wide_real;

@@ -1,5 +1,5 @@
-if(NOT DEFINED FLTX_OPTIONS_INCLUDED)
-    include("${CMAKE_CURRENT_LIST_DIR}/fltxOptions.cmake")
+if(NOT DEFINED FLTX_BUILD_POLICY_INCLUDED)
+    include("${CMAKE_CURRENT_LIST_DIR}/fltxBuildPolicy.cmake")
 endif()
 
 function(fltx_msvc_target_link_options_if_supported _TARGET)

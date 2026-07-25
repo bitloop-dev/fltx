@@ -15,7 +15,6 @@
 #include "fltx/f64_classification.h"
 #include "fltx/detail/common_decimal.h"
 #include "fltx/detail/native_float_decimal.h"
-#include "fltx/round_options.h"
 
 
 namespace bl {
@@ -30,9 +29,9 @@ namespace detail::_f64_impl
     using detail::fp::floor;
     using detail::fp::ceil;
     using detail::fp::trunc;
-    using detail::fp::nearbyint_ties_even;
-    using detail::fp::nearbyint;
-    using detail::fp::round_half_away_zero;
+    using detail::fp::round_nearest_even;
+    using detail::fp::round_nearest_even_value;
+    using detail::fp::round_nearest_away_from_zero;
     using detail::fp::nextafter;
     using detail::fp::copysign;
     using detail::fp::to_signed_integer_or_zero;
@@ -612,38 +611,32 @@ namespace detail::_f64_impl
 [[nodiscard]] BL_FORCE_INLINE constexpr double round(double x) noexcept
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::round_half_away_zero(x),
+        detail::_f64_impl::round_nearest_away_from_zero(x),
         std::round(x)
     );
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr double round_to(double x, int precision, round_format format) noexcept
+[[nodiscard]] BL_FORCE_INLINE constexpr double roundeven(double x) noexcept
 {
-    return format == round_format::decimals
-        ? detail::_f64_impl::round_to_decimals(x, precision)
-        : detail::_f64_impl::round_to_significant_figures(x, precision);
+    return detail::_f64_impl::round_nearest_even(x);
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr double nearbyint(double x) noexcept
+[[nodiscard]] BL_FORCE_INLINE constexpr double round_to_decimals(double x, int precision) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::nearbyint(x),
-        std::nearbyint(x)
-    );
+    return detail::_f64_impl::round_to_decimals(x, precision);
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr double rint(double x) noexcept
+[[nodiscard]] BL_FORCE_INLINE constexpr double round_to_significant_figures(
+    double x,
+    int precision) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::nearbyint(x),
-        std::rint(x)
-    );
+    return detail::_f64_impl::round_to_significant_figures(x, precision);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr long lround(double x) noexcept
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::to_signed_integer_or_zero<long>(detail::_f64_impl::round_half_away_zero(x)),
+        detail::_f64_impl::to_signed_integer_or_zero<long>(detail::_f64_impl::round_nearest_away_from_zero(x)),
         std::lround(x)
     );
 }
@@ -651,24 +644,8 @@ namespace detail::_f64_impl
 [[nodiscard]] BL_FORCE_INLINE constexpr long long llround(double x) noexcept
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::to_signed_integer_or_zero<long long>(detail::_f64_impl::round_half_away_zero(x)),
+        detail::_f64_impl::to_signed_integer_or_zero<long long>(detail::_f64_impl::round_nearest_away_from_zero(x)),
         std::llround(x)
-    );
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr long lrint(double x) noexcept
-{
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::to_signed_integer_or_zero<long>(detail::_f64_impl::nearbyint(x)),
-        std::lrint(x)
-    );
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr long long llrint(double x) noexcept
-{
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::to_signed_integer_or_zero<long long>(detail::_f64_impl::nearbyint(x)),
-        std::llrint(x)
     );
 }
 
@@ -700,7 +677,7 @@ namespace detail::_f64_impl
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
         x * y + z,
-        detail::fp::fmadd_runtime(x, y, z)
+        detail::fp::fmadd_auto(x, y, z)
     );
 }
 

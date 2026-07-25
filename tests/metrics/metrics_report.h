@@ -14,6 +14,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -123,6 +124,21 @@ namespace bl::test::metrics
         return output_path.string();
     }
 
+    [[nodiscard]] inline std::string metrics_report_display_path(
+        const std::filesystem::path& output_path)
+    {
+        std::error_code ec;
+        const std::filesystem::path base = std::filesystem::current_path(ec);
+        if (!ec)
+        {
+            const std::filesystem::path relative_path = std::filesystem::proximate(output_path, base, ec);
+            if (!ec && !relative_path.empty() && !relative_path.is_absolute())
+                return relative_path.generic_string();
+        }
+
+        return output_path.filename().generic_string();
+    }
+
     [[nodiscard]] inline std::string metrics_native_arithmetic_group(precision_type precision)
     {
         const char* name = to_string(precision);
@@ -175,8 +191,7 @@ namespace bl::test::metrics
         if (metrics_operation_is(operation, { "add", "subtract", "multiply", "divide" }))
             return metrics_native_arithmetic_group(record.suite.precision);
         if (metrics_operation_is(operation, {
-                "floor", "ceil", "trunc", "round", "nearbyint", "rint",
-                "lround", "llround", "lrint", "llrint" }))
+                "floor", "ceil", "trunc", "round", "roundeven", "lround", "llround" }))
             return "Rounding";
         if (metrics_operation_is(operation, { "fmod", "remainder", "remquo" }))
             return "Remainders";
@@ -300,12 +315,9 @@ namespace bl::test::metrics
         if (operation == "ceil") return 1;
         if (operation == "trunc") return 2;
         if (operation == "round") return 3;
-        if (operation == "nearbyint") return 4;
-        if (operation == "rint") return 5;
-        if (operation == "lround") return 6;
-        if (operation == "llround") return 7;
-        if (operation == "lrint") return 8;
-        if (operation == "llrint") return 9;
+        if (operation == "roundeven") return 4;
+        if (operation == "lround") return 5;
+        if (operation == "llround") return 6;
         if (operation == "fmod") return 0;
         if (operation == "remainder") return 1;
         if (operation == "remquo") return 2;
@@ -606,12 +618,9 @@ namespace bl::test::metrics
                operation == "ceil" ||
                operation == "trunc" ||
                operation == "round" ||
-               operation == "nearbyint" ||
-               operation == "rint" ||
+               operation == "roundeven" ||
                operation == "lround" ||
-               operation == "llround" ||
-               operation == "lrint" ||
-               operation == "llrint";
+               operation == "llround";
     }
 
     [[nodiscard]] inline bool reference_has_stronger_result(

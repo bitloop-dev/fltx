@@ -414,7 +414,7 @@ namespace
         else if (op_is(op_name, "ceil")) ref = ref_ceil(x);
         else if (op_is(op_name, "trunc")) ref = ref_trunc(x);
         else if (op_is(op_name, "round")) ref = ref_round_half_away_zero(x);
-        else if (op_is(op_name, "nearbyint") || op_is(op_name, "rint")) ref = ref_round_to_even(x);
+        else if (op_is(op_name, "roundeven")) ref = ref_round_to_even(x);
         else if (op_is(op_name, "exp")) ref = boost::multiprecision::exp(x);
         else if (op_is(op_name, "exp2")) ref = ref_exp2(x);
         else if (op_is(op_name, "expm1")) ref = boost::multiprecision::expm1(x);
@@ -455,8 +455,7 @@ namespace
              op_is(op_name, "asin") || op_is(op_name, "sinh") || op_is(op_name, "tanh") ||
              op_is(op_name, "asinh") || op_is(op_name, "erf") || op_is(op_name, "expm1") ||
              op_is(op_name, "log1p") || op_is(op_name, "floor") || op_is(op_name, "ceil") ||
-             op_is(op_name, "trunc") || op_is(op_name, "round") || op_is(op_name, "nearbyint") ||
-             op_is(op_name, "rint")))
+             op_is(op_name, "trunc") || op_starts_with(op_name, "round")))
         {
             expected = std::copysign(0.0f, input);
         }
@@ -1386,37 +1385,29 @@ TEST_CASE("f32 rounding matches MPFR references", "[fltx][f32][precision][math][
             [](float x) { return bl::round(x); },
             [](float x) { return std::round(x); });
 
-        check_unary_op("nearbyint", input, exact_tol(),
-            [](float x) { return bl::nearbyint(x); },
-            [](float x) { return std::nearbyint(x); });
-
-        check_unary_op("rint", input, exact_tol(),
-            [](float x) { return bl::rint(x); },
-            [](float x) { return std::rint(x); });
+        check_unary_op("roundeven", input, exact_tol(),
+            [](float x) { return bl::roundeven(x); },
+            [](float x) { return x; });
 
         check_exact_integer_result("lround", bl::lround(input), std::lround(input), input);
         check_exact_integer_result("llround", bl::llround(input), std::llround(input), input);
-        check_exact_integer_result("lrint", bl::lrint(input), std::lrint(input), input);
-        check_exact_integer_result("llrint", bl::llrint(input), std::llrint(input), input);
     }
 
-    REQUIRE(bl::round_to(1.2345f, 2, bl::decimals) == 1.23f);
-    REQUIRE(bl::round_to(1.2345f, 3, bl::decimals) == 1.235f);
-    REQUIRE(bl::round_to(1.125f, 2, bl::decimals) == 1.12f);
-    REQUIRE(bl::round_to(1.375f, 2, bl::decimals) == 1.38f);
-    REQUIRE(bl::round_to(-1.375f, 2, bl::decimals) == -1.38f);
-    REQUIRE(bl::round_to(1.25f, 0, bl::decimals) == 1.25f);
-    REQUIRE(bl::round_to(12345.0f, 3, bl::significant_figures) == 12300.0f);
-    REQUIRE(bl::round_to(0.012345f, 3, bl::significant_figures) == 0.0123f);
-    REQUIRE(bl::round_to(12500.0f, 2, bl::significant_figures) == 12000.0f);
-    REQUIRE(bl::round_to(13500.0f, 2, bl::significant_figures) == 14000.0f);
+    REQUIRE(bl::round_to_decimals(1.2345f, 2) == 1.23f);
+    REQUIRE(bl::round_to_decimals(1.2345f, 3) == 1.235f);
+    REQUIRE(bl::round_to_decimals(1.125f, 2) == 1.12f);
+    REQUIRE(bl::round_to_decimals(1.375f, 2) == 1.38f);
+    REQUIRE(bl::round_to_decimals(-1.375f, 2) == -1.38f);
+    REQUIRE(bl::round_to_decimals(1.25f, 0) == 1.25f);
+    REQUIRE(bl::round_to_significant_figures(12345.0f, 3) == 12300.0f);
+    REQUIRE(bl::round_to_significant_figures(0.012345f, 3) == 0.0123f);
+    REQUIRE(bl::round_to_significant_figures(12500.0f, 2) == 12000.0f);
+    REQUIRE(bl::round_to_significant_figures(13500.0f, 2) == 14000.0f);
 
-    constexpr float constexpr_rounded = bl::round_to(1.375f, 2, bl::decimals);
+    constexpr float constexpr_rounded = bl::round_to_decimals(1.375f, 2);
     static_assert(constexpr_rounded == 1.38f);
-    constexpr float constexpr_precision_rounded = bl::round_to(12345.0f, 3, bl::significant_figures);
+    constexpr float constexpr_precision_rounded = bl::round_to_significant_figures(12345.0f, 3);
     static_assert(constexpr_precision_rounded == 12300.0f);
-    constexpr float constexpr_round_to = bl::round_to(12345.0f, 3, bl::significant_figures);
-    static_assert(constexpr_round_to == 12300.0f);
 
     static_assert(bl::ipow(bl::f32{ 10 }, 0) == 1.0f);
     static_assert(bl::ipow(bl::f32{ 10 }, 3) == 1000.0f);
@@ -1453,20 +1444,14 @@ TEST_CASE("f32 rounding matches MPFR references", "[fltx][f32][precision][math][
             [](float x) { return bl::round(x); },
             [](float x) { return std::round(x); });
 
-        check_unary_op("nearbyint", input, exact_tol(),
-            [](float x) { return bl::nearbyint(x); },
-            [](float x) { return std::nearbyint(x); });
-
-        check_unary_op("rint", input, exact_tol(),
-            [](float x) { return bl::rint(x); },
-            [](float x) { return std::rint(x); });
+        check_unary_op("roundeven", input, exact_tol(),
+            [](float x) { return bl::roundeven(x); },
+            [](float x) { return x; });
 
         if (std::fabs(input) < static_cast<float>(std::numeric_limits<long long>::max()) - 1.0)
         {
             check_exact_integer_result("lround", bl::lround(input), std::lround(input), input);
             check_exact_integer_result("llround", bl::llround(input), std::llround(input), input);
-            check_exact_integer_result("lrint", bl::lrint(input), std::lrint(input), input);
-            check_exact_integer_result("llrint", bl::llrint(input), std::llrint(input), input);
         }
     }
 }

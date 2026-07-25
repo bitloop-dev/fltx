@@ -61,12 +61,7 @@ BL_POP_PRECISE;
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128_s operator*(const f128_s& a, double b) noexcept
 {
-    const f128_s out = detail::_f128::mul_double_inline(a, b);
-    if (detail::fp::isinf_or_nan(out.hi)) [[unlikely]]
-        return detail::_f128::mul_special(a, f128_s{ b, 0.0 });
-    if (out.hi == 0.0 && ((a.hi == 0.0 && a.lo == 0.0) || b == 0.0)) [[unlikely]]
-        return detail::_f128::mul_special(a, f128_s{ b, 0.0 });
-    return out;
+    return detail::_f128::mul_double_checked_inline(a, b);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128_s operator/(const f128_s& a, double b) noexcept

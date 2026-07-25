@@ -21,20 +21,19 @@ namespace bl {
 
 namespace detail::_f128_runtime
 {
+    // complete-operation x86 FMA backend
+    BL_NO_INLINE f128_s fma_x86(const f128_s& x, const f128_s& y, const f128_s& z);
+
     // roots
     BL_NO_INLINE f128_s sqrt(const f128_s& a);
     BL_NO_INLINE f128_s hypot(const f128_s& x, const f128_s& y);
 
     // rounding and decimals
-    BL_NO_INLINE f128_s round(const f128_s& a);
+    BL_NO_INLINE f128_s round_nearest_away_from_zero(const f128_s& a);
     BL_NO_INLINE f128_s round_to_decimals(f128_s v, int prec);
     BL_NO_INLINE f128_s round_to_significant_figures(f128_s v, int figures);
-    BL_NO_INLINE f128_s nearbyint_slow(const f128_s& a);
-    BL_NO_INLINE f128_s nearbyint(const f128_s& a);
-    BL_NO_INLINE long lround(const f128_s& x);
-    BL_NO_INLINE long long llround(const f128_s& x);
-    BL_NO_INLINE long lrint(const f128_s& x);
-    BL_NO_INLINE long long llrint(const f128_s& x);
+    BL_NO_INLINE long lround_nearest_away_from_zero(const f128_s& x);
+    BL_NO_INLINE long long llround_nearest_away_from_zero(const f128_s& x);
 
     // remainders
     BL_NO_INLINE f128_s fmod(const f128_s& x, const f128_s& y);
@@ -102,16 +101,13 @@ namespace detail::_f128_impl
     BL_FORCE_INLINE constexpr f128_s floor(const f128_s& a);
     BL_FORCE_INLINE constexpr f128_s ceil(const f128_s& a);
     BL_FORCE_INLINE constexpr f128_s trunc(const f128_s& a);
-    BL_FORCE_INLINE constexpr f128_s round(const f128_s& a);
-    BL_FORCE_INLINE f128_s round_runtime(const f128_s& a) noexcept;
+    BL_FORCE_INLINE constexpr f128_s round_nearest_away_from_zero(const f128_s& a);
+    BL_FORCE_INLINE f128_s round_nearest_away_from_zero_runtime(const f128_s& a) noexcept;
     BL_FORCE_INLINE constexpr f128_s round_to_decimals(f128_s v, int prec);
     BL_FORCE_INLINE constexpr f128_s round_to_significant_figures(f128_s v, int figures);
-    BL_FORCE_INLINE constexpr f128_s nearbyint(const f128_s& a);
-    BL_FORCE_INLINE f128_s nearbyint_runtime(const f128_s& a) noexcept;
-    BL_FORCE_INLINE constexpr long lround(const f128_s& x);
-    BL_FORCE_INLINE constexpr long long llround(const f128_s& x);
-    BL_FORCE_INLINE constexpr long lrint(const f128_s& x);
-    BL_FORCE_INLINE constexpr long long llrint(const f128_s& x);
+    BL_FORCE_INLINE constexpr f128_s round_nearest_even(const f128_s& a);
+    BL_FORCE_INLINE constexpr long lround_nearest_away_from_zero(const f128_s& x);
+    BL_FORCE_INLINE constexpr long long llround_nearest_away_from_zero(const f128_s& x);
 
     // arithmetic and comparisons
     BL_FORCE_INLINE constexpr f128_s fma(const f128_s& x, const f128_s& y, const f128_s& z);

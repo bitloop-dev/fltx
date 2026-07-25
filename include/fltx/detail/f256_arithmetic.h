@@ -214,7 +214,7 @@ namespace detail::_f256 // primitives and kernels
         double s2{}, e2{};
         double s3{}, e3{};
 
-		#if BL_F256_ENABLE_SIMD
+		#if FLTX_F256_ENABLE_SIMD
         if (f256_runtime_addsub_simd_enabled())
         {
             const simd::f64x2 a01 = simd::f64x2_set(a.x0, a.x1);
@@ -256,7 +256,7 @@ namespace detail::_f256 // primitives and kernels
         double s2{}, e2{};
         double s3{}, e3{};
 
-        #if BL_F256_ENABLE_SIMD
+        #if FLTX_F256_ENABLE_SIMD
         if (f256_runtime_addsub_simd_enabled())
         {
             const simd::f64x2 a01 = simd::f64x2_set(a.x0, a.x1);
@@ -291,19 +291,19 @@ namespace detail::_f256 // primitives and kernels
         return renorm5(s0, s1, s2, s3, e0);
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s mul_inline(const f256_s& a, const f256_s& b) noexcept
+    struct product_terms
     {
-        using namespace detail::_f256;
+        double p[10]{};
+        double q[10]{};
+    };
 
-        double p0{}, p1{}, p2{}, p3{}, p4{}, p5{};
-        double q0{}, q1{}, q2{}, q3{}, q4{}, q5{};
-        double p6{}, p7{}, p8{}, p9{};
-        double q6{}, q7{}, q8{}, q9{};
-        double r0{}, r1{};
-        double t0{}, t1{};
-        double s0{}, s1{}, s2{};
-
-        #if BL_F256_ENABLE_SIMD && (BL_FLTX_HAS_SSE2 || BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD)
+    BL_FORCE_INLINE void fill_mul_products_fma(
+        const f256_s& a,
+        const f256_s& b,
+        product_terms& products) noexcept
+    {
+        #if FLTX_F256_ENABLE_SIMD && \
+            ((FLTX_HAS_SSE2 && (FLTX_HAS_X86_FMA || FLTX_DETAIL_MSVC_GUARDED_X86_FMA)) || FLTX_HAS_NEON)
         if (f256_runtime_product_simd_enabled())
         {
             simd::f64x2 p01{}, q01{};
@@ -312,114 +312,221 @@ namespace detail::_f256 // primitives and kernels
             simd::f64x2 p67{}, q67{};
             simd::f64x2 p89{}, q89{};
 
-            simd::f64x2_two_prod_precise(simd::f64x2_set(a.x0, a.x0), simd::f64x2_set(b.x0, b.x1), p01, q01);
-            simd::f64x2_two_prod_precise(simd::f64x2_set(a.x1, a.x0), simd::f64x2_set(b.x0, b.x2), p23, q23);
-            simd::f64x2_two_prod_precise(simd::f64x2_set(a.x1, a.x2), simd::f64x2_set(b.x1, b.x0), p45, q45);
-            simd::f64x2_two_prod_precise(simd::f64x2_set(a.x0, a.x1), simd::f64x2_set(b.x3, b.x2), p67, q67);
-            simd::f64x2_two_prod_precise(simd::f64x2_set(a.x2, a.x3), simd::f64x2_set(b.x1, b.x0), p89, q89);
+            simd::f64x2_two_prod_fma(simd::f64x2_set(a.x0, a.x0), simd::f64x2_set(b.x0, b.x1), p01, q01);
+            simd::f64x2_two_prod_fma(simd::f64x2_set(a.x1, a.x0), simd::f64x2_set(b.x0, b.x2), p23, q23);
+            simd::f64x2_two_prod_fma(simd::f64x2_set(a.x1, a.x2), simd::f64x2_set(b.x1, b.x0), p45, q45);
+            simd::f64x2_two_prod_fma(simd::f64x2_set(a.x0, a.x1), simd::f64x2_set(b.x3, b.x2), p67, q67);
+            simd::f64x2_two_prod_fma(simd::f64x2_set(a.x2, a.x3), simd::f64x2_set(b.x1, b.x0), p89, q89);
 
-            simd::f64x2_store(p01, p0, p1);
-            simd::f64x2_store(q01, q0, q1);
-            simd::f64x2_store(p23, p2, p3);
-            simd::f64x2_store(q23, q2, q3);
-            simd::f64x2_store(p45, p4, p5);
-            simd::f64x2_store(q45, q4, q5);
-            simd::f64x2_store(p67, p6, p7);
-            simd::f64x2_store(q67, q6, q7);
-            simd::f64x2_store(p89, p8, p9);
-            simd::f64x2_store(q89, q8, q9);
+            simd::f64x2_store(p01, products.p[0], products.p[1]);
+            simd::f64x2_store(q01, products.q[0], products.q[1]);
+            simd::f64x2_store(p23, products.p[2], products.p[3]);
+            simd::f64x2_store(q23, products.q[2], products.q[3]);
+            simd::f64x2_store(p45, products.p[4], products.p[5]);
+            simd::f64x2_store(q45, products.q[4], products.q[5]);
+            simd::f64x2_store(p67, products.p[6], products.p[7]);
+            simd::f64x2_store(q67, products.q[6], products.q[7]);
+            simd::f64x2_store(p89, products.p[8], products.p[9]);
+            simd::f64x2_store(q89, products.q[8], products.q[9]);
+            return;
         }
-        else
         #endif
-        {
-            two_prod_precise(a.x0, b.x0, p0, q0);
-            two_prod_precise(a.x0, b.x1, p1, q1);
-            two_prod_precise(a.x1, b.x0, p2, q2);
-            two_prod_precise(a.x0, b.x2, p3, q3);
-            two_prod_precise(a.x1, b.x1, p4, q4);
-            two_prod_precise(a.x2, b.x0, p5, q5);
-            two_prod_precise(a.x0, b.x3, p6, q6);
-            two_prod_precise(a.x1, b.x2, p7, q7);
-            two_prod_precise(a.x2, b.x1, p8, q8);
-            two_prod_precise(a.x3, b.x0, p9, q9);
-        }
 
-        three_sum(p1, p2, q0);
-        three_sum(p2, q1, q2);
-        three_sum(p3, p4, p5);
-
-        two_sum_precise(p2, p3, s0, t0);
-        two_sum_precise(q1, p4, s1, t1);
-        s2 = q2 + p5;
-        two_sum_precise(s1, t0, s1, t0);
-        s2 += (t0 + t1);
-
-        two_sum_precise(q0, q3, q0, q3);
-        two_sum_precise(q4, q5, q4, q5);
-        two_sum_precise(p6, p7, p6, p7);
-        two_sum_precise(p8, p9, p8, p9);
-
-        two_sum_precise(q0, q4, t0, t1);  t1 += (q3 + q5);
-        two_sum_precise(p6, p8, r0, r1);  r1 += (p7 + p9);
-        two_sum_precise(t0, r0, q3, q4);  q4 += (t1 + r1);
-
-        two_sum_precise(q3, s1, t0, t1);
-        t1 += q4;
-        t1 += a.x1 * b.x3 + a.x2 * b.x2 + a.x3 * b.x1 + q6 + q7 + q8 + q9 + s2;
-
-        return renorm5(p0, p1, s0, t0, t1);
+        detail::fp::two_prod_fma(a.x0, b.x0, products.p[0], products.q[0]);
+        detail::fp::two_prod_fma(a.x0, b.x1, products.p[1], products.q[1]);
+        detail::fp::two_prod_fma(a.x1, b.x0, products.p[2], products.q[2]);
+        detail::fp::two_prod_fma(a.x0, b.x2, products.p[3], products.q[3]);
+        detail::fp::two_prod_fma(a.x1, b.x1, products.p[4], products.q[4]);
+        detail::fp::two_prod_fma(a.x2, b.x0, products.p[5], products.q[5]);
+        detail::fp::two_prod_fma(a.x0, b.x3, products.p[6], products.q[6]);
+        detail::fp::two_prod_fma(a.x1, b.x2, products.p[7], products.q[7]);
+        detail::fp::two_prod_fma(a.x2, b.x1, products.p[8], products.q[8]);
+        detail::fp::two_prod_fma(a.x3, b.x0, products.p[9], products.q[9]);
     }
 
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
-    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s mul_inline_checked(const f256_s& a, const f256_s& b) noexcept
+    BL_FORCE_INLINE constexpr void fill_mul_products_dekker(
+        const f256_s& a,
+        const f256_s& b,
+        product_terms& products) noexcept
     {
-        using namespace detail::_f256;
+        #if FLTX_F256_ENABLE_SIMD && (FLTX_HAS_SSE2 || FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD)
+        if (f256_runtime_product_simd_enabled())
+        {
+            simd::f64x2 p01{}, q01{};
+            simd::f64x2 p23{}, q23{};
+            simd::f64x2 p45{}, q45{};
+            simd::f64x2 p67{}, q67{};
+            simd::f64x2 p89{}, q89{};
 
-        double p0{}, p1{}, p2{}, p3{}, p4{}, p5{};
-        double q0{}, q1{}, q2{}, q3{}, q4{}, q5{};
-        double p6{}, p7{}, p8{}, p9{};
-        double q6{}, q7{}, q8{}, q9{};
+            simd::f64x2_two_prod_dekker(simd::f64x2_set(a.x0, a.x0), simd::f64x2_set(b.x0, b.x1), p01, q01);
+            simd::f64x2_two_prod_dekker(simd::f64x2_set(a.x1, a.x0), simd::f64x2_set(b.x0, b.x2), p23, q23);
+            simd::f64x2_two_prod_dekker(simd::f64x2_set(a.x1, a.x2), simd::f64x2_set(b.x1, b.x0), p45, q45);
+            simd::f64x2_two_prod_dekker(simd::f64x2_set(a.x0, a.x1), simd::f64x2_set(b.x3, b.x2), p67, q67);
+            simd::f64x2_two_prod_dekker(simd::f64x2_set(a.x2, a.x3), simd::f64x2_set(b.x1, b.x0), p89, q89);
+
+            simd::f64x2_store(p01, products.p[0], products.p[1]);
+            simd::f64x2_store(q01, products.q[0], products.q[1]);
+            simd::f64x2_store(p23, products.p[2], products.p[3]);
+            simd::f64x2_store(q23, products.q[2], products.q[3]);
+            simd::f64x2_store(p45, products.p[4], products.p[5]);
+            simd::f64x2_store(q45, products.q[4], products.q[5]);
+            simd::f64x2_store(p67, products.p[6], products.p[7]);
+            simd::f64x2_store(q67, products.q[6], products.q[7]);
+            simd::f64x2_store(p89, products.p[8], products.p[9]);
+            simd::f64x2_store(q89, products.q[8], products.q[9]);
+            return;
+        }
+        #endif
+
+        detail::fp::two_prod_precise_dekker(a.x0, b.x0, products.p[0], products.q[0]);
+        detail::fp::two_prod_precise_dekker(a.x0, b.x1, products.p[1], products.q[1]);
+        detail::fp::two_prod_precise_dekker(a.x1, b.x0, products.p[2], products.q[2]);
+        detail::fp::two_prod_precise_dekker(a.x0, b.x2, products.p[3], products.q[3]);
+        detail::fp::two_prod_precise_dekker(a.x1, b.x1, products.p[4], products.q[4]);
+        detail::fp::two_prod_precise_dekker(a.x2, b.x0, products.p[5], products.q[5]);
+        detail::fp::two_prod_precise_dekker(a.x0, b.x3, products.p[6], products.q[6]);
+        detail::fp::two_prod_precise_dekker(a.x1, b.x2, products.p[7], products.q[7]);
+        detail::fp::two_prod_precise_dekker(a.x2, b.x1, products.p[8], products.q[8]);
+        detail::fp::two_prod_precise_dekker(a.x3, b.x0, products.p[9], products.q[9]);
+    }
+
+    BL_FORCE_INLINE constexpr void fill_mul_products_auto(
+        const f256_s& a,
+        const f256_s& b,
+        product_terms& products) noexcept
+    {
+        #if FLTX_DETAIL_HAS_RUNTIME_FMA_PATH
+        if (!bl::detail::is_constant_evaluated() &&
+            !bl::detail::use_constexpr_parity() &&
+            detail::fp::runtime_hardware_fma_enabled())
+        {
+            fill_mul_products_fma(a, b, products);
+            return;
+        }
+        #endif
+        fill_mul_products_dekker(a, b, products);
+    }
+
+    #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+    BL_FORCE_INLINE constexpr void fill_mul_products_checked_dekker(
+        const f256_s& a,
+        const f256_s& b,
+        product_terms& products) noexcept
+    {
+        detail::fp::two_prod_precise_dekker_checked(a.x0, b.x0, products.p[0], products.q[0]);
+        detail::fp::two_prod_precise_dekker_checked(a.x0, b.x1, products.p[1], products.q[1]);
+        detail::fp::two_prod_precise_dekker_checked(a.x1, b.x0, products.p[2], products.q[2]);
+        detail::fp::two_prod_precise_dekker_checked(a.x0, b.x2, products.p[3], products.q[3]);
+        detail::fp::two_prod_precise_dekker_checked(a.x1, b.x1, products.p[4], products.q[4]);
+        detail::fp::two_prod_precise_dekker_checked(a.x2, b.x0, products.p[5], products.q[5]);
+        detail::fp::two_prod_precise_dekker_checked(a.x0, b.x3, products.p[6], products.q[6]);
+        detail::fp::two_prod_precise_dekker_checked(a.x1, b.x2, products.p[7], products.q[7]);
+        detail::fp::two_prod_precise_dekker_checked(a.x2, b.x1, products.p[8], products.q[8]);
+        detail::fp::two_prod_precise_dekker_checked(a.x3, b.x0, products.p[9], products.q[9]);
+    }
+
+    BL_FORCE_INLINE constexpr void fill_mul_products_checked_auto(
+        const f256_s& a,
+        const f256_s& b,
+        product_terms& products) noexcept
+    {
+        #if FLTX_DETAIL_HAS_RUNTIME_FMA_PATH
+        if (!bl::detail::is_constant_evaluated() &&
+            !bl::detail::use_constexpr_parity() &&
+            detail::fp::runtime_hardware_fma_enabled())
+        {
+            fill_mul_products_fma(a, b, products);
+            return;
+        }
+        #endif
+        fill_mul_products_checked_dekker(a, b, products);
+    }
+    #endif
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s finish_mul(
+        const f256_s& a,
+        const f256_s& b,
+        product_terms products) noexcept
+    {
         double r0{}, r1{};
         double t0{}, t1{};
         double s0{}, s1{}, s2{};
 
-        detail::fp::two_prod_precise_checked(a.x0, b.x0, p0, q0);
-        detail::fp::two_prod_precise_checked(a.x0, b.x1, p1, q1);
-        detail::fp::two_prod_precise_checked(a.x1, b.x0, p2, q2);
-        detail::fp::two_prod_precise_checked(a.x0, b.x2, p3, q3);
-        detail::fp::two_prod_precise_checked(a.x1, b.x1, p4, q4);
-        detail::fp::two_prod_precise_checked(a.x2, b.x0, p5, q5);
-        detail::fp::two_prod_precise_checked(a.x0, b.x3, p6, q6);
-        detail::fp::two_prod_precise_checked(a.x1, b.x2, p7, q7);
-        detail::fp::two_prod_precise_checked(a.x2, b.x1, p8, q8);
-        detail::fp::two_prod_precise_checked(a.x3, b.x0, p9, q9);
+        three_sum(products.p[1], products.p[2], products.q[0]);
+        three_sum(products.p[2], products.q[1], products.q[2]);
+        three_sum(products.p[3], products.p[4], products.p[5]);
 
-        three_sum(p1, p2, q0);
-        three_sum(p2, q1, q2);
-        three_sum(p3, p4, p5);
-
-        two_sum_precise(p2, p3, s0, t0);
-        two_sum_precise(q1, p4, s1, t1);
-        s2 = q2 + p5;
+        two_sum_precise(products.p[2], products.p[3], s0, t0);
+        two_sum_precise(products.q[1], products.p[4], s1, t1);
+        s2 = products.q[2] + products.p[5];
         two_sum_precise(s1, t0, s1, t0);
         s2 += (t0 + t1);
 
-        two_sum_precise(q0, q3, q0, q3);
-        two_sum_precise(q4, q5, q4, q5);
-        two_sum_precise(p6, p7, p6, p7);
-        two_sum_precise(p8, p9, p8, p9);
+        two_sum_precise(products.q[0], products.q[3], products.q[0], products.q[3]);
+        two_sum_precise(products.q[4], products.q[5], products.q[4], products.q[5]);
+        two_sum_precise(products.p[6], products.p[7], products.p[6], products.p[7]);
+        two_sum_precise(products.p[8], products.p[9], products.p[8], products.p[9]);
 
-        two_sum_precise(q0, q4, t0, t1);  t1 += (q3 + q5);
-        two_sum_precise(p6, p8, r0, r1);  r1 += (p7 + p9);
-        two_sum_precise(t0, r0, q3, q4);  q4 += (t1 + r1);
+        two_sum_precise(products.q[0], products.q[4], t0, t1);
+        t1 += products.q[3] + products.q[5];
+        two_sum_precise(products.p[6], products.p[8], r0, r1);
+        r1 += products.p[7] + products.p[9];
+        two_sum_precise(t0, r0, products.q[3], products.q[4]);
+        products.q[4] += t1 + r1;
 
-        two_sum_precise(q3, s1, t0, t1);
-        t1 += q4;
-        t1 += a.x1 * b.x3 + a.x2 * b.x2 + a.x3 * b.x1 + q6 + q7 + q8 + q9 + s2;
+        two_sum_precise(products.q[3], s1, t0, t1);
+        t1 += products.q[4];
+        t1 += a.x1 * b.x3 + a.x2 * b.x2 + a.x3 * b.x1
+            + products.q[6] + products.q[7] + products.q[8] + products.q[9] + s2;
 
-        return renorm5(p0, p1, s0, t0, t1);
+        return renorm5(products.p[0], products.p[1], s0, t0, t1);
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s mul_inline(
+        const f256_s& a,
+        const f256_s& b) noexcept
+    {
+        product_terms products{};
+        fill_mul_products_auto(a, b, products);
+        return finish_mul(a, b, products);
+    }
+
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s mul_inline_checked(
+        const f256_s& a,
+        const f256_s& b) noexcept
+    {
+        product_terms products{};
+        fill_mul_products_checked_auto(a, b, products);
+        return finish_mul(a, b, products);
     }
 #endif
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr bool division_residual_product_needs_checked_dekker(
+        double a,
+        double b) noexcept
+    {
+        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        return detail::fp::dekker_product_needs_scaling(a, b);
+        #else
+        (void)a;
+        (void)b;
+        return false;
+        #endif
+    }
+
+    BL_FORCE_INLINE constexpr void two_prod_precise_division_residual(
+        double a,
+        double b,
+        double& p,
+        double& e) noexcept
+    {
+        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        detail::fp::two_prod_precise_checked(a, b, p, e);
+        #else
+        detail::fp::two_prod_precise(a, b, p, e);
+        #endif
+    }
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s div_inline(const f256_s& a, const f256_s& b) noexcept
     {
@@ -464,7 +571,7 @@ namespace detail::_f256 // primitives and kernels
         double t0{}, t1{};
         double s0{}, s1{}, s2{};
 
-        #if BL_F256_ENABLE_SIMD && (BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD)
+        #if FLTX_F256_ENABLE_SIMD && (FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD)
         if (f256_runtime_simd_enabled())
         {
             simd::f64x2 p01{}, q01{};
@@ -525,7 +632,7 @@ namespace detail::_f256 // primitives and kernels
         t1 += q4;
         t1 += a.x1 * a.x3 + a.x2 * a.x2 + a.x3 * a.x1 + q6 + q7 + q8 + q9 + s2;
 
-return renorm5(p0, p1, s0, t0, t1);
+        return renorm5(p0, p1, s0, t0, t1);
     }
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s add_double_inline(const f256_s& a, double b) noexcept
@@ -570,7 +677,7 @@ return renorm5(p0, p1, s0, t0, t1);
         double q0{}, q1{}, q2{};
         double s0{}, s1{}, s2{}, s3{}, s4{};
 
-        #if BL_F256_ENABLE_SIMD && (BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD)
+        #if FLTX_F256_ENABLE_SIMD && (FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD)
         if (f256_runtime_simd_enabled())
         {
             simd::f64x2 p01{}, q01{};
@@ -602,6 +709,31 @@ return renorm5(p0, p1, s0, t0, t1);
 
         return renorm5(s0, s1, s2, s3, s4);
     }
+
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s mul_double_inline_checked(const f256_s& a, double b) noexcept
+    {
+        using namespace detail::_f256;
+
+        double p0{}, p1{}, p2{}, p3{};
+        double q0{}, q1{}, q2{};
+        double s0{}, s1{}, s2{}, s3{}, s4{};
+
+        detail::fp::two_prod_precise_checked(a.x0, b, p0, q0);
+        detail::fp::two_prod_precise_checked(a.x1, b, p1, q1);
+        detail::fp::two_prod_precise_checked(a.x2, b, p2, q2);
+        p3 = a.x3 * b;
+
+        s0 = p0;
+        two_sum_precise(q0, p1, s1, s2);
+        three_sum(s2, q1, p2);
+        three_sum2(q1, q2, p3);
+        s3 = q1;
+        s4 = q2 + p2;
+
+        return renorm5(s0, s1, s2, s3, s4);
+    }
+#endif
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s mul_double_inline(double a, const f256_s& b) noexcept
     {
@@ -713,9 +845,9 @@ return renorm5(p0, p1, s0, t0, t1);
         double e0{}, e1{}, e2{};
         double s0{}, s1{}, s2{}, s3{}, s4{};
 
-        two_prod_precise(b.x0, q0, p0, e0);
-        two_prod_precise(b.x1, q0, p1, e1);
-        two_prod_precise(b.x2, q0, p2, e2);
+        two_prod_precise_division_residual(b.x0, q0, p0, e0);
+        two_prod_precise_division_residual(b.x1, q0, p1, e1);
+        two_prod_precise_division_residual(b.x2, q0, p2, e2);
         p3 = b.x3 * q0;
 
         s0 = p0;
@@ -779,6 +911,11 @@ return renorm5(p0, p1, s0, t0, t1);
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s mul_checked_inline(const f256_s& a, const f256_s& b) noexcept
     {
+        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        if (detail::fp::dekker_product_needs_scaling(a.x0, b.x0)) [[unlikely]]
+            return finish_mul_checked_inline(a, b, mul_inline_checked(a, b));
+        #endif
+
         return finish_mul_checked_inline(a, b, mul_inline(a, b));
     }
 
@@ -825,7 +962,14 @@ return renorm5(p0, p1, s0, t0, t1);
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s mul_double_checked_inline(const f256_s& a, double b) noexcept
     {
+        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        const f256_s out = detail::fp::dekker_product_needs_scaling(a.x0, b)
+            ? mul_double_inline_checked(a, b)
+            : mul_double_inline(a, b);
+        #else
         const f256_s out = mul_double_inline(a, b);
+        #endif
+
         if (detail::fp::isinf_or_nan(out.x0)) [[unlikely]]
             return mul_special(a, f256_s{ b, 0.0, 0.0, 0.0 });
         if (out.x0 == 0.0 && (bl::iszero(a) || b == 0.0)) [[unlikely]]
@@ -857,8 +1001,14 @@ return renorm5(p0, p1, s0, t0, t1);
         double p2{}, e2{};
         double p3{}, e3{};
 
-        #if BL_F256_ENABLE_SIMD && (BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD)
-        if (f256_runtime_simd_enabled())
+        [[maybe_unused]] const bool needs_checked_dekker =
+            division_residual_product_needs_checked_dekker(b.x0, q) ||
+            division_residual_product_needs_checked_dekker(b.x1, q) ||
+            division_residual_product_needs_checked_dekker(b.x2, q) ||
+            division_residual_product_needs_checked_dekker(b.x3, q);
+
+        #if FLTX_F256_ENABLE_SIMD && (FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD)
+        if (!needs_checked_dekker && f256_runtime_simd_enabled())
         {
             simd::f64x2 p01{}, e01{};
             simd::f64x2 p23{}, e23{};
@@ -873,10 +1023,10 @@ return renorm5(p0, p1, s0, t0, t1);
         else
         #endif
         {
-            two_prod_precise(b.x0, q, p0, e0);
-            two_prod_precise(b.x1, q, p1, e1);
-            two_prod_precise(b.x2, q, p2, e2);
-            two_prod_precise(b.x3, q, p3, e3);
+            two_prod_precise_division_residual(b.x0, q, p0, e0);
+            two_prod_precise_division_residual(b.x1, q, p1, e1);
+            two_prod_precise_division_residual(b.x2, q, p2, e2);
+            two_prod_precise_division_residual(b.x3, q, p3, e3);
         }
 
         double s0 = r.x0-p0; double v0 = s0-r.x0; double u0 = s0-v0; double w0 = r.x0-u0;  u0 = -p0 - v0;
@@ -904,8 +1054,14 @@ return renorm5(p0, p1, s0, t0, t1);
         double q0{}, q1{}, q2{};
         double s0{}, s1{}, s2{}, s3{}, s4{};
 
-        #if BL_F256_ENABLE_SIMD && (BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD)
-        if (f256_runtime_simd_enabled())
+        [[maybe_unused]] const bool needs_checked_dekker =
+            division_residual_product_needs_checked_dekker(b.x0, q) ||
+            division_residual_product_needs_checked_dekker(b.x1, q) ||
+            division_residual_product_needs_checked_dekker(b.x2, q) ||
+            division_residual_product_needs_checked_dekker(b.x3, q);
+
+        #if FLTX_F256_ENABLE_SIMD && (FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD)
+        if (!needs_checked_dekker && f256_runtime_simd_enabled())
         {
             simd::f64x2 p01{}, q01{};
             simd::f64x2 p23{}, q23{};
@@ -921,9 +1077,9 @@ return renorm5(p0, p1, s0, t0, t1);
         else
         #endif
         {
-            two_prod_precise(b.x0, q, p0, q0);
-            two_prod_precise(b.x1, q, p1, q1);
-            two_prod_precise(b.x2, q, p2, q2);
+            two_prod_precise_division_residual(b.x0, q, p0, q0);
+            two_prod_precise_division_residual(b.x1, q, p1, q1);
+            two_prod_precise_division_residual(b.x2, q, p2, q2);
             p3 = b.x3 * q;
         }
 

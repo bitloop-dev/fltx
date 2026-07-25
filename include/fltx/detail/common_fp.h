@@ -17,105 +17,16 @@
 
 #include "fltx/config.h"
 
-#if !defined(BL_FLTX_DETAIL_USE_SCALAR_X86_FMA)
-#  if defined(FMA_AVAILABLE) && BL_FLTX_HAS_X86_FMA
-#    define BL_FLTX_DETAIL_USE_SCALAR_X86_FMA 1
-#  else
-#    define BL_FLTX_DETAIL_USE_SCALAR_X86_FMA 0
-#  endif
+#if FLTX_DETAIL_X86_FMA_RUNTIME_CHECK
+#  include <atomic>
 #endif
 
-#if BL_FLTX_DETAIL_USE_SCALAR_X86_FMA
+#if FLTX_DETAIL_USE_SCALAR_X86_FMA || FLTX_DETAIL_MSVC_GUARDED_X86_FMA
 #  include <immintrin.h>
 #endif
 
-#if !defined(BL_FLTX_DETAIL_MSVC_X86_FMA_PREFLIGHT)
-#  if BL_FLTX_DETAIL_USE_SCALAR_X86_FMA && defined(_MSC_VER) && !defined(__EMSCRIPTEN__) && \
-      (defined(_M_X64) || defined(_M_AMD64) || defined(_M_IX86))
-#    define BL_FLTX_DETAIL_MSVC_X86_FMA_PREFLIGHT 1
-#  else
-#    define BL_FLTX_DETAIL_MSVC_X86_FMA_PREFLIGHT 0
-#  endif
-#endif
-
-#if BL_FLTX_DETAIL_MSVC_X86_FMA_PREFLIGHT
-#  include <cstdio>
-#  include <intrin.h>
-#  include <stdexcept>
-#endif
-
 namespace bl::detail::fp
 {
-
-#if BL_FLTX_DETAIL_MSVC_X86_FMA_PREFLIGHT
-[[nodiscard]] BL_NO_INLINE inline bool runtime_x86_fma_available() noexcept
-{
-    int regs[4]{};
-    __cpuid(regs, 0);
-    if (regs[0] < 1)
-        return false;
-
-    __cpuid(regs, 1);
-    constexpr int bit_fma = 1 << 12;
-    constexpr int bit_xsave = 1 << 26;
-    constexpr int bit_osxsave = 1 << 27;
-    constexpr int bit_avx = 1 << 28;
-    constexpr int required = bit_fma | bit_xsave | bit_osxsave | bit_avx;
-    if ((regs[2] & required) != required)
-        return false;
-
-    const unsigned __int64 xcr0 = _xgetbv(0);
-    return (xcr0 & 0x6) == 0x6;
-}
-
-[[noreturn]] BL_NO_INLINE inline void throw_runtime_x86_fma_unavailable()
-{
-    constexpr const char* message =
-        "fltx: FMA instructions are enabled by default for MSVC x86/x64, "
-        "but this CPU/OS/VM does not report usable FMA + AVX state. "
-        "Set FLTX_DISABLE_FMA_AVAILABLE=1 before including fltx headers, "
-        "or configure CMake with -DFLTX_DISABLE_FMA_AVAILABLE=ON, then rebuild.";
-
-    std::fputs(message, stderr);
-    std::fputc('\n', stderr);
-    throw std::runtime_error(message);
-}
-
-BL_NO_INLINE inline void verify_runtime_x86_fma_available()
-{
-    static const bool checked = []()
-    {
-        if (!runtime_x86_fma_available())
-            throw_runtime_x86_fma_unavailable();
-        return true;
-    }();
-
-    (void)checked;
-}
-
-}
-
-extern "C" BL_NO_INLINE inline void __cdecl fltx_msvc_x86_fma_preflight_initializer()
-{
-    bl::detail::fp::verify_runtime_x86_fma_available();
-}
-
-#pragma section(".CRT$XCT", read)
-extern "C"
-__declspec(allocate(".CRT$XCT"))
-__declspec(selectany)
-void (__cdecl* fltx_msvc_x86_fma_preflight_initializer_ptr)() =
-    fltx_msvc_x86_fma_preflight_initializer;
-
-#if defined(_M_IX86)
-#  pragma comment(linker, "/include:_fltx_msvc_x86_fma_preflight_initializer_ptr")
-#else
-#  pragma comment(linker, "/include:fltx_msvc_x86_fma_preflight_initializer_ptr")
-#endif
-
-namespace bl::detail::fp
-{
-#endif
 
 inline constexpr std::uint64_t exact_double_integer_limit = 9007199254740992ull;
 inline constexpr double exact_double_integer_limit_double = 9007199254740992.0;
@@ -673,70 +584,138 @@ template<class ExpUnsigned>
 #endif
 BL_POP_PRECISE
 
-#if defined(FMA_AVAILABLE)
-BL_FORCE_INLINE double fmsub_runtime(double a, double b, double c) noexcept
+#if FLTX_DETAIL_X86_FMA_RUNTIME_CHECK
+[[nodiscard]] bool runtime_x86_fma_available_uncached() noexcept;
+
+inline constinit std::atomic<std::int8_t> x86_fma_available_state{-1};
+static_assert(decltype(x86_fma_available_state)::is_always_lock_free);
+
+[[nodiscard]] BL_NO_INLINE inline bool initialize_x86_fma_available() noexcept
 {
-    #if BL_FLTX_DETAIL_USE_SCALAR_X86_FMA
+    const bool available = runtime_x86_fma_available_uncached();
+    x86_fma_available_state.store(
+        static_cast<std::int8_t>(available),
+        std::memory_order_relaxed);
+    return available;
+}
+
+[[nodiscard]] BL_FORCE_INLINE bool x86_fma_available_cached() noexcept
+{
+    #if defined(FLTX_TEST_RUNTIME_X86_FMA_AVAILABLE)
+    return FLTX_TEST_RUNTIME_X86_FMA_AVAILABLE != 0;
+    #else
+    const std::int8_t state =
+        x86_fma_available_state.load(std::memory_order_relaxed);
+    return state >= 0
+        ? state != 0
+        : initialize_x86_fma_available();
+    #endif
+}
+#endif
+
+[[nodiscard]] BL_FORCE_INLINE bool runtime_hardware_fma_enabled() noexcept
+{
+    #if FLTX_DETAIL_X86_FMA_RUNTIME_CHECK
+    return x86_fma_available_cached();
+    #elif FLTX_DETAIL_USE_SCALAR_X86_FMA || FLTX_DETAIL_USE_BASELINE_ARM64_FMA
+    return true;
+    #else
+    return false;
+    #endif
+}
+
+BL_FORCE_INLINE double fmsub_fma(double a, double b, double c) noexcept
+{
+    #if FLTX_DETAIL_USE_SCALAR_X86_FMA || FLTX_DETAIL_MSVC_GUARDED_X86_FMA
     const __m128d aw = _mm_set_sd(a);
     const __m128d bw = _mm_set_sd(b);
     const __m128d cw = _mm_set_sd(c);
     return _mm_cvtsd_f64(_mm_fmsub_sd(aw, bw, cw));
+    #elif FLTX_DETAIL_USE_BASELINE_ARM64_FMA && (defined(__clang__) || defined(__GNUC__))
+    return __builtin_fma(a, b, -c);
+    #elif FLTX_DETAIL_USE_BASELINE_ARM64_FMA
+    return std::fma(a, b, -c);
     #elif defined(__clang__) || defined(__GNUC__)
     return __builtin_fma(a, b, -c);
     #else
     return std::fma(a, b, -c);
     #endif
 }
-#endif
 
-BL_FORCE_INLINE double fmadd_runtime(double a, double b, double c) noexcept
+BL_FORCE_INLINE double fmadd_fma(double a, double b, double c) noexcept
 {
-    #if BL_FLTX_DETAIL_USE_SCALAR_X86_FMA
+    #if FLTX_DETAIL_USE_SCALAR_X86_FMA || FLTX_DETAIL_MSVC_GUARDED_X86_FMA
     const __m128d aw = _mm_set_sd(a);
     const __m128d bw = _mm_set_sd(b);
     const __m128d cw = _mm_set_sd(c);
     return _mm_cvtsd_f64(_mm_fmadd_sd(aw, bw, cw));
-    #elif defined(FMA_AVAILABLE)
-        #if defined(__clang__) || defined(__GNUC__)
+    #elif FLTX_DETAIL_USE_BASELINE_ARM64_FMA && (defined(__clang__) || defined(__GNUC__))
     return __builtin_fma(a, b, c);
-        #else
+    #elif FLTX_DETAIL_USE_BASELINE_ARM64_FMA
     return std::fma(a, b, c);
-        #endif
+    #elif defined(__clang__) || defined(__GNUC__)
+    return __builtin_fma(a, b, c);
     #else
-    return (a * b) + c;
+    return std::fma(a, b, c);
     #endif
 }
 
-BL_FORCE_INLINE float fmadd_runtime(float a, float b, float c) noexcept
+BL_FORCE_INLINE float fmadd_fma(float a, float b, float c) noexcept
 {
-    #if BL_FLTX_DETAIL_USE_SCALAR_X86_FMA
+    #if FLTX_DETAIL_USE_SCALAR_X86_FMA || FLTX_DETAIL_MSVC_GUARDED_X86_FMA
     const __m128 aw = _mm_set_ss(a);
     const __m128 bw = _mm_set_ss(b);
     const __m128 cw = _mm_set_ss(c);
     return _mm_cvtss_f32(_mm_fmadd_ss(aw, bw, cw));
-    #elif defined(FMA_AVAILABLE)
-        #if defined(__clang__) || defined(__GNUC__)
+    #elif FLTX_DETAIL_USE_BASELINE_ARM64_FMA && (defined(__clang__) || defined(__GNUC__))
     return __builtin_fmaf(a, b, c);
-        #else
+    #elif FLTX_DETAIL_USE_BASELINE_ARM64_FMA
     return std::fma(a, b, c);
-        #endif
+    #elif defined(__clang__) || defined(__GNUC__)
+    return __builtin_fmaf(a, b, c);
     #else
-    return static_cast<float>(
-        (static_cast<double>(a) * static_cast<double>(b)) + static_cast<double>(c));
+    return std::fma(a, b, c);
     #endif
+}
+
+BL_FORCE_INLINE double fmadd_auto(double a, double b, double c) noexcept
+{
+    return runtime_hardware_fma_enabled()
+        ? fmadd_fma(a, b, c)
+        : std::fma(a, b, c);
+}
+
+BL_FORCE_INLINE float fmadd_auto(float a, float b, float c) noexcept
+{
+    return runtime_hardware_fma_enabled()
+        ? fmadd_fma(a, b, c)
+        : std::fma(a, b, c);
+}
+
+BL_FORCE_INLINE void two_prod_fma(
+    double a,
+    double b,
+    double& product,
+    double& error) noexcept
+{
+    product = a * b;
+    error = fmsub_fma(a, b, product);
 }
 
 BL_FORCE_INLINE constexpr void two_prod_precise(double a, double b, double& p, double& err) noexcept
 {
-    #ifdef FMA_AVAILABLE
-    if (bl::detail::is_constant_evaluated() || bl::detail::use_constexpr_parity())
+    #if FLTX_DETAIL_HAS_RUNTIME_FMA_PATH
+    if (bl::detail::is_constant_evaluated() || bl::detail::use_constexpr_parity()) [[unlikely]]
     {
         two_prod_precise_dekker(a, b, p, err);
     }
+    else if (runtime_hardware_fma_enabled())
+    {
+        two_prod_fma(a, b, p, err);
+    }
     else
     {
-        p = a * b;
-        err = fmsub_runtime(a, b, p);
+        two_prod_precise_dekker(a, b, p, err);
     }
     #else
     two_prod_precise_dekker(a, b, p, err);
@@ -746,15 +725,18 @@ BL_FORCE_INLINE constexpr void two_prod_precise(double a, double b, double& p, d
 #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
 BL_FORCE_INLINE constexpr void two_prod_precise_checked(double a, double b, double& p, double& err) noexcept
 {
-    #ifdef FMA_AVAILABLE
-    if (bl::detail::is_constant_evaluated() || bl::detail::use_constexpr_parity())
+    #if FLTX_DETAIL_HAS_RUNTIME_FMA_PATH
+    if (bl::detail::is_constant_evaluated() || bl::detail::use_constexpr_parity()) [[unlikely]]
     {
         two_prod_precise_dekker_checked(a, b, p, err);
     }
+    else if (runtime_hardware_fma_enabled())
+    {
+        two_prod_fma(a, b, p, err);
+    }
     else
     {
-        p = a * b;
-        err = fmsub_runtime(a, b, p);
+        two_prod_precise_dekker_checked(a, b, p, err);
     }
     #else
     two_prod_precise_dekker_checked(a, b, p, err);

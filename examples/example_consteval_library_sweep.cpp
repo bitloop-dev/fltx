@@ -19,10 +19,7 @@ consteval f32 f32_test()
     constexpr f32 round_result     = bl::round(2.5f);
     constexpr long lround_result   = bl::lround(2.5f);
     constexpr llong llround_result = bl::llround(2.5f);
-    constexpr f32 nearbyint_result = bl::nearbyint(2.5f);
-    constexpr f32 rint_result      = bl::rint(2.5f);
-    constexpr long lrint_result    = bl::lrint(2.5f);
-    constexpr llong llrint_result  = bl::llrint(2.5f);
+    constexpr f32 roundeven_result = bl::roundeven(2.5f);
                                       
     constexpr f32 fmod_result      = bl::fmod(5.5f, 2.0f);
     constexpr f32 remainder_result = bl::remainder(5.5f, 2.0f);
@@ -86,8 +83,7 @@ consteval f32 f32_test()
         abs_result + fma_result
         + floor_result + ceil_result + trunc_result + round_result
         + static_cast<f32>(lround_result) + static_cast<f32>(llround_result)
-        + nearbyint_result + rint_result
-        + static_cast<f32>(lrint_result) + static_cast<f32>(llrint_result)
+        + roundeven_result
         + fmod_result + remainder_result + remquo_result1 + static_cast<f32>(remquo_result2)
         + fmin_result + fmax_result + fdim_result + copysign_result
         + sqrt_result + cbrt_result + hypot_result + pow_result + pow10_result
@@ -114,10 +110,7 @@ consteval f64 f64_test()
     constexpr f64 round_result     = bl::round(2.5);
     constexpr long lround_result   = bl::lround(2.5);
     constexpr llong llround_result = bl::llround(2.5);
-    constexpr f64 nearbyint_result = bl::nearbyint(2.5);
-    constexpr f64 rint_result      = bl::rint(2.5);
-    constexpr long lrint_result    = bl::lrint(2.5);
-    constexpr llong llrint_result  = bl::llrint(2.5);
+    constexpr f64 roundeven_result = bl::roundeven(2.5);
                                       
     constexpr f64 fmod_result      = bl::fmod(5.5, 2.0);
     constexpr f64 remainder_result = bl::remainder(5.5, 2.0);
@@ -181,8 +174,7 @@ consteval f64 f64_test()
         abs_result + fma_result
         + floor_result + ceil_result + trunc_result + round_result
         + static_cast<f64>(lround_result) + static_cast<f64>(llround_result)
-        + nearbyint_result + rint_result
-        + static_cast<f64>(lrint_result) + static_cast<f64>(llrint_result)
+        + roundeven_result
         + fmod_result + remainder_result + remquo_result1 + static_cast<f64>(remquo_result2)
         + fmin_result + fmax_result + fdim_result + copysign_result
         + sqrt_result + cbrt_result + hypot_result + pow_result + pow10_result
@@ -209,10 +201,7 @@ consteval f128 f128_test()
     constexpr f128 round_result     = bl::round(2.5_dd);
     constexpr long lround_result    = bl::lround(2.5_dd);
     constexpr llong llround_result  = bl::llround(2.5_dd);
-    constexpr f128 nearbyint_result = bl::nearbyint(2.5_dd);
-    constexpr f128 rint_result      = bl::rint(2.5_dd);
-    constexpr long lrint_result     = bl::lrint(2.5_dd);
-    constexpr llong llrint_result   = bl::llrint(2.5_dd);
+    constexpr f128 roundeven_result = bl::roundeven(2.5_dd);
                                       
     constexpr f128 fmod_result      = bl::fmod(5.5_dd, 2.0_dd);
     constexpr f128 remainder_result = bl::remainder(5.5_dd, 2.0_dd);
@@ -276,8 +265,7 @@ consteval f128 f128_test()
         abs_result + fma_result
         + floor_result + ceil_result + trunc_result + round_result
         + f128{ static_cast<double>(lround_result) } + f128{ static_cast<double>(llround_result) }
-        + nearbyint_result + rint_result
-        + f128{ static_cast<double>(lrint_result) } + f128{ static_cast<double>(llrint_result) }
+        + roundeven_result
         + fmod_result + remainder_result + remquo_result1 + f128{ static_cast<double>(remquo_result2) }
         + fmin_result + fmax_result + fdim_result + copysign_result
         + sqrt_result + cbrt_result + hypot_result + pow_result + pow10_result
@@ -304,10 +292,7 @@ consteval f256 f256_test()
     constexpr f256 round_result     = bl::round(2.5_qd);
     constexpr long lround_result    = bl::lround(2.5_qd);
     constexpr llong llround_result  = bl::llround(2.5_qd);
-    constexpr f256 nearbyint_result = bl::nearbyint(2.5_qd);
-    constexpr f256 rint_result      = bl::rint(2.5_qd);
-    constexpr long lrint_result     = bl::lrint(2.5_qd);
-    constexpr llong llrint_result   = bl::llrint(2.5_qd);
+    constexpr f256 roundeven_result = bl::roundeven(2.5_qd);
 
     constexpr f256 fmod_result      = bl::fmod(5.5_qd, 2.0_qd);
     constexpr f256 remainder_result = bl::remainder(5.5_qd, 2.0_qd);
@@ -371,8 +356,7 @@ consteval f256 f256_test()
         abs_result + fma_result
         + floor_result + ceil_result + trunc_result + round_result
         + f256{ static_cast<double>(lround_result) } + f256{ static_cast<double>(llround_result) }
-        + nearbyint_result + rint_result
-        + f256{ static_cast<double>(lrint_result) } + f256{ static_cast<double>(llrint_result) }
+        + roundeven_result
         + fmod_result + remainder_result + remquo_result1 + f256{ static_cast<double>(remquo_result2) }
         + fmin_result + fmax_result + fdim_result + copysign_result
         + sqrt_result + cbrt_result + hypot_result + pow_result + pow10_result

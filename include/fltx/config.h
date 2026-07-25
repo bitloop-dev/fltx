@@ -52,11 +52,11 @@ static_assert(std::numeric_limits<double>::is_iec559 &&
 #error fltx requires C++23 if consteval support.
 #endif
 
-#ifndef BL_FAST_MATH
+#ifndef FLTX_FAST_MATH
   #if defined(__FAST_MATH__)
-  #define BL_FAST_MATH
+  #define FLTX_FAST_MATH
   #elif defined(_MSC_VER) && defined(_M_FP_FAST)
-  #define BL_FAST_MATH
+  #define FLTX_FAST_MATH
   #endif
 #endif
 
@@ -98,7 +98,7 @@ static_assert(std::numeric_limits<double>::is_iec559 &&
 #endif
 
 // MSVC-only noinline pressure valve for constexpr helpers that otherwise cause excessive
-// inlining/optimization work; GCC/Clang are left free to inline them.
+// optimization work; GCC/Clang retain control of their own inlining decisions.
 
 #if defined(_MSC_VER)
   #define BL_MSVC_NOINLINE BL_NO_INLINE
@@ -106,46 +106,120 @@ static_assert(std::numeric_limits<double>::is_iec559 &&
   #define BL_MSVC_NOINLINE
 #endif
 
-// Enable FMA kernels when the target clearly has cheap hardware FMA.
-//
-// MSVC x86/x64 builds assume FMA by default because MSVC does not consistently
-// expose a portable __FMA__-style target macro for consumer translation units.
-// Unsupported CPUs/VMs can opt out with FLTX_DISABLE_FMA_AVAILABLE=1; the FMA
-// runtime preflight emits a diagnostic before the unchecked instruction path is
-// used in normal MSVC startup.
+// Public-header feature policy. CMake may define these macros on fltx::fltx,
+// but they are intentionally just policy switches, not CPU or FP compiler flags.
 
-#if !defined(FLTX_ASSUME_X86_FMA_AVAILABLE)
-  #if defined(_MSC_VER) && !defined(__EMSCRIPTEN__) && \
-      (defined(_M_X64) || defined(_M_AMD64) || defined(_M_IX86))
-  #define FLTX_ASSUME_X86_FMA_AVAILABLE 1
-  #else
-  #define FLTX_ASSUME_X86_FMA_AVAILABLE 0
-  #endif
+#if !defined(FLTX_HEADER_SIMD_OFF)
+#define FLTX_HEADER_SIMD_OFF 0
 #endif
 
-#if !defined(FLTX_DISABLE_FMA_AVAILABLE)
-  #ifndef FMA_AVAILABLE
-    #ifndef __EMSCRIPTEN__
-      #if defined(__FMA__) || defined(__FMA4__)
-        #define FMA_AVAILABLE
-      #elif FLTX_ASSUME_X86_FMA_AVAILABLE
-        #define FMA_AVAILABLE
-        #define BL_FLTX_ASSUMED_X86_FMA 1
-      #elif defined(_MSC_VER) && (defined(__AVX2__) || defined(__AVX512F__))
-        #define FMA_AVAILABLE
-      #endif
-    #endif
-  #endif
+#if !defined(FLTX_HEADER_FMA_AUTO)
+#define FLTX_HEADER_FMA_AUTO 0
 #endif
 
-#if !defined(BL_FLTX_HAS_X86_FMA)
+#if !defined(FLTX_HEADER_FMA_OFF)
+#define FLTX_HEADER_FMA_OFF 0
+#endif
+
+#if !defined(FLTX_HEADER_FMA_ASSUME)
+#define FLTX_HEADER_FMA_ASSUME 0
+#endif
+
+#if !defined(FLTX_HAS_COMPILED_X86_FMA_BACKEND)
+#define FLTX_HAS_COMPILED_X86_FMA_BACKEND 0
+#endif
+
+#if (FLTX_HEADER_FMA_AUTO + FLTX_HEADER_FMA_OFF + FLTX_HEADER_FMA_ASSUME) == 0
+#undef FLTX_HEADER_FMA_AUTO
+#define FLTX_HEADER_FMA_AUTO 1
+#endif
+
+#if (FLTX_HEADER_FMA_AUTO + FLTX_HEADER_FMA_OFF + FLTX_HEADER_FMA_ASSUME) > 1
+#error Select only one fltx header FMA policy: AUTO, OFF, or ASSUME.
+#endif
+
+#if !defined(FLTX_X86_TARGET)
   #if !defined(__EMSCRIPTEN__) && \
-      (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)) && \
-      (defined(__FMA__) || FLTX_ASSUME_X86_FMA_AVAILABLE || \
-       (defined(_MSC_VER) && (defined(__AVX2__) || defined(__AVX512F__))))
-  #define BL_FLTX_HAS_X86_FMA 1
+      (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_AMD64) || defined(_M_IX86))
+  #define FLTX_X86_TARGET 1
   #else
-  #define BL_FLTX_HAS_X86_FMA 0
+  #define FLTX_X86_TARGET 0
+  #endif
+#endif
+
+#if !defined(FLTX_ARM64_TARGET)
+  #if !defined(__EMSCRIPTEN__) && (defined(__aarch64__) || defined(_M_ARM64))
+  #define FLTX_ARM64_TARGET 1
+  #else
+  #define FLTX_ARM64_TARGET 0
+  #endif
+#endif
+
+#if !defined(FLTX_TU_HAS_X86_FMA)
+  #if FLTX_X86_TARGET && (defined(__FMA__) || \
+      (defined(_MSC_VER) && (defined(__AVX2__) || defined(__AVX512F__) || defined(_M_AVX2))))
+  #define FLTX_TU_HAS_X86_FMA 1
+  #else
+  #define FLTX_TU_HAS_X86_FMA 0
+  #endif
+#endif
+
+#if FLTX_HEADER_FMA_ASSUME && !FLTX_X86_TARGET && !FLTX_ARM64_TARGET
+#error FLTX_HEADER_FMA_ASSUME requires a target with baseline or explicitly enabled hardware FMA.
+#endif
+
+#if FLTX_HEADER_FMA_ASSUME && FLTX_X86_TARGET && !defined(_MSC_VER) && !FLTX_TU_HAS_X86_FMA
+#error FLTX_HEADER_FMA_ASSUME requires GNU/Clang translation units to be compiled with FMA enabled, for example -mfma.
+#endif
+
+#if !defined(FLTX_HAS_X86_FMA)
+  #if !FLTX_HEADER_FMA_OFF && FLTX_X86_TARGET && (FLTX_TU_HAS_X86_FMA || FLTX_HEADER_FMA_ASSUME)
+  #define FLTX_HAS_X86_FMA 1
+  #else
+  #define FLTX_HAS_X86_FMA 0
+  #endif
+#endif
+
+#if !defined(FLTX_DETAIL_MSVC_GUARDED_X86_FMA)
+  #if FLTX_HEADER_FMA_AUTO && FLTX_X86_TARGET && defined(_MSC_VER) && !FLTX_HAS_X86_FMA
+  #define FLTX_DETAIL_MSVC_GUARDED_X86_FMA 1
+  #else
+  #define FLTX_DETAIL_MSVC_GUARDED_X86_FMA 0
+  #endif
+#endif
+
+#if !defined(FLTX_DETAIL_X86_FMA_RUNTIME_CHECK)
+  #if FLTX_DETAIL_MSVC_GUARDED_X86_FMA || \
+      (FLTX_HEADER_FMA_AUTO && FLTX_X86_TARGET && \
+       FLTX_HAS_COMPILED_X86_FMA_BACKEND && !FLTX_TU_HAS_X86_FMA)
+  #define FLTX_DETAIL_X86_FMA_RUNTIME_CHECK 1
+  #else
+  #define FLTX_DETAIL_X86_FMA_RUNTIME_CHECK 0
+  #endif
+#endif
+
+#if !defined(FLTX_DETAIL_USE_SCALAR_X86_FMA)
+  #if FLTX_HAS_X86_FMA
+  #define FLTX_DETAIL_USE_SCALAR_X86_FMA 1
+  #else
+  #define FLTX_DETAIL_USE_SCALAR_X86_FMA 0
+  #endif
+#endif
+
+#if !defined(FLTX_DETAIL_USE_BASELINE_ARM64_FMA)
+  #if !FLTX_HEADER_FMA_OFF && FLTX_ARM64_TARGET
+  #define FLTX_DETAIL_USE_BASELINE_ARM64_FMA 1
+  #else
+  #define FLTX_DETAIL_USE_BASELINE_ARM64_FMA 0
+  #endif
+#endif
+
+#if !defined(FLTX_DETAIL_HAS_RUNTIME_FMA_PATH)
+  #if FLTX_DETAIL_USE_SCALAR_X86_FMA || FLTX_DETAIL_MSVC_GUARDED_X86_FMA || \
+      FLTX_DETAIL_USE_BASELINE_ARM64_FMA
+  #define FLTX_DETAIL_HAS_RUNTIME_FMA_PATH 1
+  #else
+  #define FLTX_DETAIL_HAS_RUNTIME_FMA_PATH 0
   #endif
 #endif
 
@@ -158,24 +232,34 @@ static_assert(std::numeric_limits<double>::is_iec559 &&
   #define BL_POP_PRECISE  __pragma(float_control(pop))
   #endif
 #elif defined(__EMSCRIPTEN__)
+  // WebAssembly Clang does not support the float_control push/pop stack.
+  // Restore the incoming mode explicitly after each protected EFT block.
   #ifndef BL_PUSH_PRECISE
   #define BL_PUSH_PRECISE _Pragma("clang fp reassociate(off)") \
                           _Pragma("clang fp contract(off)")
   #endif
   #ifndef BL_POP_PRECISE
-  #define BL_POP_PRECISE  _Pragma("clang fp reassociate(on)")  \
-                          _Pragma("clang fp contract(fast)")
+    #if defined(__FAST_MATH__)
+    #define BL_POP_PRECISE _Pragma("clang fp reassociate(on)") \
+                           _Pragma("clang fp contract(fast)")
+    #elif defined(FLTX_DETAIL_FP_CONTRACT_FAST)
+    #define BL_POP_PRECISE _Pragma("clang fp reassociate(off)") \
+                           _Pragma("clang fp contract(fast)")
+    #else
+    #define BL_POP_PRECISE _Pragma("clang fp reassociate(off)") \
+                           _Pragma("clang fp contract(off)")
+    #endif
   #endif
 #elif defined(__clang__)
-  // Clang's fp pragmas here do not restore a previous stack state. Keep strict
-  // FP semantics after protected blocks; expansion arithmetic relies on it.
+  // Clang supports the same file-scope float_control stack as MSVC. Keep
+  // contraction disabled inside EFT declarations and restore the exact
+  // incoming translation-unit mode afterwards.
   #ifndef BL_PUSH_PRECISE
-  #define BL_PUSH_PRECISE _Pragma("clang fp reassociate(off)") \
+  #define BL_PUSH_PRECISE _Pragma("float_control(precise, on, push)") \
                           _Pragma("clang fp contract(off)")
   #endif
   #ifndef BL_POP_PRECISE
-  #define BL_POP_PRECISE  _Pragma("clang fp reassociate(off)") \
-                          _Pragma("clang fp contract(off)")
+  #define BL_POP_PRECISE _Pragma("float_control(pop)")
   #endif
 #elif defined(__GNUC__)
   #ifndef BL_PUSH_PRECISE

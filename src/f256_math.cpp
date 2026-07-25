@@ -23,9 +23,9 @@ namespace bl::detail::_f256_runtime
     }
 
     // rounding and decimals
-    BL_NO_INLINE f256_s round(const f256_s& a)
+    BL_NO_INLINE f256_s round_nearest_away_from_zero(const f256_s& a)
     {
-        return detail::_f256_impl::round_runtime(a);
+        return detail::_f256_impl::round_nearest_away_from_zero_runtime(a);
     }
 
     BL_NO_INLINE f256_s round_to_decimals(f256_s v, int prec)
@@ -38,29 +38,14 @@ namespace bl::detail::_f256_runtime
         return detail::_f256_impl::round_to_significant_figures(v, figures);
     }
 
-    BL_NO_INLINE f256_s nearbyint(const f256_s& a)
+    BL_NO_INLINE long lround_nearest_away_from_zero(const f256_s& x)
     {
-        return detail::_f256_impl::nearbyint_runtime(a);
+        return detail::_f256_impl::lround_nearest_away_from_zero(x);
     }
 
-    BL_NO_INLINE long lround(const f256_s& x)
+    BL_NO_INLINE long long llround_nearest_away_from_zero(const f256_s& x)
     {
-        return detail::_f256_impl::lround(x);
-    }
-
-    BL_NO_INLINE long long llround(const f256_s& x)
-    {
-        return detail::_f256_impl::llround(x);
-    }
-
-    BL_NO_INLINE long lrint(const f256_s& x)
-    {
-        return detail::_f256_impl::lrint(x);
-    }
-
-    BL_NO_INLINE long long llrint(const f256_s& x)
-    {
-        return detail::_f256_impl::llrint(x);
+        return detail::_f256_impl::llround_nearest_away_from_zero(x);
     }
 
     // remainders

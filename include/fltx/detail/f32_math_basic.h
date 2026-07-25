@@ -14,7 +14,6 @@
 
 #include "fltx/f32_classification.h"
 #include "fltx/detail/f64_math_basic.h"
-#include "fltx/round_options.h"
 
 
 namespace bl {
@@ -29,9 +28,9 @@ namespace detail::_f32_impl
     using detail::fp::isfinite;
     using detail::fp::isinf;
     using detail::fp::isnan;
-    using detail::fp::nearbyint;
+    using detail::fp::round_nearest_even;
     using detail::fp::nextafter;
-    using detail::fp::round_half_away_zero;
+    using detail::fp::round_nearest_away_from_zero;
     using detail::fp::signbit;
     using detail::fp::to_signed_integer_or_zero;
 
@@ -175,38 +174,32 @@ namespace detail::_f32_impl
 [[nodiscard]] BL_FORCE_INLINE constexpr float round(float x) noexcept
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::round_half_away_zero(x),
+        detail::_f32_impl::round_nearest_away_from_zero(x),
         std::round(x)
     );
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr float round_to(float x, int precision, round_format format) noexcept
+[[nodiscard]] BL_FORCE_INLINE constexpr float roundeven(float x) noexcept
 {
-    return format == round_format::decimals
-        ? detail::_f32_impl::round_to_decimals(x, precision)
-        : detail::_f32_impl::round_to_significant_figures(x, precision);
+    return detail::_f32_impl::round_nearest_even(x);
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr float nearbyint(float x) noexcept
+[[nodiscard]] BL_FORCE_INLINE constexpr float round_to_decimals(float x, int precision) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::nearbyint(x),
-        std::nearbyint(x)
-    );
+    return detail::_f32_impl::round_to_decimals(x, precision);
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr float rint(float x) noexcept
+[[nodiscard]] BL_FORCE_INLINE constexpr float round_to_significant_figures(
+    float x,
+    int precision) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::nearbyint(x),
-        std::rint(x)
-    );
+    return detail::_f32_impl::round_to_significant_figures(x, precision);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr long lround(float x) noexcept
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::to_signed_integer_or_zero<long>(detail::_f32_impl::round_half_away_zero(x)),
+        detail::_f32_impl::to_signed_integer_or_zero<long>(detail::_f32_impl::round_nearest_away_from_zero(x)),
         std::lround(x)
     );
 }
@@ -214,24 +207,8 @@ namespace detail::_f32_impl
 [[nodiscard]] BL_FORCE_INLINE constexpr long long llround(float x) noexcept
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::to_signed_integer_or_zero<long long>(detail::_f32_impl::round_half_away_zero(x)),
+        detail::_f32_impl::to_signed_integer_or_zero<long long>(detail::_f32_impl::round_nearest_away_from_zero(x)),
         std::llround(x)
-    );
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr long lrint(float x) noexcept
-{
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::to_signed_integer_or_zero<long>(detail::_f32_impl::nearbyint(x)),
-        std::lrint(x)
-    );
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr long long llrint(float x) noexcept
-{
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::to_signed_integer_or_zero<long long>(detail::_f32_impl::nearbyint(x)),
-        std::llrint(x)
     );
 }
 
@@ -263,7 +240,7 @@ namespace detail::_f32_impl
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
         static_cast<float>(bl::fma(static_cast<double>(x), static_cast<double>(y), static_cast<double>(z))),
-        detail::fp::fmadd_runtime(x, y, z)
+        detail::fp::fmadd_auto(x, y, z)
     );
 }
 

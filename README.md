@@ -49,7 +49,7 @@ Performance:
 - Benchmarked against comparable libraries, demonstrating overall superior performance
 - Compatible with fast-math builds
 - Internal [`bl::f256`](include/fltx/f256.h) expression fusion reduces intermediate rounding and temporary value materialisation for common arithmetic shapes.
-- Hardware acceleration where supported, including x86/x64 SSE2 with FMA when available, AArch64 NEON, and WebAssembly `wasm128` SIMD via Emscripten
+- Hardware acceleration where supported, including x86/x64 SSE2 with FMA when available, AArch64 NEON, and WebAssembly SIMD128 via Emscripten
 - Suitable for lightweight native builds, WebAssembly / Emscripten
 - Optional runtime-to-compile-time dispatch helper for template-specialized kernels
 
@@ -176,6 +176,16 @@ add_subdirectory(/path/to/fltx fltx-build)
 target_link_libraries(main PRIVATE fltx::fltx)
 ```
 
+The package has three performance controls:
+
+| Option | Default | Meaning |
+|---|---|---|
+| `FLTX_FMA_MODE=AUTO\|OFF\|ASSUME` | `AUTO` | Safely detect x86 FMA at runtime, disable hardware FMA, or let the consumer guarantee FMA support. `ASSUME` exports `-mfma` where GNU-style compilers require it and performs no runtime feature check. |
+| `FLTX_SIMD=ON\|OFF` | `ON` | Enable supported SIMD paths. Emscripten `ON` supplies `-msimd128` to both the library and consuming translation units. |
+| `FLTX_INTERNAL_FAST_MATH=AUTO\|ON\|OFF` | `AUTO` | Control only the compiled `fltx` runtime sources. `AUTO` enables a platform only after its accuracy and performance gate is approved; the current approval list is empty. These flags are never exported to consumers. |
+
+Normal build-type optimization flags remain controlled by the selected CMake configuration and toolchain.
+
 ## Use Cases
 
 `fltx` is aimed at workloads where both precision and speed matter:
@@ -283,7 +293,7 @@ Supported function groups:
 | constexpr | Category | Functions |
 |---|---|---|
 | ✅ | Arithmetic | `abs`, `fabs`, `fma` |
-| ✅ | Rounding | `floor`, `ceil`, `trunc`, `round`, `lround`, `llround`, `nearbyint`, `rint`, `lrint`, `llrint`, `round_to` |
+| ✅ | Rounding | `floor`, `ceil`, `trunc`, `round`, `lround`, `llround`, `round_to` |
 | ✅ | Remainders | `fmod`, `remainder`, `remquo` |
 | ✅ | Min / max / sign | `fmin`, `fmax`, `fdim`, `copysign`, `signbit` |
 | ✅ | Roots / powers | `sqrt`, `cbrt`, `hypot`, `pow`, `ipow` |
@@ -296,7 +306,7 @@ Supported function groups:
 
 For an example of the library-wide constexpr capabilities, see [`example_consteval_library_sweep.cpp`](examples/example_consteval_library_sweep.cpp).
 
-Use `bl::round_to(x, precision, bl::decimals)` for decimal-place rounding and `bl::round_to(x, precision, bl::significant_figures)` for significant-figure rounding. Use `bl::pow(T{ base }, n)` or `bl::ipow(T{ base }, n)` for integral powers, including powers of ten.
+Use `bl::roundeven(x)` for nearest-integer rounding with halfway cases rounded to even. The standard-shaped `bl::round(x)`, `bl::trunc(x)`, `bl::ceil(x)`, and `bl::floor(x)` functions provide nearest-away-from-zero and the three directed rounding behaviors. Use `bl::round_to_decimals(x, precision)` for decimal-place rounding and `bl::round_to_significant_figures(x, precision)` for significant-figure rounding. Use `bl::pow(T{ base }, n)` or `bl::ipow(T{ base }, n)` for integral powers, including powers of ten.
 
 ## IO and Literals
 

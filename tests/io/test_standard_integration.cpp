@@ -86,7 +86,6 @@ namespace
         T value,
         int precision,
         std::ios_base::fmtflags flags,
-        bl::round_format expected_round_format,
         int expected_round_precision)
     {
         const std::string text = bl::to_string(value, precision, flags);
@@ -96,9 +95,12 @@ namespace
         const T parsed_static = bl::parse<T>(static_text.view());
         const auto try_parsed = bl::try_parse<T>(static_text.view());
 
-        const T expected = (flags & std::ios_base::floatfield) == (std::ios_base::fixed | std::ios_base::scientific)
+        const auto floatfield = flags & std::ios_base::floatfield;
+        const T expected = floatfield == (std::ios_base::fixed | std::ios_base::scientific)
             ? value
-            : T{ bl::round_to(value, expected_round_precision, expected_round_format) };
+            : floatfield == std::ios_base::fixed
+                ? T{ bl::round_to_decimals(value, expected_round_precision) }
+                : T{ bl::round_to_significant_figures(value, expected_round_precision) };
 
         CAPTURE(text);
         REQUIRE(try_parsed);
@@ -119,13 +121,8 @@ namespace
         if (!parsed || parsed.consumed != text.size())
             return false;
 
-        if (bl::isnan(value))
-            return bl::isnan(parsed.value);
-        if (bl::isinf(value))
-            return parsed.value == value;
-
-        return bl::round_to(parsed.value, precision, flags) ==
-               bl::round_to(value, precision, flags);
+        const auto reformatted = bl::to_static_string(parsed.value, precision, flags);
+        return reformatted.view() == text.view();
     }
 
     template<class T>
@@ -673,29 +670,29 @@ TEST_CASE("fltx string output accepts std fmtflags", "[fltx][io][string]")
 
 TEST_CASE("fltx typed float formats serialize and deserialize predictably", "[fltx][io][string][parse]")
 {
-    check_serialized_roundtrip(bl::f32{ 123.25f }, 5, std::ios_base::fmtflags{}, bl::significant_figures, 5);
-    check_serialized_roundtrip(bl::f32{ 123.25f }, 2, std::ios_base::fixed, bl::decimals, 2);
-    check_serialized_roundtrip(bl::f32{ 123.25f }, 4, std::ios_base::scientific, bl::significant_figures, 5);
-    check_serialized_roundtrip(bl::f32{ 123.25f }, 1, (std::ios_base::fixed | std::ios_base::scientific), bl::significant_figures, 0);
+    check_serialized_roundtrip(bl::f32{ 123.25f }, 5, std::ios_base::fmtflags{}, 5);
+    check_serialized_roundtrip(bl::f32{ 123.25f }, 2, std::ios_base::fixed, 2);
+    check_serialized_roundtrip(bl::f32{ 123.25f }, 4, std::ios_base::scientific, 5);
+    check_serialized_roundtrip(bl::f32{ 123.25f }, 1, (std::ios_base::fixed | std::ios_base::scientific), 0);
 
-    check_serialized_roundtrip(bl::f64{ 123.25 }, 5, std::ios_base::fmtflags{}, bl::significant_figures, 5);
-    check_serialized_roundtrip(bl::f64{ 123.25 }, 2, std::ios_base::fixed, bl::decimals, 2);
-    check_serialized_roundtrip(bl::f64{ 123.25 }, 4, std::ios_base::scientific, bl::significant_figures, 5);
-    check_serialized_roundtrip(bl::f64{ 123.25 }, 1, (std::ios_base::fixed | std::ios_base::scientific), bl::significant_figures, 0);
+    check_serialized_roundtrip(bl::f64{ 123.25 }, 5, std::ios_base::fmtflags{}, 5);
+    check_serialized_roundtrip(bl::f64{ 123.25 }, 2, std::ios_base::fixed, 2);
+    check_serialized_roundtrip(bl::f64{ 123.25 }, 4, std::ios_base::scientific, 5);
+    check_serialized_roundtrip(bl::f64{ 123.25 }, 1, (std::ios_base::fixed | std::ios_base::scientific), 0);
 
-    check_serialized_roundtrip(bl::f128{ 123.25 }, 5, std::ios_base::fmtflags{}, bl::significant_figures, 5);
-    check_serialized_roundtrip(bl::f128{ 123.25 }, 2, std::ios_base::fixed, bl::decimals, 2);
-    check_serialized_roundtrip(bl::f128{ 123.25 }, 4, std::ios_base::scientific, bl::significant_figures, 5);
-    check_serialized_roundtrip(bl::f128{ 123.25 }, 1, (std::ios_base::fixed | std::ios_base::scientific), bl::significant_figures, 0);
-    check_serialized_roundtrip(bl::f128{ 123.25 }, 4, (std::ios_base::scientific | std::ios_base::showpos | std::ios_base::uppercase), bl::significant_figures, 5);
-    check_serialized_roundtrip(bl::f128{ 123.25 }, 1, (std::ios_base::fixed | std::ios_base::scientific | std::ios_base::showpos | std::ios_base::uppercase), bl::significant_figures, 0);
+    check_serialized_roundtrip(bl::f128{ 123.25 }, 5, std::ios_base::fmtflags{}, 5);
+    check_serialized_roundtrip(bl::f128{ 123.25 }, 2, std::ios_base::fixed, 2);
+    check_serialized_roundtrip(bl::f128{ 123.25 }, 4, std::ios_base::scientific, 5);
+    check_serialized_roundtrip(bl::f128{ 123.25 }, 1, (std::ios_base::fixed | std::ios_base::scientific), 0);
+    check_serialized_roundtrip(bl::f128{ 123.25 }, 4, (std::ios_base::scientific | std::ios_base::showpos | std::ios_base::uppercase), 5);
+    check_serialized_roundtrip(bl::f128{ 123.25 }, 1, (std::ios_base::fixed | std::ios_base::scientific | std::ios_base::showpos | std::ios_base::uppercase), 0);
 
-    check_serialized_roundtrip(bl::f256{ 123.25 }, 5, std::ios_base::fmtflags{}, bl::significant_figures, 5);
-    check_serialized_roundtrip(bl::f256{ 123.25 }, 2, std::ios_base::fixed, bl::decimals, 2);
-    check_serialized_roundtrip(bl::f256{ 123.25 }, 4, std::ios_base::scientific, bl::significant_figures, 5);
-    check_serialized_roundtrip(bl::f256{ 123.25 }, 1, (std::ios_base::fixed | std::ios_base::scientific), bl::significant_figures, 0);
-    check_serialized_roundtrip(bl::f256{ 123.25 }, 4, (std::ios_base::scientific | std::ios_base::showpos | std::ios_base::uppercase), bl::significant_figures, 5);
-    check_serialized_roundtrip(bl::f256{ 123.25 }, 1, (std::ios_base::fixed | std::ios_base::scientific | std::ios_base::showpos | std::ios_base::uppercase), bl::significant_figures, 0);
+    check_serialized_roundtrip(bl::f256{ 123.25 }, 5, std::ios_base::fmtflags{}, 5);
+    check_serialized_roundtrip(bl::f256{ 123.25 }, 2, std::ios_base::fixed, 2);
+    check_serialized_roundtrip(bl::f256{ 123.25 }, 4, std::ios_base::scientific, 5);
+    check_serialized_roundtrip(bl::f256{ 123.25 }, 1, (std::ios_base::fixed | std::ios_base::scientific), 0);
+    check_serialized_roundtrip(bl::f256{ 123.25 }, 4, (std::ios_base::scientific | std::ios_base::showpos | std::ios_base::uppercase), 5);
+    check_serialized_roundtrip(bl::f256{ 123.25 }, 1, (std::ios_base::fixed | std::ios_base::scientific | std::ios_base::showpos | std::ios_base::uppercase), 0);
 }
 
 TEST_CASE("fltx streams f256 extremes without normalization stalls", "[fltx][io][stream]")

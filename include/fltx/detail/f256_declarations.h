@@ -20,20 +20,20 @@ namespace bl {
 
 namespace detail::_f256_runtime
 {
+    // complete-operation x86 FMA backend
+    BL_NO_INLINE f256_s fma_x86(const f256_s& x, const f256_s& y, const f256_s& z);
+
     // roots
     BL_NO_INLINE f256_s sqrt(const f256_s& a);
     BL_NO_INLINE f256_s cbrt(const f256_s& x);
     BL_NO_INLINE f256_s hypot(const f256_s& x, const f256_s& y);
 
     // rounding and decimals
-    BL_NO_INLINE f256_s round(const f256_s& a);
+    BL_NO_INLINE f256_s round_nearest_away_from_zero(const f256_s& a);
     BL_NO_INLINE f256_s round_to_decimals(f256_s v, int prec);
     BL_NO_INLINE f256_s round_to_significant_figures(f256_s v, int figures);
-    BL_NO_INLINE f256_s nearbyint(const f256_s& a);
-    BL_NO_INLINE long lround(const f256_s& x);
-    BL_NO_INLINE long long llround(const f256_s& x);
-    BL_NO_INLINE long lrint(const f256_s& x);
-    BL_NO_INLINE long long llrint(const f256_s& x);
+    BL_NO_INLINE long lround_nearest_away_from_zero(const f256_s& x);
+    BL_NO_INLINE long long llround_nearest_away_from_zero(const f256_s& x);
 
     // remainders
     BL_NO_INLINE f256_s fmod(const f256_s& x, const f256_s& y);
@@ -101,16 +101,13 @@ namespace detail::_f256_impl
 
     // rounding and decimals
     BL_FORCE_INLINE constexpr f256_s trunc(const f256_s& a);
-    BL_FORCE_INLINE constexpr f256_s round(const f256_s& a);
-    BL_FORCE_INLINE f256_s round_runtime(const f256_s& a) noexcept;
+    BL_FORCE_INLINE constexpr f256_s round_nearest_away_from_zero(const f256_s& a);
+    BL_FORCE_INLINE f256_s round_nearest_away_from_zero_runtime(const f256_s& a) noexcept;
     BL_FORCE_INLINE constexpr f256_s round_to_decimals(f256_s v, int prec);
     BL_FORCE_INLINE constexpr f256_s round_to_significant_figures(f256_s v, int figures);
-    BL_FORCE_INLINE constexpr f256_s nearbyint(const f256_s& a);
-    BL_FORCE_INLINE f256_s nearbyint_runtime(const f256_s& a) noexcept;
-    BL_FORCE_INLINE constexpr long lround(const f256_s& x);
-    BL_FORCE_INLINE constexpr long long llround(const f256_s& x);
-    BL_FORCE_INLINE constexpr long lrint(const f256_s& x);
-    BL_FORCE_INLINE constexpr long long llrint(const f256_s& x);
+    BL_FORCE_INLINE constexpr f256_s round_nearest_even(const f256_s& a);
+    BL_FORCE_INLINE constexpr long lround_nearest_away_from_zero(const f256_s& x);
+    BL_FORCE_INLINE constexpr long long llround_nearest_away_from_zero(const f256_s& x);
 
     // arithmetic and comparisons
     BL_FORCE_INLINE constexpr f256_s fma(const f256_s& x, const f256_s& y, const f256_s& z);

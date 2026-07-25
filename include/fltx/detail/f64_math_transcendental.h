@@ -100,7 +100,7 @@ namespace detail::_f64_impl
         if (isinf(x))
             return signbit(x) ? 0.0 : std::numeric_limits<double>::infinity();
 
-        const double kd   = nearbyint_ties_even(x);
+        const double kd   = round_nearest_even_value(x);
         const int k = static_cast<int>(kd);
         const double frac = x - kd;
         return ldexp(exp(frac * ln2), k);

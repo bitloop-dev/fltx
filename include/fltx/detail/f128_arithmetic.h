@@ -260,6 +260,11 @@ namespace detail::_f128 // primitives and kernels
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_checked_inline(const f128_s& a, const f128_s& b) noexcept
     {
+        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        if (detail::fp::dekker_product_needs_scaling(a.hi, b.hi)) [[unlikely]]
+            return finish_mul_checked_inline(a, b, mul_inline_checked(a, b));
+        #endif
+
         return finish_mul_checked_inline(a, b, mul_inline(a, b));
     }
 
@@ -364,6 +369,23 @@ namespace detail::_f128 // primitives and kernels
         return renorm(p, e);
     }
 #endif
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_double_checked_inline(const f128_s& a, double b) noexcept
+    {
+        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        const f128_s out = detail::fp::dekker_product_needs_scaling(a.hi, b)
+            ? mul_double_inline_checked(a, b)
+            : mul_double_inline(a, b);
+        #else
+        const f128_s out = mul_double_inline(a, b);
+        #endif
+
+        if (detail::fp::isinf_or_nan(out.hi)) [[unlikely]]
+            return mul_special(a, f128_s{ b, 0.0 });
+        if (out.hi == 0.0 && ((a.hi == 0.0 && a.lo == 0.0) || b == 0.0)) [[unlikely]]
+            return mul_special(a, f128_s{ b, 0.0 });
+        return out;
+    }
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_double_inline(double a, const f128_s& b) noexcept
     {
@@ -499,7 +521,7 @@ namespace detail::_f128 // primitives and kernels
         double p0{}, e0{};
         double p1{}, e1{};
 
-        #if BL_F128_ENABLE_SIMD && (BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD)
+        #if FLTX_F128_ENABLE_SIMD && (FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD)
         if (f128_runtime_product_pair_simd_enabled())
         {
             simd::f64x2 p{}, e{};
@@ -537,7 +559,7 @@ namespace detail::_f128 // primitives and kernels
         double p0{}, e0{};
         double p1{}, e1{};
 
-        #if BL_F128_ENABLE_SIMD && (BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD)
+        #if FLTX_F128_ENABLE_SIMD && (FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD)
         if (f128_runtime_product_pair_simd_enabled())
         {
             simd::f64x2 p{}, e{};
@@ -570,7 +592,7 @@ namespace detail::_f128 // primitives and kernels
         double p0{}, e0{};
         double p1{}, e1{};
 
-        #if BL_F128_ENABLE_SIMD && (BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD)
+        #if FLTX_F128_ENABLE_SIMD && (FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD)
         if (f128_runtime_product_pair_simd_enabled())
         {
             simd::f64x2 p{}, e{};

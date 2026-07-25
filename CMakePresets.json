@@ -128,26 +128,26 @@
   ],
 
   "buildPresets": [
-    { "name": "01. native-debug",     "configurePreset": "native-debug" },
-    { "name": "02. native-release",   "configurePreset": "native-release" },
-    { "name": "03. mingw-debug",      "configurePreset": "mingw-debug" },
-    { "name": "04. mingw-release",    "configurePreset": "mingw-release" },
-    { "name": "05. wasm32-release",   "configurePreset": "wasm32-release" },
-    { "name": "06. macos-release",    "configurePreset": "macos-release" },
+    { "name": "native-debug",         "configurePreset": "native-debug" },
+    { "name": "native-release",       "configurePreset": "native-release" },
+    { "name": "mingw-debug",          "configurePreset": "mingw-debug" },
+    { "name": "mingw-release",        "configurePreset": "mingw-release" },
+    { "name": "wasm32-release",       "configurePreset": "wasm32-release" },
+    { "name": "macos-release",        "configurePreset": "macos-release" },
     {
-      "name": "07. xcode-debug",
+      "name": "xcode-debug",
       "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin"},
       "configurePreset": "xcode",
       "configuration": "Debug"
     },
     {
-      "name": "08. xcode-release",
+      "name": "xcode-release",
       "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin"},
       "configurePreset": "xcode",
       "configuration": "Release"
     },
     {
-      "name": "09. xcode-relwithdebinfo",
+      "name": "xcode-relwithdebinfo",
       "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin"},
       "configurePreset": "xcode",
       "configuration": "RelWithDebInfo"

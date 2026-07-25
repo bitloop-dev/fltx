@@ -957,7 +957,7 @@ namespace bl::test::metrics::custom
     template<class Float>
     void run_round_to_decimals_precision()
     {
-        auto eval = [](const auto& x, int n) { return bl::round_to(x, n, bl::decimals); };
+        auto eval = [](const auto& x, int n) { return bl::round_to_decimals(x, n); };
         auto reference = [](const auto& x, int n) { return round_to_decimals_reference<Float>(x, n); };
         const auto samples = make_round_to_decimals_samples<Float>(profile<Float>::random_sample_count());
         run_custom_precision_case<Float>(
@@ -971,7 +971,7 @@ namespace bl::test::metrics::custom
     template<class Float>
     void run_round_to_decimals_benchmark()
     {
-        auto eval = [](const auto& x, int n) { return bl::round_to(x, n, bl::decimals); };
+        auto eval = [](const auto& x, int n) { return bl::round_to_decimals(x, n); };
         const auto samples = make_round_to_decimals_samples<Float>(profile<Float>::random_sample_count());
         run_custom_benchmark_case<Float>("round_to_decimals", samples, eval);
     }
@@ -979,7 +979,7 @@ namespace bl::test::metrics::custom
     template<class Float>
     void run_round_to_decimals_domain()
     {
-        auto eval = [](const auto& x, int n) { return bl::round_to(x, n, bl::decimals); };
+        auto eval = [](const auto& x, int n) { return bl::round_to_decimals(x, n); };
         auto reference = [](const auto& x, int n) { return round_to_decimals_reference<Float>(x, n); };
         const auto samples = make_round_to_decimals_samples<Float>(configured_domain_random_sample_count(profile<Float>::random_sample_count()));
         run_custom_domain_case<Float>("round_to_decimals", samples, eval, reference);

@@ -1,4 +1,5 @@
 set(FLTX_LIBRARY_SOURCE_FILES
+    src/build_info.cpp
     src/fltx_io.cpp
     src/f128.cpp
     src/f128_math.cpp
@@ -6,6 +7,7 @@ set(FLTX_LIBRARY_SOURCE_FILES
     src/f256.cpp
     src/f256_math.cpp
     src/f256_transcendental.cpp
+    src/fma_x86.cpp
 )
 
 get_filename_component(FLTX_PROJECT_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)

@@ -1,20 +1,14 @@
 cmake_minimum_required(VERSION 3.21)
 project(fltx LANGUAGES CXX)
 
-if (NOT DEFINED FLTX_OPTIONS_INCLUDED)
-    include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/fltxOptions.cmake")
-endif()
-if (NOT COMMAND fltx_apply_fast_math_options)
-    include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/fltxFastMath.cmake")
+if (NOT DEFINED FLTX_BUILD_POLICY_INCLUDED)
+    include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/fltxBuildPolicy.cmake")
 endif()
 if (NOT COMMAND fltx_apply_msvc_timing_reports)
     include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/fltxMsvcTiming.cmake")
 endif()
 if (NOT COMMAND fltx_enable_msvc_parallel_compile)
     include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/fltxMsvcParallel.cmake")
-endif()
-if (NOT COMMAND fltx_apply_simd_options)
-    include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/fltxSimd.cmake")
 endif()
 include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/fltxSources.cmake")
 
@@ -78,16 +72,17 @@ function (addFltxTestLibrary _TARGET)
 
     add_library(${_TARGET} STATIC ${FLTX_LIBRARY_SOURCES})
     target_include_directories(${_TARGET} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../include")
-    target_compile_features(${_TARGET} PUBLIC cxx_std_23)
-    fltx_apply_simd_options(${_TARGET} PUBLIC)
+    fltx_configure_public_header_contract(${_TARGET} PUBLIC)
     target_compile_definitions(${_TARGET} PUBLIC ${FLTX_TEST_LIB_DEFINITIONS} ${FLTX_TEST_LIB_UNPARSED_ARGUMENTS})
 
     if(DEFINED FLTX_TEST_LIB_FAST_MATH_MODE)
-        fltx_apply_fast_math_options(${_TARGET} MODE ${FLTX_TEST_LIB_FAST_MATH_MODE})
+        fltx_configure_internal_target(${_TARGET} FAST_MATH_MODE ${FLTX_TEST_LIB_FAST_MATH_MODE})
     else()
-        fltx_apply_fast_math_options(${_TARGET})
+        fltx_configure_internal_target(${_TARGET})
     endif()
 
+    target_compile_features(${_TARGET} PUBLIC cxx_std_23)
+    fltx_assert_package_safe_interface(${_TARGET})
     fltx_apply_msvc_timing_reports(${_TARGET})
     fltx_enable_msvc_parallel_compile(${_TARGET})
 endfunction()
@@ -99,7 +94,8 @@ function (addFltxTestMacroStatus _TARGET)
     add_library(${_STATUS_TARGET} OBJECT "${FLTX_TEST_MACRO_STATUS_SOURCE}")
     target_include_directories(${_STATUS_TARGET} PRIVATE "${FLTX_INCLUDE_DIR}")
     target_compile_features(${_STATUS_TARGET} PRIVATE cxx_std_23)
-    fltx_apply_simd_options(${_STATUS_TARGET})
+    fltx_configure_public_header_contract(${_STATUS_TARGET} PRIVATE)
+    fltx_apply_private_wasm_simd_options(${_STATUS_TARGET})
     target_compile_definitions(${_STATUS_TARGET} PRIVATE
         FLTX_TEST_NAME=\"${_TARGET}\"
         ${FLTX_TEST_STATUS_DEFINITIONS}
@@ -107,9 +103,9 @@ function (addFltxTestMacroStatus _TARGET)
     )
 
     if(DEFINED FLTX_TEST_STATUS_FAST_MATH_MODE)
-        fltx_apply_fast_math_options(${_STATUS_TARGET} MODE ${FLTX_TEST_STATUS_FAST_MATH_MODE})
+        fltx_configure_consumer_fast_math(${_STATUS_TARGET} MODE ${FLTX_TEST_STATUS_FAST_MATH_MODE})
     else()
-        fltx_apply_fast_math_options(${_STATUS_TARGET})
+        fltx_configure_consumer_fast_math(${_STATUS_TARGET} MODE OFF)
     endif()
 
     fltx_apply_msvc_timing_reports(${_STATUS_TARGET})
@@ -296,7 +292,8 @@ function (prepareTarget _TARGET _FLTX_LIBRARY)
     )
 
     target_compile_features(${_TARGET} PRIVATE cxx_std_23)
-    fltx_apply_simd_options(${_TARGET})
+    fltx_configure_public_header_contract(${_TARGET} PRIVATE)
+    fltx_apply_private_wasm_simd_options(${_TARGET})
 
     if(_TARGET IN_LIST FLTX_METRICS_TEST_TARGETS)
         target_compile_definitions(${_TARGET} PRIVATE
@@ -305,7 +302,7 @@ function (prepareTarget _TARGET _FLTX_LIBRARY)
         )
 
         fltxGetTargetPropertyOrDefault(_FLTX_METRICS_TARGET_FAST_MATH_MODE ${_TARGET} FLTX_METRICS_FAST_MATH_MODE "${FLTX_METRICS_FAST_MATH_MODE}")
-        fltx_apply_fast_math_options(${_TARGET} MODE ${_FLTX_METRICS_TARGET_FAST_MATH_MODE})
+        fltx_configure_consumer_fast_math(${_TARGET} MODE ${_FLTX_METRICS_TARGET_FAST_MATH_MODE})
 
         fltxGetTargetPropertyOrDefault(_FLTX_METRICS_TARGET_REPORT_SUFFIX ${_TARGET} FLTX_METRICS_REPORT_SUFFIX "")
         if(_FLTX_METRICS_TARGET_REPORT_SUFFIX)
@@ -383,9 +380,9 @@ if(FLTX_METRICS_BENCHMARK_ONLY_FLTX)
     list(APPEND FLTX_METRICS_STATUS_DEFINITIONS FLTX_METRICS_BENCHMARK_ONLY_FLTX)
 endif()
 # Metrics sources can run as precise consumer code, but the status banner reports
-# the FLTX internal runtime-library build mode.
+# the consumer-side header mode selected for this metrics target.
 addFltxTestMacroStatus(metrics_tests
-    FAST_MATH_MODE ${FLTX_FAST_MATH_MODE}
+    FAST_MATH_MODE ${FLTX_METRICS_FAST_MATH_MODE}
     DEFINITIONS ${FLTX_METRICS_STATUS_DEFINITIONS}
 )
 addFltxTestMacroStatus(metrics_fastmath_tests
@@ -394,7 +391,7 @@ addFltxTestMacroStatus(metrics_fastmath_tests
 )
 if(FLTX_BUILD_SIMULATED_CONSTEVAL_METRICS)
     addFltxTestMacroStatus(metrics_consteval_tests
-        FAST_MATH_MODE ${FLTX_FAST_MATH_MODE}
+        FAST_MATH_MODE ${FLTX_METRICS_FAST_MATH_MODE}
         DEFINITIONS
             FLTX_SIMULATE_FIXED_CONSTEVAL_MODE
             ${FLTX_METRICS_STATUS_DEFINITIONS}

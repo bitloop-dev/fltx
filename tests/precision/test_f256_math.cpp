@@ -2655,9 +2655,9 @@ TEST_CASE("f256 cos matches MPFR on random range-reduced zero-crossing stress in
     }
 }
 
-TEST_CASE("f256 floor ceil trunc and round match MPFR for fixed values", "[fltx][f256][precision][math][rounding]")
+TEST_CASE("f256 floating-point rounding functions match MPFR for fixed values", "[fltx][f256][precision][math][rounding]")
 {
-    accuracy_report_scope report_scope{ "f256 floor ceil trunc and round match MPFR for fixed values" };
+    accuracy_report_scope report_scope{ "f256 floating-point rounding functions match MPFR for fixed values" };
     const std::array<const char*, 16> cases = {{
         "0",
         "-0",
@@ -2694,12 +2694,16 @@ TEST_CASE("f256 floor ceil trunc and round match MPFR for fixed values", "[fltx]
         check_unary_op("round", input,
             [](const f256& value) { return bl::round(value); },
             [](const mpfr_ref& value) { return ref_round_half_away_zero(value); });
+
+        check_unary_op("roundeven", input,
+            [](const f256& value) { return bl::roundeven(value); },
+            [](const mpfr_ref& value) { return ref_round_to_even(value); });
     }
 }
 
-TEST_CASE("f256 floor ceil trunc and round match MPFR for large-limb regression cases", "[fltx][f256][precision][math][rounding]")
+TEST_CASE("f256 floor and trunc match MPFR for large-limb regression cases", "[fltx][f256][precision][math][rounding]")
 {
-    accuracy_report_scope report_scope{ "f256 floor ceil trunc and round match MPFR for large-limb regression cases" };
+    accuracy_report_scope report_scope{ "f256 floor and trunc match MPFR for large-limb regression cases" };
     check_unary_op(
         "floor",
         "4.6958550912494028428400315673292717414e+19",
@@ -2713,9 +2717,9 @@ TEST_CASE("f256 floor ceil trunc and round match MPFR for large-limb regression 
         [](const mpfr_ref& value) { return boost::multiprecision::trunc(value); });
 }
 
-TEST_CASE("f256 floor ceil trunc and round match MPFR on random finite inputs", "[fltx][f256][precision][math][rounding]")
+TEST_CASE("f256 floating-point rounding functions match MPFR on random finite inputs", "[fltx][f256][precision][math][rounding]")
 {
-    accuracy_report_scope report_scope{ "f256 floor ceil trunc and round match MPFR on random finite inputs" };
+    accuracy_report_scope report_scope{ "f256 floating-point rounding functions match MPFR on random finite inputs" };
     bl::mt19937_64 rng{ random_seed };
 
     constexpr int count = 128 * random_sample_count_scale;
@@ -2744,6 +2748,10 @@ TEST_CASE("f256 floor ceil trunc and round match MPFR on random finite inputs", 
         check_unary_op("round", input_text.c_str(),
             [](const f256& value) { return bl::round(value); },
             [](const mpfr_ref& value) { return ref_round_half_away_zero(value); });
+
+        check_unary_op("roundeven", input_text.c_str(),
+            [](const f256& value) { return bl::roundeven(value); },
+            [](const mpfr_ref& value) { return ref_round_to_even(value); });
     }
 }
 
@@ -3454,26 +3462,19 @@ TEST_CASE("f256 utility math helpers behave correctly for fixed values", "[fltx]
         check_case(-256, 32, 1);
     }
     {
-        require_exact_value("round_to_decimals.2", bl::round_to(bl::parse<f256>("1.2345"), 2, bl::decimals), bl::parse<f256>("1.23"));
-        require_exact_value("round_to_decimals.3", bl::round_to(bl::parse<f256>("1.2345"), 3, bl::decimals), bl::parse<f256>("1.234"));
-        require_exact_value("round_to_decimals.tie_even", bl::round_to(bl::parse<f256>("1.1875"), 3, bl::decimals), bl::parse<f256>("1.188"));
-        require_exact_value("round_to_precision.large", bl::round_to(bl::parse<f256>("12345"), 3, bl::significant_figures), bl::parse<f256>("12300"));
-        require_exact_value("round_to_precision.small", bl::round_to(bl::parse<f256>("0.012345"), 3, bl::significant_figures), bl::parse<f256>("0.0123"));
-        require_exact_value("round_to_precision.tie_even_down", bl::round_to(bl::parse<f256>("12500"), 2, bl::significant_figures), bl::parse<f256>("12000"));
-        require_exact_value("round_to_precision.tie_even_up", bl::round_to(bl::parse<f256>("13500"), 2, bl::significant_figures), bl::parse<f256>("14000"));
-        require_exact_value("round_to.decimals", bl::round_to(bl::parse<f256>("1.2345"), 2, bl::decimals), bl::parse<f256>("1.23"));
-        require_exact_value("round_to.significant_figures", bl::round_to(bl::parse<f256>("12345"), 3, bl::significant_figures), bl::parse<f256>("12300"));
-        static_assert(bl::round_to(bl::parse<f256>("12345"), 3, bl::significant_figures) == bl::parse<f256>("12300"));
-        static_assert(bl::round_to(bl::parse<f256>("12345"), 3, bl::significant_figures) == bl::parse<f256>("12300"));
+        require_exact_value("round_to_decimals.2", bl::round_to_decimals(bl::parse<f256>("1.2345"), 2), bl::parse<f256>("1.23"));
+        require_exact_value("round_to_decimals.3", bl::round_to_decimals(bl::parse<f256>("1.2345"), 3), bl::parse<f256>("1.234"));
+        require_exact_value("round_to_decimals.tie_even", bl::round_to_decimals(bl::parse<f256>("1.1875"), 3), bl::parse<f256>("1.188"));
+        require_exact_value("round_to_significant_figures.large", bl::round_to_significant_figures(bl::parse<f256>("12345"), 3), bl::parse<f256>("12300"));
+        require_exact_value("round_to_significant_figures.small", bl::round_to_significant_figures(bl::parse<f256>("0.012345"), 3), bl::parse<f256>("0.0123"));
+        require_exact_value("round_to_significant_figures.tie_even_down", bl::round_to_significant_figures(bl::parse<f256>("12500"), 2), bl::parse<f256>("12000"));
+        require_exact_value("round_to_significant_figures.tie_even_up", bl::round_to_significant_figures(bl::parse<f256>("13500"), 2), bl::parse<f256>("14000"));
+        static_assert(bl::round_to_significant_figures(bl::parse<f256>("12345"), 3) == bl::parse<f256>("12300"));
 
         REQUIRE(bl::lround(bl::parse<f256>("2.5")) == 3L);
         REQUIRE(bl::lround(bl::parse<f256>("-2.5")) == -3L);
         REQUIRE(bl::llround(bl::parse<f256>("2.5")) == 3LL);
         REQUIRE(bl::llround(bl::parse<f256>("-2.5")) == -3LL);
-        REQUIRE(bl::lrint(bl::parse<f256>("2.5")) == 2L);
-        REQUIRE(bl::lrint(bl::parse<f256>("3.5")) == 4L);
-        REQUIRE(bl::llrint(bl::parse<f256>("-2.5")) == -2LL);
-        REQUIRE(bl::llrint(bl::parse<f256>("-3.5")) == -4LL);
     }
 }
 
@@ -3504,8 +3505,7 @@ TEST_CASE("f256 public math results remain canonical on edge-shaped inputs", "[f
     require_canonical_value("ceil", bl::ceil(b));
     require_canonical_value("trunc", bl::trunc(b));
     require_canonical_value("round", bl::round(b));
-    require_canonical_value("nearbyint", bl::nearbyint(b));
-    require_canonical_value("rint", bl::rint(b));
+    require_canonical_value("roundeven", bl::roundeven(b));
 
     require_canonical_value("fma", bl::fma(a, positive, b));
     require_canonical_value("fmin", bl::fmin(a, b));
@@ -3565,7 +3565,7 @@ TEST_CASE("f256 public math results remain canonical on edge-shaped inputs", "[f
     require_canonical_value("nextafter", bl::nextafter(a, target));
     require_canonical_value("nexttoward.f256", bl::nexttoward(a, target));
     require_canonical_value("nexttoward.longdouble", bl::nexttoward(a, static_cast<long double>(2.0)));
-    require_canonical_value("round_to_decimals", bl::round_to(bl::parse<f256>("1.23456789"), 5, bl::decimals));
+    require_canonical_value("round_to_decimals", bl::round_to_decimals(bl::parse<f256>("1.23456789"), 5));
 
     require_canonical_value("erf", bl::erf(domain));
     require_canonical_value("erfc", bl::erfc(domain));
@@ -3850,9 +3850,9 @@ TEST_CASE("f256 asin and acos match MPFR on random unit inputs", "[fltx][f256][p
     }
 }
 
-TEST_CASE("f256 nearbyint and rint match ties-to-even references", "[fltx][f256][precision][math][nearbyint][rint]")
+TEST_CASE("f256 nearest rounding functions match references", "[fltx][f256][precision][math][rounding]")
 {
-    accuracy_report_scope report_scope{ "f256 nearbyint and rint match ties-to-even references" };
+    accuracy_report_scope report_scope{ "f256 nearest rounding functions match references" };
     const std::array<const char*, 16> cases = {{
         "0",
         "-0",
@@ -3874,34 +3874,29 @@ TEST_CASE("f256 nearbyint and rint match ties-to-even references", "[fltx][f256]
 
     for (const char* input : cases)
     {
-        check_unary_op("nearbyint", input,
-            [](const f256& value) { return bl::nearbyint(value); },
+        check_unary_op("roundeven", input,
+            [](const f256& value) { return bl::roundeven(value); },
             [](const mpfr_ref& value) { return ref_round_to_even(value); });
 
-        check_unary_op("rint", input,
-            [](const f256& value) { return bl::rint(value); },
-            [](const mpfr_ref& value) { return ref_round_to_even(value); });
+        check_unary_op("round", input,
+            [](const f256& value) { return bl::round(value); },
+            [](const mpfr_ref& value) { return ref_round_half_away_zero(value); });
     }
 
     {
-        const f256 got = bl::nearbyint(bl::parse<f256>("-0.5"));
-        REQUIRE(bl::iszero(got));
-        REQUIRE(bl::signbit(got));
-    }
-    {
-        const f256 got = bl::rint(bl::parse<f256>("-0.5"));
+        const f256 got = bl::roundeven(bl::parse<f256>("-0.5"));
         REQUIRE(bl::iszero(got));
         REQUIRE(bl::signbit(got));
     }
 }
 
-TEST_CASE("f256 nearbyint and rint match ties-to-even references on random inputs", "[fltx][f256][precision][math][nearbyint][rint]")
+TEST_CASE("f256 nearest rounding functions match references on random inputs", "[fltx][f256][precision][math][rounding]")
 {
-    accuracy_report_scope report_scope{ "f256 nearbyint and rint match ties-to-even references on random inputs" };
+    accuracy_report_scope report_scope{ "f256 nearest rounding functions match references on random inputs" };
     bl::mt19937_64 rng{ random_seed };
 
     constexpr int count = 256;
-    print_random_run("random nearbyint/rint cases", count);
+    print_random_run("random nearest rounding cases", count);
 
     for (int i = 0; i < count; ++i)
     {
@@ -3911,13 +3906,13 @@ TEST_CASE("f256 nearbyint and rint match ties-to-even references on random input
         INFO("iteration: " << i);
         INFO("input_text: " << input_text);
 
-        check_unary_op("nearbyint", input_text.c_str(),
-            [](const f256& value) { return bl::nearbyint(value); },
+        check_unary_op("roundeven", input_text.c_str(),
+            [](const f256& value) { return bl::roundeven(value); },
             [](const mpfr_ref& value) { return ref_round_to_even(value); });
 
-        check_unary_op("rint", input_text.c_str(),
-            [](const f256& value) { return bl::rint(value); },
-            [](const mpfr_ref& value) { return ref_round_to_even(value); });
+        check_unary_op("round", input_text.c_str(),
+            [](const f256& value) { return bl::round(value); },
+            [](const mpfr_ref& value) { return ref_round_half_away_zero(value); });
     }
 }
 

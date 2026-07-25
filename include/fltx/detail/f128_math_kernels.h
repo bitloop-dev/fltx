@@ -25,7 +25,7 @@ namespace detail::_f128 // primitives and kernels
     using detail::fp::double_integer_is_odd;
     using detail::fp::fmod;
     using detail::fp::sqrt_seed;
-    using detail::fp::nearbyint_ties_even;
+    using detail::fp::round_nearest_even_value;
     using detail::fp::two_diff_precise;
     using detail::fp::abs_double_is_power_of_two;
     using detail::fp::frexp_exponent_limb;
@@ -1069,6 +1069,13 @@ namespace detail::_f128 // primitives and kernels
         if (xi != x)
             return false;
 
+        constexpr std::int64_t int64_min = std::numeric_limits<std::int64_t>::lowest();
+        if (xi == detail::_f128_impl::to_f128(int64_min))
+        {
+            out = int64_min;
+            return true;
+        }
+
         if (absd(xi.hi) >= 0x1p63)
             return false;
 
@@ -1098,14 +1105,22 @@ namespace detail::_f128 // primitives and kernels
     }
 
     // rounding helpers
-    BL_FORCE_INLINE constexpr f128_s round_half_away_zero(const f128_s& x) noexcept
+    BL_FORCE_INLINE constexpr f128_s round_nearest_away_from_zero(const f128_s& x) noexcept
     {
         if (detail::fp::iszero_or_inf_or_nan(x.hi))
             return x;
 
         if (absd(x.hi) < 0x1p52)
         {
-            const auto base = static_cast<long long>(x.hi);
+            auto base = static_cast<long long>(x.hi);
+            if (static_cast<double>(base) == x.hi)
+            {
+                if (x.hi < 0.0 && x.lo > 0.0)
+                    ++base;
+                else if (x.hi > 0.0 && x.lo < 0.0)
+                    --base;
+            }
+
             const double base_d = static_cast<double>(base);
             const double frac_hi = x.hi - base_d;
             const double frac_lo = x.lo;
@@ -1268,10 +1283,10 @@ namespace detail::_f128 // primitives and kernels
 
     [[nodiscard]] BL_FORCE_INLINE constexpr double sqrt_tail_square(double c_lo, double correction) noexcept
     {
-        #ifdef FMA_AVAILABLE
-        if (!bl::detail::use_constexpr_math())
+        #if FLTX_DETAIL_HAS_RUNTIME_FMA_PATH
+        if (!bl::detail::use_constexpr_math() && detail::fp::runtime_hardware_fma_enabled())
         {
-            return std::fma(c_lo, c_lo, correction);
+            return detail::fp::fmadd_fma(c_lo, c_lo, correction);
         }
         #endif
 

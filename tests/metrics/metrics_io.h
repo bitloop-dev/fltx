@@ -8,9 +8,11 @@
 #include <cstddef>
 #include <cstdint>
 #include <deque>
+#include <iostream>
 #include <ios>
 #include <iterator>
 #include <limits>
+#include <optional>
 #include <random>
 #include <sstream>
 #include <stdexcept>
@@ -35,6 +37,84 @@ namespace bl::test::metrics::io_metrics
     inline constexpr domain_id io_domain{ "io", domain_role::primary };
     inline constexpr std::size_t samples_per_kind         = config::scale_accuracy_sample_count(20000);
     inline constexpr std::size_t benchmark_min_iterations = config::scale_mixed_iterations(400000);
+
+    struct io_accuracy_measurement
+    {
+        accuracy_result accuracy;
+        std::string failure;
+
+        [[nodiscard]] bool succeeded() const noexcept
+        {
+            return failure.empty();
+        }
+    };
+
+    [[nodiscard]] inline io_accuracy_measurement make_io_accuracy_failure(
+        std::string_view reason,
+        std::size_t sample_index)
+    {
+        io_accuracy_measurement result;
+        result.failure.reserve(reason.size() + 32);
+        result.failure += reason;
+        result.failure += " at sample ";
+        result.failure += std::to_string(sample_index);
+        return result;
+    }
+
+    [[nodiscard]] inline std::string exception_failure_reason(
+        std::string_view prefix,
+        const std::exception& exception)
+    {
+        std::string reason;
+        reason.reserve(prefix.size() + 2 + std::string_view(exception.what()).size());
+        reason += prefix;
+        reason += ": ";
+        reason += exception.what();
+        return reason;
+    }
+
+    [[nodiscard]] inline std::vector<std::string>& pending_io_backend_warnings()
+    {
+        static std::vector<std::string> warnings;
+        return warnings;
+    }
+
+    inline void clear_io_backend_warnings()
+    {
+        pending_io_backend_warnings().clear();
+    }
+
+    inline void report_io_backend_unsupported(
+        std::string_view operation,
+        std::string_view backend,
+        std::string_view phase,
+        std::string_view reason)
+    {
+        std::string warning;
+        warning.reserve(
+            operation.size() + backend.size() + phase.size() + reason.size() + 40);
+        warning += "[metrics warning] ";
+        warning += operation;
+        warning += ' ';
+        warning += backend;
+        warning += ' ';
+        warning += phase;
+        warning += " unsupported: ";
+        warning += reason;
+        pending_io_backend_warnings().push_back(std::move(warning));
+    }
+
+    inline void flush_io_backend_warnings(std::ostream& out = std::cerr)
+    {
+        auto& warnings = pending_io_backend_warnings();
+        if (warnings.empty())
+            return;
+
+        out << "\n[metrics warnings]\n";
+        for (const std::string& warning : warnings)
+            out << warning << '\n';
+        warnings.clear();
+    }
 
     template<class Float>
     struct io_profile;
@@ -349,6 +429,21 @@ namespace bl::test::metrics::io_metrics
         return hexfloat
             ? parse_hex_oracle<Profile>(text)
             : parse_decimal_oracle<Profile>(text);
+    }
+
+    template<class Profile>
+    [[nodiscard]] std::optional<typename Profile::perfect_ref> try_parse_oracle(
+        std::string_view text,
+        bool hexfloat)
+    {
+        try
+        {
+            return parse_oracle<Profile>(text, hexfloat);
+        }
+        catch (...)
+        {
+            return std::nullopt;
+        }
     }
 
     [[nodiscard]] inline std::string with_sign(io_text_rng& rng, std::string text)
@@ -772,14 +867,14 @@ namespace bl::test::metrics::io_metrics
             const int scientific_precision = random_precision<Profile>(rng);
             const int hex_precision = random_precision<Profile>(rng);
 
-            if (group.label == "def-bdry")
+            if (group.label == "def-bdr")
             {
                 group.defaultfloat.push_back(make_sample<Profile>(
                     make_default_boundary_text<Profile>(rng, default_precision),
                     false,
                     default_precision));
             }
-            else if (group.label == "round-bdry")
+            else if (group.label == "round-bdr")
             {
                 group.defaultfloat.push_back(make_sample<Profile>(
                     make_default_round_boundary_text(rng, default_precision),
@@ -983,7 +1078,7 @@ namespace bl::test::metrics::io_metrics
     }
 
     template<class Profile, class Values, class EvalFn, class ConsumeFn>
-    [[nodiscard]] benchmark_result benchmark_values(const Values& values, EvalFn eval, ConsumeFn consume)
+    [[nodiscard]] benchmark_result benchmark_optional_values(const Values& values, EvalFn eval, ConsumeFn consume)
     {
         const std::size_t repetitions = benchmark_repetitions(values.size());
         return benchmark_trials(values.size(), repetitions, [&]
@@ -991,7 +1086,17 @@ namespace bl::test::metrics::io_metrics
             for (std::size_t repeat = 0; repeat < repetitions; ++repeat)
             {
                 for (const auto& value : values)
-                    consume(eval(value));
+                {
+                    try
+                    {
+                        const auto parsed = eval(value);
+                        if (parsed)
+                            consume(*parsed);
+                    }
+                    catch (...)
+                    {
+                    }
+                }
             }
         });
     }
@@ -1005,52 +1110,17 @@ namespace bl::test::metrics::io_metrics
             for (std::size_t repeat = 0; repeat < repetitions; ++repeat)
             {
                 for (std::size_t index = 0; index < values.size(); ++index)
-                    consume(eval(index, values[index]));
+                {
+                    try
+                    {
+                        consume(eval(index, values[index]));
+                    }
+                    catch (...)
+                    {
+                    }
+                }
             }
         });
-    }
-
-    template<class Profile, class Samples, class EvalFn, class ExpectedFn, class IdealBitsFn>
-    [[nodiscard]] accuracy_result measure_accuracy(
-        const Samples& samples,
-        EvalFn eval,
-        ExpectedFn expected_value,
-        IdealBitsFn ideal_bits)
-    {
-        double total_bits = 0.0;
-        double worst_bits = std::numeric_limits<double>::infinity();
-        std::vector<double> domain_scores;
-        domain_scores.reserve(samples.size());
-
-        for (std::size_t index = 0; index < samples.size(); ++index)
-        {
-            double bits = 0.0;
-            double sample_ideal_bits = Profile::ideal_bits;
-            try
-            {
-                const typename Profile::perfect_ref expected = expected_value(index);
-                sample_ideal_bits = ideal_bits(index, expected);
-                const typename Profile::perfect_ref actual = eval(index);
-                bits = Profile::matching_bits(actual, expected);
-                if (std::isnan(bits))
-                    bits = 0.0;
-            }
-            catch (...)
-            {
-                bits = 0.0;
-            }
-
-            worst_bits = std::min(worst_bits, Profile::cap_accuracy_bits(bits));
-            total_bits += Profile::finite_for_mean(bits);
-            domain_scores.push_back(domain_sample_score(bits, sample_ideal_bits));
-        }
-
-        return {
-            worst_bits,
-            total_bits / static_cast<double>(samples.size()),
-            samples.size(),
-            domain_score(std::move(domain_scores))
-        };
     }
 
     [[nodiscard]] inline bool is_decimal_digit(char ch) noexcept
@@ -1142,7 +1212,7 @@ namespace bl::test::metrics::io_metrics
     }
 
     template<class Profile, class Value>
-    [[nodiscard]] typename Profile::perfect_ref expected_to_string_value(
+    [[nodiscard]] std::optional<typename Profile::perfect_ref> expected_to_string_value(
         const Value& value,
         int precision,
         const io_format_case& format)
@@ -1153,80 +1223,176 @@ namespace bl::test::metrics::io_metrics
 
         const std::string rounded_text = format_decimal_oracle<Profile>(exact_value, precision, format.flags);
         if (!formatted_decimal_respects_precision(rounded_text, precision, format))
-            throw std::invalid_argument("oracle formatter ignored requested precision");
-        return parse_oracle<Profile>(rounded_text, false);
+            return std::nullopt;
+        return try_parse_oracle<Profile>(rounded_text, false);
     }
 
     template<class Profile, class Samples, class Value, class FormatFn>
-    [[nodiscard]] accuracy_result measure_to_string_accuracy(
+    [[nodiscard]] io_accuracy_measurement measure_to_string_accuracy(
         const Samples& samples,
         const std::vector<Value>& values,
         int precision,
         const io_format_case& format,
         FormatFn format_value)
     {
-        return measure_accuracy<Profile>(
-            samples,
-            [&](std::size_t index)
+        double total_bits = 0.0;
+        double worst_bits = std::numeric_limits<double>::infinity();
+        std::vector<double> domain_scores;
+        domain_scores.reserve(samples.size());
+
+        for (std::size_t index = 0; index < samples.size(); ++index)
+        {
+            const int sample_precision = samples[index].precision >= 0 ? samples[index].precision : precision;
+            const std::optional<typename Profile::perfect_ref> expected =
+                expected_to_string_value<Profile>(values[index], sample_precision, format);
+            if (!expected)
+                return make_io_accuracy_failure("oracle formatter ignored requested precision", index);
+
+            std::string text;
+            try
             {
-                const int sample_precision = samples[index].precision >= 0 ? samples[index].precision : precision;
-                const std::string text = format_value(values[index], sample_precision, format.flags);
-                if (!formatted_decimal_respects_precision(text, sample_precision, format))
-                    throw std::invalid_argument("formatter ignored requested precision");
-                return parse_oracle<Profile>(text, format.hexfloat);
+                text = format_value(values[index], sample_precision, format.flags);
+            }
+            catch (const std::exception& exception)
+            {
+                return make_io_accuracy_failure(exception_failure_reason("formatter threw", exception), index);
+            }
+            catch (...)
+            {
+                return make_io_accuracy_failure("formatter threw", index);
+            }
+
+            if (!formatted_decimal_respects_precision(text, sample_precision, format))
+                return make_io_accuracy_failure("formatter ignored requested precision", index);
+
+            const std::optional<typename Profile::perfect_ref> actual =
+                try_parse_oracle<Profile>(text, format.hexfloat);
+            if (!actual)
+                return make_io_accuracy_failure("formatter produced invalid oracle text", index);
+
+            double bits = Profile::matching_bits(*actual, *expected);
+            if (std::isnan(bits))
+                bits = 0.0;
+
+            const double sample_ideal_bits = Profile::template domain_ideal_bits_for<Value>(*expected);
+            worst_bits = std::min(worst_bits, Profile::cap_accuracy_bits(bits));
+            total_bits += Profile::finite_for_mean(bits);
+            domain_scores.push_back(domain_sample_score(bits, sample_ideal_bits));
+        }
+
+        return {
+            accuracy_result{
+                worst_bits,
+                total_bits / static_cast<double>(samples.size()),
+                samples.size(),
+                domain_score(std::move(domain_scores))
             },
-            [&](std::size_t index)
-            {
-                const int sample_precision = samples[index].precision >= 0 ? samples[index].precision : precision;
-                return expected_to_string_value<Profile>(values[index], sample_precision, format);
-            },
-            [](std::size_t, const typename Profile::perfect_ref& expected)
-            {
-                return Profile::template domain_ideal_bits_for<Value>(expected);
-            });
+            {}
+        };
     }
 
     template<class Profile, class Value, class Samples, class ParseFn>
-    [[nodiscard]] accuracy_result measure_parse_accuracy(
+    [[nodiscard]] io_accuracy_measurement measure_parse_accuracy(
         const Samples& samples,
         ParseFn parse_value)
     {
-        return measure_accuracy<Profile>(
-            samples,
-            [&](std::size_t index)
+        double total_bits = 0.0;
+        double worst_bits = std::numeric_limits<double>::infinity();
+        std::vector<double> domain_scores;
+        domain_scores.reserve(samples.size());
+
+        for (std::size_t index = 0; index < samples.size(); ++index)
+        {
+            std::optional<Value> value;
+            try
             {
-                const Value value = parse_value(samples[index].text);
-                return Profile::to_perfect(value);
+                value = parse_value(samples[index].text);
+            }
+            catch (const std::exception& exception)
+            {
+                return make_io_accuracy_failure(exception_failure_reason("parse threw", exception), index);
+            }
+            catch (...)
+            {
+                return make_io_accuracy_failure("parse threw", index);
+            }
+
+            if (!value)
+                return make_io_accuracy_failure("parse failed", index);
+
+            const typename Profile::perfect_ref actual = Profile::to_perfect(*value);
+            const typename Profile::perfect_ref expected =
+                target_reference_value<typename Profile::fltx_type>(samples[index].oracle);
+            double bits = Profile::matching_bits(actual, expected);
+            if (std::isnan(bits))
+                bits = 0.0;
+
+            const double sample_ideal_bits = Profile::template domain_ideal_bits_for<Value>(expected);
+            worst_bits = std::min(worst_bits, Profile::cap_accuracy_bits(bits));
+            total_bits += Profile::finite_for_mean(bits);
+            domain_scores.push_back(domain_sample_score(bits, sample_ideal_bits));
+        }
+
+        return {
+            accuracy_result{
+                worst_bits,
+                total_bits / static_cast<double>(samples.size()),
+                samples.size(),
+                domain_score(std::move(domain_scores))
             },
-            [&](std::size_t index)
-            {
-                return target_reference_value<typename Profile::fltx_type>(samples[index].oracle);
-            },
-            [](std::size_t, const typename Profile::perfect_ref& expected)
-            {
-                return Profile::template domain_ideal_bits_for<Value>(expected);
-            });
+            {}
+        };
     }
 
     template<class T>
-    [[nodiscard]] T parse_stream_value(std::string_view text)
+    [[nodiscard]] std::optional<T> try_parse_stream_value(std::string_view text)
     {
-        std::istringstream stream{ std::string(text) };
-        T value{};
-        stream >> value;
-        if (!stream || stream.peek() != std::char_traits<char>::eof())
-            throw std::invalid_argument("stream parse failed");
-        return value;
+        try
+        {
+            std::istringstream stream{ std::string(text) };
+            T value{};
+            stream >> value;
+            if (!stream || stream.peek() != std::char_traits<char>::eof())
+                return std::nullopt;
+            return value;
+        }
+        catch (...)
+        {
+            return std::nullopt;
+        }
     }
 
     template<class T>
-    [[nodiscard]] T parse_qdpp_value(std::string_view text)
+    [[nodiscard]] std::optional<T> try_parse_qdpp_value(std::string_view text)
     {
-        std::string copy(text);
-        T value{};
-        if (T::read(copy.c_str(), value) < 0)
-            throw std::invalid_argument("qdpp parse failed");
-        return value;
+        try
+        {
+            std::string copy(text);
+            T value{};
+            if (T::read(copy.c_str(), value) < 0)
+                return std::nullopt;
+            return value;
+        }
+        catch (...)
+        {
+            return std::nullopt;
+        }
+    }
+
+    template<class T>
+    [[nodiscard]] std::optional<T> try_parse_fltx_value(std::string_view text)
+    {
+        try
+        {
+            const auto parsed = bl::try_parse<T>(text);
+            if (!parsed)
+                return std::nullopt;
+            return parsed.value;
+        }
+        catch (...)
+        {
+            return std::nullopt;
+        }
     }
 
     template<class T>
@@ -1381,7 +1547,7 @@ namespace bl::test::metrics::io_metrics
     }
 
     template<class ParseFn>
-    [[nodiscard]] bool parse_inf_is_supported(ParseFn parse_value)
+    [[nodiscard]] bool optional_parse_inf_is_supported(ParseFn parse_value)
     {
         constexpr std::array<std::string_view, 6> positive_tokens{
             "inf", "+inf", "infinity", "+infinity", "INF", "+INF"
@@ -1397,7 +1563,7 @@ namespace bl::test::metrics::io_metrics
             try
             {
                 const auto value = parse_value(token);
-                positive_ok = positive_ok || (io_value_is_inf(value) && !io_value_signbit(value));
+                positive_ok = positive_ok || (value && io_value_is_inf(*value) && !io_value_signbit(*value));
             }
             catch (...)
             {
@@ -1408,7 +1574,7 @@ namespace bl::test::metrics::io_metrics
             try
             {
                 const auto value = parse_value(token);
-                negative_ok = negative_ok || (io_value_is_inf(value) && io_value_signbit(value));
+                negative_ok = negative_ok || (value && io_value_is_inf(*value) && io_value_signbit(*value));
             }
             catch (...)
             {
@@ -1418,14 +1584,15 @@ namespace bl::test::metrics::io_metrics
     }
 
     template<class ParseFn>
-    [[nodiscard]] bool parse_nan_is_supported(ParseFn parse_value)
+    [[nodiscard]] bool optional_parse_nan_is_supported(ParseFn parse_value)
     {
         constexpr std::array<std::string_view, 5> tokens{ "nan", "+nan", "-nan", "NaN", "NAN" };
         for (std::string_view token : tokens)
         {
             try
             {
-                if (io_value_is_nan(parse_value(token)))
+                const auto value = parse_value(token);
+                if (value && io_value_is_nan(*value))
                     return true;
             }
             catch (...)
@@ -1436,11 +1603,11 @@ namespace bl::test::metrics::io_metrics
     }
 
     template<class ParseFn>
-    [[nodiscard]] special_support measure_parse_special_support(ParseFn parse_value)
+    [[nodiscard]] special_support measure_optional_parse_special_support(ParseFn parse_value)
     {
         return make_special_support(
-            parse_inf_is_supported(parse_value),
-            parse_nan_is_supported(parse_value));
+            optional_parse_inf_is_supported(parse_value),
+            optional_parse_nan_is_supported(parse_value));
     }
 
     template<class T, class FormatFn>
@@ -1472,33 +1639,44 @@ namespace bl::test::metrics::io_metrics
         return make_special_support(inf_ok, nan_ok);
     }
 
-    template<class Profile>
-    [[nodiscard]] std::vector<typename Profile::fltx_type> make_fltx_values(const std::vector<io_sample<Profile>>& samples)
+    template<class Profile, class Value, class ParseFn>
+    [[nodiscard]] std::optional<std::vector<Value>> try_make_values(
+        const std::vector<io_sample<Profile>>& samples,
+        ParseFn parse_value,
+        std::string& failure)
     {
-        std::vector<typename Profile::fltx_type> values;
+        std::vector<Value> values;
         values.reserve(samples.size());
-        for (const auto& sample : samples)
-            values.push_back(bl::parse<typename Profile::fltx_type>(make_formatter_seed_text<Profile>(sample)));
-        return values;
-    }
-
-    template<class Profile>
-    [[nodiscard]] std::vector<typename Profile::competitor_ref> make_competitor_values(const std::vector<io_sample<Profile>>& samples)
-    {
-        std::vector<typename Profile::competitor_ref> values;
-        values.reserve(samples.size());
-        for (const auto& sample : samples)
-            values.push_back(parse_stream_value<typename Profile::competitor_ref>(make_formatter_seed_text<Profile>(sample)));
-        return values;
-    }
-
-    template<class Profile>
-    [[nodiscard]] std::vector<typename Profile::extra_competitor_ref> make_extra_competitor_values(const std::vector<io_sample<Profile>>& samples)
-    {
-        std::vector<typename Profile::extra_competitor_ref> values;
-        values.reserve(samples.size());
-        for (const auto& sample : samples)
-            values.push_back(parse_qdpp_value<typename Profile::extra_competitor_ref>(make_formatter_seed_text<Profile>(sample)));
+        for (std::size_t index = 0; index < samples.size(); ++index)
+        {
+            const std::string text = make_formatter_seed_text<Profile>(samples[index]);
+            std::optional<Value> value;
+            try
+            {
+                value = parse_value(text);
+            }
+            catch (const std::exception& exception)
+            {
+                failure = exception_failure_reason("parse threw", exception) + " at sample " + std::to_string(index);
+                return std::nullopt;
+            }
+            catch (...)
+            {
+                failure = "parse threw at sample " + std::to_string(index);
+                return std::nullopt;
+            }
+            if (!value)
+            {
+                failure = "parse failed at sample " + std::to_string(index);
+                return std::nullopt;
+            }
+            if (io_value_is_inf(*value) || io_value_is_nan(*value))
+            {
+                failure = "finite sample parsed as non-finite at sample " + std::to_string(index);
+                return std::nullopt;
+            }
+            values.push_back(*value);
+        }
         return values;
     }
 
@@ -1624,17 +1802,15 @@ namespace bl::test::metrics::io_metrics
     {
         metrics_record record = make_record<Profile>(operation);
 
-        const auto fltx_values = make_fltx_values<Profile>(samples);
-
-        record.fltx_accuracy = measure_to_string_accuracy<Profile>(
+        std::string fltx_failure;
+        const auto fltx_values = try_make_values<Profile, typename Profile::fltx_type>(
             samples,
-            fltx_values,
-            precision,
-            format,
-            [](const auto& value, int digits, std::ios_base::fmtflags flags)
+            [](std::string_view text)
             {
-                return bl::to_string(value, digits, flags);
-            });
+                return try_parse_fltx_value<typename Profile::fltx_type>(text);
+            },
+            fltx_failure);
+
         record.fltx_special_values = measure_to_string_special_support<typename Profile::fltx_type>(
             [](const auto& value, int digits, std::ios_base::fmtflags flags)
             {
@@ -1642,17 +1818,38 @@ namespace bl::test::metrics::io_metrics
             },
             precision,
             format.flags);
-        record.fltx_benchmark = benchmark_indexed_values<Profile>(
-            fltx_values,
-            [&samples, precision, format](std::size_t index, const auto& value)
-            {
-                const int sample_precision = samples[index].precision >= 0 ? samples[index].precision : precision;
-                return bl::to_string(value, sample_precision, format.flags);
-            },
-            [](const std::string& text)
-            {
-                Profile::consume_text(text);
-            });
+        if (!fltx_values)
+        {
+            report_io_backend_unsupported(operation, "fltx", "to_string setup", fltx_failure);
+        }
+        else
+        {
+            const io_accuracy_measurement fltx_accuracy = measure_to_string_accuracy<Profile>(
+                samples,
+                *fltx_values,
+                precision,
+                format,
+                [](const auto& value, int digits, std::ios_base::fmtflags flags)
+                {
+                    return bl::to_string(value, digits, flags);
+                });
+            if (fltx_accuracy.succeeded())
+                record.fltx_accuracy = fltx_accuracy.accuracy;
+            else
+                report_io_backend_unsupported(operation, "fltx", "to_string accuracy", fltx_accuracy.failure);
+
+            record.fltx_benchmark = benchmark_indexed_values<Profile>(
+                *fltx_values,
+                [&samples, precision, format](std::size_t index, const auto& value)
+                {
+                    const int sample_precision = samples[index].precision >= 0 ? samples[index].precision : precision;
+                    return bl::to_string(value, sample_precision, format.flags);
+                },
+                [](const std::string& text)
+                {
+                    Profile::consume_text(text);
+                });
+        }
 
         if constexpr (!config::benchmark_only_fltx)
         {
@@ -1663,34 +1860,62 @@ namespace bl::test::metrics::io_metrics
                 return record;
             }
 
-            const auto competitor_values = make_competitor_values<Profile>(samples);
-            record.competitor_accuracy = measure_to_string_accuracy<Profile>(
+            std::string competitor_failure;
+            const auto competitor_values = try_make_values<Profile, typename Profile::competitor_ref>(
                 samples,
-                competitor_values,
-                precision,
-                format,
-                [](const auto& value, int digits, std::ios_base::fmtflags flags)
+                [](std::string_view text)
                 {
-                    return format_stream_value(value, digits, flags);
-                });
-            record.competitor_special_values = measure_to_string_special_support<typename Profile::competitor_ref>(
-                [](const auto& value, int digits, std::ios_base::fmtflags flags)
-                {
-                    return format_stream_value(value, digits, flags);
+                    return try_parse_stream_value<typename Profile::competitor_ref>(text);
                 },
-                precision,
-                format.flags);
-            record.competitor_benchmark = benchmark_indexed_values<Profile>(
-                competitor_values,
-                [&samples, precision, format](std::size_t index, const auto& value)
+                competitor_failure);
+            if (!competitor_values)
+            {
+                record.competitor_supported = false;
+                report_io_backend_unsupported(operation, record.competitor_name, "to_string setup", competitor_failure);
+            }
+            else
+            {
+                const io_accuracy_measurement competitor_accuracy = measure_to_string_accuracy<Profile>(
+                    samples,
+                    *competitor_values,
+                    precision,
+                    format,
+                    [](const auto& value, int digits, std::ios_base::fmtflags flags)
+                    {
+                        return format_stream_value(value, digits, flags);
+                    });
+                if (!competitor_accuracy.succeeded())
                 {
-                    const int sample_precision = samples[index].precision >= 0 ? samples[index].precision : precision;
-                    return format_stream_value(value, sample_precision, format.flags);
-                },
-                [](const std::string& text)
+                    record.competitor_supported = false;
+                    report_io_backend_unsupported(
+                        operation,
+                        record.competitor_name,
+                        "to_string accuracy",
+                        competitor_accuracy.failure);
+                }
+                else
                 {
-                    Profile::consume_text(text);
-                });
+                    record.competitor_accuracy = competitor_accuracy.accuracy;
+                    record.competitor_special_values = measure_to_string_special_support<typename Profile::competitor_ref>(
+                        [](const auto& value, int digits, std::ios_base::fmtflags flags)
+                        {
+                            return format_stream_value(value, digits, flags);
+                        },
+                        precision,
+                        format.flags);
+                    record.competitor_benchmark = benchmark_indexed_values<Profile>(
+                        *competitor_values,
+                        [&samples, precision, format](std::size_t index, const auto& value)
+                        {
+                            const int sample_precision = samples[index].precision >= 0 ? samples[index].precision : precision;
+                            return format_stream_value(value, sample_precision, format.flags);
+                        },
+                        [](const std::string& text)
+                        {
+                            Profile::consume_text(text);
+                        });
+                }
+            }
 
             competitor_result& extra = record.extra_competitors.front();
             if (qdpp_format_is_unsupported(format))
@@ -1705,16 +1930,38 @@ namespace bl::test::metrics::io_metrics
                 return record;
             }
 
-            const auto extra_values = make_extra_competitor_values<Profile>(samples);
-            extra.accuracy = measure_to_string_accuracy<Profile>(
+            std::string extra_failure;
+            const auto extra_values = try_make_values<Profile, typename Profile::extra_competitor_ref>(
                 samples,
-                extra_values,
+                [](std::string_view text)
+                {
+                    return try_parse_qdpp_value<typename Profile::extra_competitor_ref>(text);
+                },
+                extra_failure);
+            if (!extra_values)
+            {
+                extra.supported = false;
+                report_io_backend_unsupported(operation, extra.name, "to_string setup", extra_failure);
+                return record;
+            }
+
+            const io_accuracy_measurement extra_accuracy = measure_to_string_accuracy<Profile>(
+                samples,
+                *extra_values,
                 precision,
                 format,
                 [](const auto& value, int digits, std::ios_base::fmtflags flags)
                 {
                     return format_qdpp_value(value, digits, flags);
                 });
+            if (!extra_accuracy.succeeded())
+            {
+                extra.supported = false;
+                report_io_backend_unsupported(operation, extra.name, "to_string accuracy", extra_accuracy.failure);
+                return record;
+            }
+
+            extra.accuracy = extra_accuracy.accuracy;
             extra.special_values = measure_to_string_special_support<typename Profile::extra_competitor_ref>(
                 [](const auto& value, int digits, std::ios_base::fmtflags flags)
                 {
@@ -1723,7 +1970,7 @@ namespace bl::test::metrics::io_metrics
                 precision,
                 format.flags);
             extra.benchmark = benchmark_indexed_values<Profile>(
-                extra_values,
+                *extra_values,
                 [&samples, precision, format](std::size_t index, const auto& value)
                 {
                     const int sample_precision = samples[index].precision >= 0 ? samples[index].precision : precision;
@@ -1751,22 +1998,28 @@ namespace bl::test::metrics::io_metrics
         for (const auto& sample : samples)
             texts.push_back(sample.text);
 
-        record.fltx_accuracy = measure_parse_accuracy<Profile, typename Profile::fltx_type>(
+        const io_accuracy_measurement fltx_accuracy =
+            measure_parse_accuracy<Profile, typename Profile::fltx_type>(
             samples,
             [](std::string_view text)
             {
-                return bl::parse<typename Profile::fltx_type>(text);
+                return try_parse_fltx_value<typename Profile::fltx_type>(text);
             });
-        record.fltx_special_values = measure_parse_special_support(
+        if (fltx_accuracy.succeeded())
+            record.fltx_accuracy = fltx_accuracy.accuracy;
+        else
+            report_io_backend_unsupported(operation, "fltx", "parse accuracy", fltx_accuracy.failure);
+
+        record.fltx_special_values = measure_optional_parse_special_support(
             [](std::string_view text)
             {
-                return bl::parse<typename Profile::fltx_type>(text);
+                return try_parse_fltx_value<typename Profile::fltx_type>(text);
             });
-        record.fltx_benchmark = benchmark_values<Profile>(
+        record.fltx_benchmark = benchmark_optional_values<Profile>(
             texts,
             [](const std::string& text)
             {
-                return bl::parse<typename Profile::fltx_type>(text);
+                return try_parse_fltx_value<typename Profile::fltx_type>(text);
             },
             [](const auto& value)
             {
@@ -1782,50 +2035,74 @@ namespace bl::test::metrics::io_metrics
                 return record;
             }
 
-            record.competitor_accuracy = measure_parse_accuracy<Profile, typename Profile::competitor_ref>(
+            const io_accuracy_measurement competitor_accuracy =
+                measure_parse_accuracy<Profile, typename Profile::competitor_ref>(
                 samples,
                 [](std::string_view text)
                 {
-                    return parse_stream_value<typename Profile::competitor_ref>(text);
+                    return try_parse_stream_value<typename Profile::competitor_ref>(text);
                 });
-            record.competitor_special_values = measure_parse_special_support(
-                [](std::string_view text)
-                {
-                    return parse_stream_value<typename Profile::competitor_ref>(text);
-                });
-            record.competitor_benchmark = benchmark_values<Profile>(
-                texts,
-                [](const std::string& text)
-                {
-                    return parse_stream_value<typename Profile::competitor_ref>(text);
-                },
-                [](const auto& value)
-                {
-                    Profile::consume(value);
-                });
+            if (!competitor_accuracy.succeeded())
+            {
+                record.competitor_supported = false;
+                report_io_backend_unsupported(
+                    operation,
+                    record.competitor_name,
+                    "parse accuracy",
+                    competitor_accuracy.failure);
+            }
+            else
+            {
+                record.competitor_accuracy = competitor_accuracy.accuracy;
+                record.competitor_special_values = measure_optional_parse_special_support(
+                    [](std::string_view text)
+                    {
+                        return try_parse_stream_value<typename Profile::competitor_ref>(text);
+                    });
+                record.competitor_benchmark = benchmark_optional_values<Profile>(
+                    texts,
+                    [](const std::string& text)
+                    {
+                        return try_parse_stream_value<typename Profile::competitor_ref>(text);
+                    },
+                    [](const auto& value)
+                    {
+                        Profile::consume(value);
+                    });
+            }
 
             competitor_result& extra = record.extra_competitors.front();
-            extra.accuracy = measure_parse_accuracy<Profile, typename Profile::extra_competitor_ref>(
+            const io_accuracy_measurement extra_accuracy =
+                measure_parse_accuracy<Profile, typename Profile::extra_competitor_ref>(
                 samples,
                 [](std::string_view text)
                 {
-                    return parse_qdpp_value<typename Profile::extra_competitor_ref>(text);
+                    return try_parse_qdpp_value<typename Profile::extra_competitor_ref>(text);
                 });
-            extra.special_values = measure_parse_special_support(
-                [](std::string_view text)
-                {
-                    return parse_qdpp_value<typename Profile::extra_competitor_ref>(text);
-                });
-            extra.benchmark = benchmark_values<Profile>(
-                texts,
-                [](const std::string& text)
-                {
-                    return parse_qdpp_value<typename Profile::extra_competitor_ref>(text);
-                },
-                [](const auto& value)
-                {
-                    Profile::consume(value);
-                });
+            if (!extra_accuracy.succeeded())
+            {
+                extra.supported = false;
+                report_io_backend_unsupported(operation, extra.name, "parse accuracy", extra_accuracy.failure);
+            }
+            else
+            {
+                extra.accuracy = extra_accuracy.accuracy;
+                extra.special_values = measure_optional_parse_special_support(
+                    [](std::string_view text)
+                    {
+                        return try_parse_qdpp_value<typename Profile::extra_competitor_ref>(text);
+                    });
+                extra.benchmark = benchmark_optional_values<Profile>(
+                    texts,
+                    [](const std::string& text)
+                    {
+                        return try_parse_qdpp_value<typename Profile::extra_competitor_ref>(text);
+                    },
+                    [](const auto& value)
+                    {
+                        Profile::consume(value);
+                    });
+            }
         }
 
         return record;
@@ -2103,9 +2380,11 @@ namespace bl::test::metrics::io_metrics
     template<class Profile, class Sink>
     void emit_io_records(Sink&& sink)
     {
+        clear_io_backend_warnings();
         const std::vector<io_sample_group<Profile>> groups = make_sample_groups<Profile>();
         emit_to_string_records<Profile>(groups, sink);
         emit_parse_records<Profile>(groups, sink);
+        flush_io_backend_warnings();
     }
 
     template<class Profile>

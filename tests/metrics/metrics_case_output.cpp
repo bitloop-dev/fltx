@@ -295,8 +295,8 @@ namespace bl::test::metrics
                 "<style>\n"
                 ":root { color-scheme: dark; }\n"
                 "body { margin: 0; background: #0f1115; color: #e5e7eb; }\n"
-                "pre { box-sizing: border-box; min-height: 100vh; margin: 0; padding: 16px; "
-                "font: 13px/1.35 Consolas, \"Cascadia Mono\", \"Courier New\", monospace; "
+                "pre { box-sizing: border-box; min-height: 100vh; margin: 0; padding: 0 16px; "
+                "font: 13px/1 Consolas, \"Cascadia Mono\", \"Courier New\", monospace; "
                 "white-space: pre; overflow: auto; }\n"
                 "</style>\n"
                 "</head>\n"
@@ -332,7 +332,7 @@ namespace bl::test::metrics
             if (metrics_verbose_enabled())
             {
                 out << "\n[metrics report]\n"
-                    << "console html = " << output_path << '\n';
+                    << "console html = " << metrics_report_display_path(output_path) << '\n';
             }
         }
 

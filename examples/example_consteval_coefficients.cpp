@@ -8,7 +8,7 @@
 
 using namespace bl;
 
-template<class T, std::size_t Radius>
+template<std::size_t Radius, class T>
 consteval std::array<T, Radius * 2 + 1> gaussian_kernel(T sigma)
 {
     std::array<T, Radius * 2 + 1> weights{};
@@ -31,7 +31,7 @@ consteval std::array<T, Radius * 2 + 1> gaussian_kernel(T sigma)
     return weights;
 }
 
-template<class T, std::size_t N>
+template<std::size_t N, class T>
 constexpr T sum_values(const std::array<T, N>& values)
 {
     T sum{};
@@ -44,7 +44,7 @@ int main()
 {
     using T = f256;
 
-    constexpr auto kernel = gaussian_kernel<T, 4>(bl::parse<T>("1.25"));
+    constexpr auto kernel = gaussian_kernel<4>( bl::parse<T>("1.25") );
     constexpr T kernel_sum = sum_values(kernel);
 
     std::cout << std::setprecision(std::numeric_limits<T>::digits10);

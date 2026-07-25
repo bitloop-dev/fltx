@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <cfenv>
 #include <cmath>
 #include <type_traits>
 
@@ -42,12 +43,13 @@ namespace
     FLTX_EXPECT_TYPE(bl::ceil(1), bl::f64);
     FLTX_EXPECT_TYPE(bl::trunc(1), bl::f64);
     FLTX_EXPECT_TYPE(bl::round(1), bl::f64);
-    FLTX_EXPECT_TYPE(bl::nearbyint(1), bl::f64);
-    FLTX_EXPECT_TYPE(bl::rint(1), bl::f64);
+    FLTX_EXPECT_TYPE(bl::roundeven(1), bl::f64);
+    FLTX_EXPECT_TYPE(bl::roundeven(bl::f128{ 1 }), bl::f128);
+    FLTX_EXPECT_TYPE(bl::roundeven(bl::f256{ 1 }), bl::f256);
     FLTX_EXPECT_TYPE(bl::lround(1), long);
     FLTX_EXPECT_TYPE(bl::llround(1), long long);
-    FLTX_EXPECT_TYPE(bl::lrint(1), long);
-    FLTX_EXPECT_TYPE(bl::llrint(1), long long);
+    FLTX_EXPECT_TYPE(bl::lround(bl::f128{ 1 }), long);
+    FLTX_EXPECT_TYPE(bl::llround(bl::f256{ 1 }), long long);
 
     FLTX_EXPECT_TYPE(bl::fmod(5, 2), bl::f64);
     FLTX_EXPECT_TYPE(bl::remainder(5, 2), bl::f64);
@@ -140,5 +142,28 @@ namespace
         double integral = 0.0;
         REQUIRE(bl::modf(3, &integral) == 0.0);
         REQUIRE(integral == 3.0);
+    }
+}
+
+TEST_CASE("fixed rounding functions ignore the floating-point environment", "[fltx][rounding]")
+{
+    struct rounding_mode_guard
+    {
+        int original = std::fegetround();
+        ~rounding_mode_guard() { std::fesetround(original); }
+    } guard;
+
+    constexpr int environment_modes[] = { FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO };
+    for (const int environment_mode : environment_modes)
+    {
+        REQUIRE(std::fesetround(environment_mode) == 0);
+
+        CHECK(bl::roundeven(2.5f) == 2.0f);
+        CHECK(bl::round(2.5) == 3.0);
+        CHECK(bl::trunc(bl::f128{ -2.75 }) == bl::f128{ -2.0 });
+        CHECK(bl::ceil(bl::f128{ -2.25 }) == bl::f128{ -2.0 });
+        CHECK(bl::floor(bl::f256{ -2.25 }) == bl::f256{ -3.0 });
+        CHECK(bl::lround(-2.5) == -3L);
+        CHECK(bl::llround(bl::f128{ -2.5 }) == -3LL);
     }
 }

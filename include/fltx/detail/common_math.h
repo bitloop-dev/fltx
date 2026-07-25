@@ -79,7 +79,7 @@ BL_FORCE_INLINE constexpr double log1p(double x) noexcept
     return log(1.0 + x);
 }
 
-BL_FORCE_INLINE constexpr double round_half_away_zero(double x) noexcept
+BL_FORCE_INLINE constexpr double round_nearest_away_from_zero(double x) noexcept
 {
     if (iszero_or_inf_or_nan(x))
         return x;
@@ -98,7 +98,7 @@ BL_FORCE_INLINE constexpr double round_half_away_zero(double x) noexcept
     return (y == 0.0) ? (signbit(x) ? -0.0 : 0.0) : y;
 }
 
-BL_FORCE_INLINE constexpr float round_half_away_zero(float x) noexcept
+BL_FORCE_INLINE constexpr float round_nearest_away_from_zero(float x) noexcept
 {
     if (isnan(x) || isinf(x) || x == 0.0f)
         return x;
@@ -198,7 +198,9 @@ BL_FORCE_INLINE constexpr float nextafter(float from, float to) noexcept
     return std::bit_cast<float>(bits);
 }
 
-BL_FORCE_INLINE constexpr double nearbyint_ties_even(double x) noexcept
+// Numeric rounding core. The wrapper below additionally preserves the input
+// sign when the rounded result is zero.
+BL_FORCE_INLINE constexpr double round_nearest_even_value(double x) noexcept
 {
     if (iszero_or_inf_or_nan(x))
         return x;
@@ -215,17 +217,17 @@ BL_FORCE_INLINE constexpr double nearbyint_ties_even(double x) noexcept
     return out;
 }
 
-BL_FORCE_INLINE constexpr double nearbyint(double x) noexcept
+BL_FORCE_INLINE constexpr double round_nearest_even(double x) noexcept
 {
-    const double y = nearbyint_ties_even(x);
+    const double y = round_nearest_even_value(x);
     if (y == 0.0)
         return signbit(x) ? -0.0 : 0.0;
     return y;
 }
 
-BL_FORCE_INLINE constexpr float nearbyint(float x) noexcept
+BL_FORCE_INLINE constexpr float round_nearest_even(float x) noexcept
 {
-    const double y = nearbyint_ties_even(static_cast<double>(x));
+    const double y = round_nearest_even_value(static_cast<double>(x));
     const float out = static_cast<float>(y);
     if (out == 0.0f)
         return signbit(x) ? -0.0f : 0.0f;
@@ -360,7 +362,7 @@ BL_FORCE_INLINE constexpr void reduce_pi_over_2(double x, int& quadrant, double&
     constexpr double inv_pi_2 = 0x1.45f306dc9c883p-1;
     constexpr double pi_4_hi  = 0x1.921fb54442d18p-1;
 
-    const double n = nearbyint_ties_even(x * inv_pi_2);
+    const double n = round_nearest_even_value(x * inv_pi_2);
     r = (x - n * pi_2_hi) - n * pi_2_lo;
 
     const int q0 = static_cast<int>(n) & 3;
