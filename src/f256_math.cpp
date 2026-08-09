@@ -23,19 +23,19 @@ namespace bl::detail::_f256_runtime
     }
 
     // rounding and decimals
-    BL_NO_INLINE f256_s round_nearest_away_from_zero(const f256_s& a)
+    BL_NO_INLINE f256_s BL_VECTORCALL round_nearest_away_from_zero(const f256_s& a)
     {
         return detail::_f256_impl::round_nearest_away_from_zero_runtime(a);
     }
 
-    BL_NO_INLINE f256_s round_to_decimals(f256_s v, int prec)
+    BL_NO_INLINE f256_s round_decimals(f256_s v, int prec)
     {
-        return detail::_f256_impl::round_to_decimals(v, prec);
+        return detail::_f256_impl::round_decimals(v, prec);
     }
 
-    BL_NO_INLINE f256_s round_to_significant_figures(f256_s v, int figures)
+    BL_NO_INLINE f256_s round_significant(f256_s v, int figures)
     {
-        return detail::_f256_impl::round_to_significant_figures(v, figures);
+        return detail::_f256_impl::round_significant(v, figures);
     }
 
     BL_NO_INLINE long lround_nearest_away_from_zero(const f256_s& x)

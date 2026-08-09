@@ -50,7 +50,7 @@ namespace detail::_f128 // primitives and kernels
     BL_FORCE_INLINE constexpr bool f128_runtime_product_pair_simd_enabled() noexcept
     {
         #if FLTX_F128_ENABLE_SIMD && (FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD)
-        return !bl::detail::use_constexpr_math();
+        return !bl::detail::is_constant_evaluated();
         #else
         return false;
         #endif
@@ -250,7 +250,8 @@ struct f128_s
     [[nodiscard]] constexpr f128_s operator+() const { return *this; }
     [[nodiscard]] constexpr f128_s operator-() const noexcept { return f128_s{ -hi, -lo }; }
 
-    [[nodiscard]] static constexpr f128_s eps() { return { 1.232595164407831e-32, 0.0 }; }
+    // Spacing above 1.0 in the public nominal 106-bit model.
+    [[nodiscard]] static constexpr f128_s eps() { return { 0x1p-105, 0.0 }; }
 };
 
 struct f128 : public f128_s

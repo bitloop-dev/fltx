@@ -30,6 +30,7 @@ BL_PUSH_PRECISE;
     return out;
 }
 BL_POP_PRECISE;
+
 [[nodiscard]] BL_FORCE_INLINE constexpr f128_s operator*(const f128_s& a, const f128_s& b) noexcept
 {
     return detail::_f128::mul_checked_inline(a, b);

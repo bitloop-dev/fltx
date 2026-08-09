@@ -1,0 +1,22 @@
+{
+  "consumer_mode": "strict",
+  "layout": "compact",
+  "output": "performance_table_compact.svg",
+  "schema_version": "4",
+  "sources": [
+    {
+      "compiler": "MSVC",
+      "file": "windows/MSVC_f128.csv",
+      "platform": "windows",
+      "precision": "f128",
+      "run_id": "818eddd51e1c4c0c9f12ab1c9425cf18"
+    },
+    {
+      "compiler": "MSVC",
+      "file": "windows/MSVC_f256.csv",
+      "platform": "windows",
+      "precision": "f256",
+      "run_id": "818eddd51e1c4c0c9f12ab1c9425cf18"
+    }
+  ]
+}

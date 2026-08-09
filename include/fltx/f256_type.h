@@ -43,7 +43,7 @@ namespace detail::_f256 // primitives and kernels
     BL_FORCE_INLINE constexpr bool f256_runtime_simd_enabled() noexcept
     {
         #if FLTX_F256_ENABLE_SIMD && (FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD)
-        return !bl::detail::use_constexpr_math();
+        return !bl::detail::is_constant_evaluated();
         #else
         return false;
         #endif
@@ -52,7 +52,7 @@ namespace detail::_f256 // primitives and kernels
     BL_FORCE_INLINE constexpr bool f256_runtime_addsub_simd_enabled() noexcept
     {
         #if FLTX_F256_ENABLE_SIMD && FLTX_HAS_NEON
-        return !bl::detail::use_constexpr_math();
+        return !bl::detail::is_constant_evaluated();
         #else
         return false;
         #endif
@@ -61,7 +61,7 @@ namespace detail::_f256 // primitives and kernels
     BL_FORCE_INLINE constexpr bool f256_runtime_trig_simd_enabled() noexcept
     {
         #if FLTX_F256_ENABLE_TRIG_SIMD
-        return !bl::detail::use_constexpr_math();
+        return !bl::detail::is_constant_evaluated();
         #else
         return false;
         #endif
@@ -70,11 +70,11 @@ namespace detail::_f256 // primitives and kernels
     BL_FORCE_INLINE constexpr bool f256_runtime_product_simd_enabled() noexcept
     {
         #if FLTX_F256_ENABLE_SIMD && FLTX_HAS_NEON
-        return !bl::detail::use_constexpr_math();
+        return !bl::detail::is_constant_evaluated();
         #elif FLTX_F256_ENABLE_SIMD && FLTX_HAS_WASM_SIMD
-        return !bl::detail::use_constexpr_math();
+        return !bl::detail::is_constant_evaluated();
         #elif FLTX_F256_ENABLE_SIMD && FLTX_HAS_SSE2 && (!FLTX_SIMD_USE_FMA_TWO_PROD || FLTX_HAS_X86_FMA)
-        return !bl::detail::use_constexpr_math();
+        return !bl::detail::is_constant_evaluated();
         #else
         return false;
         #endif
@@ -329,7 +329,8 @@ struct f256_s
     [[nodiscard]] constexpr f256_s operator+() const { return *this; }
     [[nodiscard]] constexpr f256_s operator-() const noexcept { return f256_s{ -x0, -x1, -x2, -x3 }; }
 
-    [[nodiscard]] static constexpr f256_s eps() { return { 3.038581678643134e-64, 0.0, 0.0, 0.0 }; } // ~2^-211
+    // Spacing above 1.0 in the public nominal 212-bit model.
+    [[nodiscard]] static constexpr f256_s eps() { return { 0x1p-211, 0.0, 0.0, 0.0 }; }
 };
 
 namespace detail::_f256_expr

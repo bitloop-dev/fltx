@@ -1,0 +1,2506 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="456" height="2272" viewBox="0 0 456 2272">
+<style>text { font-family: Consolas, 'Courier New', monospace; }</style>
+<rect width="456" height="2272" fill="#0f1115"/>
+<text x="12" y="23" fill="#e7e9ee" text-anchor="start" font-size="18" font-weight="bold">f256 consumer fast-math metrics overview — Windows / MSVC</text>
+<text x="12" y="42" fill="#aeb4bf" text-anchor="start" font-size="12" font-weight="normal">Accuracy is MPFR-relative; domain pass counts use FLTX release thresholds; speed is implementation ÷ FLTX.</text>
+<rect x="12" y="54" width="142" height="84" fill="#2B2B2B"/>
+<text x="83.0" y="100.0" fill="#e7e9ee" text-anchor="middle" font-size="12" font-weight="bold">operation</text>
+<g class="implementation-table" data-implementation="fltx" data-x="162" data-width="282">
+<rect x="162" y="54" width="282" height="24" fill="#244b70"/>
+<text x="303.0" y="70" fill="#ffffff" text-anchor="middle" font-size="12" font-weight="bold">bl::f256</text>
+<rect x="162" y="78" width="102" height="28" fill="#244b70"/>
+<text x="213.0" y="95.24" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">bits accurate</text>
+<rect x="264" y="78" width="52" height="28" fill="#244b70"/>
+<text x="290.0" y="95.24" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">domain</text>
+<rect x="316" y="78" width="88" height="28" fill="#244b70"/>
+<text x="360.0" y="95.24" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">performance</text>
+<rect x="404" y="78" width="40" height="60" fill="#244b70"/>
+<text x="424.0" y="104.24" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">Inf/</text>
+<text x="424.0" y="118.24" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">NaN</text>
+<rect x="162" y="106" width="51" height="32" fill="#244b70"/>
+<text x="187.5" y="125.24" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">mean</text>
+<rect x="213" y="106" width="51" height="32" fill="#244b70"/>
+<text x="238.5" y="125.24" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">worst</text>
+<rect x="264" y="106" width="52" height="32" fill="#244b70"/>
+<text x="290.0" y="125.24" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">pass</text>
+<rect x="316" y="106" width="88" height="32" fill="#244b70"/>
+<text x="360.0" y="125.24" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">time</text>
+</g>
+<g class="group-row" data-group="arithmetic">
+<rect x="12" y="138" width="142" height="18" fill="#4e555f"/>
+<text x="19" y="151" fill="#ffffff" text-anchor="start" font-size="12" font-weight="normal">Arithmetic</text>
+<rect x="162" y="138" width="282" height="18" fill="#4e555f"/>
+</g>
+<g class="body-row">
+<rect x="12" y="156" width="142" height="22" fill="#191d23"/>
+<text x="19" y="171" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">add</text>
+<g>
+<title>fltx bl::f256
+API: bl::add
+mean: 227.4 bits
+p01: 215.6 bits
+worst: 215.2 bits
+domains: 1/1
+minimum threshold margin: 25.2 bits
+special values: Both
+general: mean 227.4, p01 215.6, worst 215.2, required 190.0, margin 25.2, n=65536, seed=10322096095657499292
+benchmark: 10.82 ns/iteration (no available competitor)</title>
+<rect x="162" y="156" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="171" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">227.4</text>
+<rect x="213" y="156" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="171" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">215.2</text>
+<rect x="264" y="156" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="171" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="156" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="171" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">10.82 ns</tspan></text>
+<rect x="404" y="156" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="171" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="178" width="142" height="22" fill="#16191f"/>
+<text x="19" y="193" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">subtract</text>
+<g>
+<title>fltx bl::f256
+API: bl::subtract
+mean: 227.4 bits
+p01: 215.6 bits
+worst: 215.2 bits
+domains: 1/1
+minimum threshold margin: 25.2 bits
+special values: Both
+general: mean 227.4, p01 215.6, worst 215.2, required 190.0, margin 25.2, n=65536, seed=10322096095657499292
+benchmark: 10.82 ns/iteration (no available competitor)</title>
+<rect x="162" y="178" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="193" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">227.4</text>
+<rect x="213" y="178" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="193" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">215.2</text>
+<rect x="264" y="178" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="193" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="178" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="193" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">10.82 ns</tspan></text>
+<rect x="404" y="178" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="193" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="200" width="142" height="22" fill="#191d23"/>
+<text x="19" y="215" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">multiply</text>
+<g>
+<title>fltx bl::f256
+API: bl::multiply
+mean: 220.1 bits
+p01: 216.3 bits
+worst: 215.1 bits
+domains: 1/1
+minimum threshold margin: 25.1 bits
+special values: Both
+general: mean 220.1, p01 216.3, worst 215.1, required 190.0, margin 25.1, n=65536, seed=10322096095657499292
+benchmark: 18.83 ns/iteration (no available competitor)</title>
+<rect x="162" y="200" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="215" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">220.1</text>
+<rect x="213" y="200" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="215" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">215.1</text>
+<rect x="264" y="200" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="215" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="200" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="215" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">18.83 ns</tspan></text>
+<rect x="404" y="200" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="215" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="222" width="142" height="22" fill="#16191f"/>
+<text x="19" y="237" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">divide</text>
+<g>
+<title>fltx bl::f256
+API: bl::divide
+mean: 219.1 bits
+p01: 215.2 bits
+worst: 213.1 bits
+domains: 1/1
+minimum threshold margin: 23.1 bits
+special values: Both
+general: mean 219.1, p01 215.2, worst 213.1, required 190.0, margin 23.1, n=65536, seed=10322096095657499292
+benchmark: 79.57 ns/iteration (no available competitor)</title>
+<rect x="162" y="222" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="237" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">219.1</text>
+<rect x="213" y="222" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="237" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">213.1</text>
+<rect x="264" y="222" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="237" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="222" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="237" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">79.57 ns</tspan></text>
+<rect x="404" y="222" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="237" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="group-row" data-group="io">
+<rect x="12" y="244" width="142" height="18" fill="#4e555f"/>
+<text x="19" y="257" fill="#ffffff" text-anchor="start" font-size="12" font-weight="normal">IO</text>
+<rect x="162" y="244" width="282" height="18" fill="#4e555f"/>
+</g>
+<g class="body-row">
+<rect x="12" y="262" width="142" height="22" fill="#191d23"/>
+<text x="19" y="277" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">to_string</text>
+<g>
+<title>fltx bl::f256
+API: bl::to_string
+mean: 220.4 bits
+p01: 217.3 bits
+worst: 216.9 bits
+domains: 2/2
+minimum threshold margin: 26.9 bits
+special values: Both
+moderate: mean 220.4, p01 217.5, worst 217.0, required 190.0, margin 27.0, n=65539, seed=10322096095657499356
+wide_exponent: mean 220.5, p01 217.3, worst 216.9, required 190.0, margin 26.9, n=65536, seed=10322096095657499357
+benchmark: 377.9 ns/iteration (no available competitor)</title>
+<rect x="162" y="262" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="277" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">220.4</text>
+<rect x="213" y="262" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="277" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">216.9</text>
+<rect x="264" y="262" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="277" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="262" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="277" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">377.9 ns</tspan></text>
+<rect x="404" y="262" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="277" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="284" width="142" height="22" fill="#16191f"/>
+<text x="19" y="299" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">to_chars</text>
+<g>
+<title>fltx bl::f256
+API: bl::to_chars
+mean: 220.4 bits
+p01: 217.3 bits
+worst: 216.9 bits
+domains: 2/2
+minimum threshold margin: 26.9 bits
+special values: Both
+moderate: mean 220.4, p01 217.5, worst 217.0, required 190.0, margin 27.0, n=65539, seed=10322096095657499356
+wide_exponent: mean 220.5, p01 217.3, worst 216.9, required 190.0, margin 26.9, n=65536, seed=10322096095657499357
+benchmark: 319.2 ns/iteration (no available competitor)</title>
+<rect x="162" y="284" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="299" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">220.4</text>
+<rect x="213" y="284" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="299" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">216.9</text>
+<rect x="264" y="284" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="299" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="284" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="299" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">319.2 ns</tspan></text>
+<rect x="404" y="284" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="299" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="306" width="142" height="22" fill="#191d23"/>
+<text x="19" y="321" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">parse</text>
+<g>
+<title>fltx bl::f256
+API: bl::parse
+mean: 219.7 bits
+p01: 212.3 bits
+worst: 212.0 bits
+domains: 2/2
+minimum threshold margin: 0.0 bits
+special values: Both
+moderate: mean 219.9, p01 215.5, worst 215.0, required 212.0, margin 3.0, n=65537, seed=10322096095657499311
+wide_exponent: mean 219.5, p01 212.3, worst 212.0, required 212.0, margin 0.0, n=65538, seed=10322096095657499308
+benchmark: 424.4 ns/iteration (no available competitor)</title>
+<rect x="162" y="306" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="321" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">219.7</text>
+<rect x="213" y="306" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="321" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">212.0</text>
+<rect x="264" y="306" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="321" fill="#fbbf24" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="306" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="321" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">424.4 ns</tspan></text>
+<rect x="404" y="306" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="321" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="group-row" data-group="rounding">
+<rect x="12" y="328" width="142" height="18" fill="#4e555f"/>
+<text x="19" y="341" fill="#ffffff" text-anchor="start" font-size="12" font-weight="normal">Rounding</text>
+<rect x="162" y="328" width="282" height="18" fill="#4e555f"/>
+</g>
+<g class="body-row">
+<rect x="12" y="346" width="142" height="22" fill="#16191f"/>
+<text x="19" y="361" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">floor</text>
+<g>
+<title>fltx bl::f256
+API: bl::floor
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 1/1
+minimum threshold margin: exact bits
+special values: Both
+boundary: mean exact, p01 exact, worst exact, required 180.0, margin exact, n=65550, seed=10322096095657499382
+benchmark: 6.66 ns/iteration (no available competitor)</title>
+<rect x="162" y="346" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="361" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="346" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="361" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="346" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="361" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="346" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="361" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">6.66 ns</tspan></text>
+<rect x="404" y="346" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="361" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="368" width="142" height="22" fill="#191d23"/>
+<text x="19" y="383" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">ceil</text>
+<g>
+<title>fltx bl::f256
+API: bl::ceil
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 1/1
+minimum threshold margin: exact bits
+special values: Both
+boundary: mean exact, p01 exact, worst exact, required 180.0, margin exact, n=65550, seed=10322096095657499382
+benchmark: 6.65 ns/iteration (no available competitor)</title>
+<rect x="162" y="368" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="383" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="368" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="383" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="368" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="383" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="368" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="383" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">6.65 ns</tspan></text>
+<rect x="404" y="368" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="383" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="390" width="142" height="22" fill="#16191f"/>
+<text x="19" y="405" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">trunc</text>
+<g>
+<title>fltx bl::f256
+API: bl::trunc
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 1/1
+minimum threshold margin: exact bits
+special values: Both
+boundary: mean exact, p01 exact, worst exact, required 180.0, margin exact, n=65550, seed=10322096095657499382
+benchmark: 8.48 ns/iteration (no available competitor)</title>
+<rect x="162" y="390" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="405" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="390" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="405" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="390" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="405" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="390" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="405" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">8.48 ns</tspan></text>
+<rect x="404" y="390" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="405" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="412" width="142" height="22" fill="#191d23"/>
+<text x="19" y="427" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">round</text>
+<g>
+<title>fltx bl::f256
+API: bl::round
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 1/1
+minimum threshold margin: exact bits
+special values: Both
+boundary: mean exact, p01 exact, worst exact, required 180.0, margin exact, n=65550, seed=10322096095657499382
+benchmark: 13.46 ns/iteration (no available competitor)</title>
+<rect x="162" y="412" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="427" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="412" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="427" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="412" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="427" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="412" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="427" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">13.46 ns</tspan></text>
+<rect x="404" y="412" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="427" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="434" width="142" height="22" fill="#16191f"/>
+<text x="19" y="449" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">roundeven</text>
+<g>
+<title>fltx bl::f256
+API: bl::roundeven
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 1/1
+minimum threshold margin: exact bits
+special values: Both
+boundary: mean exact, p01 exact, worst exact, required 180.0, margin exact, n=65550, seed=10322096095657499382
+benchmark: 10.92 ns/iteration (no available competitor)</title>
+<rect x="162" y="434" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="449" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="434" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="449" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="434" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="449" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="434" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="449" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">10.92 ns</tspan></text>
+<rect x="404" y="434" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="449" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="456" width="142" height="22" fill="#191d23"/>
+<text x="19" y="471" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">lround</text>
+<g>
+<title>fltx bl::f256
+API: bl::lround
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 1/1
+minimum threshold margin: exact bits
+special values: -
+boundary: mean exact, p01 exact, worst exact, required 180.0, margin exact, n=65552, seed=10322096095657499382
+benchmark: 9.14 ns/iteration (no available competitor)</title>
+<rect x="162" y="456" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="471" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="456" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="471" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="456" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="471" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="456" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="471" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">9.14 ns</tspan></text>
+<rect x="404" y="456" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="471" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="478" width="142" height="22" fill="#16191f"/>
+<text x="19" y="493" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">llround</text>
+<g>
+<title>fltx bl::f256
+API: bl::llround
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 1/1
+minimum threshold margin: exact bits
+special values: -
+boundary: mean exact, p01 exact, worst exact, required 180.0, margin exact, n=65556, seed=10322096095657499382
+benchmark: 8.90 ns/iteration (no available competitor)</title>
+<rect x="162" y="478" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="493" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="478" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="493" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="478" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="493" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="478" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="493" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">8.90 ns</tspan></text>
+<rect x="404" y="478" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="493" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="500" width="142" height="22" fill="#191d23"/>
+<text x="19" y="515" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">round_decimals</text>
+<g>
+<title>fltx bl::f256
+API: bl::round_decimals
+mean: 220.0 bits
+p01: 215.7 bits
+worst: 215.3 bits
+domains: 1/1
+minimum threshold margin: 25.3 bits
+special values: Both
+moderate: mean 220.0, p01 215.7, worst 215.3, required 190.0, margin 25.3, n=65539, seed=10322096095657499356
+benchmark: 133.2 ns/iteration (no available competitor)</title>
+<rect x="162" y="500" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="515" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">220.0</text>
+<rect x="213" y="500" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="515" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">215.3</text>
+<rect x="264" y="500" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="515" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="500" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="515" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">133.2 ns</tspan></text>
+<rect x="404" y="500" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="515" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="522" width="142" height="22" fill="#16191f"/>
+<text x="19" y="537" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">round_significant</text>
+<g>
+<title>fltx bl::f256
+API: bl::round_significant
+mean: 229.5 bits
+p01: 215.7 bits
+worst: 215.0 bits
+domains: 1/1
+minimum threshold margin: 25.0 bits
+special values: Both
+wide_exponent: mean 229.5, p01 215.7, worst 215.0, required 190.0, margin 25.0, n=65536, seed=10322096095657499357
+benchmark: 186.1 ns/iteration (no available competitor)</title>
+<rect x="162" y="522" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="537" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">229.5</text>
+<rect x="213" y="522" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="537" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">215.0</text>
+<rect x="264" y="522" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="537" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="522" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="537" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">186.1 ns</tspan></text>
+<rect x="404" y="522" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="537" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="group-row" data-group="remainders">
+<rect x="12" y="544" width="142" height="18" fill="#4e555f"/>
+<text x="19" y="557" fill="#ffffff" text-anchor="start" font-size="12" font-weight="normal">Remainders</text>
+<rect x="162" y="544" width="282" height="18" fill="#4e555f"/>
+</g>
+<g class="body-row">
+<rect x="12" y="562" width="142" height="22" fill="#191d23"/>
+<text x="19" y="577" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">fmod</text>
+<g>
+<title>fltx bl::f256
+API: bl::fmod
+mean: 244.0 bits
+p01: 217.7 bits
+worst: 215.3 bits
+domains: 3/3
+minimum threshold margin: 25.3 bits
+special values: Both
+moderate: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65539, seed=10322096095657499356
+quotient_reduction: mean 237.4, p01 217.7, worst 217.7, required 190.0, margin 27.7, n=4, seed=10322096095657499383
+wide_exponent: mean 244.0, p01 exact, worst 215.3, required 190.0, margin 25.3, n=65536, seed=10322096095657499357
+benchmark: 82.86 ns/iteration (no available competitor)</title>
+<rect x="162" y="562" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="577" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">244.0</text>
+<rect x="213" y="562" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="577" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">215.3</text>
+<rect x="264" y="562" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="577" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">3/3</text>
+<rect x="316" y="562" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="577" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">82.86 ns</tspan></text>
+<rect x="404" y="562" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="577" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="584" width="142" height="22" fill="#16191f"/>
+<text x="19" y="599" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">remainder</text>
+<g>
+<title>fltx bl::f256
+API: bl::remainder
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 1/1
+minimum threshold margin: exact bits
+special values: Both
+moderate: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65539, seed=10322096095657499356
+benchmark: 111.7 ns/iteration (no available competitor)</title>
+<rect x="162" y="584" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="599" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="584" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="599" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="584" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="599" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="584" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="599" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">111.7 ns</tspan></text>
+<rect x="404" y="584" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="599" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="606" width="142" height="22" fill="#191d23"/>
+<text x="19" y="621" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">remquo</text>
+<g>
+<title>fltx bl::f256
+API: bl::remquo
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 1/1
+minimum threshold margin: exact bits
+special values: Both
+moderate: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65539, seed=10322096095657499356
+benchmark: 112.0 ns/iteration (no available competitor)</title>
+<rect x="162" y="606" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="621" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="606" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="621" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="606" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="621" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="606" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="621" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">112.0 ns</tspan></text>
+<rect x="404" y="606" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="621" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="group-row" data-group="floating_point_utilities">
+<rect x="12" y="628" width="142" height="18" fill="#4e555f"/>
+<text x="19" y="641" fill="#ffffff" text-anchor="start" font-size="12" font-weight="normal">Float Utils</text>
+<rect x="162" y="628" width="282" height="18" fill="#4e555f"/>
+</g>
+<g class="body-row">
+<rect x="12" y="646" width="142" height="22" fill="#16191f"/>
+<text x="19" y="661" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">abs</text>
+<g>
+<title>fltx bl::f256
+API: bl::abs
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 2/2
+minimum threshold margin: exact bits
+special values: Both
+subnormal: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65540, seed=10322096095657499350
+wide_exponent: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65536, seed=10322096095657499357
+benchmark: 2.72 ns/iteration (no available competitor)</title>
+<rect x="162" y="646" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="661" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="646" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="661" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="646" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="661" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="646" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="661" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">2.72 ns</tspan></text>
+<rect x="404" y="646" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="661" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="668" width="142" height="22" fill="#191d23"/>
+<text x="19" y="683" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">fabs</text>
+<g>
+<title>fltx bl::f256
+API: bl::fabs
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 1/1
+minimum threshold margin: exact bits
+special values: Both
+moderate: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65539, seed=10322096095657499356
+benchmark: 2.32 ns/iteration (no available competitor)</title>
+<rect x="162" y="668" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="683" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="668" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="683" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="668" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="683" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="668" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="683" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">2.32 ns</tspan></text>
+<rect x="404" y="668" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="683" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="690" width="142" height="22" fill="#16191f"/>
+<text x="19" y="705" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">fma</text>
+<g>
+<title>fltx bl::f256
+API: bl::fma
+mean: 229.8 bits
+p01: 215.7 bits
+worst: 215.0 bits
+domains: 3/3
+minimum threshold margin: 25.0 bits
+special values: Both
+cancellation: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65538, seed=10322096095657499352
+moderate: mean 219.9, p01 215.7, worst 215.1, required 190.0, margin 25.1, n=65539, seed=10322096095657499356
+wide_exponent: mean 225.4, p01 216.1, worst 215.0, required 190.0, margin 25.0, n=65536, seed=10322096095657499357
+benchmark: 25.16 ns/iteration (no available competitor)</title>
+<rect x="162" y="690" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="705" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">229.8</text>
+<rect x="213" y="690" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="705" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">215.0</text>
+<rect x="264" y="690" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="705" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">3/3</text>
+<rect x="316" y="690" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="705" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">25.16 ns</tspan></text>
+<rect x="404" y="690" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="705" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="712" width="142" height="22" fill="#191d23"/>
+<text x="19" y="727" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">recip</text>
+<g>
+<title>fltx bl::f256
+API: bl::recip
+mean: 217.9 bits
+p01: 215.2 bits
+worst: 214.4 bits
+domains: 2/2
+minimum threshold margin: 24.4 bits
+special values: Both
+near_one: mean 217.9, p01 215.4, worst 214.4, required 190.0, margin 24.4, n=65539, seed=10322096095657499359
+wide_exponent: mean 217.9, p01 215.2, worst 214.6, required 190.0, margin 24.6, n=65536, seed=10322096095657499357
+benchmark: 79.38 ns/iteration (no available competitor)</title>
+<rect x="162" y="712" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="727" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">217.9</text>
+<rect x="213" y="712" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="727" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">214.4</text>
+<rect x="264" y="712" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="727" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="712" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="727" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">79.38 ns</tspan></text>
+<rect x="404" y="712" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="727" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="734" width="142" height="22" fill="#16191f"/>
+<text x="19" y="749" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">fmin</text>
+<g>
+<title>fltx bl::f256
+API: bl::fmin
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 2/2
+minimum threshold margin: exact bits
+special values: Both
+moderate: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65539, seed=10322096095657499356
+wide_exponent: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65536, seed=10322096095657499357
+benchmark: 4.61 ns/iteration (no available competitor)</title>
+<rect x="162" y="734" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="749" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="734" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="749" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="734" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="749" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="734" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="749" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">4.61 ns</tspan></text>
+<rect x="404" y="734" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="749" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="756" width="142" height="22" fill="#191d23"/>
+<text x="19" y="771" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">fmax</text>
+<g>
+<title>fltx bl::f256
+API: bl::fmax
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 2/2
+minimum threshold margin: exact bits
+special values: Both
+moderate: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65539, seed=10322096095657499356
+wide_exponent: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65536, seed=10322096095657499357
+benchmark: 4.76 ns/iteration (no available competitor)</title>
+<rect x="162" y="756" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="771" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="756" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="771" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="756" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="771" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="756" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="771" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">4.76 ns</tspan></text>
+<rect x="404" y="756" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="771" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="778" width="142" height="22" fill="#16191f"/>
+<text x="19" y="793" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">fdim</text>
+<g>
+<title>fltx bl::f256
+API: bl::fdim
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 2/2
+minimum threshold margin: exact bits
+special values: Both
+cancellation: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65538, seed=10322096095657499352
+moderate: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65539, seed=10322096095657499356
+benchmark: 11.09 ns/iteration (no available competitor)</title>
+<rect x="162" y="778" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="793" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="778" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="793" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="778" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="793" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="778" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="793" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">11.09 ns</tspan></text>
+<rect x="404" y="778" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="793" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="800" width="142" height="22" fill="#191d23"/>
+<text x="19" y="815" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">copysign</text>
+<g>
+<title>fltx bl::f256
+API: bl::copysign
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 1/1
+minimum threshold margin: exact bits
+special values: Both
+moderate: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65539, seed=10322096095657499356
+benchmark: 1.32 ns/iteration (no available competitor)</title>
+<rect x="162" y="800" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="815" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="800" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="815" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="800" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="815" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="800" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="815" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">1.32 ns</tspan></text>
+<rect x="404" y="800" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="815" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="822" width="142" height="22" fill="#16191f"/>
+<text x="19" y="837" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">ldexp</text>
+<g>
+<title>fltx bl::f256
+API: bl::ldexp
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 1/1
+minimum threshold margin: exact bits
+special values: Both
+wide_exponent: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65536, seed=10322096095657499357
+benchmark: 5.39 ns/iteration (no available competitor)</title>
+<rect x="162" y="822" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="837" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="822" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="837" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="822" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="837" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="822" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="837" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">5.39 ns</tspan></text>
+<rect x="404" y="822" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="837" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="844" width="142" height="22" fill="#191d23"/>
+<text x="19" y="859" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">scalbn</text>
+<g>
+<title>fltx bl::f256
+API: bl::scalbn
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 1/1
+minimum threshold margin: exact bits
+special values: Both
+wide_exponent: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65536, seed=10322096095657499357
+benchmark: 5.88 ns/iteration (no available competitor)</title>
+<rect x="162" y="844" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="859" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="844" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="859" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="844" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="859" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="844" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="859" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">5.88 ns</tspan></text>
+<rect x="404" y="844" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="859" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="866" width="142" height="22" fill="#16191f"/>
+<text x="19" y="881" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">scalbln</text>
+<g>
+<title>fltx bl::f256
+API: bl::scalbln
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 1/1
+minimum threshold margin: exact bits
+special values: Both
+wide_exponent: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65536, seed=10322096095657499357
+benchmark: 5.40 ns/iteration (no available competitor)</title>
+<rect x="162" y="866" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="881" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="866" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="881" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="866" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="881" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="866" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="881" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">5.40 ns</tspan></text>
+<rect x="404" y="866" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="881" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="888" width="142" height="22" fill="#191d23"/>
+<text x="19" y="903" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">frexp</text>
+<g>
+<title>fltx bl::f256
+API: bl::frexp
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 2/2
+minimum threshold margin: exact bits
+special values: Both
+subnormal: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65540, seed=10322096095657499350
+wide_exponent: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65536, seed=10322096095657499357
+benchmark: 11.82 ns/iteration (no available competitor)</title>
+<rect x="162" y="888" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="903" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="888" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="903" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="888" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="903" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="888" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="903" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">11.82 ns</tspan></text>
+<rect x="404" y="888" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="903" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="910" width="142" height="22" fill="#16191f"/>
+<text x="19" y="925" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">modf</text>
+<g>
+<title>fltx bl::f256
+API: bl::modf
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 2/2
+minimum threshold margin: exact bits
+special values: Both
+moderate: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65539, seed=10322096095657499356
+wide_exponent: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65536, seed=10322096095657499357
+benchmark: 20.54 ns/iteration (no available competitor)</title>
+<rect x="162" y="910" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="925" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="910" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="925" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="910" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="925" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="910" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="925" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">20.54 ns</tspan></text>
+<rect x="404" y="910" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="925" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="932" width="142" height="22" fill="#191d23"/>
+<text x="19" y="947" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">ilogb</text>
+<g>
+<title>fltx bl::f256
+API: bl::ilogb
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 2/2
+minimum threshold margin: exact bits
+special values: -
+moderate: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65539, seed=10322096095657499356
+wide_exponent: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65536, seed=10322096095657499357
+benchmark: 1.71 ns/iteration (no available competitor)</title>
+<rect x="162" y="932" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="947" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="932" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="947" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="932" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="947" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="932" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="947" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">1.71 ns</tspan></text>
+<rect x="404" y="932" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="947" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="954" width="142" height="22" fill="#16191f"/>
+<text x="19" y="969" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">logb</text>
+<g>
+<title>fltx bl::f256
+API: bl::logb
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 2/2
+minimum threshold margin: exact bits
+special values: Both
+moderate: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65539, seed=10322096095657499356
+wide_exponent: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=65536, seed=10322096095657499357
+benchmark: 2.07 ns/iteration (no available competitor)</title>
+<rect x="162" y="954" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="969" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="954" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="969" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="954" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="969" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="954" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="969" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">2.07 ns</tspan></text>
+<rect x="404" y="954" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="969" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="976" width="142" height="22" fill="#191d23"/>
+<text x="19" y="991" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">nextafter</text>
+<g>
+<title>fltx bl::f256
+API: bl::nextafter
+benchmark: 8.72 ns/iteration (no available competitor)</title>
+<rect x="162" y="976" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="991" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="213" y="976" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="991" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="264" y="976" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="991" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="316" y="976" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="991" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">8.72 ns</tspan></text>
+<rect x="404" y="976" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="991" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="998" width="142" height="22" fill="#16191f"/>
+<text x="19" y="1013" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">nexttoward</text>
+<g>
+<title>fltx bl::f256
+API: bl::nexttoward
+benchmark: 8.72 ns/iteration (no available competitor)</title>
+<rect x="162" y="998" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="1013" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="213" y="998" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="1013" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="264" y="998" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="1013" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="316" y="998" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="1013" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">8.72 ns</tspan></text>
+<rect x="404" y="998" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="1013" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+</g>
+</g>
+<g class="group-row" data-group="roots_and_powers">
+<rect x="12" y="1020" width="142" height="18" fill="#4e555f"/>
+<text x="19" y="1033" fill="#ffffff" text-anchor="start" font-size="12" font-weight="normal">Roots &amp; powers</text>
+<rect x="162" y="1020" width="282" height="18" fill="#4e555f"/>
+</g>
+<g class="body-row">
+<rect x="12" y="1038" width="142" height="22" fill="#191d23"/>
+<text x="19" y="1053" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">sqr</text>
+<g>
+<title>fltx bl::f256
+API: bl::sqr
+mean: 220.1 bits
+p01: 216.3 bits
+worst: 215.2 bits
+domains: 2/2
+minimum threshold margin: 25.2 bits
+special values: Both
+moderate: mean 220.1, p01 216.3, worst 215.2, required 190.0, margin 25.2, n=65539, seed=10322096095657499356
+wide_exponent: mean 220.1, p01 216.3, worst 215.2, required 190.0, margin 25.2, n=65536, seed=10322096095657499357
+benchmark: 30.84 ns/iteration (no available competitor)</title>
+<rect x="162" y="1038" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="1053" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">220.1</text>
+<rect x="213" y="1038" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="1053" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">215.2</text>
+<rect x="264" y="1038" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="1053" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="1038" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="1053" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">30.84 ns</tspan></text>
+<rect x="404" y="1038" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="1053" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1060" width="142" height="22" fill="#16191f"/>
+<text x="19" y="1075" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">sqrt</text>
+<g>
+<title>fltx bl::f256
+API: bl::sqrt
+mean: 217.9 bits
+p01: 211.3 bits
+worst: 209.1 bits
+domains: 4/4
+minimum threshold margin: 19.1 bits
+special values: Both
+extreme_finite: mean 217.4, p01 211.7, worst 209.6, required 190.0, margin 19.6, n=65536, seed=10322096095657499354
+near_one: mean 217.9, p01 211.9, worst 209.5, required 190.0, margin 19.5, n=65539, seed=10322096095657499359
+subnormal: mean 218.3, p01 211.4, worst 209.5, required 190.0, margin 19.5, n=65540, seed=10322096095657499350
+wide_exponent: mean 217.9, p01 211.3, worst 209.1, required 190.0, margin 19.1, n=65536, seed=10322096095657499357
+benchmark: 127.9 ns/iteration (no available competitor)</title>
+<rect x="162" y="1060" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="1075" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">217.9</text>
+<rect x="213" y="1060" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="1075" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">209.1</text>
+<rect x="264" y="1060" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="1075" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">4/4</text>
+<rect x="316" y="1060" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="1075" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">127.9 ns</tspan></text>
+<rect x="404" y="1060" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="1075" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1082" width="142" height="22" fill="#191d23"/>
+<text x="19" y="1097" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">cbrt</text>
+<g>
+<title>fltx bl::f256
+API: bl::cbrt
+mean: 219.3 bits
+p01: 215.5 bits
+worst: 214.7 bits
+domains: 2/2
+minimum threshold margin: 24.7 bits
+special values: Both
+moderate: mean 219.3, p01 215.7, worst 214.7, required 190.0, margin 24.7, n=65539, seed=10322096095657499356
+wide_exponent: mean 219.2, p01 215.5, worst 214.8, required 190.0, margin 24.8, n=65536, seed=10322096095657499357
+benchmark: 364.1 ns/iteration (no available competitor)</title>
+<rect x="162" y="1082" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="1097" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">219.3</text>
+<rect x="213" y="1082" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="1097" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">214.7</text>
+<rect x="264" y="1082" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="1097" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="1082" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="1097" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">364.1 ns</tspan></text>
+<rect x="404" y="1082" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="1097" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1104" width="142" height="22" fill="#16191f"/>
+<text x="19" y="1119" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">hypot</text>
+<g>
+<title>fltx bl::f256
+API: bl::hypot
+mean: 230.0 bits
+p01: 215.5 bits
+worst: 211.5 bits
+domains: 2/2
+minimum threshold margin: 21.5 bits
+special values: Both
+moderate: mean 219.1, p01 215.5, worst 214.8, required 190.0, margin 24.8, n=65539, seed=10322096095657499356
+wide_exponent: mean 240.9, p01 216.6, worst 211.5, required 190.0, margin 21.5, n=65536, seed=10322096095657499357
+benchmark: 186.5 ns/iteration (no available competitor)</title>
+<rect x="162" y="1104" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="1119" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">230.0</text>
+<rect x="213" y="1104" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="1119" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">211.5</text>
+<rect x="264" y="1104" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="1119" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="1104" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="1119" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">186.5 ns</tspan></text>
+<rect x="404" y="1104" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="1119" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1126" width="142" height="22" fill="#191d23"/>
+<text x="19" y="1141" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">pow</text>
+<g>
+<title>fltx bl::f256
+API: bl::pow
+mean: 216.8 bits
+p01: 212.0 bits
+worst: 210.6 bits
+domains: 2/2
+minimum threshold margin: 30.6 bits
+special values: Both
+moderate: mean 215.5, p01 212.0, worst 210.6, required 180.0, margin 30.6, n=65539, seed=10322096095657499356
+near_one: mean 218.1, p01 215.1, worst 213.8, required 180.0, margin 33.8, n=65539, seed=10322096095657499359
+benchmark: 2,775 ns/iteration (no available competitor)</title>
+<rect x="162" y="1126" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="1141" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">216.8</text>
+<rect x="213" y="1126" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="1141" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">210.6</text>
+<rect x="264" y="1126" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="1141" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="1126" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="1141" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">2,775 ns</tspan></text>
+<rect x="404" y="1126" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="1141" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1148" width="142" height="22" fill="#16191f"/>
+<text x="19" y="1163" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">ipow</text>
+<g>
+<title>fltx bl::f256
+API: bl::ipow
+mean: 217.2 bits
+p01: 214.4 bits
+worst: 213.2 bits
+domains: 2/2
+minimum threshold margin: 23.2 bits
+special values: Both
+moderate: mean 217.2, p01 214.4, worst 213.3, required 190.0, margin 23.3, n=65539, seed=10322096095657499356
+wide_exponent: mean 217.2, p01 214.4, worst 213.2, required 190.0, margin 23.2, n=65536, seed=10322096095657499357
+benchmark: 117.0 ns/iteration (no available competitor)</title>
+<rect x="162" y="1148" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="1163" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">217.2</text>
+<rect x="213" y="1148" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="1163" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">213.2</text>
+<rect x="264" y="1148" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="1163" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="1148" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="1163" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">117.0 ns</tspan></text>
+<rect x="404" y="1148" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="1163" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="group-row" data-group="exponentials">
+<rect x="12" y="1170" width="142" height="18" fill="#4e555f"/>
+<text x="19" y="1183" fill="#ffffff" text-anchor="start" font-size="12" font-weight="normal">Exponentials</text>
+<rect x="162" y="1170" width="282" height="18" fill="#4e555f"/>
+</g>
+<g class="body-row">
+<rect x="12" y="1188" width="142" height="22" fill="#191d23"/>
+<text x="19" y="1203" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">exp</text>
+<g>
+<title>fltx bl::f256
+API: bl::exp
+mean: 216.8 bits
+p01: 210.6 bits
+worst: 208.9 bits
+domains: 2/2
+minimum threshold margin: 28.9 bits
+special values: Both
+boundary: mean 216.1, p01 210.6, worst 208.9, required 180.0, margin 28.9, n=65539, seed=10322096095657499291
+moderate: mean 217.4, p01 215.0, worst 214.2, required 180.0, margin 34.2, n=65539, seed=10322096095657499356
+benchmark: 1,027 ns/iteration (no available competitor)</title>
+<rect x="162" y="1188" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="1203" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">216.8</text>
+<rect x="213" y="1188" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="1203" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">208.9</text>
+<rect x="264" y="1188" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="1203" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="1188" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="1203" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">1,027 ns</tspan></text>
+<rect x="404" y="1188" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="1203" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1210" width="142" height="22" fill="#16191f"/>
+<text x="19" y="1225" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">exp2</text>
+<g>
+<title>fltx bl::f256
+API: bl::exp2
+mean: 218.0 bits
+p01: 215.0 bits
+worst: 213.9 bits
+domains: 2/2
+minimum threshold margin: 33.9 bits
+special values: Both
+boundary: mean 218.0, p01 215.0, worst 214.0, required 180.0, margin 34.0, n=65539, seed=10322096095657499291
+moderate: mean 218.0, p01 215.0, worst 213.9, required 180.0, margin 33.9, n=65539, seed=10322096095657499356
+benchmark: 863.4 ns/iteration (no available competitor)</title>
+<rect x="162" y="1210" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="1225" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">218.0</text>
+<rect x="213" y="1210" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="1225" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">213.9</text>
+<rect x="264" y="1210" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="1225" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="1210" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="1225" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">863.4 ns</tspan></text>
+<rect x="404" y="1210" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="1225" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1232" width="142" height="22" fill="#191d23"/>
+<text x="19" y="1247" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">expm1</text>
+<g>
+<title>fltx bl::f256
+API: bl::expm1
+mean: 227.1 bits
+p01: 207.4 bits
+worst: 207.0 bits
+domains: 2/2
+minimum threshold margin: 27.0 bits
+special values: Both
+cancellation: mean 235.8, p01 207.4, worst 207.0, required 180.0, margin 27.0, n=65538, seed=10322096095657499336
+moderate: mean 218.3, p01 214.9, worst 213.8, required 180.0, margin 33.8, n=65539, seed=10322096095657499356
+benchmark: 1,028 ns/iteration (no available competitor)</title>
+<rect x="162" y="1232" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="1247" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">227.1</text>
+<rect x="213" y="1232" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="1247" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">207.0</text>
+<rect x="264" y="1232" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="1247" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="1232" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="1247" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">1,028 ns</tspan></text>
+<rect x="404" y="1232" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="1247" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="group-row" data-group="logarithms">
+<rect x="12" y="1254" width="142" height="18" fill="#4e555f"/>
+<text x="19" y="1267" fill="#ffffff" text-anchor="start" font-size="12" font-weight="normal">Logarithms</text>
+<rect x="162" y="1254" width="282" height="18" fill="#4e555f"/>
+</g>
+<g class="body-row">
+<rect x="12" y="1272" width="142" height="22" fill="#16191f"/>
+<text x="19" y="1287" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">log</text>
+<g>
+<title>fltx bl::f256
+API: bl::log
+mean: 217.8 bits
+p01: 214.4 bits
+worst: 213.3 bits
+domains: 3/3
+minimum threshold margin: 33.3 bits
+special values: Both
+extreme_finite: mean 218.3, p01 215.4, worst 215.0, required 180.0, margin 35.0, n=65536, seed=10322096095657499354
+near_one: mean 216.9, p01 214.4, worst 213.3, required 180.0, margin 33.3, n=65539, seed=10322096095657499359
+wide_exponent: mean 218.2, p01 215.4, worst 214.3, required 180.0, margin 34.3, n=65536, seed=10322096095657499357
+benchmark: 1,743 ns/iteration (no available competitor)</title>
+<rect x="162" y="1272" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="1287" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">217.8</text>
+<rect x="213" y="1272" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="1287" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">213.3</text>
+<rect x="264" y="1272" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="1287" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">3/3</text>
+<rect x="316" y="1272" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="1287" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">1,743 ns</tspan></text>
+<rect x="404" y="1272" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="1287" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1294" width="142" height="22" fill="#191d23"/>
+<text x="19" y="1309" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">log2</text>
+<g>
+<title>fltx bl::f256
+API: bl::log2
+mean: 218.6 bits
+p01: 214.3 bits
+worst: 213.2 bits
+domains: 3/3
+minimum threshold margin: 33.2 bits
+special values: Both
+extreme_finite: mean 221.2, p01 215.4, worst 214.4, required 180.0, margin 34.4, n=65536, seed=10322096095657499354
+near_one: mean 216.8, p01 214.3, worst 213.2, required 180.0, margin 33.2, n=65539, seed=10322096095657499359
+wide_exponent: mean 217.9, p01 215.2, worst 214.2, required 180.0, margin 34.2, n=65536, seed=10322096095657499357
+benchmark: 1,778 ns/iteration (no available competitor)</title>
+<rect x="162" y="1294" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="1309" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">218.6</text>
+<rect x="213" y="1294" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="1309" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">213.2</text>
+<rect x="264" y="1294" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="1309" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">3/3</text>
+<rect x="316" y="1294" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="1309" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">1,778 ns</tspan></text>
+<rect x="404" y="1294" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="1309" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1316" width="142" height="22" fill="#16191f"/>
+<text x="19" y="1331" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">log10</text>
+<g>
+<title>fltx bl::f256
+API: bl::log10
+mean: 217.4 bits
+p01: 214.3 bits
+worst: 213.3 bits
+domains: 3/3
+minimum threshold margin: 33.3 bits
+special values: Both
+extreme_finite: mean 217.6, p01 215.1, worst 214.2, required 180.0, margin 34.2, n=65536, seed=10322096095657499354
+near_one: mean 216.8, p01 214.3, worst 213.3, required 180.0, margin 33.3, n=65539, seed=10322096095657499359
+wide_exponent: mean 217.9, p01 215.1, worst 214.1, required 180.0, margin 34.1, n=65536, seed=10322096095657499357
+benchmark: 1,781 ns/iteration (no available competitor)</title>
+<rect x="162" y="1316" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="1331" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">217.4</text>
+<rect x="213" y="1316" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="1331" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">213.3</text>
+<rect x="264" y="1316" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="1331" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">3/3</text>
+<rect x="316" y="1316" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="1331" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">1,781 ns</tspan></text>
+<rect x="404" y="1316" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="1331" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1338" width="142" height="22" fill="#191d23"/>
+<text x="19" y="1353" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">log1p</text>
+<g>
+<title>fltx bl::f256
+API: bl::log1p
+mean: 226.8 bits
+p01: 207.4 bits
+worst: 207.0 bits
+domains: 2/2
+minimum threshold margin: 27.0 bits
+special values: Both
+cancellation: mean 235.9, p01 207.4, worst 207.0, required 180.0, margin 27.0, n=65538, seed=10322096095657499336
+moderate: mean 217.6, p01 214.7, worst 213.3, required 180.0, margin 33.3, n=65539, seed=10322096095657499356
+benchmark: 1,777 ns/iteration (no available competitor)</title>
+<rect x="162" y="1338" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="1353" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">226.8</text>
+<rect x="213" y="1338" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="1353" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">207.0</text>
+<rect x="264" y="1338" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="1353" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="1338" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="1353" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">1,777 ns</tspan></text>
+<rect x="404" y="1338" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="1353" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="group-row" data-group="trigonometric">
+<rect x="12" y="1360" width="142" height="18" fill="#4e555f"/>
+<text x="19" y="1373" fill="#ffffff" text-anchor="start" font-size="12" font-weight="normal">Trigonometric</text>
+<rect x="162" y="1360" width="282" height="18" fill="#4e555f"/>
+</g>
+<g class="body-row">
+<rect x="12" y="1378" width="142" height="22" fill="#16191f"/>
+<text x="19" y="1393" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">sin</text>
+<g>
+<title>fltx bl::f256
+API: bl::sin
+mean: 222.0 bits
+p01: 208.4 bits
+worst: 199.7 bits
+domains: 3/3
+minimum threshold margin: 19.7 bits
+special values: Both
+argument_reduction: mean 217.6, p01 208.4, worst 199.7, required 180.0, margin 19.7, n=65544, seed=10322096095657499353
+moderate: mean 219.2, p01 215.5, worst 214.3, required 180.0, margin 34.3, n=65539, seed=10322096095657499356
+quadrant_boundaries: mean 229.1, p01 212.5, worst 212.1, required 180.0, margin 32.1, n=65755, seed=10322096095657499369
+benchmark: 918.5 ns/iteration (no available competitor)</title>
+<rect x="162" y="1378" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="1393" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">222.0</text>
+<rect x="213" y="1378" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="1393" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">199.7</text>
+<rect x="264" y="1378" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="1393" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">3/3</text>
+<rect x="316" y="1378" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="1393" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">918.5 ns</tspan></text>
+<rect x="404" y="1378" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="1393" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1400" width="142" height="22" fill="#191d23"/>
+<text x="19" y="1415" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">cos</text>
+<g>
+<title>fltx bl::f256
+API: bl::cos
+mean: 226.9 bits
+p01: 215.3 bits
+worst: 202.7 bits
+domains: 3/3
+minimum threshold margin: 22.7 bits
+special values: Both
+argument_reduction: mean 232.6, p01 215.6, worst 202.7, required 180.0, margin 22.7, n=65544, seed=10322096095657499353
+moderate: mean 219.2, p01 215.6, worst 214.3, required 180.0, margin 34.3, n=65539, seed=10322096095657499356
+quadrant_boundaries: mean 228.8, p01 215.3, worst 214.1, required 180.0, margin 34.1, n=65755, seed=10322096095657499369
+benchmark: 920.5 ns/iteration (no available competitor)</title>
+<rect x="162" y="1400" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="1415" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">226.9</text>
+<rect x="213" y="1400" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="1415" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">202.7</text>
+<rect x="264" y="1400" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="1415" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">3/3</text>
+<rect x="316" y="1400" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="1415" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">920.5 ns</tspan></text>
+<rect x="404" y="1400" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="1415" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1422" width="142" height="22" fill="#16191f"/>
+<text x="19" y="1437" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">sincos</text>
+<g>
+<title>fltx bl::f256
+API: bl::sincos
+benchmark: 1,048 ns/iteration (no available competitor)</title>
+<rect x="162" y="1422" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="1437" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="213" y="1422" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="1437" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="264" y="1422" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="1437" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="316" y="1422" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="1437" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">1,048 ns</tspan></text>
+<rect x="404" y="1422" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="1437" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1444" width="142" height="22" fill="#191d23"/>
+<text x="19" y="1459" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">tan</text>
+<g>
+<title>fltx bl::f256
+API: bl::tan
+mean: 217.1 bits
+p01: 208.4 bits
+worst: 199.7 bits
+domains: 3/3
+minimum threshold margin: 29.7 bits
+special values: Both
+argument_reduction: mean 216.9, p01 208.4, worst 199.7, required 170.0, margin 29.7, n=65544, seed=10322096095657499353
+moderate: mean 216.9, p01 214.5, worst 213.4, required 170.0, margin 43.4, n=65539, seed=10322096095657499356
+quadrant_boundaries: mean 217.4, p01 212.5, worst 212.1, required 170.0, margin 42.1, n=65755, seed=10322096095657499369
+benchmark: 1,219 ns/iteration (no available competitor)</title>
+<rect x="162" y="1444" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="1459" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">217.1</text>
+<rect x="213" y="1444" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="1459" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">199.7</text>
+<rect x="264" y="1444" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="1459" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">3/3</text>
+<rect x="316" y="1444" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="1459" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">1,219 ns</tspan></text>
+<rect x="404" y="1444" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="1459" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1466" width="142" height="22" fill="#16191f"/>
+<text x="19" y="1481" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">asin</text>
+<g>
+<title>fltx bl::f256
+API: bl::asin
+mean: 217.9 bits
+p01: 214.9 bits
+worst: 214.0 bits
+domains: 2/2
+minimum threshold margin: 34.0 bits
+special values: Both
+boundary: mean 218.3, p01 215.7, worst 215.4, required 180.0, margin 35.4, n=65545, seed=10322096095657499355
+moderate: mean 217.6, p01 214.9, worst 214.0, required 180.0, margin 34.0, n=65539, seed=10322096095657499356
+benchmark: 1,507 ns/iteration (no available competitor)</title>
+<rect x="162" y="1466" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="1481" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">217.9</text>
+<rect x="213" y="1466" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="1481" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">214.0</text>
+<rect x="264" y="1466" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="1481" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="1466" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="1481" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">1,507 ns</tspan></text>
+<rect x="404" y="1466" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="1481" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1488" width="142" height="22" fill="#191d23"/>
+<text x="19" y="1503" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">acos</text>
+<g>
+<title>fltx bl::f256
+API: bl::acos
+mean: 216.0 bits
+p01: 205.5 bits
+worst: 192.5 bits
+domains: 2/2
+minimum threshold margin: 12.5 bits
+special values: Both
+boundary: mean 214.0, p01 205.5, worst 192.5, required 180.0, margin 12.5, n=65545, seed=10322096095657499355
+moderate: mean 218.0, p01 214.7, worst 210.7, required 180.0, margin 30.7, n=65539, seed=10322096095657499356
+benchmark: 1,515 ns/iteration (no available competitor)</title>
+<rect x="162" y="1488" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="1503" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">216.0</text>
+<rect x="213" y="1488" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="1503" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">192.5</text>
+<rect x="264" y="1488" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="1503" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="1488" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="1503" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">1,515 ns</tspan></text>
+<rect x="404" y="1488" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="1503" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1510" width="142" height="22" fill="#16191f"/>
+<text x="19" y="1525" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">atan</text>
+<g>
+<title>fltx bl::f256
+API: bl::atan
+mean: 218.1 bits
+p01: 215.4 bits
+worst: 214.6 bits
+domains: 2/2
+minimum threshold margin: 34.6 bits
+special values: Both
+moderate: mean 218.2, p01 215.4, worst 214.6, required 180.0, margin 34.6, n=65539, seed=10322096095657499356
+near_one: mean 218.1, p01 215.4, worst 214.6, required 180.0, margin 34.6, n=65539, seed=10322096095657499359
+benchmark: 924.3 ns/iteration (no available competitor)</title>
+<rect x="162" y="1510" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="1525" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">218.1</text>
+<rect x="213" y="1510" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="1525" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">214.6</text>
+<rect x="264" y="1510" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="1525" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="1510" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="1525" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">924.3 ns</tspan></text>
+<rect x="404" y="1510" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="1525" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1532" width="142" height="22" fill="#191d23"/>
+<text x="19" y="1547" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">atan2</text>
+<g>
+<title>fltx bl::f256
+API: bl::atan2
+mean: 217.9 bits
+p01: 215.2 bits
+worst: 214.0 bits
+domains: 3/3
+minimum threshold margin: 34.0 bits
+special values: Both
+extreme_finite: mean 224.8, p01 218.4, worst 218.4, required 180.0, margin 38.4, n=8, seed=10322096095657499351
+moderate: mean 218.0, p01 215.3, worst 214.0, required 180.0, margin 34.0, n=65539, seed=10322096095657499356
+near_one: mean 217.7, p01 215.2, worst 214.2, required 180.0, margin 34.2, n=65539, seed=10322096095657499359
+benchmark: 1,013 ns/iteration (no available competitor)</title>
+<rect x="162" y="1532" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="1547" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">217.9</text>
+<rect x="213" y="1532" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="1547" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">214.0</text>
+<rect x="264" y="1532" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="1547" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">3/3</text>
+<rect x="316" y="1532" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="1547" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">1,013 ns</tspan></text>
+<rect x="404" y="1532" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="1547" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="group-row" data-group="hyperbolic">
+<rect x="12" y="1554" width="142" height="18" fill="#4e555f"/>
+<text x="19" y="1567" fill="#ffffff" text-anchor="start" font-size="12" font-weight="normal">Hyperbolic</text>
+<rect x="162" y="1554" width="282" height="18" fill="#4e555f"/>
+</g>
+<g class="body-row">
+<rect x="12" y="1572" width="142" height="22" fill="#16191f"/>
+<text x="19" y="1587" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">sinh</text>
+<g>
+<title>fltx bl::f256
+API: bl::sinh
+mean: 217.0 bits
+p01: 214.6 bits
+worst: 213.5 bits
+domains: 2/2
+minimum threshold margin: 33.5 bits
+special values: Both
+moderate: mean 217.0, p01 214.7, worst 213.5, required 180.0, margin 33.5, n=65539, seed=10322096095657499356
+near_one: mean 217.1, p01 214.6, worst 213.5, required 180.0, margin 33.5, n=65539, seed=10322096095657499359
+benchmark: 1,284 ns/iteration (no available competitor)</title>
+<rect x="162" y="1572" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="1587" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">217.0</text>
+<rect x="213" y="1572" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="1587" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">213.5</text>
+<rect x="264" y="1572" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="1587" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="1572" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="1587" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">1,284 ns</tspan></text>
+<rect x="404" y="1572" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="1587" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1594" width="142" height="22" fill="#191d23"/>
+<text x="19" y="1609" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">cosh</text>
+<g>
+<title>fltx bl::f256
+API: bl::cosh
+mean: 217.5 bits
+p01: 214.8 bits
+worst: 213.8 bits
+domains: 2/2
+minimum threshold margin: 33.8 bits
+special values: Both
+moderate: mean 217.2, p01 214.8, worst 213.8, required 180.0, margin 33.8, n=65539, seed=10322096095657499356
+near_one: mean 217.8, p01 215.2, worst 214.0, required 180.0, margin 34.0, n=65539, seed=10322096095657499359
+benchmark: 1,284 ns/iteration (no available competitor)</title>
+<rect x="162" y="1594" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="1609" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">217.5</text>
+<rect x="213" y="1594" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="1609" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">213.8</text>
+<rect x="264" y="1594" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="1609" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="1594" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="1609" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">1,284 ns</tspan></text>
+<rect x="404" y="1594" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="1609" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1616" width="142" height="22" fill="#16191f"/>
+<text x="19" y="1631" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">tanh</text>
+<g>
+<title>fltx bl::f256
+API: bl::tanh
+mean: 219.2 bits
+p01: 215.2 bits
+worst: 213.5 bits
+domains: 2/2
+minimum threshold margin: 33.5 bits
+special values: Both
+moderate: mean 219.9, p01 215.3, worst 213.5, required 180.0, margin 33.5, n=65539, seed=10322096095657499356
+near_one: mean 218.4, p01 215.2, worst 213.7, required 180.0, margin 33.7, n=65539, seed=10322096095657499359
+benchmark: 1,265 ns/iteration (no available competitor)</title>
+<rect x="162" y="1616" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="1631" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">219.2</text>
+<rect x="213" y="1616" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="1631" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">213.5</text>
+<rect x="264" y="1616" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="1631" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="1616" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="1631" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">1,265 ns</tspan></text>
+<rect x="404" y="1616" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="1631" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1638" width="142" height="22" fill="#191d23"/>
+<text x="19" y="1653" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">asinh</text>
+<g>
+<title>fltx bl::f256
+API: bl::asinh
+mean: 217.2 bits
+p01: 213.9 bits
+worst: 212.2 bits
+domains: 2/2
+minimum threshold margin: 32.2 bits
+special values: Both
+moderate: mean 217.7, p01 214.6, worst 212.3, required 180.0, margin 32.3, n=65539, seed=10322096095657499356
+near_one: mean 216.6, p01 213.9, worst 212.2, required 180.0, margin 32.2, n=65539, seed=10322096095657499359
+benchmark: 2,693 ns/iteration (no available competitor)</title>
+<rect x="162" y="1638" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="1653" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">217.2</text>
+<rect x="213" y="1638" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="1653" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">212.2</text>
+<rect x="264" y="1638" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="1653" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="1638" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="1653" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">2,693 ns</tspan></text>
+<rect x="404" y="1638" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="1653" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1660" width="142" height="22" fill="#16191f"/>
+<text x="19" y="1675" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">acosh</text>
+<g>
+<title>fltx bl::f256
+API: bl::acosh
+mean: 217.7 bits
+p01: 214.4 bits
+worst: 213.3 bits
+domains: 2/2
+minimum threshold margin: 33.3 bits
+special values: Both
+boundary: mean 217.1, p01 214.4, worst 213.3, required 180.0, margin 33.3, n=65541, seed=10322096095657499355
+moderate: mean 218.4, p01 215.4, worst 213.5, required 180.0, margin 33.5, n=65539, seed=10322096095657499275
+benchmark: 2,514 ns/iteration (no available competitor)</title>
+<rect x="162" y="1660" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="1675" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">217.7</text>
+<rect x="213" y="1660" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="1675" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">213.3</text>
+<rect x="264" y="1660" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="1675" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="1660" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="1675" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">2,514 ns</tspan></text>
+<rect x="404" y="1660" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="1675" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1682" width="142" height="22" fill="#191d23"/>
+<text x="19" y="1697" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">atanh</text>
+<g>
+<title>fltx bl::f256
+API: bl::atanh
+mean: 218.3 bits
+p01: 214.1 bits
+worst: 212.4 bits
+domains: 2/2
+minimum threshold margin: 32.4 bits
+special values: Both
+boundary: mean 219.2, p01 216.0, worst 215.1, required 180.0, margin 35.1, n=65545, seed=10322096095657499355
+moderate: mean 217.3, p01 214.1, worst 212.4, required 180.0, margin 32.4, n=65539, seed=10322096095657499356
+benchmark: 2,374 ns/iteration (no available competitor)</title>
+<rect x="162" y="1682" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="1697" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">218.3</text>
+<rect x="213" y="1682" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="1697" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">212.4</text>
+<rect x="264" y="1682" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="1697" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="1682" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="1697" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">2,374 ns</tspan></text>
+<rect x="404" y="1682" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="1697" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="group-row" data-group="special_functions">
+<rect x="12" y="1704" width="142" height="18" fill="#4e555f"/>
+<text x="19" y="1717" fill="#ffffff" text-anchor="start" font-size="12" font-weight="normal">Special</text>
+<rect x="162" y="1704" width="282" height="18" fill="#4e555f"/>
+</g>
+<g class="body-row">
+<rect x="12" y="1722" width="142" height="22" fill="#16191f"/>
+<text x="19" y="1737" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">erfc</text>
+<g>
+<title>fltx bl::f256
+API: bl::erfc
+mean: 208.2 bits
+p01: 191.1 bits
+worst: 189.7 bits
+domains: 2/2
+minimum threshold margin: 9.7 bits
+special values: Both
+moderate: mean 212.1, p01 191.1, worst 189.7, required 180.0, margin 9.7, n=65539, seed=10322096095657499356
+near_one: mean 204.4, p01 192.5, worst 192.3, required 180.0, margin 12.3, n=65539, seed=10322096095657499359
+benchmark: 9,210 ns/iteration (no available competitor)</title>
+<rect x="162" y="1722" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="1737" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">208.2</text>
+<rect x="213" y="1722" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="1737" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">189.7</text>
+<rect x="264" y="1722" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="1737" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="1722" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="1737" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">9,210 ns</tspan></text>
+<rect x="404" y="1722" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="1737" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1744" width="142" height="22" fill="#191d23"/>
+<text x="19" y="1759" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">erf</text>
+<g>
+<title>fltx bl::f256
+API: bl::erf
+mean: 212.9 bits
+p01: 196.8 bits
+worst: 196.8 bits
+domains: 2/2
+minimum threshold margin: 16.8 bits
+special values: Both
+moderate: mean 219.0, p01 197.0, worst 196.8, required 180.0, margin 16.8, n=65539, seed=10322096095657499356
+near_one: mean 206.8, p01 196.8, worst 196.8, required 180.0, margin 16.8, n=65539, seed=10322096095657499359
+benchmark: 9,629 ns/iteration (no available competitor)</title>
+<rect x="162" y="1744" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="1759" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">212.9</text>
+<rect x="213" y="1744" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="1759" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">196.8</text>
+<rect x="264" y="1744" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="1759" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">2/2</text>
+<rect x="316" y="1744" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="1759" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">9,629 ns</tspan></text>
+<rect x="404" y="1744" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="1759" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1766" width="142" height="22" fill="#16191f"/>
+<text x="19" y="1781" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">tgamma</text>
+<g>
+<title>fltx bl::f256
+API: bl::tgamma
+mean: 208.9 bits
+p01: 202.6 bits
+worst: 202.4 bits
+domains: 1/1
+minimum threshold margin: 22.4 bits
+special values: Both
+moderate: mean 208.9, p01 202.6, worst 202.4, required 180.0, margin 22.4, n=65539, seed=10322096095657499320
+benchmark: 9,872 ns/iteration (no available competitor)</title>
+<rect x="162" y="1766" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="1781" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">208.9</text>
+<rect x="213" y="1766" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="1781" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">202.4</text>
+<rect x="264" y="1766" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="1781" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="1766" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="1781" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">9,872 ns</tspan></text>
+<rect x="404" y="1766" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="1781" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1788" width="142" height="22" fill="#191d23"/>
+<text x="19" y="1803" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">lgamma</text>
+<g>
+<title>fltx bl::f256
+API: bl::lgamma
+mean: 211.8 bits
+p01: 199.6 bits
+worst: 199.2 bits
+domains: 1/1
+minimum threshold margin: 19.2 bits
+special values: Both
+moderate: mean 211.8, p01 199.6, worst 199.2, required 180.0, margin 19.2, n=65539, seed=10322096095657499323
+benchmark: 8,812 ns/iteration (no available competitor)</title>
+<rect x="162" y="1788" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="1803" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">211.8</text>
+<rect x="213" y="1788" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="1803" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">199.2</text>
+<rect x="264" y="1788" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="1803" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="1788" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="1803" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">8,812 ns</tspan></text>
+<rect x="404" y="1788" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="1803" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="group-row" data-group="comparisons">
+<rect x="12" y="1810" width="142" height="18" fill="#4e555f"/>
+<text x="19" y="1823" fill="#ffffff" text-anchor="start" font-size="12" font-weight="normal">Comparisons</text>
+<rect x="162" y="1810" width="282" height="18" fill="#4e555f"/>
+</g>
+<g class="body-row">
+<rect x="12" y="1828" width="142" height="22" fill="#16191f"/>
+<text x="19" y="1843" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">equal</text>
+<g>
+<title>fltx bl::f256
+API: bl::equal
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 1/1
+minimum threshold margin: exact bits
+special values: Both
+moderate: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=131078, seed=10322096095657499356
+benchmark: 0.749 ns/iteration (no available competitor)</title>
+<rect x="162" y="1828" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="1843" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="1828" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="1843" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="1828" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="1843" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="1828" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="1843" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">0.749 ns</tspan></text>
+<rect x="404" y="1828" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="1843" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1850" width="142" height="22" fill="#191d23"/>
+<text x="19" y="1865" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">not_equal</text>
+<g>
+<title>fltx bl::f256
+API: bl::not_equal
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 1/1
+minimum threshold margin: exact bits
+special values: Both
+moderate: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=131078, seed=10322096095657499356
+benchmark: 0.746 ns/iteration (no available competitor)</title>
+<rect x="162" y="1850" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="1865" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="1850" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="1865" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="1850" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="1865" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="1850" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="1865" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">0.746 ns</tspan></text>
+<rect x="404" y="1850" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="1865" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1872" width="142" height="22" fill="#16191f"/>
+<text x="19" y="1887" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">less</text>
+<g>
+<title>fltx bl::f256
+API: bl::less
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 1/1
+minimum threshold margin: exact bits
+special values: Both
+moderate: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=131078, seed=10322096095657499356
+benchmark: 2.05 ns/iteration (no available competitor)</title>
+<rect x="162" y="1872" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="1887" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="1872" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="1887" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="1872" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="1887" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="1872" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="1887" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">2.05 ns</tspan></text>
+<rect x="404" y="1872" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="1887" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1894" width="142" height="22" fill="#191d23"/>
+<text x="19" y="1909" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">greater</text>
+<g>
+<title>fltx bl::f256
+API: bl::greater
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 1/1
+minimum threshold margin: exact bits
+special values: Both
+moderate: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=131078, seed=10322096095657499356
+benchmark: 2.03 ns/iteration (no available competitor)</title>
+<rect x="162" y="1894" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="1909" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="1894" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="1909" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="1894" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="1909" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="1894" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="1909" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">2.03 ns</tspan></text>
+<rect x="404" y="1894" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="1909" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1916" width="142" height="22" fill="#16191f"/>
+<text x="19" y="1931" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">less_equal</text>
+<g>
+<title>fltx bl::f256
+API: bl::less_equal
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 1/1
+minimum threshold margin: exact bits
+special values: Both
+moderate: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=131078, seed=10322096095657499356
+benchmark: 2.11 ns/iteration (no available competitor)</title>
+<rect x="162" y="1916" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="1931" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="1916" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="1931" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="1916" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="1931" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="1916" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="1931" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">2.11 ns</tspan></text>
+<rect x="404" y="1916" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="1931" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="1938" width="142" height="22" fill="#191d23"/>
+<text x="19" y="1953" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">greater_equal</text>
+<g>
+<title>fltx bl::f256
+API: bl::greater_equal
+mean: exact bits
+p01: exact bits
+worst: exact bits
+domains: 1/1
+minimum threshold margin: exact bits
+special values: Both
+moderate: mean exact, p01 exact, worst exact, required 190.0, margin exact, n=131078, seed=10322096095657499356
+benchmark: 2.03 ns/iteration (no available competitor)</title>
+<rect x="162" y="1938" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="1953" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="213" y="1938" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="1953" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">exact</text>
+<rect x="264" y="1938" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="1953" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">1/1</text>
+<rect x="316" y="1938" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="1953" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">2.03 ns</tspan></text>
+<rect x="404" y="1938" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="1953" fill="#4ade80" text-anchor="middle" font-size="10.8" font-weight="normal">Both</text>
+</g>
+</g>
+<g class="group-row" data-group="random">
+<rect x="12" y="1960" width="142" height="18" fill="#4e555f"/>
+<text x="19" y="1973" fill="#ffffff" text-anchor="start" font-size="12" font-weight="normal">Random</text>
+<rect x="162" y="1960" width="282" height="18" fill="#4e555f"/>
+</g>
+<g class="body-row">
+<rect x="12" y="1978" width="142" height="22" fill="#16191f"/>
+<text x="19" y="1993" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">uniform_real</text>
+<g>
+<title>fltx bl::f256
+API: bl::uniform_real
+benchmark: 19.34 ns/iteration (no available competitor)</title>
+<rect x="162" y="1978" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="1993" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="213" y="1978" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="1993" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="264" y="1978" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="1993" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="316" y="1978" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="1993" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">19.34 ns</tspan></text>
+<rect x="404" y="1978" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="1993" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="2000" width="142" height="22" fill="#191d23"/>
+<text x="19" y="2015" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">normal</text>
+<g>
+<title>fltx bl::f256
+API: bl::normal
+benchmark: 275.9 ns/iteration (no available competitor)</title>
+<rect x="162" y="2000" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="2015" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="213" y="2000" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="2015" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="264" y="2000" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="2015" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="316" y="2000" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="2015" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">275.9 ns</tspan></text>
+<rect x="404" y="2000" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="2015" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+</g>
+</g>
+<g class="group-row" data-group="mixed_workloads">
+<rect x="12" y="2022" width="142" height="18" fill="#4e555f"/>
+<text x="19" y="2035" fill="#ffffff" text-anchor="start" font-size="12" font-weight="normal">Mixed Workloads</text>
+<rect x="162" y="2022" width="282" height="18" fill="#4e555f"/>
+</g>
+<g class="body-row">
+<rect x="12" y="2040" width="142" height="22" fill="#16191f"/>
+<text x="19" y="2055" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">product_sum</text>
+<g>
+<title>fltx bl::f256
+API: bl::product_sum
+benchmark: 44.68 ns/iteration (no available competitor)</title>
+<rect x="162" y="2040" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="2055" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="213" y="2040" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="2055" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="264" y="2040" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="2055" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="316" y="2040" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="2055" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">44.68 ns</tspan></text>
+<rect x="404" y="2040" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="2055" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="2062" width="142" height="22" fill="#191d23"/>
+<text x="19" y="2077" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">chained_arithmetic</text>
+<g>
+<title>fltx bl::f256
+API: same workload
+benchmark: 159.1 ns/iteration (no available competitor)</title>
+<rect x="162" y="2062" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="2077" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="213" y="2062" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="2077" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="264" y="2062" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="2077" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="316" y="2062" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="2077" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">159.1 ns</tspan></text>
+<rect x="404" y="2062" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="2077" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="2084" width="142" height="22" fill="#16191f"/>
+<text x="19" y="2099" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">affine_trig</text>
+<g>
+<title>fltx bl::f256
+API: same workload
+benchmark: 1,881 ns/iteration (no available competitor)</title>
+<rect x="162" y="2084" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="2099" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="213" y="2084" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="2099" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="264" y="2084" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="2099" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="316" y="2084" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="2099" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">1,881 ns</tspan></text>
+<rect x="404" y="2084" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="2099" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="2106" width="142" height="22" fill="#191d23"/>
+<text x="19" y="2121" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">mandelbrot</text>
+<g>
+<title>fltx bl::f256
+API: same workload
+benchmark: 129.6 ns/iteration (no available competitor)</title>
+<rect x="162" y="2106" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="2121" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="213" y="2106" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="2121" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="264" y="2106" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="2121" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="316" y="2106" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="2121" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">129.6 ns</tspan></text>
+<rect x="404" y="2106" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="2121" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="2128" width="142" height="22" fill="#16191f"/>
+<text x="19" y="2143" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">matrix_vector_4x4</text>
+<g>
+<title>fltx bl::f256
+API: same workload
+benchmark: 582.4 ns/iteration (no available competitor)</title>
+<rect x="162" y="2128" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="2143" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="213" y="2128" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="2143" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="264" y="2128" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="2143" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="316" y="2128" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="2143" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">582.4 ns</tspan></text>
+<rect x="404" y="2128" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="2143" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="2150" width="142" height="22" fill="#191d23"/>
+<text x="19" y="2165" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">horner_polynomial</text>
+<g>
+<title>fltx bl::f256
+API: same workload
+benchmark: 413.0 ns/iteration (no available competitor)</title>
+<rect x="162" y="2150" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="2165" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="213" y="2150" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="2165" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="264" y="2150" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="2165" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="316" y="2150" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="2165" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">413.0 ns</tspan></text>
+<rect x="404" y="2150" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="2165" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="2172" width="142" height="22" fill="#16191f"/>
+<text x="19" y="2187" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">newton_root</text>
+<g>
+<title>fltx bl::f256
+API: same workload
+benchmark: 225.9 ns/iteration (no available competitor)</title>
+<rect x="162" y="2172" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="2187" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="213" y="2172" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="2187" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="264" y="2172" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="2187" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="316" y="2172" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="2187" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">225.9 ns</tspan></text>
+<rect x="404" y="2172" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="2187" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="2194" width="142" height="22" fill="#191d23"/>
+<text x="19" y="2209" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">log_sum_exp</text>
+<g>
+<title>fltx bl::f256
+API: same workload
+benchmark: 8,971 ns/iteration (no available competitor)</title>
+<rect x="162" y="2194" width="51" height="22" fill="#191d23"/>
+<text x="187.5" y="2209" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="213" y="2194" width="51" height="22" fill="#191d23"/>
+<text x="238.5" y="2209" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="264" y="2194" width="52" height="22" fill="#191d23"/>
+<text x="290.0" y="2209" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="316" y="2194" width="88" height="22" fill="#191d23"/>
+<text x="360.0" y="2209" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">8,971 ns</tspan></text>
+<rect x="404" y="2194" width="40" height="22" fill="#191d23"/>
+<text x="424.0" y="2209" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+</g>
+</g>
+<g class="body-row">
+<rect x="12" y="2216" width="142" height="22" fill="#16191f"/>
+<text x="19" y="2231" fill="#f1f2f4" text-anchor="start" font-size="12" font-weight="normal">haversine</text>
+<g>
+<title>fltx bl::f256
+API: same workload
+benchmark: 4,917 ns/iteration (no available competitor)</title>
+<rect x="162" y="2216" width="51" height="22" fill="#16191f"/>
+<text x="187.5" y="2231" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="213" y="2216" width="51" height="22" fill="#16191f"/>
+<text x="238.5" y="2231" fill="#e7e9ee" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="264" y="2216" width="52" height="22" fill="#16191f"/>
+<text x="290.0" y="2231" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+<rect x="316" y="2216" width="88" height="22" fill="#16191f"/>
+<text x="360.0" y="2231" text-anchor="middle" font-size="10.8" font-weight="normal"><tspan fill="#e7e9ee">4,917 ns</tspan></text>
+<rect x="404" y="2216" width="40" height="22" fill="#16191f"/>
+<text x="424.0" y="2231" fill="#a5abb5" text-anchor="middle" font-size="10.8" font-weight="normal">-</text>
+</g>
+</g>
+<line x1="12" y1="54" x2="154" y2="54" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="54" x2="12" y2="2238" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="154" y1="54" x2="154" y2="2238" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="54" x2="444" y2="54" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="54" x2="162" y2="2238" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="444" y1="54" x2="444" y2="2238" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="78" x2="444" y2="78" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="106" x2="404" y2="106" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="213" y1="106" x2="213" y2="138" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="264" y1="78" x2="264" y2="138" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="316" y1="78" x2="316" y2="138" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="404" y1="78" x2="404" y2="138" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="213" y1="156" x2="213" y2="244" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="264" y1="156" x2="264" y2="244" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="316" y1="156" x2="316" y2="244" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="404" y1="156" x2="404" y2="244" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="213" y1="262" x2="213" y2="328" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="264" y1="262" x2="264" y2="328" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="316" y1="262" x2="316" y2="328" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="404" y1="262" x2="404" y2="328" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="213" y1="346" x2="213" y2="544" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="264" y1="346" x2="264" y2="544" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="316" y1="346" x2="316" y2="544" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="404" y1="346" x2="404" y2="544" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="213" y1="562" x2="213" y2="628" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="264" y1="562" x2="264" y2="628" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="316" y1="562" x2="316" y2="628" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="404" y1="562" x2="404" y2="628" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="213" y1="646" x2="213" y2="1020" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="264" y1="646" x2="264" y2="1020" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="316" y1="646" x2="316" y2="1020" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="404" y1="646" x2="404" y2="1020" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="213" y1="1038" x2="213" y2="1170" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="264" y1="1038" x2="264" y2="1170" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="316" y1="1038" x2="316" y2="1170" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="404" y1="1038" x2="404" y2="1170" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="213" y1="1188" x2="213" y2="1254" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="264" y1="1188" x2="264" y2="1254" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="316" y1="1188" x2="316" y2="1254" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="404" y1="1188" x2="404" y2="1254" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="213" y1="1272" x2="213" y2="1360" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="264" y1="1272" x2="264" y2="1360" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="316" y1="1272" x2="316" y2="1360" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="404" y1="1272" x2="404" y2="1360" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="213" y1="1378" x2="213" y2="1554" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="264" y1="1378" x2="264" y2="1554" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="316" y1="1378" x2="316" y2="1554" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="404" y1="1378" x2="404" y2="1554" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="213" y1="1572" x2="213" y2="1704" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="264" y1="1572" x2="264" y2="1704" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="316" y1="1572" x2="316" y2="1704" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="404" y1="1572" x2="404" y2="1704" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="213" y1="1722" x2="213" y2="1810" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="264" y1="1722" x2="264" y2="1810" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="316" y1="1722" x2="316" y2="1810" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="404" y1="1722" x2="404" y2="1810" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="213" y1="1828" x2="213" y2="1960" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="264" y1="1828" x2="264" y2="1960" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="316" y1="1828" x2="316" y2="1960" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="404" y1="1828" x2="404" y2="1960" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="213" y1="1978" x2="213" y2="2022" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="264" y1="1978" x2="264" y2="2022" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="316" y1="1978" x2="316" y2="2022" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="404" y1="1978" x2="404" y2="2022" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="213" y1="2040" x2="213" y2="2238" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="264" y1="2040" x2="264" y2="2238" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="316" y1="2040" x2="316" y2="2238" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="404" y1="2040" x2="404" y2="2238" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="138" x2="154" y2="138" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="156" x2="154" y2="156" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="178" x2="154" y2="178" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="200" x2="154" y2="200" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="222" x2="154" y2="222" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="138" x2="444" y2="138" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="156" x2="444" y2="156" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="178" x2="444" y2="178" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="200" x2="444" y2="200" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="222" x2="444" y2="222" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="244" x2="154" y2="244" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="262" x2="154" y2="262" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="284" x2="154" y2="284" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="306" x2="154" y2="306" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="244" x2="444" y2="244" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="262" x2="444" y2="262" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="284" x2="444" y2="284" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="306" x2="444" y2="306" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="328" x2="154" y2="328" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="346" x2="154" y2="346" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="368" x2="154" y2="368" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="390" x2="154" y2="390" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="412" x2="154" y2="412" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="434" x2="154" y2="434" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="456" x2="154" y2="456" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="478" x2="154" y2="478" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="500" x2="154" y2="500" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="522" x2="154" y2="522" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="328" x2="444" y2="328" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="346" x2="444" y2="346" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="368" x2="444" y2="368" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="390" x2="444" y2="390" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="412" x2="444" y2="412" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="434" x2="444" y2="434" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="456" x2="444" y2="456" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="478" x2="444" y2="478" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="500" x2="444" y2="500" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="522" x2="444" y2="522" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="544" x2="154" y2="544" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="562" x2="154" y2="562" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="584" x2="154" y2="584" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="606" x2="154" y2="606" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="544" x2="444" y2="544" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="562" x2="444" y2="562" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="584" x2="444" y2="584" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="606" x2="444" y2="606" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="628" x2="154" y2="628" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="646" x2="154" y2="646" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="668" x2="154" y2="668" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="690" x2="154" y2="690" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="712" x2="154" y2="712" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="734" x2="154" y2="734" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="756" x2="154" y2="756" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="778" x2="154" y2="778" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="800" x2="154" y2="800" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="822" x2="154" y2="822" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="844" x2="154" y2="844" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="866" x2="154" y2="866" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="888" x2="154" y2="888" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="910" x2="154" y2="910" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="932" x2="154" y2="932" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="954" x2="154" y2="954" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="976" x2="154" y2="976" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="998" x2="154" y2="998" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="628" x2="444" y2="628" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="646" x2="444" y2="646" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="668" x2="444" y2="668" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="690" x2="444" y2="690" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="712" x2="444" y2="712" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="734" x2="444" y2="734" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="756" x2="444" y2="756" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="778" x2="444" y2="778" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="800" x2="444" y2="800" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="822" x2="444" y2="822" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="844" x2="444" y2="844" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="866" x2="444" y2="866" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="888" x2="444" y2="888" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="910" x2="444" y2="910" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="932" x2="444" y2="932" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="954" x2="444" y2="954" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="976" x2="444" y2="976" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="998" x2="444" y2="998" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1020" x2="154" y2="1020" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1038" x2="154" y2="1038" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1060" x2="154" y2="1060" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1082" x2="154" y2="1082" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1104" x2="154" y2="1104" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1126" x2="154" y2="1126" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1148" x2="154" y2="1148" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1020" x2="444" y2="1020" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1038" x2="444" y2="1038" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1060" x2="444" y2="1060" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1082" x2="444" y2="1082" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1104" x2="444" y2="1104" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1126" x2="444" y2="1126" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1148" x2="444" y2="1148" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1170" x2="154" y2="1170" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1188" x2="154" y2="1188" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1210" x2="154" y2="1210" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1232" x2="154" y2="1232" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1170" x2="444" y2="1170" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1188" x2="444" y2="1188" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1210" x2="444" y2="1210" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1232" x2="444" y2="1232" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1254" x2="154" y2="1254" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1272" x2="154" y2="1272" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1294" x2="154" y2="1294" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1316" x2="154" y2="1316" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1338" x2="154" y2="1338" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1254" x2="444" y2="1254" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1272" x2="444" y2="1272" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1294" x2="444" y2="1294" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1316" x2="444" y2="1316" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1338" x2="444" y2="1338" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1360" x2="154" y2="1360" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1378" x2="154" y2="1378" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1400" x2="154" y2="1400" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1422" x2="154" y2="1422" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1444" x2="154" y2="1444" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1466" x2="154" y2="1466" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1488" x2="154" y2="1488" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1510" x2="154" y2="1510" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1532" x2="154" y2="1532" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1360" x2="444" y2="1360" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1378" x2="444" y2="1378" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1400" x2="444" y2="1400" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1422" x2="444" y2="1422" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1444" x2="444" y2="1444" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1466" x2="444" y2="1466" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1488" x2="444" y2="1488" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1510" x2="444" y2="1510" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1532" x2="444" y2="1532" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1554" x2="154" y2="1554" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1572" x2="154" y2="1572" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1594" x2="154" y2="1594" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1616" x2="154" y2="1616" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1638" x2="154" y2="1638" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1660" x2="154" y2="1660" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1682" x2="154" y2="1682" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1554" x2="444" y2="1554" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1572" x2="444" y2="1572" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1594" x2="444" y2="1594" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1616" x2="444" y2="1616" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1638" x2="444" y2="1638" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1660" x2="444" y2="1660" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1682" x2="444" y2="1682" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1704" x2="154" y2="1704" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1722" x2="154" y2="1722" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1744" x2="154" y2="1744" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1766" x2="154" y2="1766" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1788" x2="154" y2="1788" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1704" x2="444" y2="1704" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1722" x2="444" y2="1722" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1744" x2="444" y2="1744" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1766" x2="444" y2="1766" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1788" x2="444" y2="1788" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1810" x2="154" y2="1810" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1828" x2="154" y2="1828" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1850" x2="154" y2="1850" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1872" x2="154" y2="1872" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1894" x2="154" y2="1894" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1916" x2="154" y2="1916" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1938" x2="154" y2="1938" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1810" x2="444" y2="1810" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1828" x2="444" y2="1828" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1850" x2="444" y2="1850" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1872" x2="444" y2="1872" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1894" x2="444" y2="1894" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1916" x2="444" y2="1916" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1938" x2="444" y2="1938" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1960" x2="154" y2="1960" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="1978" x2="154" y2="1978" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="2000" x2="154" y2="2000" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1960" x2="444" y2="1960" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="1978" x2="444" y2="1978" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="2000" x2="444" y2="2000" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="2022" x2="154" y2="2022" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="2040" x2="154" y2="2040" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="2062" x2="154" y2="2062" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="2084" x2="154" y2="2084" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="2106" x2="154" y2="2106" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="2128" x2="154" y2="2128" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="2150" x2="154" y2="2150" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="2172" x2="154" y2="2172" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="2194" x2="154" y2="2194" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="2216" x2="154" y2="2216" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="2022" x2="444" y2="2022" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="2040" x2="444" y2="2040" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="2062" x2="444" y2="2062" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="2084" x2="444" y2="2084" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="2106" x2="444" y2="2106" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="2128" x2="444" y2="2128" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="2150" x2="444" y2="2150" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="2172" x2="444" y2="2172" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="2194" x2="444" y2="2194" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="2216" x2="444" y2="2216" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="12" y1="2238" x2="154" y2="2238" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<line x1="162" y1="2238" x2="444" y2="2238" stroke="#000000" stroke-width="1" shape-rendering="crispEdges"/>
+<text x="12" y="2258" fill="#aeb4bf" text-anchor="start" font-size="12" font-weight="normal">Text: green pass · amber pass within 4 bits · red fail.  Special: Both / Inf / NaN / No / –.</text>
+</svg>

@@ -40,9 +40,6 @@ namespace detail::_f64_impl
     using detail::fp::bit_length_u64;
     using detail::fp::log;
     using detail::fp::log1p;
-    using detail::fp::sin;
-    using detail::fp::cos;
-    using detail::fp::tan;
     using detail::fp::atan;
     using detail::fp::atan2;
     using detail::fp::sqrt_seed;
@@ -327,7 +324,7 @@ namespace detail::_f64_impl
     }
 
     template<class Traits>
-    [[nodiscard]] BL_FORCE_INLINE constexpr typename Traits::value_type round_to_decimals_native(
+    [[nodiscard]] BL_FORCE_INLINE constexpr typename Traits::value_type round_decimals_native(
         typename Traits::value_type v,
         int prec) noexcept
     {
@@ -376,13 +373,13 @@ namespace detail::_f64_impl
         return exact_decimal_to_native_value<Traits>(q, -prec, neg);
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr double round_to_decimals(double v, int prec) noexcept
+    [[nodiscard]] BL_FORCE_INLINE constexpr double round_decimals(double v, int prec) noexcept
     {
-        return round_to_decimals_native<f64_decimal_round_traits>(v, prec);
+        return round_decimals_native<f64_decimal_round_traits>(v, prec);
     }
 
     template<class Traits>
-    [[nodiscard]] BL_FORCE_INLINE constexpr typename Traits::value_type round_to_significant_figures_native(
+    [[nodiscard]] BL_FORCE_INLINE constexpr typename Traits::value_type round_significant_native(
         typename Traits::value_type v,
         int figures) noexcept
     {
@@ -400,9 +397,9 @@ namespace detail::_f64_impl
         return exact_decimal_to_native_value<Traits>(coefficient, exp10 - (figures - 1), neg);
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr double round_to_significant_figures(double v, int figures) noexcept
+    [[nodiscard]] BL_FORCE_INLINE constexpr double round_significant(double v, int figures) noexcept
     {
-        return round_to_significant_figures_native<f64_decimal_round_traits>(v, figures);
+        return round_significant_native<f64_decimal_round_traits>(v, figures);
     }
 
     [[nodiscard]] BL_FORCE_INLINE constexpr dyadic_u64 subtract_scaled_u64(std::uint64_t a, int a_exp2, std::uint64_t b, int b_exp2) noexcept
@@ -541,6 +538,26 @@ namespace detail::_f64_impl
         return a;
     }
 
+    [[nodiscard]] BL_FORCE_INLINE constexpr double fma(double x, double y, double z) noexcept
+    {
+        const double direct_product = x * y;
+        if (!isfinite(x) || !isfinite(y) || !isfinite(z) || !isfinite(direct_product)) [[unlikely]]
+            return direct_product + z;
+
+        double product{};
+        double product_error{};
+        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        detail::fp::two_prod_precise_dekker_checked(x, y, product, product_error);
+        #else
+        detail::fp::two_prod_precise_dekker(x, y, product, product_error);
+        #endif
+
+        double sum{};
+        double sum_error{};
+        detail::fp::two_sum_precise(product, z, sum, sum_error);
+        return sum + (product_error + sum_error);
+    }
+
     [[nodiscard]] BL_FORCE_INLINE constexpr double frexp(double x, int* exp) noexcept
     {
         if (exp)
@@ -570,17 +587,29 @@ namespace detail::_f64_impl
         return m;
     }
 
+    BL_PUSH_PRECISE;
     [[nodiscard]] BL_FORCE_INLINE constexpr double modf(double x, double* iptr) noexcept
     {
+        if (isnan(x) || isinf(x) || iszero(x))
+        {
+            if (iptr)
+                *iptr = x;
+            return isinf(x) ? detail::fp::copysign(0.0, x) : x;
+        }
+
         const double i = trunc(x);
         if (iptr)
             *iptr = i;
+
+        if (isinf(x))
+            return signbit(x) ? -0.0 : 0.0;
 
         double frac = x - i;
         if (iszero(frac))
             frac = signbit(x) ? -0.0 : 0.0;
         return frac;
     }
+    BL_POP_PRECISE;
 
 } // namespace detail::_f64_impl
 
@@ -610,10 +639,7 @@ namespace detail::_f64_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr double round(double x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::round_nearest_away_from_zero(x),
-        std::round(x)
-    );
+    return detail::_f64_impl::round_nearest_away_from_zero(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr double roundeven(double x) noexcept
@@ -621,32 +647,28 @@ namespace detail::_f64_impl
     return detail::_f64_impl::round_nearest_even(x);
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr double round_to_decimals(double x, int precision) noexcept
+[[nodiscard]] BL_FORCE_INLINE constexpr double round_decimals(double x, int precision) noexcept
 {
-    return detail::_f64_impl::round_to_decimals(x, precision);
+    return detail::_f64_impl::round_decimals(x, precision);
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr double round_to_significant_figures(
+[[nodiscard]] BL_FORCE_INLINE constexpr double round_significant(
     double x,
     int precision) noexcept
 {
-    return detail::_f64_impl::round_to_significant_figures(x, precision);
+    return detail::_f64_impl::round_significant(x, precision);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr long lround(double x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::to_signed_integer_or_zero<long>(detail::_f64_impl::round_nearest_away_from_zero(x)),
-        std::lround(x)
-    );
+    return detail::_f64_impl::to_signed_integer_or_zero<long>(
+        detail::_f64_impl::round_nearest_away_from_zero(x));
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr long long llround(double x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::to_signed_integer_or_zero<long long>(detail::_f64_impl::round_nearest_away_from_zero(x)),
-        std::llround(x)
-    );
+    return detail::_f64_impl::to_signed_integer_or_zero<long long>(
+        detail::_f64_impl::round_nearest_away_from_zero(x));
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr double fmod(double x, double y) noexcept
@@ -676,7 +698,7 @@ namespace detail::_f64_impl
 [[nodiscard]] BL_FORCE_INLINE constexpr double fma(double x, double y, double z) noexcept
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        x * y + z,
+        detail::_f64_impl::fma(x, y, z),
         detail::fp::fmadd_auto(x, y, z)
     );
 }
@@ -704,10 +726,20 @@ namespace detail::_f64_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr double fdim(double x, double y) noexcept
 {
+#if defined(__EMSCRIPTEN__)
+    // Emscripten's libm fdim does not reliably propagate NaNs.  The scalar
+    // definition is both cheaper than a call and preserves the C contract.
+    return (detail::fp::isnan(x) || detail::fp::isnan(y))
+        ? std::numeric_limits<double>::quiet_NaN()
+        : ((x > y) ? (x - y) : 0.0);
+#else
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        (x > y) ? (x - y) : 0.0,
+        (isnan(x) || isnan(y))
+            ? std::numeric_limits<double>::quiet_NaN()
+            : ((x > y) ? (x - y) : 0.0),
         std::fdim(x, y)
     );
+#endif
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr double copysign(double x, double y) noexcept
@@ -746,10 +778,7 @@ namespace detail::_f64_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr double modf(double x, double* iptr) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::modf(x, iptr),
-        std::modf(x, iptr)
-    );
+    return detail::_f64_impl::modf(x, iptr);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr int ilogb(double x) noexcept

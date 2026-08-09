@@ -38,46 +38,44 @@ namespace detail::_f128
         return f128_s{ row.x0, row.x1 };
     }
 
-    BL_PUSH_PRECISE;
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s fma_residual_pairwise_inline(
-        const f128_s& x,
-        const f128_s& y,
-        const f128_s& z,
-        double p0,
-        double q0,
-        double p1,
-        double q1,
-        double p2,
-        double q2,
-        double hi) noexcept
-    {
-        double s{}, e{};
-        double d{}, de{};
-        double h{}, he{};
-        two_sum_precise(p0, z.hi, s, e);
-        two_sum_precise(s, -hi, d, de);
-        two_sum_precise(d, e, h, he);
-
-        double a{}, ae{};
-        double b{}, be{};
-        double c{}, ce{};
-        double lo{}, le{};
-        two_sum_precise(p1, p2, a, ae);
-        two_sum_precise(q0, z.lo, b, be);
-        two_sum_precise(a, b, c, ce);
-        two_sum_precise(h, c, lo, le);
-
-        const double tail = de + he + ae + be + ce + le + q1 + q2 + (x.lo * y.lo);
-        return renorm(hi, lo + tail);
-    }
-    BL_POP_PRECISE;
-
     struct fma_products
     {
         double p0, q0;
         double p1, q1;
         double p2, q2;
     };
+
+    BL_PUSH_PRECISE;
+    [[nodiscard]] BL_NO_INLINE constexpr f128_s fma_cancellation_exact(
+        const f128_s& x,
+        const f128_s& y,
+        const f128_s& z) noexcept
+    {
+        double expansion[10]{};
+        int count = 0;
+
+        const double x_limb[2]{ x.hi, x.lo };
+        const double y_limb[2]{ y.hi, y.lo };
+        for (double xi : x_limb)
+        {
+            for (double yi : y_limb)
+            {
+                double product{}, error{};
+                detail::fp::two_prod_precise(xi, yi, product, error);
+                count = detail::fp::grow_expansion_zeroelim(count, expansion, error);
+                count = detail::fp::grow_expansion_zeroelim(count, expansion, product);
+            }
+        }
+
+        count = detail::fp::grow_expansion_zeroelim(count, expansion, z.lo);
+        count = detail::fp::grow_expansion_zeroelim(count, expansion, z.hi);
+
+        double tail = 0.0;
+        for (int i = 0; i + 1 < count; ++i)
+            tail += expansion[i];
+        return renorm(expansion[count - 1], tail);
+    }
+    BL_POP_PRECISE;
 
     [[nodiscard]] BL_FORCE_INLINE fma_products fma_products_hardware(
         const f128_s& x,
@@ -140,15 +138,7 @@ namespace detail::_f128
         const double tail = lo_err + mid_err + e12 + e012 + q1 + q2 + (x.lo * y.lo);
         const f128_s rough = renorm(hi, lo + tail);
 
-        const double product_magnitude = detail::fp::absd(p0);
-        if (detail::fp::isfinite(p0) && product_magnitude != 0.0
-            && detail::fp::absd(rough.hi) <= product_magnitude * 0x1p-10) [[unlikely]]
-        {
-            return F128_CANONICALIZE_MATH_RESULT(
-                fma_residual_pairwise_inline(x, y, z, p0, q0, p1, q1, p2, q2, rough.hi));
-        }
-
-        return F128_CANONICALIZE_MATH_RESULT(rough);
+        return rough;
     }
 
     [[nodiscard]] BL_FORCE_INLINE f128_s fma_finite_hardware(
@@ -175,6 +165,57 @@ namespace detail::_f128
         return fma_finite_from_products(x, y, z, fma_products_auto(x, y));
     }
 
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s fma_finite_dispatch(
+        const f128_s& x,
+        const f128_s& y,
+        const f128_s& z,
+        double leading_product) noexcept
+    {
+        if (leading_product != 0.0
+            && detail::fp::absd(leading_product + z.hi)
+                <= detail::fp::absd(leading_product) * 0x1p-48) [[unlikely]]
+        {
+            return fma_cancellation_exact(x, y, z);
+        }
+
+        #if FLTX_DETAIL_MSVC_GUARDED_X86_FMA
+        if (!bl::detail::is_constant_evaluated())
+        {
+            const bool use_hardware_fma = detail::fp::runtime_hardware_fma_enabled();
+            return use_hardware_fma
+                ? fma_finite_hardware(x, y, z)
+                : fma_finite_dekker(x, y, z);
+        }
+
+        return fma_finite_dekker(x, y, z);
+        #else
+        return fma_finite_auto(x, y, z);
+        #endif
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s fma_overflow_scaled(
+        const f128_s& x,
+        const f128_s& y,
+        const f128_s& z) noexcept
+    {
+        // An overflowing leading product can still cancel with a finite z.
+        // Split the common 2^-1024 scale across x and y so all product terms
+        // remain normal, then apply the same total scale to z.
+        constexpr int half_scale = 512;
+        const f128_s scaled_x = _ldexp(x, -half_scale);
+        const f128_s scaled_y = _ldexp(y, -half_scale);
+        const f128_s scaled_z = _ldexp(z, -2 * half_scale);
+        const double scaled_leading_product = scaled_x.hi * scaled_y.hi;
+        const f128_s scaled_result =
+            fma_finite_dispatch(scaled_x, scaled_y, scaled_z, scaled_leading_product);
+        const f128_s result = _ldexp(scaled_result, 2 * half_scale);
+
+        if (detail::fp::isinf(result.hi)) [[unlikely]]
+            return f128_s{ result.hi, 0.0 };
+
+        return result;
+    }
+
     [[nodiscard]] BL_NO_INLINE constexpr f128_s round_nearest_even_large(const f128_s& a)
     {
         f128_s t = detail::_f128_impl::floor(a);
@@ -187,7 +228,7 @@ namespace detail::_f128
         {
             t = add_double_inline(t, 1.0);
             if (iszero(t))
-                return f128_s{ signbit(a.hi) ? -0.0 : 0.0 };
+                return signed_zero(signbit(a.hi));
             return t;
         }
 
@@ -195,7 +236,7 @@ namespace detail::_f128
             t = add_double_inline(t, 1.0);
 
         if (iszero(t))
-            return f128_s{ signbit(a.hi) ? -0.0 : 0.0 };
+            return signed_zero(signbit(a.hi));
 
         return t;
     }
@@ -254,7 +295,7 @@ namespace detail::_f128
 
             f128_s out{ static_cast<double>(rounded), 0.0 };
             if (iszero(out))
-                return f128_s{ signbit(a) ? -0.0 : 0.0, 0.0 };
+                return signed_zero(signbit(a));
             return out;
         }
 
@@ -291,12 +332,12 @@ namespace detail::_f128_impl
                 rounded += (rounded < 0.0) ? 1.0 : -1.0;
 
             if (rounded == 0.0)
-                return f128_s{ bl::signbit(a) ? -0.0 : 0.0, 0.0 };
+                return detail::_f128::signed_zero(bl::signbit(a));
             return f128_s{ rounded, 0.0 };
         }
         #endif
 
-        double rounded = std::round(a.hi);
+        double rounded = detail::fp::round_nearest_away_from_zero(a.hi);
         if (rounded == a.hi)
         {
             if (a.lo != 0.0)
@@ -309,7 +350,7 @@ namespace detail::_f128_impl
             rounded += (rounded < 0.0) ? 1.0 : -1.0;
 
         if (rounded == 0.0)
-            return f128_s{ bl::signbit(a) ? -0.0 : 0.0, 0.0 };
+            return detail::_f128::signed_zero(bl::signbit(a));
         return f128_s{ rounded, 0.0 };
     }
 
@@ -332,7 +373,7 @@ namespace detail::_f128_impl
     constexpr double fast_min = 0x1p-900;
     constexpr double fast_max = 0x1p900;
 
-    if (bl::detail::use_constexpr_math() || a.hi < fast_min || a.hi > fast_max)
+    if (bl::detail::is_constant_evaluated() || a.hi < fast_min || a.hi > fast_max)
     {
         const int exp2 = detail::fp::frexp_exponent_limb(a.hi);
         const int result_scale = exp2 / 2;
@@ -340,7 +381,7 @@ namespace detail::_f128_impl
         const f128_s scaled_a = input_scale == 0 ? a : ldexp_terms(a, input_scale);
 
         double seed{};
-        if (bl::detail::use_constexpr_math())
+        if (bl::detail::is_constant_evaluated())
             seed = detail::_f128::sqrt_constexpr_head(scaled_a.hi);
         else
             seed = std::sqrt(scaled_a.hi);
@@ -350,10 +391,10 @@ namespace detail::_f128_impl
         if (result_scale != 0)
             y = ldexp_terms(y, result_scale);
 
-        return F128_CANONICALIZE_MATH_RESULT(y);
+        return y;
     }
 
-    return F128_CANONICALIZE_MATH_RESULT(detail::_f128::sqrt_compensated(a, std::sqrt(a.hi)));
+    return detail::_f128::sqrt_compensated(a, std::sqrt(a.hi));
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::hypot(const f128_s& x, const f128_s& y)
@@ -379,19 +420,22 @@ namespace detail::_f128_impl
     if (iszero(ax))
         return f128_s{ 0.0 };
     if (iszero(ay))
-        return F128_CANONICALIZE_MATH_RESULT(ax);
+        return ax;
 
     if (ay.hi <= ax.hi * 0x1p-55)
-        return F128_CANONICALIZE_MATH_RESULT(ax);
+        return ax;
 
-    if (ax.hi > 0x1p-500 && ax.hi < 0x1p500)
+    // Squaring below 2^-484 cannot retain all 106 result bits before the
+    // double component floor at 2^-1074. Use the ratio form there so the
+    // smaller square is formed near unity instead of losing low components.
+    if (ax.hi >= 0x1p-484 && ax.hi < 0x1p500)
     {
         const f128_s sum = add_inline(sqr_inline(ax), sqr_inline(ay));
-        return F128_CANONICALIZE_MATH_RESULT(hypot_sqrt_sum(sum));
+        return hypot_sqrt_sum(sum);
     }
 
     const f128_s r = div_inline(ay, ax);
-    return F128_CANONICALIZE_MATH_RESULT(mul_inline(ax, detail::_f128_impl::sqrt(add_double_inline(mul_inline(r, r), 1.0))));
+    return mul_inline(ax, detail::_f128_impl::sqrt(add_double_inline(mul_inline(r, r), 1.0)));
 }
 
 // rounding and decimals
@@ -464,7 +508,7 @@ namespace detail::_f128_impl
         }
 
         if (hi == 0.0)
-            return f128_s{ signbit(a) ? -0.0 : 0.0, 0.0 };
+            return detail::_f128::signed_zero(signbit(a));
         return f128_s{ hi, 0.0 };
     }
 
@@ -480,9 +524,11 @@ namespace detail::_f128_impl
     );
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::round_to_decimals(f128_s v, int prec)
+[[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::round_decimals(f128_s v, int prec)
 {
-    constexpr int local_capacity = std::numeric_limits<f128_s>::max_digits10;
+    // Expansion-aware decimal operations intentionally retain their original
+    // ceiling instead of inheriting presentation-oriented numeric metadata.
+    constexpr int local_capacity = 33;
 
     if (prec <= 0) return v;
     if (prec > local_capacity) prec = local_capacity;
@@ -499,15 +545,20 @@ namespace detail::_f128_impl
         return v;
     }
 
-    return detail::_f128::round_decimal_exact_to_f128(coefficient, -prec, neg);
+    const f128_s rounded =
+        detail::_f128::round_decimal_exact_to_f128(coefficient, -prec, neg);
+    if (iszero(rounded))
+        return f128_s{ detail::fp::copysign(0.0, v.hi), 0.0 };
+    return rounded;
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::round_to_significant_figures(f128_s v, int figures)
+[[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::round_significant(f128_s v, int figures)
 {
     if (figures <= 0 || detail::fp::iszero_or_inf_or_nan(v.hi))
         return v;
-    if (figures > std::numeric_limits<f128_s>::max_digits10)
-        figures = std::numeric_limits<f128_s>::max_digits10;
+    constexpr int local_capacity = 33;
+    if (figures > local_capacity)
+        figures = local_capacity;
 
     const bool neg = v.hi < 0.0;
     const f128_s ax = neg ? -v : v;
@@ -568,19 +619,11 @@ namespace detail::_f128_impl
     if (detail::fp::isinf_or_nan(x.hi) || detail::fp::isinf_or_nan(y.hi) || detail::fp::isinf_or_nan(z.hi)) [[unlikely]]
         return f128_s{ std::fma(x.hi, y.hi, z.hi), 0.0 };
 
-    #if FLTX_DETAIL_MSVC_GUARDED_X86_FMA
-    if (!bl::detail::is_constant_evaluated() && !bl::detail::use_constexpr_parity())
-    {
-        const bool use_hardware_fma = detail::fp::runtime_hardware_fma_enabled();
-        return use_hardware_fma
-            ? detail::_f128::fma_finite_hardware(x, y, z)
-            : detail::_f128::fma_finite_dekker(x, y, z);
-    }
+    const double leading_product = x.hi * y.hi;
+    if (!detail::fp::isfinite(leading_product)) [[unlikely]]
+        return detail::_f128::fma_overflow_scaled(x, y, z);
 
-    return detail::_f128::fma_finite_dekker(x, y, z);
-    #else
-    return detail::_f128::fma_finite_auto(x, y, z);
-    #endif
+    return detail::_f128::fma_finite_dispatch(x, y, z, leading_product);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::fmin(const f128_s& a, const f128_s& b)
@@ -626,7 +669,7 @@ namespace detail::_f128_impl
     if (!detail::fp::isinf_or_nan(x.hi) && !detail::fp::isinf_or_nan(y.hi))
     {
         const bool x_greater_y = (x.hi > y.hi) || (x.hi == y.hi && x.lo > y.lo);
-        return x_greater_y ? F128_CANONICALIZE_MATH_RESULT(sub_inline(x, y)) : f128_s{ 0.0 };
+        return x_greater_y ? sub_inline(x, y) : f128_s{ 0.0 };
     }
 
     if (detail::fp::isnan(x.hi) || detail::fp::isnan(y.hi))
@@ -640,7 +683,7 @@ namespace detail::_f128_impl
     if (isinf(y))
         return signbit(y) ? std::numeric_limits<f128_s>::infinity() : f128_s{ 0.0 };
 
-    return (x > y) ? F128_CANONICALIZE_MATH_RESULT(sub_inline(x, y)) : f128_s{ 0.0 };
+    return (x > y) ? sub_inline(x, y) : f128_s{ 0.0 };
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::copysign(const f128_s& x, const f128_s& y)
@@ -666,7 +709,7 @@ namespace detail::_f128_impl
     if (fmod_fast_small_quotient_abs(ax, ay, fast))
     {
         if (iszero(fast))
-            return f128_s{ signbit(x.hi) ? -0.0 : 0.0 };
+            return detail::_f128::signed_zero(signbit(x.hi));
         return ispositive(x) ? fast : -fast;
     }
 
@@ -677,7 +720,7 @@ namespace detail::_f128_impl
         if (fmod_exact_candidate_quotient_abs(ax, ay, static_cast<std::uint64_t>(q), exact))
         {
             if (iszero(exact))
-                return f128_s{ signbit(x.hi) ? -0.0 : 0.0 };
+                return detail::_f128::signed_zero(signbit(x.hi));
             return ispositive(x) ? exact : -exact;
         }
     }
@@ -731,9 +774,9 @@ namespace detail::_f128_impl
 
         f128_s r = x_negative ? -r_abs : r_abs;
         if (iszero(r))
-            return f128_s{ x_negative ? -0.0 : 0.0, 0.0 };
+            return detail::_f128::signed_zero(x_negative);
 
-        return F128_CANONICALIZE_MATH_RESULT(r);
+        return r;
     }
 
     std::uint64_t quotient_mod = 0;
@@ -757,9 +800,9 @@ namespace detail::_f128_impl
 
     f128_s r = x_negative ? -r_abs : r_abs;
     if (iszero(r))
-        return f128_s{ x_negative ? -0.0 : 0.0, 0.0 };
+        return detail::_f128::signed_zero(x_negative);
 
-    return F128_CANONICALIZE_MATH_RESULT(r);
+    return r;
 }
 
 // fractional decomposition
@@ -775,7 +818,7 @@ namespace detail::_f128_impl
     {
         if (iptr)
             *iptr = x;
-        return f128_s{ signbit(x) ? -0.0 : 0.0, 0.0 };
+        return detail::_f128::signed_zero(signbit(x));
     }
 
     const f128_s i = detail::_f128_impl::trunc(x);
@@ -784,14 +827,17 @@ namespace detail::_f128_impl
 
     f128_s frac = sub_inline(x, i);
     if (iszero(frac))
-        frac = f128_s{ signbit(x) ? -0.0 : 0.0, 0.0 };
+        frac = detail::_f128::signed_zero(signbit(x));
     return frac;
 }
 
 // decomposition and scaling
 [[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::ldexp(const f128_s& x, int e)
 {
-    return F128_CANONICALIZE_MATH_RESULT(_ldexp(x, e));
+    if (detail::fp::iszero_or_inf_or_nan(x.hi)) [[unlikely]]
+        return x;
+
+    return _ldexp(x, e);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::frexp(const f128_s& x, int* exp) noexcept
@@ -927,13 +973,17 @@ namespace detail::_f128_impl
             ? -std::numeric_limits<f128_s>::max()
             :  std::numeric_limits<f128_s>::max();
 
-    const double toward = (from < to)
-        ? std::numeric_limits<double>::infinity()
-        : -std::numeric_limits<double>::infinity();
+    const bool upward = from < to;
+    const bool toward_smaller_magnitude = upward == signbit(from);
+    const double step = detail::fp::nominal_ulp_step(
+        from.hi,
+        from.lo,
+        toward_smaller_magnitude,
+        std::numeric_limits<f128_s>::digits);
 
     return renorm(
         from.hi,
-        detail::fp::nextafter(from.lo, toward)
+        upward ? from.lo + step : from.lo - step
     );
 }
 

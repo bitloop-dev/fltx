@@ -74,14 +74,14 @@ namespace detail::_f32_impl
         return std::bit_cast<float>(pow10_f32_bits[exponent - pow10_f32_min_exponent]);
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr float round_to_decimals(float v, int prec) noexcept
+    [[nodiscard]] BL_FORCE_INLINE constexpr float round_decimals(float v, int prec) noexcept
     {
-        return detail::_f64_impl::round_to_decimals_native<f32_decimal_round_traits>(v, prec);
+        return detail::_f64_impl::round_decimals_native<f32_decimal_round_traits>(v, prec);
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr float round_to_significant_figures(float v, int figures) noexcept
+    [[nodiscard]] BL_FORCE_INLINE constexpr float round_significant(float v, int figures) noexcept
     {
-        return detail::_f64_impl::round_to_significant_figures_native<f32_decimal_round_traits>(v, figures);
+        return detail::_f64_impl::round_significant_native<f32_decimal_round_traits>(v, figures);
     }
 
     BL_FORCE_INLINE constexpr int normalize_remquo_bits(int q) noexcept
@@ -136,14 +136,34 @@ namespace detail::_f32_impl
         return static_cast<float>(m);
     }
 
+    BL_PUSH_PRECISE;
     [[nodiscard]] BL_FORCE_INLINE constexpr float modf(float x, float* iptr) noexcept
     {
+        if (isnan(x) || isinf(x) || iszero(x))
+        {
+            if (iptr)
+                *iptr = x;
+            return isinf(x) ? detail::fp::copysign(0.0f, x) : x;
+        }
+
         double integral = 0.0;
         const double fractional = bl::modf(static_cast<double>(x), &integral);
         if (iptr)
             *iptr = static_cast<float>(integral);
         return static_cast<float>(fractional);
     }
+    BL_POP_PRECISE;
+
+    BL_PUSH_PRECISE
+    [[nodiscard]] BL_FORCE_INLINE constexpr float fma(float x, float y, float z) noexcept
+    {
+        // Binary64 can represent an exact binary32 product and the following
+        // sum, so this is a correctly rounded binary32 FMA on every target.
+        return static_cast<float>(
+            static_cast<double>(x) * static_cast<double>(y) +
+            static_cast<double>(z));
+    }
+    BL_POP_PRECISE
 
 } // namespace detail::_f32_impl
 
@@ -173,10 +193,7 @@ namespace detail::_f32_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float round(float x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::round_nearest_away_from_zero(x),
-        std::round(x)
-    );
+    return detail::_f32_impl::round_nearest_away_from_zero(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float roundeven(float x) noexcept
@@ -184,32 +201,28 @@ namespace detail::_f32_impl
     return detail::_f32_impl::round_nearest_even(x);
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr float round_to_decimals(float x, int precision) noexcept
+[[nodiscard]] BL_FORCE_INLINE constexpr float round_decimals(float x, int precision) noexcept
 {
-    return detail::_f32_impl::round_to_decimals(x, precision);
+    return detail::_f32_impl::round_decimals(x, precision);
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr float round_to_significant_figures(
+[[nodiscard]] BL_FORCE_INLINE constexpr float round_significant(
     float x,
     int precision) noexcept
 {
-    return detail::_f32_impl::round_to_significant_figures(x, precision);
+    return detail::_f32_impl::round_significant(x, precision);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr long lround(float x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::to_signed_integer_or_zero<long>(detail::_f32_impl::round_nearest_away_from_zero(x)),
-        std::lround(x)
-    );
+    return detail::_f32_impl::to_signed_integer_or_zero<long>(
+        detail::_f32_impl::round_nearest_away_from_zero(x));
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr long long llround(float x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::to_signed_integer_or_zero<long long>(detail::_f32_impl::round_nearest_away_from_zero(x)),
-        std::llround(x)
-    );
+    return detail::_f32_impl::to_signed_integer_or_zero<long long>(
+        detail::_f32_impl::round_nearest_away_from_zero(x));
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float fmod(float x, float y) noexcept
@@ -238,10 +251,7 @@ namespace detail::_f32_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float fma(float x, float y, float z) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        static_cast<float>(bl::fma(static_cast<double>(x), static_cast<double>(y), static_cast<double>(z))),
-        detail::fp::fmadd_auto(x, y, z)
-    );
+    return detail::_f32_impl::fma(x, y, z);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float recip(float x) noexcept
@@ -267,10 +277,20 @@ namespace detail::_f32_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float fdim(float x, float y) noexcept
 {
+#if defined(__EMSCRIPTEN__)
+    // Emscripten's libm fdim does not reliably propagate NaNs.  The scalar
+    // definition is both cheaper than a call and preserves the C contract.
+    return (detail::fp::isnan(x) || detail::fp::isnan(y))
+        ? std::numeric_limits<float>::quiet_NaN()
+        : ((x > y) ? (x - y) : 0.0f);
+#else
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        (x > y) ? (x - y) : 0.0f,
+        (isnan(x) || isnan(y))
+            ? std::numeric_limits<float>::quiet_NaN()
+            : ((x > y) ? (x - y) : 0.0f),
         std::fdim(x, y)
     );
+#endif
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float copysign(float x, float y) noexcept
@@ -309,10 +329,7 @@ namespace detail::_f32_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float modf(float x, float* iptr) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::modf(x, iptr),
-        std::modf(x, iptr)
-    );
+    return detail::_f32_impl::modf(x, iptr);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr int ilogb(float x) noexcept

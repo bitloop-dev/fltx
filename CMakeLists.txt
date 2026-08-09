@@ -9,11 +9,8 @@ if(CMAKE_GENERATOR MATCHES "Visual Studio")
     <MaxCpuCount>1</MaxCpuCount>
   </RunConfiguration>
   <Catch2Adapter disabled="false">
-    <FilenameFilter>^(accuracy_tests|hash_tests|io_tests|metrics_tests|metrics_fastmath_tests|metrics_consteval_tests|parity_tests|precision_tests|random_tests)$</FilenameFilter>
+    <FilenameFilter>^(fltx_contract_tests|fltx_constexpr_tests)$</FilenameFilter>
     <DiscoverCommandLine>--verbosity high --list-tests --reporter xml ~[bench]</DiscoverCommandLine>
-    <Environment>
-      <FLTX_TEST_SUPPRESS_MACRO_STATUS>1</FLTX_TEST_SUPPRESS_MACRO_STATUS>
-    </Environment>
     <WorkingDirectoryRoot>Executable</WorkingDirectoryRoot>
     <DiscoverTimeout>60000</DiscoverTimeout>
     <ExecutionMode>Combine</ExecutionMode>
@@ -130,10 +127,5 @@ if(FLTX_DEVELOPER_BUILD)
     include(CTest)
 
     add_subdirectory(examples)
-    add_subdirectory(tests)
-    add_subdirectory(tests/unit_build_tests)
-
-    if(NOT TARGET f256_expression_compile_bench)
-        add_subdirectory(tests/expressions/f256)
-    endif()
+    add_subdirectory(validation)
 endif()

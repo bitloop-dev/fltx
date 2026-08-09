@@ -1155,6 +1155,58 @@ namespace detail::random
         param_type params;
     };
 
+namespace detail::random
+{
+    template<class RealType, uniform_random_bit_generator URBG>
+        requires extended_limb_canonical_v<RealType>
+    [[nodiscard]] BL_FORCE_INLINE constexpr RealType extended_standard_normal(URBG& g) noexcept
+    {
+        // Leva's ratio-of-uniforms method (ACM TOMS 18(4), 1992,
+        // doi:10.1145/138351.138364). The double-precision quadratic is only
+        // a conservative sieve: guard bands route boundary cases to the
+        // decisive acceptance test in the target extended precision.
+        constexpr double inner_guard = 0.27596;
+        constexpr double outer_guard = 0.27847;
+
+        uniform_real_distribution<RealType> unit;
+
+        for (;;)
+        {
+            const RealType u = unit(g);
+            if (u == real_zero<RealType>())
+                continue;
+
+            const RealType v{
+                RealType{ 1.7156 } * (unit(g) - RealType{ 0.5 })
+            };
+
+            const double u_approx = static_cast<double>(u);
+            const double v_approx = static_cast<double>(v);
+            const double x = u_approx - 0.449871;
+            const double abs_v = v_approx < 0.0 ? -v_approx : v_approx;
+            const double y = abs_v + 0.386595;
+            const double q = x * x + y * (0.19600 * y - 0.25472 * x);
+
+            if (q < inner_guard)
+                return RealType{ v / u };
+            if (q > outer_guard)
+                continue;
+
+            const RealType lhs{ v * v };
+            const RealType u_squared{ u * u };
+            const RealType rhs{
+                RealType{ -4.0 } * real_log(u) * u_squared
+            };
+            if (lhs <= rhs)
+                return RealType{ v / u };
+        }
+
+        // MSVC's C++20 constexpr evaluator requires an explicit return even
+        // though the loop above has no reachable fallthrough.
+        return {};
+    }
+}
+
     template<detail::random::supported_real RealType = double>
     class normal_distribution
     {
@@ -1226,34 +1278,46 @@ namespace detail::random
         template<uniform_random_bit_generator URBG>
         [[nodiscard]] BL_FORCE_INLINE constexpr result_type operator()(URBG& g, const param_type& _params) noexcept
         {
-            if (has_saved)
+            if constexpr (detail::random::extended_limb_canonical_v<result_type>)
             {
-                has_saved = false;
-                return _params.mean() + _params.stddev() * saved_standard;
+                const result_type standard =
+                    detail::random::extended_standard_normal<result_type>(g);
+                return result_type{
+                    _params.mean() + _params.stddev() * standard
+                };
             }
-
-            uniform_real_distribution<result_type> unit(
-                -detail::random::real_one<result_type>(),
-                detail::random::real_one<result_type>());
-
-            result_type x{};
-            result_type y{};
-            result_type radius_squared{};
-            do
+            else
             {
-                x = unit(g);
-                y = unit(g);
-                radius_squared = x * x + y * y;
-            }
-            while (radius_squared <= detail::random::real_zero<result_type>() ||
-                   radius_squared >= detail::random::real_one<result_type>());
+                if (has_saved)
+                {
+                    has_saved = false;
+                    return _params.mean() + _params.stddev() * saved_standard;
+                }
 
-            const result_type multiplier_argument =
-                (result_type{ -2.0 } * detail::random::real_log(radius_squared)) / radius_squared;
-            const result_type multiplier = detail::random::real_sqrt<result_type>(multiplier_argument);
-            saved_standard = y * multiplier;
-            has_saved = true;
-            return _params.mean() + _params.stddev() * (x * multiplier);
+                uniform_real_distribution<result_type> unit(
+                    -detail::random::real_one<result_type>(),
+                    detail::random::real_one<result_type>());
+
+                result_type x{};
+                result_type y{};
+                result_type radius_squared{};
+                do
+                {
+                    x = unit(g);
+                    y = unit(g);
+                    radius_squared = x * x + y * y;
+                }
+                while (radius_squared <= detail::random::real_zero<result_type>() ||
+                       radius_squared >= detail::random::real_one<result_type>());
+
+                const result_type multiplier_argument =
+                    (result_type{ -2.0 } * detail::random::real_log(radius_squared)) / radius_squared;
+                const result_type multiplier =
+                    detail::random::real_sqrt<result_type>(multiplier_argument);
+                saved_standard = y * multiplier;
+                has_saved = true;
+                return _params.mean() + _params.stddev() * (x * multiplier);
+            }
         }
 
         [[nodiscard]] BL_FORCE_INLINE constexpr result_type mean() const noexcept { return params.mean(); }
@@ -1276,9 +1340,16 @@ namespace detail::random
             const normal_distribution& lhs,
             const normal_distribution& rhs) noexcept
         {
-            return lhs.params == rhs.params &&
-                   lhs.has_saved == rhs.has_saved &&
-                   (!lhs.has_saved || lhs.saved_standard == rhs.saved_standard);
+            if constexpr (detail::random::extended_limb_canonical_v<result_type>)
+            {
+                return lhs.params == rhs.params;
+            }
+            else
+            {
+                return lhs.params == rhs.params &&
+                       lhs.has_saved == rhs.has_saved &&
+                       (!lhs.has_saved || lhs.saved_standard == rhs.saved_standard);
+            }
         }
 
         [[nodiscard]] BL_FORCE_INLINE friend constexpr bool operator!=(
@@ -1318,8 +1389,16 @@ namespace detail::random
                 return is;
 
             distribution.params = param_type{ mean, stddev };
-            distribution.has_saved = loaded_has_saved;
-            distribution.saved_standard = loaded_saved;
+            if constexpr (detail::random::extended_limb_canonical_v<result_type>)
+            {
+                distribution.has_saved = false;
+                distribution.saved_standard = result_type{};
+            }
+            else
+            {
+                distribution.has_saved = loaded_has_saved;
+                distribution.saved_standard = loaded_saved;
+            }
             return is;
         }
 

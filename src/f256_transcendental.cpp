@@ -104,7 +104,7 @@ namespace bl::detail::_f256_runtime
 
             const f256_s asum  = detail::_f256::mag(sum);
             const f256_s scale = (asum > f256_s{ 1.0 }) ? asum : f256_s{ 1.0 };
-            if (detail::_f256::mag(add) <= detail::_f256::mul_inline(f256_s::eps(), scale))
+            if (detail::_f256::mag(add) <= detail::_f256::mul_inline(detail::_f256::convergence_epsilon, scale))
                 break;
         }
 
@@ -154,22 +154,22 @@ namespace bl::detail::_f256_runtime
     }
 
     // powers
-    BL_NO_INLINE f256_s pow(const f256_s& x, const f256_s& y)
+    BL_NO_INLINE f256_s BL_VECTORCALL pow(const f256_s& x, const f256_s& y)
     {
         return detail::_f256_impl::pow(x, y);
     }
 
-    BL_NO_INLINE f256_s pow(const f256_s& x, double y)
+    BL_NO_INLINE f256_s BL_VECTORCALL pow(const f256_s& x, double y)
     {
         return detail::_f256_impl::pow(x, y);
     }
 
-    BL_NO_INLINE f256_s ipow_signed(const f256_s& x, std::intmax_t y)
+    BL_NO_INLINE f256_s BL_VECTORCALL ipow_signed(const f256_s& x, std::intmax_t y)
     {
         return detail::_f256::ipow_integer(x, y);
     }
 
-    BL_NO_INLINE f256_s ipow_unsigned(const f256_s& x, std::uintmax_t y)
+    BL_NO_INLINE f256_s BL_VECTORCALL ipow_unsigned(const f256_s& x, std::uintmax_t y)
     {
         return detail::_f256::ipow_integer(x, y);
     }

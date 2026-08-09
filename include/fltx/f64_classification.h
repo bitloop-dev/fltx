@@ -29,7 +29,7 @@ namespace detail::_f64_impl
 
     BL_FORCE_INLINE constexpr bool iszero(double x) noexcept
     {
-        return x == 0.0;
+        return (std::bit_cast<std::uint64_t>(x) & 0x7fffffffffffffffULL) == 0;
     }
 
     BL_FORCE_INLINE constexpr double abs(double x) noexcept
@@ -41,55 +41,37 @@ namespace detail::_f64_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr double abs(double x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::abs(x),
-        std::abs(x)
-    );
+    return detail::_f64_impl::abs(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr double fabs(double x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::abs(x),
-        std::fabs(x)
-    );
+    return detail::_f64_impl::abs(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr bool signbit(double x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::signbit(x),
-        std::signbit(x)
-    );
+    return detail::_f64_impl::signbit(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr bool isnan(double x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::isnan(x),
-        std::isnan(x)
-    );
+    return detail::_f64_impl::isnan(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr bool isinf(double x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::isinf(x),
-        std::isinf(x)
-    );
+    return detail::_f64_impl::isinf(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr bool isfinite(double x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::isfinite(x),
-        std::isfinite(x)
-    );
+    return detail::_f64_impl::isfinite(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr bool iszero(double x) noexcept
 {
-    return x == 0.0;
+    return detail::_f64_impl::iszero(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr int fpclassify(double x) noexcept

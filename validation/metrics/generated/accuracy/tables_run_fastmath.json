@@ -1,0 +1,15 @@
+{
+  "consumer_mode": "fastmath",
+  "outputs": [
+    "accuracy_table_fastmath.svg"
+  ],
+  "run_ids": {
+    "windows/MSVC": "9451871b021040388df88ec034a8c02b"
+  },
+  "schema_version": "4",
+  "source_fingerprint": "109de0c6f38539c777d07facfe9296e1f881fdc142de260574f32ca1717dec35",
+  "source_revision": "ed1828d24dd27853af5667ac12b6c6c06a406c96-dirty-109de0c6f385",
+  "targets": [
+    "windows/MSVC"
+  ]
+}

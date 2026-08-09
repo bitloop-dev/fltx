@@ -18,6 +18,10 @@ namespace bl {
 
 namespace detail::_f256 // primitives and kernels
 {
+    // Algorithmic convergence tolerance, deliberately independent of public
+    // numeric metadata even though both currently have the value 2^-211.
+    inline constexpr f256_s convergence_epsilon{ 0x1p-211, 0.0, 0.0, 0.0 };
+
     using detail::exact_decimal::any_low_bits_set;
     using detail::exact_decimal::biguint;
     using detail::exact_decimal::decompose_double_mantissa;
@@ -1086,18 +1090,6 @@ namespace detail::_f256 // primitives and kernels
     }
 
     // sqrt kernels
-    BL_FORCE_INLINE constexpr f256_s canonicalize_sqrt_result(f256_s value) noexcept
-    {
-        value.x3 = detail::fp::zero_low_fraction_bits_finite<16>(value.x3);
-        return value;
-    }
-
-    #if defined(FLTX_CONSTEXPR_PARITY)
-        #define F256_CANONICALIZE_SQRT_RESULT(value) bl::detail::_f256::canonicalize_sqrt_result(value)
-    #else
-        #define F256_CANONICALIZE_SQRT_RESULT(value) (value)
-    #endif
-
     BL_FORCE_INLINE constexpr double sqrt_compress_sum16(const double* e) noexcept
     {
         using namespace detail::_f256;
@@ -1412,7 +1404,7 @@ namespace detail::_f256 // primitives and kernels
     BL_FORCE_INLINE constexpr int scale_sqrt_input(f256_s& scaled_a) noexcept
     {
         int result_scale = 0;
-        if (scaled_a.x0 < 0x1p-900 || scaled_a.x0 > 0x1p900)
+        if (scaled_a.x0 < 0x1p-500 || scaled_a.x0 > 0x1p500)
         {
             const int exp2 = frexp_exponent_limb(scaled_a.x0);
             result_scale = exp2 / 2;
@@ -1429,7 +1421,7 @@ namespace detail::_f256 // primitives and kernels
         if (result_scale != 0)
             y = ldexp_terms(y, result_scale);
 
-        return F256_CANONICALIZE_SQRT_RESULT(y);
+        return y;
     }
 
     BL_MSVC_NOINLINE constexpr f256_s sqrt_impl_fast(const f256_s& a)
@@ -1573,7 +1565,7 @@ namespace detail::_f256 // primitives and kernels
             return ldexp_terms(a, e);
 
         double s;
-        if (bl::detail::use_constexpr_math())
+        if (bl::detail::is_constant_evaluated())
         {
             s = bl::detail::fp::ldexp(1.0, e);
         }
@@ -1582,7 +1574,7 @@ namespace detail::_f256 // primitives and kernels
             s = std::ldexp(1.0, e);
         }
 
-        if (bl::detail::use_constexpr_math())
+        if (bl::detail::is_constant_evaluated())
         {
             return renorm(a.x0 * s, a.x1 * s, a.x2 * s, a.x3 * s);
         }

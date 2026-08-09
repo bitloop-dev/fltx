@@ -9,9 +9,36 @@
 
 #include "fltx/detail/f128_math_transcendental.h"
 
+ // MinGW f64/f32 libm fallbacks implemented through the f128 kernels.
+ // Kept in this translation unit to avoid compiling the heavyweight f128
+ // transcendental implementation in a second source file.
+namespace bl::detail::_f64_runtime
+{
+    BL_NO_INLINE double sin_large(double x) noexcept
+    {
+        if (x == 0.0)
+            return x;
+
+        return static_cast<double>(
+            detail::_f128_impl::sin(f128_s{ x }));
+    }
+
+    BL_NO_INLINE double cos_large(double x) noexcept
+    {
+        return static_cast<double>(
+            detail::_f128_impl::cos(f128_s{ x }));
+    }
+
+    BL_NO_INLINE double tan_large(double x) noexcept
+    {
+        return static_cast<double>(
+            detail::_f128_impl::tan(f128_s{ x }));
+    }
+}
+
 namespace bl::detail::_f128_runtime
 {
-    BL_NO_INLINE f128_s horner_forward(const f128_s* coeffs, std::size_t count, const f128_s& x) noexcept
+    BL_NO_INLINE f128_s BL_VECTORCALL horner_forward(const f128_s* coeffs, std::size_t count, const f128_s& x) noexcept
     {
         if (count == 0)
             return {};
@@ -22,7 +49,7 @@ namespace bl::detail::_f128_runtime
         return p;
     }
 
-    BL_NO_INLINE f128_s horner_reverse(const f128_s* coeffs, std::size_t count, const f128_s& x) noexcept
+    BL_NO_INLINE f128_s BL_VECTORCALL horner_reverse(const f128_s* coeffs, std::size_t count, const f128_s& x) noexcept
     {
         if (count == 0)
             return {};
@@ -120,12 +147,12 @@ namespace bl::detail::_f128_runtime
         return detail::_f128_impl::sincos(x, s_out, c_out);
     }
 
-    BL_NO_INLINE f128_s sin(const f128_s& x)
+    BL_NO_INLINE f128_s BL_VECTORCALL sin(const f128_s& x)
     {
         return detail::_f128_impl::sin(x);
     }
 
-    BL_NO_INLINE f128_s cos(const f128_s& x)
+    BL_NO_INLINE f128_s BL_VECTORCALL cos(const f128_s& x)
     {
         return detail::_f128_impl::cos(x);
     }
@@ -135,28 +162,28 @@ namespace bl::detail::_f128_runtime
         return detail::_f128_impl::tan(x);
     }
 
-    BL_NO_INLINE f128_s atan(const f128_s& x)
+    BL_NO_INLINE f128_s BL_VECTORCALL atan(const f128_s& x)
     {
         return detail::_f128_impl::atan(x);
     }
 
-    BL_NO_INLINE f128_s atan2(const f128_s& y, const f128_s& x)
+    BL_NO_INLINE f128_s BL_VECTORCALL atan2(const f128_s& y, const f128_s& x)
     {
         return detail::_f128_impl::atan2(y, x);
     }
 
-    BL_NO_INLINE f128_s asin(const f128_s& x)
+    BL_NO_INLINE f128_s BL_VECTORCALL asin(const f128_s& x)
     {
         return detail::_f128_impl::asin(x);
     }
 
-    BL_NO_INLINE f128_s acos(const f128_s& x)
+    BL_NO_INLINE f128_s BL_VECTORCALL acos(const f128_s& x)
     {
         return detail::_f128_impl::acos(x);
     }
 
     // hyperbolic
-    BL_NO_INLINE f128_s sinh(const f128_s& x)
+    BL_NO_INLINE f128_s BL_VECTORCALL sinh(const f128_s& x)
     {
         return detail::_f128_impl::sinh(x);
     }
@@ -197,12 +224,12 @@ namespace bl::detail::_f128_runtime
         return detail::_f128_impl::erfc(x);
     }
 
-    BL_NO_INLINE f128_s lgamma(const f128_s& x)
+    BL_NO_INLINE f128_s BL_VECTORCALL lgamma(const f128_s& x)
     {
         return detail::_f128_impl::lgamma(x);
     }
 
-    BL_NO_INLINE f128_s tgamma(const f128_s& x)
+    BL_NO_INLINE f128_s BL_VECTORCALL tgamma(const f128_s& x)
     {
         return detail::_f128_impl::tgamma(x);
     }

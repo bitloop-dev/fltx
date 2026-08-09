@@ -130,6 +130,11 @@ namespace detail::_f32_runtime
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float hypot(float x, float y) noexcept
 {
+    if (detail::fp::isinf(x) || detail::fp::isinf(y))
+        return std::bit_cast<float>(0x7f800000u);
+    if (detail::fp::isnan(x) || detail::fp::isnan(y))
+        return std::bit_cast<float>(0x7fc00000u);
+
     BL_CONSTEXPR_RUNTIME_DISPATCH(
         static_cast<float>(bl::hypot(static_cast<double>(x), static_cast<double>(y))),
         std::hypot(x, y)
@@ -146,6 +151,7 @@ namespace detail::_f32_runtime
     );
 }
 
+BL_PUSH_PRECISE;
 template<detail::fp::non_bool_integral Exp>
 [[nodiscard]] BL_FORCE_INLINE constexpr float ipow(float x, Exp y) noexcept
 {
@@ -187,22 +193,31 @@ template<detail::fp::non_bool_integral Exp>
 
     return powered;
 }
+BL_POP_PRECISE;
 
 // trig
 [[nodiscard]] BL_FORCE_INLINE constexpr float sin(float x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        static_cast<float>(bl::sin(static_cast<double>(x))),
-        std::sin(x)
-    );
+    if (bl::detail::is_constant_evaluated())
+        return static_cast<float>(bl::sin(static_cast<double>(x)));
+#if defined(__MINGW32__)
+    if (std::fabs(x) >= 0x1p12f) [[unlikely]]
+        return static_cast<float>(
+            detail::_f64_runtime::sin_large(static_cast<double>(x)));
+#endif
+    return std::sin(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float cos(float x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        static_cast<float>(bl::cos(static_cast<double>(x))),
-        std::cos(x)
-    );
+    if (bl::detail::is_constant_evaluated())
+        return static_cast<float>(bl::cos(static_cast<double>(x)));
+#if defined(__MINGW32__)
+    if (std::fabs(x) >= 0x1p12f) [[unlikely]]
+        return static_cast<float>(
+            detail::_f64_runtime::cos_large(static_cast<double>(x)));
+#endif
+    return std::cos(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr bool sincos(float x, float& s_out, float& c_out) noexcept
@@ -214,14 +229,22 @@ template<detail::fp::non_bool_integral Exp>
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float tan(float x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        static_cast<float>(bl::tan(static_cast<double>(x))),
-        std::tan(x)
-    );
+    if (bl::detail::is_constant_evaluated())
+        return static_cast<float>(bl::tan(static_cast<double>(x)));
+#if defined(__MINGW32__)
+    if (std::fabs(x) >= 0x1p12f) [[unlikely]]
+        return static_cast<float>(
+            detail::_f64_runtime::tan_large(static_cast<double>(x)));
+#endif
+    return std::tan(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float atan(float x) noexcept
 {
+#if defined(__EMSCRIPTEN__)
+    if (!detail::fp::isfinite(x)) [[unlikely]]
+        return static_cast<float>(bl::atan(static_cast<double>(x)));
+#endif
     BL_CONSTEXPR_RUNTIME_DISPATCH(
         static_cast<float>(bl::atan(static_cast<double>(x))),
         std::atan(x)
@@ -230,6 +253,11 @@ template<detail::fp::non_bool_integral Exp>
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float atan2(float y, float x) noexcept
 {
+#if defined(__EMSCRIPTEN__)
+    if (!detail::fp::isfinite(x) || !detail::fp::isfinite(y)) [[unlikely]]
+        return static_cast<float>(
+            bl::atan2(static_cast<double>(y), static_cast<double>(x)));
+#endif
     BL_CONSTEXPR_RUNTIME_DISPATCH(
         static_cast<float>(bl::atan2(static_cast<double>(y), static_cast<double>(x))),
         std::atan2(y, x)
@@ -307,10 +335,14 @@ template<class Value> requires std::same_as<std::remove_cvref_t<Value>, float>
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float acosh(float x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        static_cast<float>(bl::acosh(static_cast<double>(x))),
-        std::acosh(x)
-    );
+    if (bl::detail::is_constant_evaluated())
+        return static_cast<float>(bl::acosh(static_cast<double>(x)));
+#if defined(__MINGW32__)
+    if (x < 1.5f)
+        return static_cast<float>(
+            detail::_f64_impl::acosh(static_cast<double>(x)));
+#endif
+    return std::acosh(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float atanh(float x) noexcept

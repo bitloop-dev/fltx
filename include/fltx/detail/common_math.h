@@ -200,6 +200,7 @@ BL_FORCE_INLINE constexpr float nextafter(float from, float to) noexcept
 
 // Numeric rounding core. The wrapper below additionally preserves the input
 // sign when the rounded result is zero.
+BL_PUSH_PRECISE;
 BL_FORCE_INLINE constexpr double round_nearest_even_value(double x) noexcept
 {
     if (iszero_or_inf_or_nan(x))
@@ -233,6 +234,7 @@ BL_FORCE_INLINE constexpr float round_nearest_even(float x) noexcept
         return signbit(x) ? -0.0f : 0.0f;
     return out;
 }
+BL_POP_PRECISE;
 
 template<typename SignedInt> BL_FORCE_INLINE constexpr SignedInt to_signed_integer_or_zero(float x) noexcept
 {
@@ -339,19 +341,43 @@ BL_MSVC_NOINLINE constexpr double atan2(double y, double x) noexcept
 {
     constexpr double pi   = 3.1415926535897932384626433832795028841972;
     constexpr double pi_2 = 1.5707963267948966192313216916397514420986;
+    constexpr double pi_4 = 0.7853981633974483096156608458198757210493;
 
     if (isnan(x) || isnan(y))
         return std::numeric_limits<double>::quiet_NaN();
-    if (x == 0.0)
+
+    const bool x_negative = signbit(x);
+    const bool y_negative = signbit(y);
+    if (isinf(y))
     {
-        if (y == 0.0)
-            return std::numeric_limits<double>::quiet_NaN();
-        return signbit(y) ? -pi_2 : pi_2;
+        if (isinf(x))
+        {
+            const double magnitude = x_negative ? 3.0 * pi_4 : pi_4;
+            return y_negative ? -magnitude : magnitude;
+        }
+        return y_negative ? -pi_2 : pi_2;
     }
+
+    if (isinf(x))
+    {
+        if (x_negative)
+            return y_negative ? -pi : pi;
+        return y_negative ? -0.0 : 0.0;
+    }
+
+    if (y == 0.0)
+    {
+        if (x_negative)
+            return y_negative ? -pi : pi;
+        return y;
+    }
+
+    if (x == 0.0)
+        return y_negative ? -pi_2 : pi_2;
 
     const double a = atan(y / x);
     if (x < 0.0)
-        return signbit(y) ? (a - pi) : (a + pi);
+        return y_negative ? (a - pi) : (a + pi);
     return a;
 }
 

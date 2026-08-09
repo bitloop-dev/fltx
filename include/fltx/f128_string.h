@@ -281,7 +281,7 @@ namespace detail::_f128 // primitives and kernels
 
         static constexpr value_type zero(bool neg = false) noexcept
         {
-            return neg ? value_type{ -0.0, 0.0 } : value_type{ 0.0, 0.0 };
+            return detail::_f128::signed_zero(neg);
         }
 
         static constexpr value_type infinity(bool neg = false) noexcept
@@ -643,7 +643,7 @@ namespace detail::_f128 // primitives and kernels
         static constexpr bool iszero(const value_type& x)      noexcept { return bl::iszero(x); }
         static constexpr bool is_negative(const value_type& x) noexcept { return detail::_f128::signbit(x.hi); }
         static constexpr value_type abs(const value_type& x)   noexcept { return (x.hi < 0.0) ? -x : x; }
-        static constexpr value_type zero(bool neg = false) noexcept { return neg ? value_type{ -0.0, 0.0 } : value_type{ 0.0, 0.0 }; }
+        static constexpr value_type zero(bool neg = false) noexcept { return detail::_f128::signed_zero(neg); }
         static constexpr value_type infinity(bool neg = false) noexcept
         {
             const value_type inf = std::numeric_limits<value_type>::infinity();
@@ -651,6 +651,15 @@ namespace detail::_f128 // primitives and kernels
         }
 
         static constexpr value_type quiet_nan() noexcept { return std::numeric_limits<value_type>::quiet_NaN(); }
+        static constexpr value_type max_finite() noexcept { return std::numeric_limits<value_type>::max(); }
+        static constexpr bool needs_nominal_refinement(const value_type& value) noexcept
+        {
+            constexpr int guard_underflow_exponent =
+                min_binary_exponent + conversion_significand_bits - 1;
+            return iszero(value) ||
+                detail::fp::absd(value.hi) <
+                    detail::fp::positive_power_of_two(guard_underflow_exponent);
+        }
         static constexpr detail::fltx_char_result to_chars_general(char* first, char* last, const value_type& x, int precision, bool strip_trailing_zeros)
         {
             if (detail::_f128::runtime_native_double_subnormal(x))
@@ -744,6 +753,11 @@ namespace detail::_f128 // primitives and kernels
             return detail::exact_decimal::exact_decimal_to_value<f128_io_traits>(coeff, dec_exp, neg);
         }
 
+        static constexpr value_type nextafter(const value_type& from, const value_type& to) noexcept
+        {
+            return detail::_f128_impl::nextafter(from, to);
+        }
+
         static constexpr value_type pack_from_significand(const detail::exact_decimal::biguint& q, int e2, bool neg) noexcept
         {
             return detail::_f128::exact_traits::pack_from_significand(q, e2, neg);
@@ -759,7 +773,7 @@ namespace detail::_f128 // primitives and kernels
 
 [[nodiscard]] constexpr bl::f128_io_string to_static_string(
     const f128_s& value,
-    int precision = std::numeric_limits<f128_s>::digits10,
+    int precision = std::numeric_limits<f128_s>::max_digits10,
     std::ios_base::fmtflags flags = std::ios_base::fmtflags{})
 {
     return detail::to_static_string_impl<detail::_f128::f128_io_traits>(value, precision, flags);
@@ -767,7 +781,7 @@ namespace detail::_f128 // primitives and kernels
 
 [[nodiscard]] BL_NO_INLINE std::string to_string(
     const f128_s& value,
-    precision_info precision = std::numeric_limits<f128_s>::digits10,
+    precision_info precision = std::numeric_limits<f128_s>::max_digits10,
     std::ios_base::fmtflags flags = std::ios_base::fmtflags{});
 
 namespace detail::_f128 // primitives and kernels

@@ -25,13 +25,13 @@ namespace detail::_f128_runtime
     BL_NO_INLINE f128_s fma_x86(const f128_s& x, const f128_s& y, const f128_s& z);
 
     // roots
-    BL_NO_INLINE f128_s sqrt(const f128_s& a);
+    BL_NO_INLINE f128_s BL_VECTORCALL sqrt(const f128_s& a);
     BL_NO_INLINE f128_s hypot(const f128_s& x, const f128_s& y);
 
     // rounding and decimals
     BL_NO_INLINE f128_s round_nearest_away_from_zero(const f128_s& a);
-    BL_NO_INLINE f128_s round_to_decimals(f128_s v, int prec);
-    BL_NO_INLINE f128_s round_to_significant_figures(f128_s v, int figures);
+    BL_NO_INLINE f128_s round_decimals(f128_s v, int prec);
+    BL_NO_INLINE f128_s round_significant(f128_s v, int figures);
     BL_NO_INLINE long lround_nearest_away_from_zero(const f128_s& x);
     BL_NO_INLINE long long llround_nearest_away_from_zero(const f128_s& x);
 
@@ -59,16 +59,16 @@ namespace detail::_f128_runtime
 
     // trig
     BL_NO_INLINE bool sincos(const f128_s& x, f128_s& s_out, f128_s& c_out);
-    BL_NO_INLINE f128_s sin(const f128_s& x);
-    BL_NO_INLINE f128_s cos(const f128_s& x);
+    BL_NO_INLINE f128_s BL_VECTORCALL sin(const f128_s& x);
+    BL_NO_INLINE f128_s BL_VECTORCALL cos(const f128_s& x);
     BL_NO_INLINE f128_s tan(const f128_s& x);
-    BL_NO_INLINE f128_s atan(const f128_s& x);
-    BL_NO_INLINE f128_s atan2(const f128_s& y, const f128_s& x);
-    BL_NO_INLINE f128_s asin(const f128_s& x);
-    BL_NO_INLINE f128_s acos(const f128_s& x);
+    BL_NO_INLINE f128_s BL_VECTORCALL atan(const f128_s& x);
+    BL_NO_INLINE f128_s BL_VECTORCALL atan2(const f128_s& y, const f128_s& x);
+    BL_NO_INLINE f128_s BL_VECTORCALL asin(const f128_s& x);
+    BL_NO_INLINE f128_s BL_VECTORCALL acos(const f128_s& x);
 
     // hyperbolic
-    BL_NO_INLINE f128_s sinh(const f128_s& x);
+    BL_NO_INLINE f128_s BL_VECTORCALL sinh(const f128_s& x);
     BL_NO_INLINE f128_s cosh(const f128_s& x);
     BL_NO_INLINE f128_s tanh(const f128_s& x);
     BL_NO_INLINE f128_s asinh(const f128_s& x);
@@ -78,10 +78,10 @@ namespace detail::_f128_runtime
     // erf/gamma and polynomials
     BL_NO_INLINE f128_s erf(const f128_s& x);
     BL_NO_INLINE f128_s erfc(const f128_s& x);
-    BL_NO_INLINE f128_s lgamma(const f128_s& x);
-    BL_NO_INLINE f128_s tgamma(const f128_s& x);
-    BL_NO_INLINE f128_s horner_forward(const f128_s* coeffs, std::size_t count, const f128_s& x) noexcept;
-    BL_NO_INLINE f128_s horner_reverse(const f128_s* coeffs, std::size_t count, const f128_s& x) noexcept;
+    BL_NO_INLINE f128_s BL_VECTORCALL lgamma(const f128_s& x);
+    BL_NO_INLINE f128_s BL_VECTORCALL tgamma(const f128_s& x);
+    BL_NO_INLINE f128_s BL_VECTORCALL horner_forward(const f128_s* coeffs, std::size_t count, const f128_s& x) noexcept;
+    BL_NO_INLINE f128_s BL_VECTORCALL horner_reverse(const f128_s* coeffs, std::size_t count, const f128_s& x) noexcept;
     BL_NO_INLINE void horner_pair_forward(const f128_s* left_coeffs, const f128_s* right_coeffs, std::size_t count, const f128_s& x, f128_s& left_out, f128_s& right_out) noexcept;
 
 } // namespace detail::_f128_runtime
@@ -103,8 +103,8 @@ namespace detail::_f128_impl
     BL_FORCE_INLINE constexpr f128_s trunc(const f128_s& a);
     BL_FORCE_INLINE constexpr f128_s round_nearest_away_from_zero(const f128_s& a);
     BL_FORCE_INLINE f128_s round_nearest_away_from_zero_runtime(const f128_s& a) noexcept;
-    BL_FORCE_INLINE constexpr f128_s round_to_decimals(f128_s v, int prec);
-    BL_FORCE_INLINE constexpr f128_s round_to_significant_figures(f128_s v, int figures);
+    BL_FORCE_INLINE constexpr f128_s round_decimals(f128_s v, int prec);
+    BL_FORCE_INLINE constexpr f128_s round_significant(f128_s v, int figures);
     BL_FORCE_INLINE constexpr f128_s round_nearest_even(const f128_s& a);
     BL_FORCE_INLINE constexpr long lround_nearest_away_from_zero(const f128_s& x);
     BL_FORCE_INLINE constexpr long long llround_nearest_away_from_zero(const f128_s& x);

@@ -17,91 +17,93 @@ namespace bl {
 
 namespace detail::_f256_runtime
 {
+    // BL_VECTORCALL is intentionally selective: standalone multiplication
+    // regresses on MSVC x64, while add/sub/div and fused expressions benefit.
     // core operations
-    [[nodiscard]] BL_NO_INLINE f256_s add(const f256_s& a, const f256_s& b) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s sub(const f256_s& a, const f256_s& b) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul(const f256_s& a, const f256_s& b) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s div(const f256_s& a, const f256_s& b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add(const f256_s& a, const f256_s& b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL sub(const f256_s& a, const f256_s& b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s               mul(const f256_s& a, const f256_s& b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL div(const f256_s& a, const f256_s& b) noexcept;
 
     // double-double operations
-    [[nodiscard]] BL_NO_INLINE f256_s add_dd(const f256_s& a, detail::_f256::dd_scalar b) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s sub_dd(const f256_s& a, detail::_f256::dd_scalar b) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s sub_dd(detail::_f256::dd_scalar a, const f256_s& b) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_dd(const f256_s& a, detail::_f256::dd_scalar b) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s div_dd(const f256_s& a, detail::_f256::dd_scalar b) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s div_dd(detail::_f256::dd_scalar a, const f256_s& b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_dd(const f256_s& a, detail::_f256::dd_scalar b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL sub_dd(const f256_s& a, detail::_f256::dd_scalar b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL sub_dd(detail::_f256::dd_scalar a, const f256_s& b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s               mul_dd(const f256_s& a, detail::_f256::dd_scalar b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL div_dd(const f256_s& a, detail::_f256::dd_scalar b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL div_dd(detail::_f256::dd_scalar a, const f256_s& b) noexcept;
 
     // double operations
-    [[nodiscard]] BL_NO_INLINE f256_s add_double(const f256_s& a, double b) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s sub_double(const f256_s& a, double b) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s sub_double(double a, const f256_s& b) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_double(const f256_s& a, double b) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s div_double(const f256_s& a, double b) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s div_double(double a, const f256_s& b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_double(const f256_s& a, double b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL sub_double(const f256_s& a, double b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL sub_double(double a, const f256_s& b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s               mul_double(const f256_s& a, double b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL div_double(const f256_s& a, double b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL div_double(double a, const f256_s& b) noexcept;
 
     // fused operations
-    [[nodiscard]] BL_NO_INLINE f256_s sqr(const f256_s& a) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_pow2_or_double(const f256_s& a, double b) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_add(const f256_s& a, const f256_s& b, const f256_s& c) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_sub(const f256_s& a, const f256_s& b, const f256_s& c) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s value_sub_mul(const f256_s& a, const f256_s& b, const f256_s& c) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_add_add(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_add_sub(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_sub_add(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_sub_sub(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_add_mul(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_sub_mul(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_add_mul_add(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d, const f256_s& e) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_add_mul_sub(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d, const f256_s& e) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_sub_mul_add(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d, const f256_s& e) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_sub_mul_sub(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d, const f256_s& e) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_add_mul_add_mul(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d, const f256_s& e, const f256_s& f) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_add_mul_add_mul_add_mul(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d, const f256_s& e, const f256_s& f, const f256_s& g, const f256_s& h) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_add_add(const f256_s& a, const f256_s& b, const f256_s& c) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_sub_add(const f256_s& a, const f256_s& b, const f256_s& c) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_add_sub(const f256_s& a, const f256_s& b, const f256_s& c) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_sub_sub(const f256_s& a, const f256_s& b, const f256_s& c) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_add_add_add(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_add_add_sub(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_add_sub_sub(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_sub_sub_sub(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_scaled_2_1(const f256_s& a, const f256_s& b) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_scaled_1_2(const f256_s& a, const f256_s& b) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_scaled_2_neg1(const f256_s& a, const f256_s& b) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_scaled_1_neg2(const f256_s& a, const f256_s& b) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_mul_double(const f256_s& addend, const f256_s& value, double scalar) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s sub_mul_double(const f256_s& minuend, const f256_s& value, double scalar) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_double_sub(const f256_s& value, double scalar, const f256_s& subtrahend) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_double_add_mul_double(const f256_s& a, double a_scalar, const f256_s& b, double b_scalar) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_double_add_mul_double_add(const f256_s& a, double a_scalar, const f256_s& b, double b_scalar, const f256_s& c) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s div_add(const f256_s& numerator, const f256_s& a, const f256_s& b) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s div_sub(const f256_s& numerator, const f256_s& a, const f256_s& b) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s div_add_double(const f256_s& numerator, const f256_s& base_denominator, double scalar) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s div_double_sub(const f256_s& numerator, double scalar, const f256_s& base_denominator) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_add_div(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_sub_div(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s value_sub_mul_div(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_add_mul_div(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d, const f256_s& denominator) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_sub_mul_div(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d, const f256_s& denominator) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_add_add_div(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_sub_add_div(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_add_sub_div(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_sub_sub_div(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_mul_double_div(const f256_s& addend, const f256_s& value, double scalar, const f256_s& denominator) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s sub_mul_double_div(const f256_s& minuend, const f256_s& value, double scalar, const f256_s& denominator) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_double_sub_div(const f256_s& value, double scalar, const f256_s& subtrahend, const f256_s& denominator) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_add_div_add_double(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator, double scalar) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_sub_div_add_double(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator, double scalar) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s value_sub_mul_div_add_double(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator, double scalar) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_add_mul_div_add_double(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d, const f256_s& denominator, double scalar) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_sub_mul_div_add_double(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d, const f256_s& denominator, double scalar) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_add_add_div_add_double(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator, double scalar) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_sub_add_div_add_double(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator, double scalar) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_add_sub_div_add_double(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator, double scalar) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_sub_sub_div_add_double(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator, double scalar) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s add_mul_double_div_add_double(const f256_s& addend, const f256_s& value, double value_scalar, const f256_s& denominator, double denominator_scalar) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s sub_mul_double_div_add_double(const f256_s& minuend, const f256_s& value, double value_scalar, const f256_s& denominator, double denominator_scalar) noexcept;
-    [[nodiscard]] BL_NO_INLINE f256_s mul_double_sub_div_add_double(const f256_s& value, double value_scalar, const f256_s& subtrahend, const f256_s& denominator, double denominator_scalar) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s               sqr(const f256_s& a) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s               mul_pow2_or_double(const f256_s& a, double b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_add(const f256_s& a, const f256_s& b, const f256_s& c) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_sub(const f256_s& a, const f256_s& b, const f256_s& c) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL value_sub_mul(const f256_s& a, const f256_s& b, const f256_s& c) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_add_add(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_add_sub(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_sub_add(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_sub_sub(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_add_mul(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_sub_mul(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_add_mul_add(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d, const f256_s& e) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_add_mul_sub(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d, const f256_s& e) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_sub_mul_add(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d, const f256_s& e) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_sub_mul_sub(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d, const f256_s& e) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_add_mul_add_mul(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d, const f256_s& e, const f256_s& f) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_add_mul_add_mul_add_mul(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d, const f256_s& e, const f256_s& f, const f256_s& g, const f256_s& h) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_add_add(const f256_s& a, const f256_s& b, const f256_s& c) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_sub_add(const f256_s& a, const f256_s& b, const f256_s& c) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_add_sub(const f256_s& a, const f256_s& b, const f256_s& c) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_sub_sub(const f256_s& a, const f256_s& b, const f256_s& c) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_add_add_add(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_add_add_sub(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_add_sub_sub(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_sub_sub_sub(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_scaled_2_1(const f256_s& a, const f256_s& b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_scaled_1_2(const f256_s& a, const f256_s& b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_scaled_2_neg1(const f256_s& a, const f256_s& b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_scaled_1_neg2(const f256_s& a, const f256_s& b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_mul_double(const f256_s& addend, const f256_s& value, double scalar) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL sub_mul_double(const f256_s& minuend, const f256_s& value, double scalar) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_double_sub(const f256_s& value, double scalar, const f256_s& subtrahend) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_double_add_mul_double(const f256_s& a, double a_scalar, const f256_s& b, double b_scalar) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_double_add_mul_double_add(const f256_s& a, double a_scalar, const f256_s& b, double b_scalar, const f256_s& c) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL div_add(const f256_s& numerator, const f256_s& a, const f256_s& b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL div_sub(const f256_s& numerator, const f256_s& a, const f256_s& b) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL div_add_double(const f256_s& numerator, const f256_s& base_denominator, double scalar) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL div_double_sub(const f256_s& numerator, double scalar, const f256_s& base_denominator) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_add_div(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_sub_div(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL value_sub_mul_div(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_add_mul_div(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d, const f256_s& denominator) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_sub_mul_div(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d, const f256_s& denominator) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_add_add_div(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_sub_add_div(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_add_sub_div(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_sub_sub_div(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_mul_double_div(const f256_s& addend, const f256_s& value, double scalar, const f256_s& denominator) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL sub_mul_double_div(const f256_s& minuend, const f256_s& value, double scalar, const f256_s& denominator) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_double_sub_div(const f256_s& value, double scalar, const f256_s& subtrahend, const f256_s& denominator) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_add_div_add_double(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator, double scalar) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_sub_div_add_double(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator, double scalar) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL value_sub_mul_div_add_double(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator, double scalar) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_add_mul_div_add_double(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d, const f256_s& denominator, double scalar) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_sub_mul_div_add_double(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& d, const f256_s& denominator, double scalar) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_add_add_div_add_double(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator, double scalar) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_sub_add_div_add_double(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator, double scalar) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_add_sub_div_add_double(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator, double scalar) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_sub_sub_div_add_double(const f256_s& a, const f256_s& b, const f256_s& c, const f256_s& denominator, double scalar) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL add_mul_double_div_add_double(const f256_s& addend, const f256_s& value, double value_scalar, const f256_s& denominator, double denominator_scalar) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL sub_mul_double_div_add_double(const f256_s& minuend, const f256_s& value, double value_scalar, const f256_s& denominator, double denominator_scalar) noexcept;
+    [[nodiscard]] BL_NO_INLINE f256_s BL_VECTORCALL mul_double_sub_div_add_double(const f256_s& value, double value_scalar, const f256_s& subtrahend, const f256_s& denominator, double denominator_scalar) noexcept;
 
 } // namespace detail::_f256_runtime
 
@@ -111,13 +113,12 @@ namespace detail::_f256 // primitives and kernels
     // public arithmetic special cases
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s quiet_nan() noexcept
     {
-        return { std::numeric_limits<double>::quiet_NaN(), 0.0, 0.0, 0.0 };
+        return { std::bit_cast<double>(0x7ff8000000000000ull), 0.0, 0.0, 0.0 };
     }
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s signed_infinity(bool negative) noexcept
     {
-        const double inf = std::numeric_limits<double>::infinity();
-        return { negative ? -inf : inf, 0.0, 0.0, 0.0 };
+        return { std::bit_cast<double>(negative ? 0xfff0000000000000ull : 0x7ff0000000000000ull), 0.0, 0.0, 0.0 };
     }
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s signed_zero(bool negative) noexcept
@@ -397,7 +398,6 @@ namespace detail::_f256 // primitives and kernels
     {
         #if FLTX_DETAIL_HAS_RUNTIME_FMA_PATH
         if (!bl::detail::is_constant_evaluated() &&
-            !bl::detail::use_constexpr_parity() &&
             detail::fp::runtime_hardware_fma_enabled())
         {
             fill_mul_products_fma(a, b, products);
@@ -432,7 +432,6 @@ namespace detail::_f256 // primitives and kernels
     {
         #if FLTX_DETAIL_HAS_RUNTIME_FMA_PATH
         if (!bl::detail::is_constant_evaluated() &&
-            !bl::detail::use_constexpr_parity() &&
             detail::fp::runtime_hardware_fma_enabled())
         {
             fill_mul_products_fma(a, b, products);
@@ -744,7 +743,7 @@ namespace detail::_f256 // primitives and kernels
     {
         using namespace detail::_f256;
 
-        if (bl::detail::use_constexpr_math())
+        if (bl::detail::is_constant_evaluated())
         {
             if (detail::fp::isnan(a.x0) || detail::fp::isnan(b))
                 return std::numeric_limits<f256_s>::quiet_NaN();
@@ -799,7 +798,7 @@ namespace detail::_f256 // primitives and kernels
     {
         using namespace detail::_f256;
 
-        if (bl::detail::use_constexpr_math())
+        if (bl::detail::is_constant_evaluated())
         {
             if (detail::fp::isnan(a) || detail::fp::isnan(b.x0))
                 return std::numeric_limits<f256_s>::quiet_NaN();
@@ -932,6 +931,25 @@ namespace detail::_f256 // primitives and kernels
     {
         if (detail::fp::iszero_or_inf_or_nan(b.x0)) [[unlikely]]
             return div_special(a, b);
+
+        if (detail::fp::absd(b.x0) < 0x1p-500
+            && detail::fp::absd(a.x0) < 0x1p500) [[unlikely]]
+        {
+            constexpr int scale = 512;
+            const f256_s scaled_a{
+                detail::fp::ldexp_limb(a.x0, scale),
+                detail::fp::ldexp_limb(a.x1, scale),
+                detail::fp::ldexp_limb(a.x2, scale),
+                detail::fp::ldexp_limb(a.x3, scale)
+            };
+            const f256_s scaled_b{
+                detail::fp::ldexp_limb(b.x0, scale),
+                detail::fp::ldexp_limb(b.x1, scale),
+                detail::fp::ldexp_limb(b.x2, scale),
+                detail::fp::ldexp_limb(b.x3, scale)
+            };
+            return div_inline(scaled_a, scaled_b);
+        }
 
         return div_inline(a, b);
     }
@@ -1164,6 +1182,11 @@ namespace detail::_f256 // primitives and kernels
 [[nodiscard]] BL_FORCE_INLINE constexpr f256 recip(f256_s b) noexcept
 {
     using namespace detail::_f256;
+
+    if (iszero(b)) [[unlikely]]
+        return signed_infinity(signbit(b));
+    if (isinf(b)) [[unlikely]]
+        return signed_zero(signbit(b));
 
     constexpr f256_s one = f256_s{ 1.0 };
 

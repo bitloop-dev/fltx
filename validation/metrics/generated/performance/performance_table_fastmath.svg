@@ -1,0 +1,1408 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1248" height="3952" viewBox="0 0 1248 3952" role="img" aria-labelledby="title desc">
+<title id="title">fltx consumer fast-math performance</title>
+<desc id="desc">FLTX time per iteration; the second line shows FLTX speed versus the fastest available competitor for each target with consumer fast-math enabled.</desc>
+<style>text { font-family: Consolas, 'Courier New', monospace; }</style>
+<rect width="1248" height="3952" fill="#0f1115"/>
+<text x="18" y="44" fill="#f1f2f4" font-size="26" font-weight="700" text-anchor="start">fltx consumer fast-math performance</text>
+<text x="18" y="68" fill="#aeb4bf" font-size="15" font-weight="400" text-anchor="start">FLTX time per iteration; the second line shows FLTX speed versus the fastest available competitor for each target with consumer fast-math enabled.</text>
+<rect x="18" y="80" width="158" height="102" fill="#2b2b2b" stroke="#000000" stroke-width="1" class="function-header-cell"/>
+<text x="26" y="136" fill="#ffffff" font-size="15" font-weight="700" text-anchor="start">Function</text>
+<rect x="176" y="80" width="116" height="34" fill="#244b70" stroke="#000000" stroke-width="1" class="precision-header-cell"/>
+<text x="234" y="102" fill="#ffffff" font-size="15" font-weight="700" text-anchor="middle" class="precision-header">bl::f128</text>
+<rect x="308" y="80" width="116" height="34" fill="#244b70" stroke="#000000" stroke-width="1" class="precision-header-cell"/>
+<text x="366" y="102" fill="#ffffff" font-size="15" font-weight="700" text-anchor="middle" class="precision-header">bl::f256</text>
+<rect x="176" y="114" width="116" height="34" fill="#293f57" stroke="#000000" stroke-width="1" class="platform-header-cell"/>
+<text x="234" y="136" fill="#ffffff" font-size="15" font-weight="700" text-anchor="middle" class="platform-header">Windows</text>
+<rect x="308" y="114" width="116" height="34" fill="#293f57" stroke="#000000" stroke-width="1" class="platform-header-cell"/>
+<text x="366" y="136" fill="#ffffff" font-size="15" font-weight="700" text-anchor="middle" class="platform-header">Windows</text>
+<rect x="176" y="148" width="116" height="34" fill="#313d4b" stroke="#000000" stroke-width="1" class="compiler-header-cell"/>
+<text x="234" y="170" fill="#ffffff" font-size="15" font-weight="700" text-anchor="middle" class="compiler-header">MSVC</text>
+<rect x="308" y="148" width="116" height="34" fill="#313d4b" stroke="#000000" stroke-width="1" class="compiler-header-cell"/>
+<text x="366" y="170" fill="#ffffff" font-size="15" font-weight="700" text-anchor="middle" class="compiler-header">MSVC</text>
+<rect x="18" y="182" width="274" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<rect x="308" y="182" width="116" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="201" fill="#ffffff" font-size="14" font-weight="700" text-anchor="start" class="group-label">Arithmetic</text>
+<rect x="18" y="210" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="235" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">add</text>
+<g>
+<title>Windows / MSVC; bl::f128; arithmetic / add
+fltx bl::f128 (bl::add): 2.1596 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="210" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="235" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2.16ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; arithmetic / add
+fltx bl::f256 (bl::add): 10.8163 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="210" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="235" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">10.8ns</text>
+</g>
+<rect x="18" y="250" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="275" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">subtract</text>
+<g>
+<title>Windows / MSVC; bl::f128; arithmetic / subtract
+fltx bl::f128 (bl::subtract): 2.20098 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="250" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="275" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2.20ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; arithmetic / subtract
+fltx bl::f256 (bl::subtract): 10.8183 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="250" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="275" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">10.8ns</text>
+</g>
+<rect x="18" y="290" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="315" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">multiply</text>
+<g>
+<title>Windows / MSVC; bl::f128; arithmetic / multiply
+fltx bl::f128 (bl::multiply): 2.20613 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="290" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="315" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2.21ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; arithmetic / multiply
+fltx bl::f256 (bl::multiply): 18.8312 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="290" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="315" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">18.8ns</text>
+</g>
+<rect x="18" y="330" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="355" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">divide</text>
+<g>
+<title>Windows / MSVC; bl::f128; arithmetic / divide
+fltx bl::f128 (bl::divide): 6.16903 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="330" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="355" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">6.17ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; arithmetic / divide
+fltx bl::f256 (bl::divide): 79.5709 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="330" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="355" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">79.6ns</text>
+</g>
+<rect x="18" y="370" width="274" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<rect x="308" y="370" width="116" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="389" fill="#ffffff" font-size="14" font-weight="700" text-anchor="start" class="group-label">IO</text>
+<rect x="18" y="398" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="423" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">to_string</text>
+<g>
+<title>Windows / MSVC; bl::f128; io / to_string
+fltx bl::f128 (bl::to_string): 245.233 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="398" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="423" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">245ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; io / to_string
+fltx bl::f256 (bl::to_string): 377.893 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="398" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="423" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">378ns</text>
+</g>
+<rect x="18" y="438" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="463" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">to_chars</text>
+<g>
+<title>Windows / MSVC; bl::f128; io / to_chars
+fltx bl::f128 (bl::to_chars): 187.775 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="438" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="463" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">188ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; io / to_chars
+fltx bl::f256 (bl::to_chars): 319.22 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="438" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="463" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">319ns</text>
+</g>
+<rect x="18" y="478" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="503" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">parse</text>
+<g>
+<title>Windows / MSVC; bl::f128; io / parse
+fltx bl::f128 (bl::parse): 244.427 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="478" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="503" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">244ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; io / parse
+fltx bl::f256 (bl::parse): 424.408 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="478" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="503" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">424ns</text>
+</g>
+<rect x="18" y="518" width="274" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<rect x="308" y="518" width="116" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="537" fill="#ffffff" font-size="14" font-weight="700" text-anchor="start" class="group-label">Rounding</text>
+<rect x="18" y="546" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="571" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">floor</text>
+<g>
+<title>Windows / MSVC; bl::f128; rounding / floor
+fltx bl::f128 (bl::floor): 3.02733 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="546" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="571" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">3.03ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; rounding / floor
+fltx bl::f256 (bl::floor): 6.66403 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="546" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="571" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">6.66ns</text>
+</g>
+<rect x="18" y="586" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="611" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">ceil</text>
+<g>
+<title>Windows / MSVC; bl::f128; rounding / ceil
+fltx bl::f128 (bl::ceil): 3.46328 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="586" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="611" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">3.46ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; rounding / ceil
+fltx bl::f256 (bl::ceil): 6.64924 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="586" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="611" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">6.65ns</text>
+</g>
+<rect x="18" y="626" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="651" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">trunc</text>
+<g>
+<title>Windows / MSVC; bl::f128; rounding / trunc
+fltx bl::f128 (bl::trunc): 4.31443 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="626" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="651" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">4.31ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; rounding / trunc
+fltx bl::f256 (bl::trunc): 8.48309 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="626" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="651" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">8.48ns</text>
+</g>
+<rect x="18" y="666" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="691" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">round</text>
+<g>
+<title>Windows / MSVC; bl::f128; rounding / round
+fltx bl::f128 (bl::round): 10.92 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="666" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="691" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">10.9ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; rounding / round
+fltx bl::f256 (bl::round): 13.4591 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="666" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="691" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">13.5ns</text>
+</g>
+<rect x="18" y="706" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="731" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">roundeven</text>
+<g>
+<title>Windows / MSVC; bl::f128; rounding / roundeven
+fltx bl::f128 (bl::roundeven): 10.6933 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="706" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="731" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">10.7ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; rounding / roundeven
+fltx bl::f256 (bl::roundeven): 10.9182 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="706" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="731" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">10.9ns</text>
+</g>
+<rect x="18" y="746" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="771" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">lround</text>
+<g>
+<title>Windows / MSVC; bl::f128; rounding / lround
+fltx bl::f128 (bl::lround): 4.68271 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="746" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="771" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">4.68ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; rounding / lround
+fltx bl::f256 (bl::lround): 9.13816 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="746" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="771" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">9.14ns</text>
+</g>
+<rect x="18" y="786" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="811" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">llround</text>
+<g>
+<title>Windows / MSVC; bl::f128; rounding / llround
+fltx bl::f128 (bl::llround): 4.91941 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="786" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="811" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">4.92ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; rounding / llround
+fltx bl::f256 (bl::llround): 8.89566 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="786" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="811" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">8.90ns</text>
+</g>
+<rect x="18" y="826" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="851" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">round_decimals</text>
+<g>
+<title>Windows / MSVC; bl::f128; rounding / round_decimals
+fltx bl::f128 (bl::round_decimals): 87.6025 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="826" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="851" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">87.6ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; rounding / round_decimals
+fltx bl::f256 (bl::round_decimals): 133.196 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="826" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="851" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">133ns</text>
+</g>
+<rect x="18" y="866" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="891" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">round_significant</text>
+<g>
+<title>Windows / MSVC; bl::f128; rounding / round_significant
+fltx bl::f128 (bl::round_significant): 135.748 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="866" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="891" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">136ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; rounding / round_significant
+fltx bl::f256 (bl::round_significant): 186.099 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="866" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="891" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">186ns</text>
+</g>
+<rect x="18" y="906" width="274" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<rect x="308" y="906" width="116" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="925" fill="#ffffff" font-size="14" font-weight="700" text-anchor="start" class="group-label">Remainders</text>
+<rect x="18" y="934" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="959" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">fmod</text>
+<g>
+<title>Windows / MSVC; bl::f128; remainders / fmod
+fltx bl::f128 (bl::fmod): 28.5187 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="934" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="959" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">28.5ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; remainders / fmod
+fltx bl::f256 (bl::fmod): 82.8596 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="934" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="959" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">82.9ns</text>
+</g>
+<rect x="18" y="974" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="999" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">remainder</text>
+<g>
+<title>Windows / MSVC; bl::f128; remainders / remainder
+fltx bl::f128 (bl::remainder): 38.6778 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="974" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="999" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">38.7ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; remainders / remainder
+fltx bl::f256 (bl::remainder): 111.705 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="974" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="999" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">112ns</text>
+</g>
+<rect x="18" y="1014" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1039" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">remquo</text>
+<g>
+<title>Windows / MSVC; bl::f128; remainders / remquo
+fltx bl::f128 (bl::remquo): 39.3252 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1014" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1039" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">39.3ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; remainders / remquo
+fltx bl::f256 (bl::remquo): 111.965 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1014" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1039" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">112ns</text>
+</g>
+<rect x="18" y="1054" width="274" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<rect x="308" y="1054" width="116" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1073" fill="#ffffff" font-size="14" font-weight="700" text-anchor="start" class="group-label">Float Utils</text>
+<rect x="18" y="1082" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1107" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">abs</text>
+<g>
+<title>Windows / MSVC; bl::f128; floating_point_utilities / abs
+fltx bl::f128 (bl::abs): 3.04596 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1082" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1107" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">3.05ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; floating_point_utilities / abs
+fltx bl::f256 (bl::abs): 2.72027 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1082" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1107" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2.72ns</text>
+</g>
+<rect x="18" y="1122" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1147" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">fabs</text>
+<g>
+<title>Windows / MSVC; bl::f128; floating_point_utilities / fabs
+fltx bl::f128 (bl::fabs): 3.05756 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1122" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1147" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">3.06ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; floating_point_utilities / fabs
+fltx bl::f256 (bl::fabs): 2.32011 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1122" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1147" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2.32ns</text>
+</g>
+<rect x="18" y="1162" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1187" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">fma</text>
+<g>
+<title>Windows / MSVC; bl::f128; floating_point_utilities / fma
+fltx bl::f128 (bl::fma): 6.42755 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1162" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1187" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">6.43ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; floating_point_utilities / fma
+fltx bl::f256 (bl::fma): 25.1609 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1162" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1187" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">25.2ns</text>
+</g>
+<rect x="18" y="1202" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1227" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">recip</text>
+<g>
+<title>Windows / MSVC; bl::f128; floating_point_utilities / recip
+fltx bl::f128 (bl::recip): 26.3893 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1202" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1227" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">26.4ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; floating_point_utilities / recip
+fltx bl::f256 (bl::recip): 79.3758 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1202" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1227" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">79.4ns</text>
+</g>
+<rect x="18" y="1242" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1267" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">fmin</text>
+<g>
+<title>Windows / MSVC; bl::f128; floating_point_utilities / fmin
+fltx bl::f128 (bl::fmin): 1.026 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1242" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1267" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">1.03ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; floating_point_utilities / fmin
+fltx bl::f256 (bl::fmin): 4.61462 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1242" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1267" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">4.61ns</text>
+</g>
+<rect x="18" y="1282" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1307" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">fmax</text>
+<g>
+<title>Windows / MSVC; bl::f128; floating_point_utilities / fmax
+fltx bl::f128 (bl::fmax): 1.05799 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1282" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1307" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">1.06ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; floating_point_utilities / fmax
+fltx bl::f256 (bl::fmax): 4.759 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1282" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1307" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">4.76ns</text>
+</g>
+<rect x="18" y="1322" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1347" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">fdim</text>
+<g>
+<title>Windows / MSVC; bl::f128; floating_point_utilities / fdim
+fltx bl::f128 (bl::fdim): 5.24664 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1322" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1347" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">5.25ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; floating_point_utilities / fdim
+fltx bl::f256 (bl::fdim): 11.0915 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1322" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1347" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">11.1ns</text>
+</g>
+<rect x="18" y="1362" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1387" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">copysign</text>
+<g>
+<title>Windows / MSVC; bl::f128; floating_point_utilities / copysign
+fltx bl::f128 (bl::copysign): 1.84095 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1362" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1387" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">1.84ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; floating_point_utilities / copysign
+fltx bl::f256 (bl::copysign): 1.31543 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1362" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1387" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">1.32ns</text>
+</g>
+<rect x="18" y="1402" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1427" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">ldexp</text>
+<g>
+<title>Windows / MSVC; bl::f128; floating_point_utilities / ldexp
+fltx bl::f128 (bl::ldexp): 4.34773 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1402" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1427" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">4.35ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; floating_point_utilities / ldexp
+fltx bl::f256 (bl::ldexp): 5.39434 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1402" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1427" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">5.39ns</text>
+</g>
+<rect x="18" y="1442" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1467" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">scalbn</text>
+<g>
+<title>Windows / MSVC; bl::f128; floating_point_utilities / scalbn
+fltx bl::f128 (bl::scalbn): 2.52114 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1442" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1467" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2.52ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; floating_point_utilities / scalbn
+fltx bl::f256 (bl::scalbn): 5.88229 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1442" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1467" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">5.88ns</text>
+</g>
+<rect x="18" y="1482" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1507" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">scalbln</text>
+<g>
+<title>Windows / MSVC; bl::f128; floating_point_utilities / scalbln
+fltx bl::f128 (bl::scalbln): 2.50779 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1482" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1507" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2.51ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; floating_point_utilities / scalbln
+fltx bl::f256 (bl::scalbln): 5.39977 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1482" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1507" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">5.40ns</text>
+</g>
+<rect x="18" y="1522" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1547" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">frexp</text>
+<g>
+<title>Windows / MSVC; bl::f128; floating_point_utilities / frexp
+fltx bl::f128 (bl::frexp): 2.31235 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1522" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1547" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2.31ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; floating_point_utilities / frexp
+fltx bl::f256 (bl::frexp): 11.8185 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1522" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1547" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">11.8ns</text>
+</g>
+<rect x="18" y="1562" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1587" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">modf</text>
+<g>
+<title>Windows / MSVC; bl::f128; floating_point_utilities / modf
+fltx bl::f128 (bl::modf): 6.84677 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1562" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1587" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">6.85ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; floating_point_utilities / modf
+fltx bl::f256 (bl::modf): 20.5388 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1562" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1587" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">20.5ns</text>
+</g>
+<rect x="18" y="1602" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1627" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">ilogb</text>
+<g>
+<title>Windows / MSVC; bl::f128; floating_point_utilities / ilogb
+fltx bl::f128 (bl::ilogb): 2.11243 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1602" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1627" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2.11ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; floating_point_utilities / ilogb
+fltx bl::f256 (bl::ilogb): 1.71277 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1602" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1627" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">1.71ns</text>
+</g>
+<rect x="18" y="1642" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1667" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">logb</text>
+<g>
+<title>Windows / MSVC; bl::f128; floating_point_utilities / logb
+fltx bl::f128 (bl::logb): 2.30614 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1642" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1667" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2.31ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; floating_point_utilities / logb
+fltx bl::f256 (bl::logb): 2.0706 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1642" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1667" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2.07ns</text>
+</g>
+<rect x="18" y="1682" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1707" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">nextafter</text>
+<g>
+<title>Windows / MSVC; bl::f128; floating_point_utilities / nextafter
+fltx bl::f128 (bl::nextafter): 7.02634 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1682" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1707" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">7.03ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; floating_point_utilities / nextafter
+fltx bl::f256 (bl::nextafter): 8.7249 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1682" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1707" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">8.72ns</text>
+</g>
+<rect x="18" y="1722" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1747" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">nexttoward</text>
+<g>
+<title>Windows / MSVC; bl::f128; floating_point_utilities / nexttoward
+fltx bl::f128 (bl::nexttoward): 7.50919 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1722" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1747" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">7.51ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; floating_point_utilities / nexttoward
+fltx bl::f256 (bl::nexttoward): 8.71696 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1722" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1747" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">8.72ns</text>
+</g>
+<rect x="18" y="1762" width="274" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<rect x="308" y="1762" width="116" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1781" fill="#ffffff" font-size="14" font-weight="700" text-anchor="start" class="group-label">Roots &amp; powers</text>
+<rect x="18" y="1790" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1815" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">sqr</text>
+<g>
+<title>Windows / MSVC; bl::f128; roots_and_powers / sqr
+fltx bl::f128 (bl::sqr): 2.38552 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1790" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1815" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2.39ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; roots_and_powers / sqr
+fltx bl::f256 (bl::sqr): 30.8376 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1790" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1815" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">30.8ns</text>
+</g>
+<rect x="18" y="1830" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1855" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">sqrt</text>
+<g>
+<title>Windows / MSVC; bl::f128; roots_and_powers / sqrt
+fltx bl::f128 (bl::sqrt): 5.19599 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1830" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1855" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">5.20ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; roots_and_powers / sqrt
+fltx bl::f256 (bl::sqrt): 127.896 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1830" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1855" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">128ns</text>
+</g>
+<rect x="18" y="1870" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1895" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">cbrt</text>
+<g>
+<title>Windows / MSVC; bl::f128; roots_and_powers / cbrt
+fltx bl::f128 (bl::cbrt): 29.8477 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1870" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1895" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">29.8ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; roots_and_powers / cbrt
+fltx bl::f256 (bl::cbrt): 364.067 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1870" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1895" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">364ns</text>
+</g>
+<rect x="18" y="1910" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1935" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">hypot</text>
+<g>
+<title>Windows / MSVC; bl::f128; roots_and_powers / hypot
+fltx bl::f128 (bl::hypot): 20.1118 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1910" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1935" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">20.1ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; roots_and_powers / hypot
+fltx bl::f256 (bl::hypot): 186.511 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1910" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1935" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">187ns</text>
+</g>
+<rect x="18" y="1950" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="1975" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">pow</text>
+<g>
+<title>Windows / MSVC; bl::f128; roots_and_powers / pow
+fltx bl::f128 (bl::pow): 210.372 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1950" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="1975" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">210ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; roots_and_powers / pow
+fltx bl::f256 (bl::pow): 2774.73 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1950" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="1975" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2,775ns</text>
+</g>
+<rect x="18" y="1990" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2015" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">ipow</text>
+<g>
+<title>Windows / MSVC; bl::f128; roots_and_powers / ipow
+fltx bl::f128 (bl::ipow): 16.0848 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="1990" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2015" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">16.1ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; roots_and_powers / ipow
+fltx bl::f256 (bl::ipow): 117.028 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="1990" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2015" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">117ns</text>
+</g>
+<rect x="18" y="2030" width="274" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<rect x="308" y="2030" width="116" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2049" fill="#ffffff" font-size="14" font-weight="700" text-anchor="start" class="group-label">Exponentials</text>
+<rect x="18" y="2058" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2083" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">exp</text>
+<g>
+<title>Windows / MSVC; bl::f128; exponentials / exp
+fltx bl::f128 (bl::exp): 107.486 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="2058" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2083" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">107ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; exponentials / exp
+fltx bl::f256 (bl::exp): 1026.59 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="2058" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2083" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">1,027ns</text>
+</g>
+<rect x="18" y="2098" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2123" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">exp2</text>
+<g>
+<title>Windows / MSVC; bl::f128; exponentials / exp2
+fltx bl::f128 (bl::exp2): 101.558 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="2098" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2123" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">102ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; exponentials / exp2
+fltx bl::f256 (bl::exp2): 863.413 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="2098" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2123" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">863ns</text>
+</g>
+<rect x="18" y="2138" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2163" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">expm1</text>
+<g>
+<title>Windows / MSVC; bl::f128; exponentials / expm1
+fltx bl::f128 (bl::expm1): 106.606 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="2138" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2163" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">107ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; exponentials / expm1
+fltx bl::f256 (bl::expm1): 1028.45 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="2138" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2163" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">1,028ns</text>
+</g>
+<rect x="18" y="2178" width="274" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<rect x="308" y="2178" width="116" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2197" fill="#ffffff" font-size="14" font-weight="700" text-anchor="start" class="group-label">Logarithms</text>
+<rect x="18" y="2206" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2231" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">log</text>
+<g>
+<title>Windows / MSVC; bl::f128; logarithms / log
+fltx bl::f128 (bl::log): 119.299 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="2206" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2231" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">119ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; logarithms / log
+fltx bl::f256 (bl::log): 1743.32 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="2206" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2231" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">1,743ns</text>
+</g>
+<rect x="18" y="2246" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2271" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">log2</text>
+<g>
+<title>Windows / MSVC; bl::f128; logarithms / log2
+fltx bl::f128 (bl::log2): 121.823 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="2246" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2271" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">122ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; logarithms / log2
+fltx bl::f256 (bl::log2): 1777.93 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="2246" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2271" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">1,778ns</text>
+</g>
+<rect x="18" y="2286" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2311" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">log10</text>
+<g>
+<title>Windows / MSVC; bl::f128; logarithms / log10
+fltx bl::f128 (bl::log10): 121.8 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="2286" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2311" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">122ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; logarithms / log10
+fltx bl::f256 (bl::log10): 1780.64 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="2286" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2311" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">1,781ns</text>
+</g>
+<rect x="18" y="2326" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2351" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">log1p</text>
+<g>
+<title>Windows / MSVC; bl::f128; logarithms / log1p
+fltx bl::f128 (bl::log1p): 125.701 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="2326" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2351" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">126ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; logarithms / log1p
+fltx bl::f256 (bl::log1p): 1777.22 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="2326" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2351" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">1,777ns</text>
+</g>
+<rect x="18" y="2366" width="274" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<rect x="308" y="2366" width="116" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2385" fill="#ffffff" font-size="14" font-weight="700" text-anchor="start" class="group-label">Trigonometric</text>
+<rect x="18" y="2394" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2419" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">sin</text>
+<g>
+<title>Windows / MSVC; bl::f128; trigonometric / sin
+fltx bl::f128 (bl::sin): 91.1592 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="2394" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2419" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">91.2ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; trigonometric / sin
+fltx bl::f256 (bl::sin): 918.454 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="2394" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2419" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">918ns</text>
+</g>
+<rect x="18" y="2434" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2459" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">cos</text>
+<g>
+<title>Windows / MSVC; bl::f128; trigonometric / cos
+fltx bl::f128 (bl::cos): 90.624 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="2434" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2459" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">90.6ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; trigonometric / cos
+fltx bl::f256 (bl::cos): 920.469 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="2434" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2459" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">920ns</text>
+</g>
+<rect x="18" y="2474" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2499" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">sincos</text>
+<g>
+<title>Windows / MSVC; bl::f128; trigonometric / sincos
+fltx bl::f128 (bl::sincos): 102.867 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="2474" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2499" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">103ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; trigonometric / sincos
+fltx bl::f256 (bl::sincos): 1047.95 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="2474" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2499" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">1,048ns</text>
+</g>
+<rect x="18" y="2514" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2539" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">tan</text>
+<g>
+<title>Windows / MSVC; bl::f128; trigonometric / tan
+fltx bl::f128 (bl::tan): 102.02 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="2514" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2539" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">102ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; trigonometric / tan
+fltx bl::f256 (bl::tan): 1218.72 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="2514" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2539" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">1,219ns</text>
+</g>
+<rect x="18" y="2554" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2579" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">asin</text>
+<g>
+<title>Windows / MSVC; bl::f128; trigonometric / asin
+fltx bl::f128 (bl::asin): 165.052 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="2554" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2579" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">165ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; trigonometric / asin
+fltx bl::f256 (bl::asin): 1507.44 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="2554" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2579" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">1,507ns</text>
+</g>
+<rect x="18" y="2594" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2619" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">acos</text>
+<g>
+<title>Windows / MSVC; bl::f128; trigonometric / acos
+fltx bl::f128 (bl::acos): 170.13 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="2594" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2619" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">170ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; trigonometric / acos
+fltx bl::f256 (bl::acos): 1514.6 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="2594" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2619" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">1,515ns</text>
+</g>
+<rect x="18" y="2634" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2659" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">atan</text>
+<g>
+<title>Windows / MSVC; bl::f128; trigonometric / atan
+fltx bl::f128 (bl::atan): 115.117 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="2634" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2659" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">115ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; trigonometric / atan
+fltx bl::f256 (bl::atan): 924.339 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="2634" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2659" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">924ns</text>
+</g>
+<rect x="18" y="2674" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2699" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">atan2</text>
+<g>
+<title>Windows / MSVC; bl::f128; trigonometric / atan2
+fltx bl::f128 (bl::atan2): 124.872 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="2674" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2699" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">125ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; trigonometric / atan2
+fltx bl::f256 (bl::atan2): 1012.54 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="2674" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2699" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">1,013ns</text>
+</g>
+<rect x="18" y="2714" width="274" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<rect x="308" y="2714" width="116" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2733" fill="#ffffff" font-size="14" font-weight="700" text-anchor="start" class="group-label">Hyperbolic</text>
+<rect x="18" y="2742" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2767" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">sinh</text>
+<g>
+<title>Windows / MSVC; bl::f128; hyperbolic / sinh
+fltx bl::f128 (bl::sinh): 136.726 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="2742" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2767" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">137ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; hyperbolic / sinh
+fltx bl::f256 (bl::sinh): 1283.96 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="2742" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2767" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">1,284ns</text>
+</g>
+<rect x="18" y="2782" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2807" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">cosh</text>
+<g>
+<title>Windows / MSVC; bl::f128; hyperbolic / cosh
+fltx bl::f128 (bl::cosh): 115.217 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="2782" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2807" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">115ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; hyperbolic / cosh
+fltx bl::f256 (bl::cosh): 1283.7 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="2782" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2807" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">1,284ns</text>
+</g>
+<rect x="18" y="2822" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2847" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">tanh</text>
+<g>
+<title>Windows / MSVC; bl::f128; hyperbolic / tanh
+fltx bl::f128 (bl::tanh): 120.982 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="2822" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2847" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">121ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; hyperbolic / tanh
+fltx bl::f256 (bl::tanh): 1265.35 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="2822" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2847" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">1,265ns</text>
+</g>
+<rect x="18" y="2862" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2887" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">asinh</text>
+<g>
+<title>Windows / MSVC; bl::f128; inverse_hyperbolic / asinh
+fltx bl::f128 (bl::asinh): 125.418 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="2862" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2887" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">125ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; inverse_hyperbolic / asinh
+fltx bl::f256 (bl::asinh): 2693.27 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="2862" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2887" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2,693ns</text>
+</g>
+<rect x="18" y="2902" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2927" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">acosh</text>
+<g>
+<title>Windows / MSVC; bl::f128; inverse_hyperbolic / acosh
+fltx bl::f128 (bl::acosh): 141.957 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="2902" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2927" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">142ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; inverse_hyperbolic / acosh
+fltx bl::f256 (bl::acosh): 2513.71 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="2902" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2927" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2,514ns</text>
+</g>
+<rect x="18" y="2942" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="2967" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">atanh</text>
+<g>
+<title>Windows / MSVC; bl::f128; inverse_hyperbolic / atanh
+fltx bl::f128 (bl::atanh): 137.929 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="2942" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="2967" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">138ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; inverse_hyperbolic / atanh
+fltx bl::f256 (bl::atanh): 2374.38 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="2942" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="2967" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2,374ns</text>
+</g>
+<rect x="18" y="2982" width="274" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<rect x="308" y="2982" width="116" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3001" fill="#ffffff" font-size="14" font-weight="700" text-anchor="start" class="group-label">Special</text>
+<rect x="18" y="3010" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3035" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">erfc</text>
+<g>
+<title>Windows / MSVC; bl::f128; special_functions / erfc
+fltx bl::f128 (bl::erfc): 570.155 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="3010" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="3035" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">570ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; special_functions / erfc
+fltx bl::f256 (bl::erfc): 9209.65 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="3010" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="3035" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">9,210ns</text>
+</g>
+<rect x="18" y="3050" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3075" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">erf</text>
+<g>
+<title>Windows / MSVC; bl::f128; special_functions / erf
+fltx bl::f128 (bl::erf): 569.749 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="3050" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="3075" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">570ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; special_functions / erf
+fltx bl::f256 (bl::erf): 9629.17 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="3050" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="3075" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">9,629ns</text>
+</g>
+<rect x="18" y="3090" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3115" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">tgamma</text>
+<g>
+<title>Windows / MSVC; bl::f128; special_functions / tgamma
+fltx bl::f128 (bl::tgamma): 494.014 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="3090" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="3115" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">494ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; special_functions / tgamma
+fltx bl::f256 (bl::tgamma): 9872.11 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="3090" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="3115" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">9,872ns</text>
+</g>
+<rect x="18" y="3130" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3155" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">lgamma</text>
+<g>
+<title>Windows / MSVC; bl::f128; special_functions / lgamma
+fltx bl::f128 (bl::lgamma): 545.321 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="3130" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="3155" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">545ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; special_functions / lgamma
+fltx bl::f256 (bl::lgamma): 8811.85 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="3130" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="3155" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">8,812ns</text>
+</g>
+<rect x="18" y="3170" width="274" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<rect x="308" y="3170" width="116" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3189" fill="#ffffff" font-size="14" font-weight="700" text-anchor="start" class="group-label">Comparisons</text>
+<rect x="18" y="3198" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3223" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">equal</text>
+<g>
+<title>Windows / MSVC; bl::f128; comparisons / equal
+fltx bl::f128 (bl::equal): 0.725262 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="3198" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="3223" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">0.725ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; comparisons / equal
+fltx bl::f256 (bl::equal): 0.749337 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="3198" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="3223" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">0.749ns</text>
+</g>
+<rect x="18" y="3238" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3263" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">not_equal</text>
+<g>
+<title>Windows / MSVC; bl::f128; comparisons / not_equal
+fltx bl::f128 (bl::not_equal): 0.707588 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="3238" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="3263" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">0.708ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; comparisons / not_equal
+fltx bl::f256 (bl::not_equal): 0.745875 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="3238" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="3263" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">0.746ns</text>
+</g>
+<rect x="18" y="3278" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3303" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">less</text>
+<g>
+<title>Windows / MSVC; bl::f128; comparisons / less
+fltx bl::f128 (bl::less): 2.03355 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="3278" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="3303" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2.03ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; comparisons / less
+fltx bl::f256 (bl::less): 2.04781 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="3278" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="3303" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2.05ns</text>
+</g>
+<rect x="18" y="3318" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3343" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">greater</text>
+<g>
+<title>Windows / MSVC; bl::f128; comparisons / greater
+fltx bl::f128 (bl::greater): 2.04051 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="3318" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="3343" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2.04ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; comparisons / greater
+fltx bl::f256 (bl::greater): 2.02711 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="3318" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="3343" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2.03ns</text>
+</g>
+<rect x="18" y="3358" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3383" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">less_equal</text>
+<g>
+<title>Windows / MSVC; bl::f128; comparisons / less_equal
+fltx bl::f128 (bl::less_equal): 2.02351 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="3358" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="3383" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2.02ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; comparisons / less_equal
+fltx bl::f256 (bl::less_equal): 2.105 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="3358" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="3383" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2.11ns</text>
+</g>
+<rect x="18" y="3398" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3423" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">greater_equal</text>
+<g>
+<title>Windows / MSVC; bl::f128; comparisons / greater_equal
+fltx bl::f128 (bl::greater_equal): 2.00855 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="3398" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="3423" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2.01ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; comparisons / greater_equal
+fltx bl::f256 (bl::greater_equal): 2.03051 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="3398" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="3423" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">2.03ns</text>
+</g>
+<rect x="18" y="3438" width="274" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<rect x="308" y="3438" width="116" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3457" fill="#ffffff" font-size="14" font-weight="700" text-anchor="start" class="group-label">Random</text>
+<rect x="18" y="3466" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3491" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">uniform_real</text>
+<g>
+<title>Windows / MSVC; bl::f128; random / uniform_real
+fltx bl::f128 (bl::uniform_real): 11.1181 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="3466" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="3491" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">11.1ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; random / uniform_real
+fltx bl::f256 (bl::uniform_real): 19.3405 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="3466" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="3491" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">19.3ns</text>
+</g>
+<rect x="18" y="3506" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3531" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">normal</text>
+<g>
+<title>Windows / MSVC; bl::f128; random / normal
+fltx bl::f128 (bl::normal): 66.7309 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="3506" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="3531" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">66.7ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; random / normal
+fltx bl::f256 (bl::normal): 275.924 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="3506" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="3531" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">276ns</text>
+</g>
+<rect x="18" y="3546" width="274" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<rect x="308" y="3546" width="116" height="28" fill="#4e555f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3565" fill="#ffffff" font-size="14" font-weight="700" text-anchor="start" class="group-label">Mixed Workloads</text>
+<rect x="18" y="3574" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3599" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">product_sum</text>
+<g>
+<title>Windows / MSVC; bl::f128; mixed_workloads / product_sum
+fltx bl::f128 (bl::product_sum): 5.35599 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="3574" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="3599" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">5.36ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; mixed_workloads / product_sum
+fltx bl::f256 (bl::product_sum): 44.6751 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="3574" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="3599" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">44.7ns</text>
+</g>
+<rect x="18" y="3614" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3639" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">chained_arithmetic</text>
+<g>
+<title>Windows / MSVC; bl::f128; mixed_workloads / chained_arithmetic
+fltx bl::f128 (same workload): 20.9172 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="3614" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="3639" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">20.9ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; mixed_workloads / chained_arithmetic
+fltx bl::f256 (same workload): 159.08 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="3614" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="3639" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">159ns</text>
+</g>
+<rect x="18" y="3654" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3679" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">affine_trig</text>
+<g>
+<title>Windows / MSVC; bl::f128; mixed_workloads / affine_trig
+fltx bl::f128 (same workload): 181.426 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="3654" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="3679" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">181ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; mixed_workloads / affine_trig
+fltx bl::f256 (same workload): 1880.7 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="3654" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="3679" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">1,881ns</text>
+</g>
+<rect x="18" y="3694" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3719" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">mandelbrot</text>
+<g>
+<title>Windows / MSVC; bl::f128; mixed_workloads / mandelbrot
+fltx bl::f128 (same workload): 14.8233 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="3694" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="3719" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">14.8ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; mixed_workloads / mandelbrot
+fltx bl::f256 (same workload): 129.621 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="3694" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="3719" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">130ns</text>
+</g>
+<rect x="18" y="3734" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3759" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">matrix_vector_4x4</text>
+<g>
+<title>Windows / MSVC; bl::f128; mixed_workloads / matrix_vector_4x4
+fltx bl::f128 (same workload): 58.8231 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="3734" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="3759" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">58.8ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; mixed_workloads / matrix_vector_4x4
+fltx bl::f256 (same workload): 582.351 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="3734" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="3759" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">582ns</text>
+</g>
+<rect x="18" y="3774" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3799" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">horner_polynomial</text>
+<g>
+<title>Windows / MSVC; bl::f128; mixed_workloads / horner_polynomial
+fltx bl::f128 (same workload): 80.55 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="3774" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="3799" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">80.5ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; mixed_workloads / horner_polynomial
+fltx bl::f256 (same workload): 413.05 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="3774" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="3799" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">413ns</text>
+</g>
+<rect x="18" y="3814" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3839" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">newton_root</text>
+<g>
+<title>Windows / MSVC; bl::f128; mixed_workloads / newton_root
+fltx bl::f128 (same workload): 31.8525 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="3814" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="3839" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">31.9ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; mixed_workloads / newton_root
+fltx bl::f256 (same workload): 225.947 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="3814" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="3839" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">226ns</text>
+</g>
+<rect x="18" y="3854" width="158" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3879" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">log_sum_exp</text>
+<g>
+<title>Windows / MSVC; bl::f128; mixed_workloads / log_sum_exp
+fltx bl::f128 (same workload): 1017.7 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="3854" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="234" y="3879" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">1,018ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; mixed_workloads / log_sum_exp
+fltx bl::f256 (same workload): 8971.47 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="3854" width="116" height="40" fill="#191d23" stroke="#000000" stroke-width="1"/>
+<text x="366" y="3879" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">8,971ns</text>
+</g>
+<rect x="18" y="3894" width="158" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="26" y="3919" fill="#e7e9ee" font-size="15" font-weight="600" text-anchor="start" class="operation-label">haversine</text>
+<g>
+<title>Windows / MSVC; bl::f128; mixed_workloads / haversine
+fltx bl::f128 (same workload): 455.04 ns
+No competitor benchmark is available.</title>
+<rect x="176" y="3894" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="234" y="3919" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">455ns</text>
+</g>
+<g>
+<title>Windows / MSVC; bl::f256; mixed_workloads / haversine
+fltx bl::f256 (same workload): 4917.31 ns
+No competitor benchmark is available.</title>
+<rect x="308" y="3894" width="116" height="40" fill="#16191f" stroke="#000000" stroke-width="1"/>
+<text x="366" y="3919" fill="#e7e9ee" font-size="15" font-weight="700" text-anchor="middle" class="result-line">4,917ns</text>
+</g>
+</svg>

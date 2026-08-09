@@ -12,6 +12,95 @@
 #include <cstdint>
 #include <limits>
 
+#ifndef BL_CXX_LANGUAGE_VERSION
+  #if defined(_MSVC_LANG) && (!defined(__cplusplus) || (_MSVC_LANG > __cplusplus))
+  #define BL_CXX_LANGUAGE_VERSION _MSVC_LANG
+  #else
+  #define BL_CXX_LANGUAGE_VERSION __cplusplus
+  #endif
+#endif
+
+#if BL_CXX_LANGUAGE_VERSION < 202002L
+#error fltx requires C++20 or newer.
+#endif
+
+#ifndef BL_HAS_IF_CONSTEVAL
+  #if defined(__INTELLISENSE__) && defined(_MSC_VER) && !defined(__clang__) && \
+      (BL_CXX_LANGUAGE_VERSION <= 202002L)
+    // IntelliSense does not consistently parse MSVC's C++20 if-consteval
+    // extension. Use the portable spelling for editor analysis only; the
+    // compiler never defines __INTELLISENSE__ and retains if consteval.
+    #define BL_HAS_IF_CONSTEVAL 0
+  #elif defined(__cpp_if_consteval) && (__cpp_if_consteval >= 202106L)
+    #define BL_HAS_IF_CONSTEVAL 1
+  #elif defined(_MSC_VER) && !defined(__clang__) && \
+        defined(__cpp_consteval) && (_MSC_VER >= 1936)
+    // MSVC accepts C++23's if consteval in C++20 mode as extension C5282.
+    // Using it avoids a severe optimizer/code-size regression in large
+    // constexpr/runtime dispatch graphs.
+    #define BL_HAS_IF_CONSTEVAL 1
+    #define BL_IF_CONSTEVAL_MSVC_CXX20_EXTENSION 1
+  #elif defined(__GNUC__) && !defined(__clang__) && (__GNUC__ >= 12)
+    // GCC's standard C++20 branch optimizes well at -O2, but at -O0 it can
+    // retain and force-inline the constexpr graph into runtime code. GCC 12+
+    // accepts if consteval in C++20 mode and discards that graph correctly.
+    #define BL_HAS_IF_CONSTEVAL 1
+    #define BL_IF_CONSTEVAL_GCC_CXX20_EXTENSION 1
+  #else
+    #define BL_HAS_IF_CONSTEVAL 0
+  #endif
+#endif
+
+#if defined(_MSC_VER) && !defined(__clang__) && !defined(__INTELLISENSE__) && \
+    (BL_CXX_LANGUAGE_VERSION <= 202002L) && !BL_HAS_IF_CONSTEVAL
+#error fltx C++20 support requires MSVC 19.36 or newer; upgrade MSVC or compile as C++23.
+#endif
+
+#if defined(__GNUC__) && !defined(__clang__) && \
+    (BL_CXX_LANGUAGE_VERSION <= 202002L) && !BL_HAS_IF_CONSTEVAL
+#error fltx C++20 support requires GCC 12 or newer; upgrade GCC or compile as C++23.
+#endif
+
+#if !BL_HAS_IF_CONSTEVAL
+#include <type_traits>
+#endif
+
+#if defined(BL_IF_CONSTEVAL_MSVC_CXX20_EXTENSION)
+  #define BL_IF_CONSTEVAL_WARNING_PUSH \
+    __pragma(warning(push))                    \
+    __pragma(warning(disable: 5282))
+  #define BL_IF_CONSTEVAL_WARNING_POP __pragma(warning(pop))
+#elif defined(BL_IF_CONSTEVAL_GCC_CXX20_EXTENSION)
+  #define BL_IF_CONSTEVAL_WARNING_PUSH              \
+    _Pragma("GCC diagnostic push")                         \
+    _Pragma("GCC diagnostic ignored \"-Wc++23-extensions\"")
+  #define BL_IF_CONSTEVAL_WARNING_POP _Pragma("GCC diagnostic pop")
+#else
+  #define BL_IF_CONSTEVAL_WARNING_PUSH
+  #define BL_IF_CONSTEVAL_WARNING_POP
+#endif
+
+#if defined(_MSC_VER) && !defined(__clang__)
+  #define BL_DEPRECATED_DECLARATIONS_WARNING_PUSH \
+    __pragma(warning(push))                               \
+    __pragma(warning(disable: 4996))
+  #define BL_DEPRECATED_DECLARATIONS_WARNING_POP __pragma(warning(pop))
+#elif defined(__clang__) || defined(__GNUC__)
+  #define BL_DEPRECATED_DECLARATIONS_WARNING_PUSH       \
+    _Pragma("GCC diagnostic push")                            \
+    _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
+  #define BL_DEPRECATED_DECLARATIONS_WARNING_POP _Pragma("GCC diagnostic pop")
+#else
+  #define BL_DEPRECATED_DECLARATIONS_WARNING_PUSH
+  #define BL_DEPRECATED_DECLARATIONS_WARNING_POP
+#endif
+
+#if BL_HAS_IF_CONSTEVAL
+  #define BL_IF_CONSTEVAL if consteval
+#else
+  #define BL_IF_CONSTEVAL if (std::is_constant_evaluated())
+#endif
+
 // Environment checks
 
 static_assert(sizeof(double) == sizeof(std::uint64_t),
@@ -25,31 +114,51 @@ static_assert(std::numeric_limits<double>::is_iec559 &&
     "fltx requires double to use the IEEE 754 binary64 format.");
 
 #if !defined(NDEBUG) && defined(_MSC_VER)
-#define BL_CONSTEXPR_DEBUG_ASSERT(cond, msg) \
-    do { if consteval { if (!(cond)) throw msg; } else { if (!(cond)) __debugbreak(); } } while (false)
+#define BL_CONSTEXPR_DEBUG_ASSERT(cond, msg)                         \
+    do                                                              \
+    {                                                               \
+        BL_IF_CONSTEVAL_WARNING_PUSH                         \
+        BL_IF_CONSTEVAL                                      \
+        {                                                           \
+            if (!(cond))                                            \
+                throw msg;                                          \
+        }                                                           \
+        else                                                        \
+        {                                                           \
+            if (!(cond))                                            \
+                __debugbreak();                                     \
+        }                                                           \
+        BL_IF_CONSTEVAL_WARNING_POP                          \
+    } while (false)
 #elif !defined(NDEBUG) && (defined(__clang__) || defined(__GNUC__))
-#define BL_CONSTEXPR_DEBUG_ASSERT(cond, msg) \
-    do { if consteval { if (!(cond)) throw msg; } else { if (!(cond)) __builtin_trap(); } } while (false)
+#define BL_CONSTEXPR_DEBUG_ASSERT(cond, msg)                         \
+    do                                                              \
+    {                                                               \
+        BL_IF_CONSTEVAL_WARNING_PUSH                         \
+        BL_IF_CONSTEVAL                                      \
+        {                                                           \
+            if (!(cond))                                            \
+                throw msg;                                          \
+        }                                                           \
+        else                                                        \
+        {                                                           \
+            if (!(cond))                                            \
+                __builtin_trap();                                   \
+        }                                                           \
+        BL_IF_CONSTEVAL_WARNING_POP                          \
+    } while (false)
 #else
-#define BL_CONSTEXPR_DEBUG_ASSERT(cond, msg) \
-    do { if consteval { if (!(cond)) throw msg; } } while (false)
-#endif
-
-
-#ifndef BL_CXX_LANGUAGE_VERSION
-  #if defined(_MSVC_LANG) && (!defined(__cplusplus) || (_MSVC_LANG > __cplusplus))
-  #define BL_CXX_LANGUAGE_VERSION _MSVC_LANG
-  #else
-  #define BL_CXX_LANGUAGE_VERSION __cplusplus
-  #endif
-#endif
-
-#if BL_CXX_LANGUAGE_VERSION <= 202002L
-#error fltx requires C++23 or newer.
-#endif
-
-#if !defined(__cpp_if_consteval) || (__cpp_if_consteval < 202106L)
-#error fltx requires C++23 if consteval support.
+#define BL_CONSTEXPR_DEBUG_ASSERT(cond, msg)                         \
+    do                                                              \
+    {                                                               \
+        BL_IF_CONSTEVAL_WARNING_PUSH                         \
+        BL_IF_CONSTEVAL                                      \
+        {                                                           \
+            if (!(cond))                                            \
+                throw msg;                                          \
+        }                                                           \
+        BL_IF_CONSTEVAL_WARNING_POP                          \
+    } while (false)
 #endif
 
 #ifndef FLTX_FAST_MATH
@@ -94,6 +203,16 @@ static_assert(std::numeric_limits<double>::is_iec559 &&
   #define BL_NO_INLINE __attribute__((noinline))
   #else
   #define BL_NO_INLINE
+  #endif
+#endif
+
+#ifndef BL_VECTORCALL
+  // ABI-affecting optimization: apply only to individually benchmarked runtime
+  // entry points. Callers and the compiled library must see the same declaration.
+  #if defined(_MSC_VER)
+  #define BL_VECTORCALL __vectorcall
+  #else
+  #define BL_VECTORCALL
   #endif
 #endif
 
@@ -280,73 +399,25 @@ static_assert(std::numeric_limits<double>::is_iec559 &&
 #define FLTX_MATH_USES_CHECKED_DEKKER
 #endif
 
-#if defined(FLTX_SIMULATE_TOGGLE_CONSTEVAL_MODE) && defined(FLTX_SIMULATE_FIXED_CONSTEVAL_MODE)
-#error FLTX_SIMULATE_TOGGLE_CONSTEVAL_MODE and FLTX_SIMULATE_FIXED_CONSTEVAL_MODE are separate modes; enable only one.
-#endif
-
-#if defined(FLTX_SIMULATE_TOGGLE_CONSTEVAL_MODE) || defined(FLTX_SIMULATE_FIXED_CONSTEVAL_MODE)
-#define FLTX_HAS_SIMULATED_CONSTEVAL_MODE
-#endif
-
 namespace bl
 {
-    #if defined(FLTX_SIMULATE_TOGGLE_CONSTEVAL_MODE)
-    namespace _fltx_debug
-    {
-        inline bool simulate_consteval_path = false;
-
-        BL_FORCE_INLINE void set_simulated_consteval_path(bool enabled) noexcept { simulate_consteval_path = enabled; }
-        BL_FORCE_INLINE void set_forced_constexpr_path() noexcept { set_simulated_consteval_path(true); }
-        BL_FORCE_INLINE void set_forced_runtime_path() noexcept { set_simulated_consteval_path(false); }
-    }
-    #endif
-
     namespace detail
     {
         [[nodiscard]] BL_FORCE_INLINE constexpr bool is_constant_evaluated() noexcept
         {
-            // In simulated-consteval mode, tests can run ordinary runtime calls
-            // through the branches that would be selected during constant
-            // evaluation. FLTX_CONSTEXPR_PARITY itself is intentionally not part of
-            // this decision; it requests bitwise-compatible results, not forced
-            // constexpr-path execution.
-            if consteval
+            // Fixed simulated-consteval mode runs every constexpr-capable branch
+            // at runtime for accuracy testing and performance profiling.
+            BL_IF_CONSTEVAL_WARNING_PUSH
+            BL_IF_CONSTEVAL
             {
                 return true;
             }
+            BL_IF_CONSTEVAL_WARNING_POP
 
             #if defined(FLTX_SIMULATE_FIXED_CONSTEVAL_MODE)
             return true;
-            #elif defined(FLTX_SIMULATE_TOGGLE_CONSTEVAL_MODE)
-            return bl::_fltx_debug::simulate_consteval_path;
             #else
             return false;
-            #endif
-        }
-
-        [[nodiscard]] BL_FORCE_INLINE constexpr bool use_constexpr_parity() noexcept
-        {
-            // Result-parity policy only. Callers may use this to decide whether to
-            // canonicalize a math result.
-            #if defined(FLTX_CONSTEXPR_PARITY)
-            return true;
-            #else
-            return false;
-            #endif
-        }
-
-        [[nodiscard]] BL_FORCE_INLINE constexpr bool use_constexpr_math() noexcept
-        {
-            // Select constexpr-safe math algorithms. In normal builds this tracks
-            // actual constant evaluation. Toggle simulated mode lets tests select
-            // constexpr-safe paths at runtime for parity/domain checks. Fixed
-            // simulated mode always selects those paths so benchmarks do not measure
-            // the toggle branch. FLTX_CONSTEXPR_PARITY also takes this path so runtime
-            // and constant-evaluated results are bitwise comparable.
-            #if defined(FLTX_SIMULATE_FIXED_CONSTEVAL_MODE)
-            return true;
-            #else
-            return is_constant_evaluated() || use_constexpr_parity();
             #endif
         }
 
@@ -357,15 +428,16 @@ namespace bl
 
 // Route public constexpr-capable APIs to the constexpr implementation during
 // constant evaluation, and to the optimized runtime implementation otherwise.
-// Test modes can force or toggle the constexpr path at runtime so constexpr-only
-// code can be tested/benchmarked against the runtime path.
+// Fixed simulation can force the constexpr path at runtime so its accuracy and
+// performance can be measured over the complete runtime-generated corpus.
 
 #ifndef BL_CONSTEXPR_RUNTIME_DISPATCH
   #if defined(FLTX_SIMULATE_FIXED_CONSTEVAL_MODE)
     #define BL_CONSTEXPR_RUNTIME_DISPATCH(CONSTEVAL_EXPR, RUNTIME_EXPR) \
         do                                                              \
         {                                                               \
-            if consteval                                                \
+            BL_IF_CONSTEVAL_WARNING_PUSH                         \
+            BL_IF_CONSTEVAL                                      \
             {                                                           \
                 return (CONSTEVAL_EXPR);                                \
             }                                                           \
@@ -373,38 +445,25 @@ namespace bl
             {                                                           \
                 return (CONSTEVAL_EXPR);                                \
             }                                                           \
-        } while (false)
-  #elif !defined(FLTX_CONSTEXPR_PARITY) && !defined(FLTX_HAS_SIMULATED_CONSTEVAL_MODE)
-    #define BL_CONSTEXPR_RUNTIME_DISPATCH(CONSTEVAL_EXPR, RUNTIME_EXPR) \
-        do                                                              \
-        {                                                               \
-            if consteval                                                \
-            {                                                           \
-                return (CONSTEVAL_EXPR);                                \
-            }                                                           \
-            else                                                        \
-            {                                                           \
-                return (RUNTIME_EXPR);                                  \
-            }                                                           \
+            BL_IF_CONSTEVAL_WARNING_POP                          \
         } while (false)
   #else
     #define BL_CONSTEXPR_RUNTIME_DISPATCH(CONSTEVAL_EXPR, RUNTIME_EXPR) \
         do                                                              \
         {                                                               \
-            if consteval                                                \
+            BL_IF_CONSTEVAL_WARNING_PUSH                         \
+            BL_IF_CONSTEVAL                                      \
             {                                                           \
                 return (CONSTEVAL_EXPR);                                \
             }                                                           \
             else                                                        \
             {                                                           \
-                if (bl::detail::use_constexpr_math())                   \
-                    return (CONSTEVAL_EXPR);                            \
                 return (RUNTIME_EXPR);                                  \
             }                                                           \
+            BL_IF_CONSTEVAL_WARNING_POP                          \
         } while (false)
   #endif
 #endif
-
 
 // Convenience macro for f128/f128_s and f256/f256_s for identical std::numeric_limits
 
@@ -430,6 +489,8 @@ struct std::numeric_limits<wrapper_type>                                        
     static constexpr bool has_infinity       = base::has_infinity;                                           \
     static constexpr bool has_quiet_NaN      = base::has_quiet_NaN;                                          \
     static constexpr bool has_signaling_NaN  = base::has_signaling_NaN;                                      \
+    static constexpr std::float_denorm_style has_denorm = base::has_denorm;                                  \
+    static constexpr bool has_denorm_loss    = base::has_denorm_loss;                                        \
     static constexpr int  digits             = base::digits;                                                 \
     static constexpr int  digits10           = base::digits10;                                               \
     static constexpr int  max_digits10       = base::max_digits10;                                           \

@@ -22,6 +22,8 @@ namespace detail::_f256_runtime
 {
     // complete-operation x86 FMA backend
     BL_NO_INLINE f256_s fma_x86(const f256_s& x, const f256_s& y, const f256_s& z);
+    BL_NO_INLINE f256_s fma(const f256_s& x, const f256_s& y, const f256_s& z);
+    BL_NO_INLINE f256_s fma_cancellation(const f256_s& x, const f256_s& y, const f256_s& z);
 
     // roots
     BL_NO_INLINE f256_s sqrt(const f256_s& a);
@@ -29,9 +31,9 @@ namespace detail::_f256_runtime
     BL_NO_INLINE f256_s hypot(const f256_s& x, const f256_s& y);
 
     // rounding and decimals
-    BL_NO_INLINE f256_s round_nearest_away_from_zero(const f256_s& a);
-    BL_NO_INLINE f256_s round_to_decimals(f256_s v, int prec);
-    BL_NO_INLINE f256_s round_to_significant_figures(f256_s v, int figures);
+    BL_NO_INLINE f256_s BL_VECTORCALL round_nearest_away_from_zero(const f256_s& a);
+    BL_NO_INLINE f256_s round_decimals(f256_s v, int prec);
+    BL_NO_INLINE f256_s round_significant(f256_s v, int figures);
     BL_NO_INLINE long lround_nearest_away_from_zero(const f256_s& x);
     BL_NO_INLINE long long llround_nearest_away_from_zero(const f256_s& x);
 
@@ -52,10 +54,10 @@ namespace detail::_f256_runtime
     BL_NO_INLINE f256_s log1p(const f256_s& x);
 
     // pow
-    BL_NO_INLINE f256_s pow(const f256_s& x, const f256_s& y);
-    BL_NO_INLINE f256_s pow(const f256_s& x, double y);
-    BL_NO_INLINE f256_s ipow_signed(const f256_s& x, std::intmax_t y);
-    BL_NO_INLINE f256_s ipow_unsigned(const f256_s& x, std::uintmax_t y);
+    BL_NO_INLINE f256_s BL_VECTORCALL pow(const f256_s& x, const f256_s& y);
+    BL_NO_INLINE f256_s BL_VECTORCALL pow(const f256_s& x, double y);
+    BL_NO_INLINE f256_s BL_VECTORCALL ipow_signed(const f256_s& x, std::intmax_t y);
+    BL_NO_INLINE f256_s BL_VECTORCALL ipow_unsigned(const f256_s& x, std::uintmax_t y);
 
     // trig
     BL_NO_INLINE bool sincos(const f256_s& x, f256_s& s_out, f256_s& c_out);
@@ -103,8 +105,8 @@ namespace detail::_f256_impl
     BL_FORCE_INLINE constexpr f256_s trunc(const f256_s& a);
     BL_FORCE_INLINE constexpr f256_s round_nearest_away_from_zero(const f256_s& a);
     BL_FORCE_INLINE f256_s round_nearest_away_from_zero_runtime(const f256_s& a) noexcept;
-    BL_FORCE_INLINE constexpr f256_s round_to_decimals(f256_s v, int prec);
-    BL_FORCE_INLINE constexpr f256_s round_to_significant_figures(f256_s v, int figures);
+    BL_FORCE_INLINE constexpr f256_s round_decimals(f256_s v, int prec);
+    BL_FORCE_INLINE constexpr f256_s round_significant(f256_s v, int figures);
     BL_FORCE_INLINE constexpr f256_s round_nearest_even(const f256_s& a);
     BL_FORCE_INLINE constexpr long lround_nearest_away_from_zero(const f256_s& x);
     BL_FORCE_INLINE constexpr long long llround_nearest_away_from_zero(const f256_s& x);

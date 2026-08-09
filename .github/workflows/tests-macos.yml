@@ -1,0 +1,15 @@
+name: Tests macOS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  appleclang:
+    uses: ./.github/workflows/test_base.yml
+    with:
+      platform_name: macOS AppleClang
+      runner: macos-latest
+      configure_preset: native-release
+      compiler_family: appleclang

@@ -168,30 +168,10 @@ BL_FORCE_INLINE constexpr bool isnan(float value) noexcept
     return (bits & 0x7fffffffu) > 0x7f800000u;
 }
 
-template<int bits_to_clear>
-BL_FORCE_INLINE constexpr double zero_low_fraction_bits_finite(double value) noexcept
-{
-    static_assert(bits_to_clear >= 0 && bits_to_clear <= 52);
-
-    if constexpr (bits_to_clear == 0)
-        return value;
-
-    if (iszero_or_inf_or_nan(value))
-        return value;
-
-    constexpr std::uint64_t fraction_mask = (std::uint64_t{ 1 } << 52) - 1ULL;
-    constexpr std::uint64_t clear_mask = ~((std::uint64_t{ 1 } << bits_to_clear) - 1ULL);
-
-    const std::uint64_t bits = std::bit_cast<std::uint64_t>(value);
-    const std::uint64_t sign_and_exponent = bits & ~fraction_mask;
-    const std::uint64_t fraction = bits & fraction_mask;
-    return std::bit_cast<double>(sign_and_exponent | (fraction & clear_mask));
-}
-
-
 BL_FORCE_INLINE constexpr double absd(double x) noexcept
 {
-    return (x < 0.0) ? -x : x;
+    return std::bit_cast<double>(
+        std::bit_cast<std::uint64_t>(x) & 0x7fffffffffffffffULL);
 }
 
 BL_FORCE_INLINE constexpr int frexp_exponent(double x) noexcept
@@ -216,7 +196,7 @@ BL_FORCE_INLINE constexpr int frexp_exponent(double x) noexcept
 
 BL_FORCE_INLINE constexpr int frexp_exponent_limb(double value) noexcept
 {
-    if (bl::detail::use_constexpr_math())
+    if (bl::detail::is_constant_evaluated())
     {
         return frexp_exponent(value);
     }
@@ -283,6 +263,76 @@ BL_FORCE_INLINE constexpr pow2_scale_info exact_pow2_scale_info(double value) no
 BL_FORCE_INLINE constexpr bool abs_double_is_power_of_two(double value) noexcept
 {
     return exact_pow2_scale_info(value).valid;
+}
+
+[[nodiscard]] BL_FORCE_INLINE constexpr double positive_power_of_two(int exponent) noexcept
+{
+    if (exponent >= -1022)
+    {
+        return std::bit_cast<double>(
+            static_cast<std::uint64_t>(exponent + 1023) << 52);
+    }
+    return std::bit_cast<double>(
+        std::uint64_t{ 1 } << static_cast<unsigned>(exponent + 1074));
+}
+
+[[nodiscard]] BL_FORCE_INLINE constexpr double nominal_ulp_step(
+    double leading,
+    double trailing,
+    bool toward_smaller_magnitude,
+    int precision_bits) noexcept
+{
+    constexpr std::uint64_t sign_mask = 0x8000000000000000ull;
+    constexpr std::uint64_t fraction_mask = 0x000fffffffffffffull;
+
+    const std::uint64_t bits = std::bit_cast<std::uint64_t>(leading);
+    const std::uint32_t exponent_bits =
+        static_cast<std::uint32_t>((bits >> 52) & 0x7ffu);
+    const std::uint64_t fraction = bits & fraction_mask;
+
+    if (exponent_bits != 0 && fraction != 0)
+    {
+        const int step_exponent_bits =
+            static_cast<int>(exponent_bits) - (precision_bits - 1);
+        if (step_exponent_bits > 0)
+        {
+            return std::bit_cast<double>(
+                static_cast<std::uint64_t>(step_exponent_bits) << 52);
+        }
+
+        const int step_exponent =
+            static_cast<int>(exponent_bits) - 1023 + 1 - precision_bits;
+        return positive_power_of_two(step_exponent < -1074 ? -1074 : step_exponent);
+    }
+
+    const bool opposite_trailing_sign =
+        trailing != 0.0 &&
+        ((bits & sign_mask) !=
+         (std::bit_cast<std::uint64_t>(trailing) & sign_mask));
+    const int lower_binade_adjustment =
+        opposite_trailing_sign ||
+        (trailing == 0.0 && toward_smaller_magnitude);
+
+    if (exponent_bits != 0)
+    {
+        const int step_exponent_bits =
+            static_cast<int>(exponent_bits) - (precision_bits - 1) -
+            lower_binade_adjustment;
+        if (step_exponent_bits > 0)
+        {
+            return std::bit_cast<double>(
+                static_cast<std::uint64_t>(step_exponent_bits) << 52);
+        }
+
+        const int step_exponent =
+            static_cast<int>(exponent_bits) - 1023 + 1 - precision_bits -
+            lower_binade_adjustment;
+        return positive_power_of_two(step_exponent < -1074 ? -1074 : step_exponent);
+    }
+
+    const int binade = highest_bit_index(fraction) - 1074;
+    const int step_exponent = binade + 1 - precision_bits;
+    return positive_power_of_two(step_exponent < -1074 ? -1074 : step_exponent);
 }
 
 BL_FORCE_INLINE constexpr double scalbn(double value, int exp) noexcept
@@ -368,7 +418,7 @@ BL_FORCE_INLINE constexpr double ldexp(double value, int exp) noexcept
 
 BL_FORCE_INLINE constexpr double ldexp_limb(double value, int exponent) noexcept
 {
-    if (bl::detail::use_constexpr_math())
+    if (bl::detail::is_constant_evaluated())
     {
         return ldexp(value, exponent);
     }
@@ -459,36 +509,205 @@ BL_FORCE_INLINE constexpr bool double_integer_is_odd(double x) noexcept
     return (i & 1ll) != 0;
 }
 
+// GCC can reassociate error-free transforms under -ffast-math even inside a
+// no-fast-math function scope. Empty XMM constraints preserve the required
+// rounding points without emitting instructions or affecting constant evaluation.
+#if defined(__GNUC__) && !defined(__clang__) && defined(__FAST_MATH__) && defined(__SSE2__)
+#define FLTX_DETAIL_GNU_FAST_MATH_EFT_BARRIER 1
+#define FLTX_DETAIL_EFT_BARRIER(value) __asm__ __volatile__("" : "+x"(value))
+#else
+#define FLTX_DETAIL_GNU_FAST_MATH_EFT_BARRIER 0
+#endif
+
 BL_PUSH_PRECISE
+#if FLTX_DETAIL_GNU_FAST_MATH_EFT_BARRIER
+BL_FORCE_INLINE void two_sum_precise_runtime(
+    double a,
+    double b,
+    double& s,
+    double& e) noexcept
+{
+    s = a + b;
+    FLTX_DETAIL_EFT_BARRIER(s);
+    double bv = s - a;
+    FLTX_DETAIL_EFT_BARRIER(bv);
+    double av = s - bv;
+    FLTX_DETAIL_EFT_BARRIER(av);
+    double ar = a - av;
+    FLTX_DETAIL_EFT_BARRIER(ar);
+    double br = b - bv;
+    FLTX_DETAIL_EFT_BARRIER(br);
+    e = ar + br;
+    FLTX_DETAIL_EFT_BARRIER(e);
+}
+#endif
+
 BL_FORCE_INLINE constexpr void two_sum_precise(double a, double b, double& s, double& e) noexcept
 {
+#if FLTX_DETAIL_GNU_FAST_MATH_EFT_BARRIER
+    if (!std::is_constant_evaluated())
+    {
+        two_sum_precise_runtime(a, b, s, e);
+        return;
+    }
+#endif
     s = a + b;
     double bv = s - a;
     e = (a - (s - bv)) + (b - bv);
 }
 
+#if FLTX_DETAIL_GNU_FAST_MATH_EFT_BARRIER
+BL_FORCE_INLINE void two_diff_precise_runtime(
+    double a,
+    double b,
+    double& s,
+    double& e) noexcept
+{
+    s = a - b;
+    FLTX_DETAIL_EFT_BARRIER(s);
+    double bv = s - a;
+    FLTX_DETAIL_EFT_BARRIER(bv);
+    double av = s - bv;
+    FLTX_DETAIL_EFT_BARRIER(av);
+    double ar = a - av;
+    FLTX_DETAIL_EFT_BARRIER(ar);
+    double br = b + bv;
+    FLTX_DETAIL_EFT_BARRIER(br);
+    e = ar - br;
+    FLTX_DETAIL_EFT_BARRIER(e);
+}
+#endif
+
 BL_FORCE_INLINE constexpr void two_diff_precise(double a, double b, double& s, double& e) noexcept
 {
+#if FLTX_DETAIL_GNU_FAST_MATH_EFT_BARRIER
+    if (!std::is_constant_evaluated())
+    {
+        two_diff_precise_runtime(a, b, s, e);
+        return;
+    }
+#endif
     s = a - b;
     double bv = s - a;
     e = (a - (s - bv)) - (b + bv);
 }
 
+#if FLTX_DETAIL_GNU_FAST_MATH_EFT_BARRIER
+BL_FORCE_INLINE void quick_two_sum_precise_runtime(
+    double a,
+    double b,
+    double& s,
+    double& e) noexcept
+{
+    s = a + b;
+    FLTX_DETAIL_EFT_BARRIER(s);
+    double delta = s - a;
+    FLTX_DETAIL_EFT_BARRIER(delta);
+    e = b - delta;
+    FLTX_DETAIL_EFT_BARRIER(e);
+}
+#endif
+
 BL_FORCE_INLINE constexpr void quick_two_sum_precise(double a, double b, double& s, double& e) noexcept
 {
+#if FLTX_DETAIL_GNU_FAST_MATH_EFT_BARRIER
+    if (!std::is_constant_evaluated())
+    {
+        quick_two_sum_precise_runtime(a, b, s, e);
+        return;
+    }
+#endif
     s = a + b;
     e = b - (s - a);
 }
 
-BL_FORCE_INLINE constexpr void two_prod_precise_dekker(double a, double b, double& p, double& err) noexcept
+// Adds one value to a nonoverlapping expansion ordered from small to large.
+// Input and output may be the same array.
+BL_FORCE_INLINE constexpr int grow_expansion_zeroelim(
+    int length,
+    double* expansion,
+    double value) noexcept
+{
+    double sum = value;
+    int out = 0;
+
+    for (int i = 0; i < length; ++i)
+    {
+        double next{}, error{};
+        two_sum_precise(sum, expansion[i], next, error);
+        if (error != 0.0)
+            expansion[out++] = error;
+        sum = next;
+    }
+
+    if (sum != 0.0 || out == 0)
+        expansion[out++] = sum;
+    return out;
+}
+
+#if FLTX_DETAIL_GNU_FAST_MATH_EFT_BARRIER
+BL_FORCE_INLINE void two_prod_precise_dekker_runtime(
+    double a,
+    double b,
+    double& p,
+    double& err) noexcept
 {
     constexpr double split = 134217729.0;
 
-    double a_c  = a * split;
+    double a_c = a * split;
+    FLTX_DETAIL_EFT_BARRIER(a_c);
+    double a_delta = a_c - a;
+    FLTX_DETAIL_EFT_BARRIER(a_delta);
+    double a_hi = a_c - a_delta;
+    FLTX_DETAIL_EFT_BARRIER(a_hi);
+    double a_lo = a - a_hi;
+    FLTX_DETAIL_EFT_BARRIER(a_lo);
+
+    double b_c = b * split;
+    FLTX_DETAIL_EFT_BARRIER(b_c);
+    double b_delta = b_c - b;
+    FLTX_DETAIL_EFT_BARRIER(b_delta);
+    double b_hi = b_c - b_delta;
+    FLTX_DETAIL_EFT_BARRIER(b_hi);
+    double b_lo = b - b_hi;
+    FLTX_DETAIL_EFT_BARRIER(b_lo);
+
+    p = a * b;
+    FLTX_DETAIL_EFT_BARRIER(p);
+    double residual = a_hi * b_hi;
+    FLTX_DETAIL_EFT_BARRIER(residual);
+    residual -= p;
+    FLTX_DETAIL_EFT_BARRIER(residual);
+    double term = a_hi * b_lo;
+    FLTX_DETAIL_EFT_BARRIER(term);
+    residual += term;
+    FLTX_DETAIL_EFT_BARRIER(residual);
+    term = a_lo * b_hi;
+    FLTX_DETAIL_EFT_BARRIER(term);
+    residual += term;
+    FLTX_DETAIL_EFT_BARRIER(residual);
+    term = a_lo * b_lo;
+    FLTX_DETAIL_EFT_BARRIER(term);
+    err = residual + term;
+    FLTX_DETAIL_EFT_BARRIER(err);
+}
+#endif
+
+BL_FORCE_INLINE constexpr void two_prod_precise_dekker(double a, double b, double& p, double& err) noexcept
+{
+#if FLTX_DETAIL_GNU_FAST_MATH_EFT_BARRIER
+    if (!std::is_constant_evaluated())
+    {
+        two_prod_precise_dekker_runtime(a, b, p, err);
+        return;
+    }
+#endif
+
+    constexpr double split = 134217729.0;
+    double a_c = a * split;
     double a_hi = a_c - (a_c - a);
     double a_lo = a - a_hi;
-
-    double b_c  = b * split;
+    double b_c = b * split;
     double b_hi = b_c - (b_c - b);
     double b_lo = b - b_hi;
 
@@ -624,6 +843,7 @@ static_assert(decltype(x86_fma_available_state)::is_always_lock_free);
     #endif
 }
 
+BL_PUSH_PRECISE
 BL_FORCE_INLINE double fmsub_fma(double a, double b, double c) noexcept
 {
     #if FLTX_DETAIL_USE_SCALAR_X86_FMA || FLTX_DETAIL_MSVC_GUARDED_X86_FMA
@@ -699,13 +919,19 @@ BL_FORCE_INLINE void two_prod_fma(
     double& error) noexcept
 {
     product = a * b;
+#if FLTX_DETAIL_GNU_FAST_MATH_EFT_BARRIER
+    FLTX_DETAIL_EFT_BARRIER(product);
+#endif
     error = fmsub_fma(a, b, product);
 }
+BL_POP_PRECISE
+#undef FLTX_DETAIL_GNU_FAST_MATH_EFT_BARRIER
+#undef FLTX_DETAIL_EFT_BARRIER
 
 BL_FORCE_INLINE constexpr void two_prod_precise(double a, double b, double& p, double& err) noexcept
 {
     #if FLTX_DETAIL_HAS_RUNTIME_FMA_PATH
-    if (bl::detail::is_constant_evaluated() || bl::detail::use_constexpr_parity()) [[unlikely]]
+    if (bl::detail::is_constant_evaluated()) [[unlikely]]
     {
         two_prod_precise_dekker(a, b, p, err);
     }
@@ -726,7 +952,7 @@ BL_FORCE_INLINE constexpr void two_prod_precise(double a, double b, double& p, d
 BL_FORCE_INLINE constexpr void two_prod_precise_checked(double a, double b, double& p, double& err) noexcept
 {
     #if FLTX_DETAIL_HAS_RUNTIME_FMA_PATH
-    if (bl::detail::is_constant_evaluated() || bl::detail::use_constexpr_parity()) [[unlikely]]
+    if (bl::detail::is_constant_evaluated()) [[unlikely]]
     {
         two_prod_precise_dekker_checked(a, b, p, err);
     }

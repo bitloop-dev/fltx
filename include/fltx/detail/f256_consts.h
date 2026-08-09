@@ -740,19 +740,28 @@ namespace bl::detail::_f256 // primitives and kernels
         { -0x1.508f0136e4c55p-174, -0x1.610f5fbe0553fp-229, -0x1.3c032cb2c6f71p-285, -0x1.398ab14eef776p-340 },
         {  0x1.5325472cd461ep-178, -0x1.be070aa9e6708p-232, -0x1.9424187dd7358p-286,  0x1.a01887d174e65p-340 },
         {  0x1.5936fbf9ec655p-186,  0x1.36b1efd62ae1fp-243, -0x1.5197195d42727p-297,  0x1.396f96fdbf03dp-352 },
-        { -0x1.d3257cb381cb2p-187, -0x1.a9acc2bacdf6ap-241,  0x1.3204cc65fcf88p-298, -0x1.540bd126cad21p-352 },
-        {  0x1.df5871880e591p-192, -0x1.e091979f28c8ap-246,  0x1.acea2fc38ae40p-301,  0x1.0ee226696b3aep-355 },
-        {  0x1.3c421b3b2b2dfp-196, -0x1.a2c79eef97c8bp-252, -0x1.4da91e762e58ap-308,  0x1.f465abcf26a83p-363 },
-        { -0x1.d527b931bde63p-200, -0x1.a90490031a12ep-254, -0x1.3a30d8ce0d4c0p-308, -0x1.5aa90a6cd2fa6p-362 },
+        { -0x1.d3257cb34616ap-187,  0x1.69f87e0063ce0p-242,  0x1.829dd92b4d289p-296, -0x1.1a0c886619382p-351 },
+        {  0x1.df58714fa55b3p-192, -0x1.c258b621fc0c1p-246,  0x1.c2778f959ff13p-302, -0x1.c9a360d4739ddp-358 },
+        {  0x1.3c41788d4b89fp-196,  0x1.fe5ff8b0acdd8p-251, -0x1.ad0b82a24bb68p-305,  0x1.4c8df23011e5ap-359 },
+        { -0x1.d4337c4e54866p-200, -0x1.aaae5133945ccp-255,  0x1.5dd200b7a686ep-309,  0x1.828455e459147p-373 },
+        {  0x1.ee7eb9d18f479p-207, -0x1.41d87f455af28p-262,  0x1.b5c316fa1fc08p-317, -0x1.f760d37bd3965p-374 },
+        {  0x1.e879c6d2bfa6ap-209, -0x1.4a625ac06de17p-264,  0x1.9d929e08f756bp-320,  0x1.95af78f8584c8p-374 },
+        { -0x1.455bbf47f4c0fp-213, -0x1.bebc39f1706adp-270,  0x1.0963d0a4c5a8fp-324,  0x1.7731f7b24ea20p-379 },
+        { -0x1.c347eefc38e3dp-219, -0x1.69a1b8cbae680p-277,  0x1.d14524b7e96d8p-331, -0x1.fcd74bef77dedp-386 },
     };
 
     // table metadata
     inline constexpr auto f256_trig_coeff_count_pi4     = sizeof(f256_sin_coeffs_pi4) / sizeof(f256_sin_coeffs_pi4[0]);
-    inline constexpr auto f256_trig_small_coeff_count   = 13;
-    inline constexpr auto f256_trig_small_coeff_offset  = f256_trig_coeff_count_pi4 - f256_trig_small_coeff_count;
+    inline constexpr auto f256_trig_small_coeff_offset  = 11;
+    inline constexpr auto f256_trig_small_coeff_count   = f256_trig_coeff_count_pi4 - f256_trig_small_coeff_offset;
     inline constexpr auto f256_atan_tiny_coeff_count    = sizeof(f256_atan_tiny_coeffs) / sizeof(f256_atan_tiny_coeffs[0]);
     inline constexpr auto f256_atan_reduced_coeff_count = sizeof(f256_atan_reduced_coeffs) / sizeof(f256_atan_reduced_coeffs[0]);
-    inline constexpr auto f256_erf_cheb_coeff_count     = 52;
+    inline constexpr auto f256_erf_cheb_coeff_count     = sizeof(f256_erf_cheb_0_1) / sizeof(f256_erf_cheb_0_1[0]);
+    inline constexpr auto f256_erfc_cheb_coeff_count    = sizeof(f256_erfc_cheb_3_4) / sizeof(f256_erfc_cheb_3_4[0]);
+
+    static_assert(f256_trig_coeff_count_pi4 == sizeof(f256_cos_coeffs_pi4) / sizeof(f256_cos_coeffs_pi4[0]));
+    static_assert(f256_erf_cheb_coeff_count == sizeof(f256_erf_cheb_1_2) / sizeof(f256_erf_cheb_1_2[0]));
+    static_assert(f256_erf_cheb_coeff_count == sizeof(f256_erf_cheb_2_3) / sizeof(f256_erf_cheb_2_3[0]));
 
 } // namespace bl::detail::_f256
 

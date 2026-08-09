@@ -44,6 +44,10 @@
 __pycache__/
 *.py[cod]
 
+# Metrics publication scratch state
+validation/metrics/**/.staging/
+validation/metrics/**/*.lock
+
 # project
 .vs
 .idea
@@ -54,6 +58,5 @@ VSWorkspaceSettings.json
 
 # Local Codex scratch/output
 .codex/
-docs/
-tools/
 AGENTS.md
+/RELEASE_CHECKLIST.md

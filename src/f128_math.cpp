@@ -12,7 +12,7 @@
 namespace bl::detail::_f128_runtime
 {
     // roots
-    BL_NO_INLINE f128_s sqrt(const f128_s& a)
+    BL_NO_INLINE f128_s BL_VECTORCALL sqrt(const f128_s& a)
     {
         return detail::_f128_impl::sqrt(a);
     }
@@ -28,14 +28,14 @@ namespace bl::detail::_f128_runtime
         return detail::_f128_impl::round_nearest_away_from_zero_runtime(a);
     }
 
-    BL_NO_INLINE f128_s round_to_decimals(f128_s v, int prec) 
+    BL_NO_INLINE f128_s round_decimals(f128_s v, int prec)
     { 
-        return detail::_f128_impl::round_to_decimals(v, prec);
+        return detail::_f128_impl::round_decimals(v, prec);
     }
 
-    BL_NO_INLINE f128_s round_to_significant_figures(f128_s v, int figures)
+    BL_NO_INLINE f128_s round_significant(f128_s v, int figures)
     {
-        return detail::_f128_impl::round_to_significant_figures(v, figures);
+        return detail::_f128_impl::round_significant(v, figures);
     }
 
     BL_NO_INLINE long lround_nearest_away_from_zero(const f128_s& x)
@@ -54,13 +54,13 @@ namespace bl::detail::_f128_runtime
         return detail::_f128_impl::fmod(x, y);
     }
 
-    BL_NO_INLINE f128_s remquo(const f128_s& x, const f128_s& y, int* quo) 
+    BL_NO_INLINE f128_s remquo(const f128_s& x, const f128_s& y, int* quo)
     { 
         return detail::_f128_impl::remquo(x, y, quo); 
     }
 
     // fractional decomposition
-    BL_NO_INLINE f128_s modf(const f128_s& x, f128_s* iptr) noexcept 
+    BL_NO_INLINE f128_s modf(const f128_s& x, f128_s* iptr) noexcept
     { 
         return detail::_f128_impl::modf(x, iptr);
     }

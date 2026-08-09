@@ -28,13 +28,6 @@ set(
 )
 set_property(CACHE FLTX_FMA_MODE PROPERTY STRINGS AUTO OFF ASSUME)
 
-set(
-    FLTX_METRICS_FAST_MATH_MODE
-    OFF
-    CACHE STRING "Fast-math mode for metrics_tests translation units and included fltx headers: ON, OFF, or AUTO."
-)
-set_property(CACHE FLTX_METRICS_FAST_MATH_MODE PROPERTY STRINGS ON OFF AUTO)
-
 option(
     FLTX_MSVC_TIMING_REPORTS
     "Emit MSVC compiler and linker timing reports for fltx developer targets."
@@ -53,43 +46,10 @@ option(
     OFF
 )
 
-option(
-    VERBOSE_TESTS
-    "Print metrics console tables while running metrics_tests."
-    ON
-)
-
-option(
-    FLTX_BUILD_SIMULATED_CONSTEVAL_METRICS
-    "Build metrics_consteval_tests, which benchmarks fltx through simulated constant-evaluation paths."
-    OFF
-)
-
-option(
-    FLTX_METRICS_BENCHMARK_ONLY_FLTX
-    "Run metrics targets in fltx-only benchmark/report mode; competitor benchmarks and special-value probes are skipped."
-    OFF
-)
-
-option(
-    FLTX_PRECISION_TESTS_CONSTEXPR_PARITY
-    "Build precision tests in constexpr parity mode."
-    OFF
-)
-
-option(
-    FLTX_PRECISION_TESTS_SIMULATE_CONSTEVAL
-    "Build precision tests with simulated constant-evaluation dispatch."
-    OFF
-)
-
 mark_as_advanced(
     FLTX_MSVC_TIMING_REPORTS
     FLTX_MSVC_PARALLEL_COMPILE
     FLTX_MSVC_DETAILED_TIMING_REPORTS
-    FLTX_BUILD_SIMULATED_CONSTEVAL_METRICS
-    FLTX_PRECISION_TESTS_CONSTEXPR_PARITY
-    FLTX_PRECISION_TESTS_SIMULATE_CONSTEVAL
 )
 
 set(_FLTX_FAST_MATH_SUPPORTED OFF)
@@ -299,7 +259,7 @@ function(fltx_configure_internal_target _TARGET)
 endfunction()
 
 function(fltx_configure_library_target _TARGET)
-    target_compile_features(${_TARGET} PUBLIC cxx_std_23)
+    target_compile_features(${_TARGET} PUBLIC cxx_std_20)
     fltx_configure_public_header_contract(${_TARGET} PUBLIC)
     fltx_configure_internal_target(${_TARGET})
 endfunction()
@@ -307,10 +267,37 @@ endfunction()
 function(fltx_configure_consumer_fast_math _TARGET)
     cmake_parse_arguments(FLTX_CONSUMER "" "MODE" "" ${ARGN})
     if(NOT DEFINED FLTX_CONSUMER_MODE)
-        set(FLTX_CONSUMER_MODE AUTO)
+        set(FLTX_CONSUMER_MODE ON)
     endif()
 
-    fltx_apply_private_fast_math_options(${_TARGET} "${FLTX_CONSUMER_MODE}")
+    string(TOUPPER "${FLTX_CONSUMER_MODE}" _FLTX_CONSUMER_MODE_NORMALIZED)
+    if(NOT _FLTX_CONSUMER_MODE_NORMALIZED MATCHES "^(ON|OFF)$")
+        message(FATAL_ERROR
+            "Invalid consumer fast-math mode '${FLTX_CONSUMER_MODE}'. "
+            "Expected ON or OFF."
+        )
+    endif()
+
+    if(MSVC)
+        if(_FLTX_CONSUMER_MODE_NORMALIZED STREQUAL "ON")
+            target_compile_options(${_TARGET} PRIVATE /fp:fast)
+        else()
+            target_compile_options(${_TARGET} PRIVATE /fp:precise)
+        endif()
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "^(GNU|Clang|AppleClang)$")
+        if(_FLTX_CONSUMER_MODE_NORMALIZED STREQUAL "ON")
+            target_compile_options(${_TARGET} PRIVATE -ffast-math)
+            fltx_target_link_options_if_supported(${_TARGET} -ffast-math)
+        else()
+            target_compile_options(${_TARGET} PRIVATE -fno-fast-math)
+            fltx_target_link_options_if_supported(${_TARGET} -fno-fast-math)
+        endif()
+    else()
+        message(FATAL_ERROR
+            "Consumer fast-math validation is unsupported for "
+            "${CMAKE_CXX_COMPILER_ID}/${CMAKE_SYSTEM_NAME}."
+        )
+    endif()
 endfunction()
 
 function(fltx_assert_package_safe_interface _TARGET)

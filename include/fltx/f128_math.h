@@ -81,21 +81,21 @@ namespace bl {
     return detail::_f128_impl::round_nearest_even(x);
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f128 round_to_decimals(f128_s v, int precision)
+[[nodiscard]] BL_FORCE_INLINE constexpr f128 round_decimals(f128_s v, int precision)
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f128_impl::round_to_decimals(v, precision),
-        detail::_f128_runtime::round_to_decimals(v, precision)
+        detail::_f128_impl::round_decimals(v, precision),
+        detail::_f128_runtime::round_decimals(v, precision)
     );
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f128 round_to_significant_figures(
+[[nodiscard]] BL_FORCE_INLINE constexpr f128 round_significant(
     f128_s v,
     int precision)
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f128_impl::round_to_significant_figures(v, precision),
-        detail::_f128_runtime::round_to_significant_figures(v, precision)
+        detail::_f128_impl::round_significant(v, precision),
+        detail::_f128_runtime::round_significant(v, precision)
     );
 }
 
@@ -227,7 +227,19 @@ namespace bl {
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 nexttoward(const f128_s& from, long double to) noexcept
 {
-    return detail::_f128_impl::nextafter(from, f128_s{ static_cast<double>(to) });
+    const double high = static_cast<double>(to);
+    if (detail::fp::isinf_or_nan(high))
+        return detail::_f128_impl::nextafter(from, f128_s{ high, 0.0 });
+    if (high == 0.0 && to != 0.0L)
+    {
+        const double target = to < 0.0L
+            ? -std::numeric_limits<double>::denorm_min()
+            : std::numeric_limits<double>::denorm_min();
+        return detail::_f128_impl::nextafter(from, f128_s{ target, 0.0 });
+    }
+
+    const double low = static_cast<double>(to - static_cast<long double>(high));
+    return detail::_f128_impl::nextafter(from, f128_s{ high, low });
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 nexttoward(const f128_s& from, const f128_s& to) noexcept

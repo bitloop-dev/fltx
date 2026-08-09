@@ -44,7 +44,7 @@ namespace detail::_f128 // primitives and kernels
 
 [[nodiscard]] BL_FORCE_INLINE constexpr bool ispositive(const f128_s& x) noexcept
 {
-    return x.hi > 0.0;
+    return !isnan(x) && !iszero(x) && !detail::fp::signbit(x.hi);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr bool signbit(const f128_s& x) noexcept

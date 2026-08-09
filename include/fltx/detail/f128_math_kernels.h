@@ -18,6 +18,10 @@ namespace bl {
 
 namespace detail::_f128 // primitives and kernels
 {
+    // Algorithmic convergence tolerance. This intentionally remains the
+    // former 2^-106 value and is independent of the public nominal epsilon.
+    inline constexpr f128_s convergence_epsilon{ 0x1p-106, 0.0 };
+
     using detail::fp::signbit;
     using detail::fp::fabs;
     using detail::fp::floor;
@@ -108,7 +112,7 @@ namespace detail::_f128 // primitives and kernels
         if (ldexp_fast_normal(x, e, fast))
             return fast;
 
-        if (bl::detail::use_constexpr_math())
+        if (bl::detail::is_constant_evaluated())
         {
             return renorm(
                 detail::fp::ldexp(x.hi, e),
@@ -845,7 +849,7 @@ namespace detail::_f128 // primitives and kernels
         if (!detail::exact_decimal::exact_binary_components<f128_decimal_traits>(mag(x), mx, ex, unused_neg) ||
             !detail::exact_decimal::exact_binary_components<f128_decimal_traits>(mag(y), my, ey, unused_neg))
         {
-            return f128_s{ signbit(x.hi) ? -0.0 : 0.0 };
+            return detail::_f128::signed_zero(signbit(x.hi));
         }
 
         detail::exact_decimal::biguint remainder;
@@ -876,7 +880,7 @@ namespace detail::_f128 // primitives and kernels
 
         f128_s out = exact_dyadic_to_f128_fmod_big(remainder, out_exp, signbit(x));
         if (iszero(out))
-            return f128_s{ signbit(x.hi) ? -0.0 : 0.0 };
+            return detail::_f128::signed_zero(signbit(x.hi));
         return out;
     }
 
@@ -1001,7 +1005,7 @@ namespace detail::_f128 // primitives and kernels
             return fmod_exact_biguint(x, y);
 
         if (iszero(r))
-            return f128_s{ signbit(x.hi) ? -0.0 : 0.0 };
+            return detail::_f128::signed_zero(signbit(x.hi));
 
         return ispositive(x) ? r : -r;
     }
@@ -1141,7 +1145,7 @@ namespace detail::_f128 // primitives and kernels
 
             f128_s out{ static_cast<double>(rounded), 0.0 };
             if (iszero(out))
-                return f128_s{ signbit(x) ? -0.0 : 0.0, 0.0 };
+                return detail::_f128::signed_zero(signbit(x));
             return out;
         }
 
@@ -1284,7 +1288,7 @@ namespace detail::_f128 // primitives and kernels
     [[nodiscard]] BL_FORCE_INLINE constexpr double sqrt_tail_square(double c_lo, double correction) noexcept
     {
         #if FLTX_DETAIL_HAS_RUNTIME_FMA_PATH
-        if (!bl::detail::use_constexpr_math() && detail::fp::runtime_hardware_fma_enabled())
+        if (!bl::detail::is_constant_evaluated() && detail::fp::runtime_hardware_fma_enabled())
         {
             return detail::fp::fmadd_fma(c_lo, c_lo, correction);
         }

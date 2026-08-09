@@ -1,0 +1,131 @@
+name: Test Base
+
+on:
+  workflow_call:
+    inputs:
+      platform_name:
+        required: true
+        type: string
+      runner:
+        required: true
+        type: string
+      configure_preset:
+        required: true
+        type: string
+      compiler_family:
+        required: true
+        type: string
+
+jobs:
+  tests:
+    name: ${{ inputs.platform_name }}
+    runs-on: ${{ inputs.runner }}
+    permissions:
+      contents: read
+    env:
+      COMPILER_FAMILY: ${{ inputs.compiler_family }}
+      VCPKG_CACHE_EPOCH: v2
+      VCPKG_BINARY_CACHE: ${{ github.workspace }}/.vcpkg-binary-cache
+      VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/.vcpkg-binary-cache,readwrite
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Fetch vcpkg registry baseline
+        shell: bash
+        run: |
+          baseline="$(python -c "import json; print(json.load(open('vcpkg-configuration.json'))['default-registry']['baseline'])")"
+          git -C vcpkg fetch --depth=1 --no-tags origin "$baseline"
+          git -C vcpkg show "$baseline:versions/baseline.json" > /dev/null
+
+      - name: Read vcpkg commit
+        id: vcpkg
+        shell: bash
+        run: echo "commit=$(git -C vcpkg rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up build tools (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang ninja-build
+
+      - name: Set up build tools (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          brew install autoconf automake libtool ninja
+          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+          echo "$(brew --prefix ninja)/bin" >> "$GITHUB_PATH"
+
+      - name: Set up Ninja (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco install ninja --no-progress -y
+
+      - name: Set up MSVC
+        if: runner.os == 'Windows' && inputs.compiler_family == 'msvc'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Set up MinGW
+        if: runner.os == 'Windows' && inputs.compiler_family == 'mingw'
+        shell: pwsh
+        run: |
+          choco install mingw --no-progress -y
+          'C:\ProgramData\mingw64\mingw64\bin' | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: Read compiler cache key
+        id: compiler
+        shell: bash
+        run: |
+          if [ "$COMPILER_FAMILY" = "msvc" ]; then
+            compiler="$(cl 2>&1 | sed -n '1p' || true)"
+          elif [ "$COMPILER_FAMILY" = "clang" ] || [ "$COMPILER_FAMILY" = "appleclang" ]; then
+            compiler="$(clang++ --version | sed -n '1p')"
+          else
+            compiler="$(g++ --version | sed -n '1p')"
+          fi
+          hash="$(COMPILER="$compiler" python -c "import hashlib, os; print(hashlib.sha256(os.environ['COMPILER'].encode()).hexdigest()[:16])")"
+          echo "Compiler cache key input: $compiler"
+          echo "id=$hash" >> "$GITHUB_OUTPUT"
+
+      - name: Restore vcpkg binary cache
+        id: vcpkg-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.VCPKG_BINARY_CACHE }}
+          key: vcpkg-${{ env.VCPKG_CACHE_EPOCH }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.compiler_family }}-${{ steps.compiler.outputs.id }}-${{ steps.vcpkg.outputs.commit }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'CMakePresets.json') }}
+          restore-keys: |
+            vcpkg-${{ env.VCPKG_CACHE_EPOCH }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.compiler_family }}-${{ steps.compiler.outputs.id }}-${{ steps.vcpkg.outputs.commit }}-
+            vcpkg-${{ env.VCPKG_CACHE_EPOCH }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.compiler_family }}-${{ steps.compiler.outputs.id }}-
+            vcpkg-${{ env.VCPKG_CACHE_EPOCH }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.compiler_family }}-
+
+      - name: Bootstrap vcpkg (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: ./vcpkg/bootstrap-vcpkg.sh
+
+      - name: Bootstrap vcpkg (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\vcpkg\bootstrap-vcpkg.bat
+
+      - name: Configure
+        run: >-
+          cmake --preset ${{ inputs.configure_preset }}
+          -DVCPKG_MANIFEST_NO_DEFAULT_FEATURES=ON
+          -DFLTX_METRICS_QDPP=ON
+          -DFLTX_METRICS_TLFLOAT=ON
+
+      - name: Save vcpkg binary cache
+        if: steps.vcpkg-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.VCPKG_BINARY_CACHE }}
+          key: ${{ steps.vcpkg-cache.outputs.cache-primary-key }}
+
+      - name: Build and run test gate
+        run: cmake --build --preset ${{ inputs.configure_preset }} --target fltx_ci_checks --parallel

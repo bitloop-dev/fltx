@@ -198,7 +198,7 @@ namespace detail::_f256 // primitives and kernels
     BL_FORCE_INLINE constexpr f256_s scale_pow2_inline(const f256_s& a, int exponent, bool negative) noexcept
     {
         #if defined(FLTX_FAST_MATH)
-        if (!bl::detail::use_constexpr_math())
+        if (!bl::detail::is_constant_evaluated())
         {
             const double scale = bl::detail::fp::scalbn(negative ? -1.0 : 1.0, exponent);
             return scale_unchecked_inline(a, scale);
@@ -230,7 +230,7 @@ namespace detail::_f256 // primitives and kernels
     BL_FORCE_INLINE constexpr f256_s scale_pow2_or_checked_inline(const f256_s& a,double scalar,pow2_scale_info scale) noexcept
     {
         #if defined(FLTX_FAST_MATH)
-        if (!bl::detail::use_constexpr_math())
+        if (!bl::detail::is_constant_evaluated())
             return scale_unchecked_inline(a, scalar);
         #endif
 
@@ -336,6 +336,34 @@ namespace detail::_f256 // primitives and kernels
         const f256_s& c) noexcept
     {
         return add_raw5_value_inline(mul_raw5_dekker_inline(a, b), c);
+    }
+
+    [[nodiscard]] BL_NO_INLINE constexpr f256_s mul_add_exact_inline(
+        const f256_s& a,
+        const f256_s& b,
+        const f256_s& c) noexcept
+    {
+        const double a_limb[4]{ a.x0, a.x1, a.x2, a.x3 };
+        const double b_limb[4]{ b.x0, b.x1, b.x2, b.x3 };
+        const double c_limb[4]{ c.x0, c.x1, c.x2, c.x3 };
+        double expansion[40]{};
+        int count = 0;
+
+        for (double ai : a_limb)
+        {
+            for (double bi : b_limb)
+            {
+                double product{}, error{};
+                detail::fp::two_prod_precise(ai, bi, product, error);
+                count = detail::fp::grow_expansion_zeroelim(count, expansion, error);
+                count = detail::fp::grow_expansion_zeroelim(count, expansion, product);
+            }
+        }
+
+        for (double ci : c_limb)
+            count = detail::fp::grow_expansion_zeroelim(count, expansion, ci);
+
+        return from_expansion_fast(expansion, count);
     }
 
     BL_FORCE_INLINE constexpr f256_s mul_add_double_rhs_inline(const f256_s& a, const f256_s& b, double c) noexcept

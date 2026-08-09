@@ -111,6 +111,7 @@ namespace bl::detail::_f128 // primitives and kernels
     inline constexpr auto f128_trig_coeff_count_pi4    = sizeof(f128_sin_coeffs_pi4) / sizeof(f128_sin_coeffs_pi4[0]);
     inline constexpr auto f128_trig_small_coeff_offset = 6;
     inline constexpr auto f128_trig_small_coeff_count  = f128_trig_coeff_count_pi4 - f128_trig_small_coeff_offset;
+    static_assert(f128_trig_coeff_count_pi4 == sizeof(f128_cos_coeffs_pi4) / sizeof(f128_cos_coeffs_pi4[0]));
 
     // erf/erfc coefficients
     inline constexpr f128_s f128_erf_cheb_1_2[] = {

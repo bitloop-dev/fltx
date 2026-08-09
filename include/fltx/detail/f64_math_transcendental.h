@@ -13,13 +13,277 @@
 #define F64_MATH_TRANSCENDENTAL_INCLUDED
 
 #include "fltx/detail/f64_math_basic.h"
+#include "fltx/detail/trig_reduce_consts.h"
 #include "fltx/traits.h"
 
 
 namespace bl {
 
+namespace detail::_f64_runtime
+{
+    BL_NO_INLINE double sin_large(double x) noexcept;
+    BL_NO_INLINE double cos_large(double x) noexcept;
+    BL_NO_INLINE double tan_large(double x) noexcept;
+}
+
 namespace detail::_f64_impl
 {
+    struct native_trig_product
+    {
+        static constexpr int table_word_count = static_cast<int>(
+            sizeof(detail::trig_reduce::two_over_pi_fixed_words) /
+            sizeof(detail::trig_reduce::two_over_pi_fixed_words[0]));
+        static constexpr int word_count = table_word_count + 2;
+        std::uint32_t words[word_count]{};
+
+        constexpr explicit native_trig_product(std::uint64_t significand) noexcept
+        {
+            const std::uint32_t factors[] = {
+                static_cast<std::uint32_t>(significand),
+                static_cast<std::uint32_t>(significand >> 32)
+            };
+            for (int factor_index = 0; factor_index < 2; ++factor_index)
+            {
+                const std::uint32_t factor = factors[factor_index];
+                std::uint64_t carry = 0;
+                for (int i = 0; i < table_word_count; ++i)
+                {
+                    const int out_index = i + factor_index;
+                    const std::uint64_t value =
+                        static_cast<std::uint64_t>(
+                            detail::trig_reduce::two_over_pi_fixed_words[i]) * factor +
+                        words[out_index] + carry;
+                    words[out_index] = static_cast<std::uint32_t>(value);
+                    carry = value >> 32;
+                }
+                words[table_word_count + factor_index] =
+                    static_cast<std::uint32_t>(carry);
+            }
+        }
+
+        [[nodiscard]] constexpr bool get_bit(int index) const noexcept
+        {
+            if (index < 0 || index >= word_count * 32)
+                return false;
+            return ((words[index >> 5] >> (index & 31)) & 1u) != 0;
+        }
+
+        [[nodiscard]] constexpr bool any_low_bits_set(int bit_count) const noexcept
+        {
+            if (bit_count <= 0)
+                return false;
+            const int complete_words = bit_count >> 5;
+            for (int i = 0; i < complete_words; ++i)
+            {
+                if (words[i] != 0)
+                    return true;
+            }
+            const int partial_bits = bit_count & 31;
+            return partial_bits != 0 &&
+                (words[complete_words] & ((std::uint32_t{ 1 } << partial_bits) - 1u)) != 0;
+        }
+
+        [[nodiscard]] constexpr std::uint64_t get_bits(int start, int count) const noexcept
+        {
+            std::uint64_t value = 0;
+            for (int i = 0; i < count; ++i)
+            {
+                if (get_bit(start + i))
+                    value |= std::uint64_t{ 1 } << i;
+            }
+            return value;
+        }
+
+        [[nodiscard]] constexpr int bit_length() const noexcept
+        {
+            for (int i = word_count; i-- > 0;)
+            {
+                if (words[i] != 0)
+                    return i * 32 + static_cast<int>(std::bit_width(words[i]));
+            }
+            return 0;
+        }
+
+        constexpr void keep_low_bits(int bit_count) noexcept
+        {
+            const int retained_words = (bit_count + 31) >> 5;
+            for (int i = retained_words; i < word_count; ++i)
+                words[i] = 0;
+            const int partial_bits = bit_count & 31;
+            if (partial_bits != 0)
+            {
+                words[retained_words - 1] &=
+                    (std::uint32_t{ 1 } << partial_bits) - 1u;
+            }
+        }
+
+        constexpr void negate_low_bits(int bit_count) noexcept
+        {
+            keep_low_bits(bit_count);
+            const int retained_words = (bit_count + 31) >> 5;
+            for (int i = 0; i < retained_words; ++i)
+                words[i] = ~words[i];
+
+            const int partial_bits = bit_count & 31;
+            if (partial_bits != 0)
+            {
+                words[retained_words - 1] &=
+                    (std::uint32_t{ 1 } << partial_bits) - 1u;
+            }
+
+            std::uint64_t carry = 1;
+            for (int i = 0; i < retained_words && carry != 0; ++i)
+            {
+                const std::uint64_t value =
+                    static_cast<std::uint64_t>(words[i]) + carry;
+                words[i] = static_cast<std::uint32_t>(value);
+                carry = value >> 32;
+            }
+            if (partial_bits != 0)
+            {
+                words[retained_words - 1] &=
+                    (std::uint32_t{ 1 } << partial_bits) - 1u;
+            }
+        }
+    };
+
+    [[nodiscard]] BL_MSVC_NOINLINE constexpr double rounded_dyadic_to_double(
+        const native_trig_product& coefficient,
+        int exponent,
+        bool negative) noexcept
+    {
+        const int bit_count = coefficient.bit_length();
+        if (bit_count == 0)
+            return negative ? -0.0 : 0.0;
+
+        const int shift = bit_count > 53 ? bit_count - 53 : 0;
+        std::uint64_t significand = coefficient.get_bits(shift, bit_count - shift);
+        if (shift > 0)
+        {
+            const bool round_bit = coefficient.get_bit(shift - 1);
+            const bool sticky = shift > 1 &&
+                coefficient.any_low_bits_set(shift - 1);
+            if (round_bit && (sticky || (significand & 1u) != 0))
+                ++significand;
+        }
+
+        return detail::_native_float_decimal::exact_dyadic_to_double(
+            significand,
+            exponent + shift,
+            negative);
+    }
+
+    BL_MSVC_NOINLINE constexpr void reduce_pi_over_2_exact(
+        double x,
+        int& quadrant,
+        double& remainder) noexcept
+    {
+        constexpr std::uint64_t fraction_mask = (std::uint64_t{ 1 } << 52) - 1u;
+        const std::uint64_t bits = std::bit_cast<std::uint64_t>(detail::fp::absd(x));
+        const unsigned raw_exponent = static_cast<unsigned>((bits >> 52) & 0x7ffu);
+        const std::uint64_t significand = raw_exponent == 0
+            ? (bits & fraction_mask)
+            : ((std::uint64_t{ 1 } << 52) | (bits & fraction_mask));
+        const int binary_exponent = raw_exponent == 0
+            ? -1074
+            : static_cast<int>(raw_exponent) - 1023 - 52;
+
+        native_trig_product product{ significand };
+        const int scale_bits = detail::trig_reduce::two_over_pi_fixed_bits - binary_exponent;
+
+        const bool half_bit = product.get_bit(scale_bits - 1);
+        const bool sticky = product.any_low_bits_set(scale_bits - 1);
+        const bool integer_odd = product.get_bit(scale_bits);
+        const bool round_up = half_bit && (sticky || integer_odd);
+
+        unsigned n_mod4 =
+            (product.get_bit(scale_bits) ? 1u : 0u) |
+            (product.get_bit(scale_bits + 1) ? 2u : 0u);
+        if (round_up)
+            n_mod4 = (n_mod4 + 1u) & 3u;
+
+        native_trig_product reduced_coefficient = product;
+        reduced_coefficient.keep_low_bits(scale_bits);
+        bool reduced_negative = false;
+        if (round_up)
+        {
+            reduced_coefficient.negate_low_bits(scale_bits);
+            reduced_negative = reduced_coefficient.bit_length() != 0;
+        }
+
+        const double reduced = rounded_dyadic_to_double(
+            reduced_coefficient,
+            -scale_bits,
+            reduced_negative);
+        remainder = reduced * pi_2;
+
+        if (signbit(x))
+        {
+            remainder = -remainder;
+            n_mod4 = (4u - n_mod4) & 3u;
+        }
+        quadrant = static_cast<int>(n_mod4);
+    }
+
+    BL_MSVC_NOINLINE constexpr double sin(double x) noexcept
+    {
+        if (isnan(x) || isinf(x))
+            return std::numeric_limits<double>::quiet_NaN();
+        if (x == 0.0)
+            return x;
+        if (abs(x) < 0x1p18)
+            return detail::fp::sin(x);
+
+        int quadrant = 0;
+        double reduced = 0.0;
+        reduce_pi_over_2_exact(x, quadrant, reduced);
+        switch (quadrant)
+        {
+        case 0: return detail::fp::sin_poly_reduced(reduced);
+        case 1: return detail::fp::cos_poly_reduced(reduced);
+        case 2: return -detail::fp::sin_poly_reduced(reduced);
+        default: return -detail::fp::cos_poly_reduced(reduced);
+        }
+    }
+
+    BL_MSVC_NOINLINE constexpr double cos(double x) noexcept
+    {
+        if (isnan(x) || isinf(x))
+            return std::numeric_limits<double>::quiet_NaN();
+        if (abs(x) < 0x1p18)
+            return detail::fp::cos(x);
+
+        int quadrant = 0;
+        double reduced = 0.0;
+        reduce_pi_over_2_exact(x, quadrant, reduced);
+        switch (quadrant)
+        {
+        case 0: return detail::fp::cos_poly_reduced(reduced);
+        case 1: return -detail::fp::sin_poly_reduced(reduced);
+        case 2: return -detail::fp::cos_poly_reduced(reduced);
+        default: return detail::fp::sin_poly_reduced(reduced);
+        }
+    }
+
+    BL_MSVC_NOINLINE constexpr double tan(double x) noexcept
+    {
+        if (abs(x) < 0x1p18)
+            return detail::fp::tan(x);
+
+        if (isnan(x) || isinf(x))
+            return std::numeric_limits<double>::quiet_NaN();
+
+        int quadrant = 0;
+        double reduced = 0.0;
+        reduce_pi_over_2_exact(x, quadrant, reduced);
+        const double reduced_sine = detail::fp::sin_poly_reduced(reduced);
+        const double reduced_cosine = detail::fp::cos_poly_reduced(reduced);
+        const bool swap = (quadrant & 1) != 0;
+        const double sine = swap ? reduced_cosine : reduced_sine;
+        const double cosine = swap ? -reduced_sine : reduced_cosine;
+        return sine / cosine;
+    }
+
     // exp / log
     BL_FORCE_INLINE constexpr double exp(double x) noexcept
     {
@@ -227,11 +491,34 @@ namespace detail::_f64_impl
         if (iszero(y))
             return 1.0;
 
+        if (x == 1.0)
+            return 1.0;
+
         if (isnan(x) || isnan(y))
             return std::numeric_limits<double>::quiet_NaN();
 
         const double yi = trunc(y);
         const bool y_is_int = (yi == y);
+        const bool y_is_odd = y_is_int && fmod_exact(abs(yi), 2.0) == 1.0;
+
+        if (isinf(y))
+        {
+            const double ax = abs(x);
+            if (ax == 1.0)
+                return 1.0;
+            if (ax > 1.0)
+                return signbit(y) ? 0.0 : std::numeric_limits<double>::infinity();
+            return signbit(y) ? std::numeric_limits<double>::infinity() : 0.0;
+        }
+
+        if (isinf(x))
+        {
+            if (y < 0.0)
+                return signbit(x) && y_is_odd ? -0.0 : 0.0;
+            return signbit(x) && y_is_odd
+                ? -std::numeric_limits<double>::infinity()
+                : std::numeric_limits<double>::infinity();
+        }
 
         if (y_is_int && yi >= static_cast<double>(std::numeric_limits<long long>::min()) &&
             yi <= static_cast<double>(std::numeric_limits<long long>::max()))
@@ -245,8 +532,7 @@ namespace detail::_f64_impl
                 return std::numeric_limits<double>::quiet_NaN();
 
             const double magnitude = exp(y * log(-x));
-            const double parity    = fmod_exact(abs(yi), 2.0);
-            return (parity == 1.0) ? -magnitude : magnitude;
+            return y_is_odd ? -magnitude : magnitude;
         }
 
         return exp(y * log(x));
@@ -342,7 +628,8 @@ namespace detail::_f64_impl
         if (x > 0x1p500)
             return log(x) + ln2;
 
-        return log(x + sqrt((x - 1.0) * (x + 1.0)));
+        const double offset = x - 1.0;
+        return log1p(offset + sqrt(offset * (x + 1.0)));
     }
 
     BL_FORCE_INLINE constexpr double atanh(double x) noexcept
@@ -552,14 +839,184 @@ namespace detail::_f64_impl
     }
 
     // gamma
+    template<std::size_t Count>
+    [[nodiscard]] BL_FORCE_INLINE constexpr double horner_ascending(
+        const double (&coefficients)[Count],
+        double x) noexcept
+    {
+        double value = coefficients[Count - 1];
+        for (std::size_t i = Count - 1; i-- > 0;)
+            value = value * x + coefficients[i];
+        return value;
+    }
+
+    BL_MSVC_NOINLINE constexpr double lgamma1p_series(double y) noexcept
+    {
+        constexpr double coefficients[] = {
+             0x1.a51a6625307d3p-1, -0x1.9a4d55beab2d7p-2,
+             0x1.151322ac7d848p-2, -0x1.a8b9c17aa6149p-3,
+             0x1.5b40cb100c306p-3, -0x1.2703a1dcea3aep-3,
+             0x1.010b36af86397p-3, -0x1.c806706d57db4p-4,
+             0x1.9a01e385d5f8fp-4, -0x1.748c33114c6d6p-4,
+             0x1.556ad63243bc4p-4, -0x1.3b1d971fc5985p-4,
+             0x1.2496df8320c5fp-4, -0x1.11133476e7fe0p-4,
+             0x1.00010064cdeb2p-4, -0x1.e1e2d311e8abdp-5,
+             0x1.c71ce3a20b419p-5, -0x1.af28a1b5688a0p-5,
+             0x1.9999b3352d5bap-5, -0x1.86186db77bfbfp-5,
+             0x1.745d1d1778df9p-5, -0x1.642c88591b66dp-5,
+             0x1.555556aaafdcdp-5, -0x1.47ae151eb9fb7p-5,
+             0x1.3b13b189d925ep-5, -0x1.2f684c00002bcp-5,
+             0x1.24924936db7bcp-5, -0x1.1a7b961a7b9aap-5,
+             0x1.111111155556dp-5, -0x1.08421086318cep-5
+        };
+        constexpr double euler_gamma = 0x1.2788cfc6fb619p-1;
+        return y * (y * horner_ascending(coefficients, y) - euler_gamma);
+    }
+
+    BL_MSVC_NOINLINE constexpr double lgamma1p5_series(double y) noexcept
+    {
+        constexpr double coefficients[] = {
+             0x1.de9e64df22ef3p-2, -0x1.1ae55b180726cp-3,
+             0x1.e0f840dad61dap-5, -0x1.da59d5374a543p-6,
+             0x1.f9ca39daa929cp-7, -0x1.1a8ba4f0ea597p-7,
+             0x1.456f1ad666a3bp-8, -0x1.7edb812f6426ep-9,
+             0x1.c9735ae9db2c1p-10, -0x1.148a319eec639p-10,
+             0x1.517c5a1579f10p-11, -0x1.9eff1d1c8bdc2p-12,
+             0x1.00c41c13e4c1cp-12, -0x1.3f6dff22ac1c2p-13,
+             0x1.8f3619541742cp-14, -0x1.f4ea079c9c87ap-15,
+             0x1.3b5e73f18d398p-15, -0x1.8e583480fb843p-16,
+             0x1.f88eb43555368p-17, -0x1.4059677eed115p-17,
+             0x1.97b6b03fa7446p-18, -0x1.03fd6bf0808efp-18,
+             0x1.4c355353d5241p-19, -0x1.a939cf6ab6697p-20,
+             0x1.109491756a3f0p-20, -0x1.5dfabe1235651p-21,
+             0x1.c1f93171f89d3p-22, -0x1.21a3531259833p-22,
+             0x1.754fa60ab8b7ap-23, -0x1.e1b1158537c59p-24
+        };
+        constexpr double constant = -0x1.eeb95b094c191p-4;
+        constexpr double linear = 0x1.2aed059bd608ap-5;
+        return y * (y * horner_ascending(coefficients, y) + linear) + constant;
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr bool try_lgamma_local(
+        double x,
+        double& result) noexcept
+    {
+        const double y1 = x - 1.0;
+        if (abs(y1) <= 0.25)
+        {
+            result = lgamma1p_series(y1);
+            return true;
+        }
+
+        const double y15 = x - 1.5;
+        if (abs(y15) <= 0.25)
+        {
+            result = lgamma1p5_series(y15);
+            return true;
+        }
+
+        const double y2 = x - 2.0;
+        if (abs(y2) <= 0.25)
+        {
+            result = log1p(y2) + lgamma1p_series(y2);
+            return true;
+        }
+        return false;
+    }
+
+    BL_MSVC_NOINLINE constexpr double lgamma_positive_low_range(double x) noexcept
+    {
+        double y = x;
+        double correction = 0.0;
+        if (y < 0.75)
+        {
+            do
+            {
+                correction -= log(y);
+                y += 1.0;
+            }
+            while (y < 0.75);
+        }
+        else
+        {
+            while (y > 2.25)
+            {
+                y -= 1.0;
+                correction += log(y);
+            }
+        }
+
+        double local = 0.0;
+        (void)try_lgamma_local(y, local);
+        return local + correction;
+    }
+
+    BL_MSVC_NOINLINE constexpr double gamma_positive_low_range(double x) noexcept
+    {
+        double y = x;
+        double product_hi = 1.0;
+        double product_lo = 0.0;
+        bool divide = false;
+
+        const auto accumulate = [&](double factor) constexpr {
+            double next_hi{};
+            double product_error{};
+            #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+            detail::fp::two_prod_precise_dekker_checked(
+                product_hi, factor, next_hi, product_error);
+            #else
+            detail::fp::two_prod_precise_dekker(
+                product_hi, factor, next_hi, product_error);
+            #endif
+            const double next_lo = product_lo * factor + product_error;
+            detail::fp::quick_two_sum_precise(
+                next_hi, next_lo, product_hi, product_lo);
+        };
+
+        if (y < 0.75)
+        {
+            divide = true;
+            do
+            {
+                accumulate(y);
+                y += 1.0;
+            }
+            while (y < 0.75);
+        }
+        else
+        {
+            while (y > 2.25)
+            {
+                y -= 1.0;
+                accumulate(y);
+            }
+        }
+
+        double local_log = 0.0;
+        (void)try_lgamma_local(y, local_log);
+        const double local = exp(local_log);
+        if (divide)
+            return local / (product_hi + product_lo);
+
+        double result_hi{};
+        double result_error{};
+        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        detail::fp::two_prod_precise_dekker_checked(
+            local, product_hi, result_hi, result_error);
+        #else
+        detail::fp::two_prod_precise_dekker(
+            local, product_hi, result_hi, result_error);
+        #endif
+        return result_hi + (result_error + local * product_lo);
+    }
+
     BL_FORCE_INLINE constexpr double lgamma_positive(double x) noexcept
     {
-        if (x == 1.0 || x == 2.0)
-            return 0.0;
-        if (x == 0.5)
-            return 0.57236494292470009;
-        if (x == 1.5)
-            return -0.12078223763524522;
+        double local = 0.0;
+        if (try_lgamma_local(x, local))
+            return local;
+        if (x <= 16.0)
+            return lgamma_positive_low_range(x);
 
         constexpr double coeffs[] =
         {
@@ -588,9 +1045,7 @@ namespace detail::_f64_impl
         if (isnan(x))
             return std::numeric_limits<double>::quiet_NaN();
         if (isinf(x))
-            return signbit(x)
-                ? std::numeric_limits<double>::quiet_NaN()
-                : std::numeric_limits<double>::infinity();
+            return std::numeric_limits<double>::infinity();
 
         if (x > 0.0)
             return lgamma_positive(x);
@@ -628,7 +1083,9 @@ namespace detail::_f64_impl
         }
 
         if (x > 0.0)
-            return exp(lgamma_positive(x));
+            return x <= 20.0
+                ? gamma_positive_low_range(x)
+                : exp(lgamma_positive(x));
 
         const double xi = trunc(x);
         if (xi == x)
@@ -744,6 +1201,7 @@ namespace detail::_f64_impl
     );
 }
 
+BL_PUSH_PRECISE;
 template<detail::fp::non_bool_integral Exp>
 [[nodiscard]] BL_FORCE_INLINE constexpr double ipow(double x, Exp y) noexcept
 {
@@ -785,6 +1243,7 @@ template<detail::fp::non_bool_integral Exp>
 
     return powered;
 }
+BL_POP_PRECISE;
 
 template<detail::fp::non_bool_integral Exp>
 [[nodiscard]] BL_FORCE_INLINE constexpr double pow(double x, Exp y) noexcept
@@ -815,18 +1274,34 @@ requires (detail::math::f64_promoted_math_args<Base, Exp> &&
 // trig
 [[nodiscard]] BL_FORCE_INLINE constexpr double sin(double x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::sin(x),
-        std::sin(x)
-    );
+    if (bl::detail::is_constant_evaluated())
+        return detail::_f64_impl::sin(x);
+#if defined(__MINGW32__)
+    if (std::fabs(x) >= 0x1p20) [[unlikely]]
+        return detail::_f64_runtime::sin_large(x);
+    const double result = std::sin(x);
+    if (std::fabs(result) < 0x1p-20) [[unlikely]]
+        return detail::_f64_runtime::sin_large(x);
+    return result;
+#else
+    return std::sin(x);
+#endif
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr double cos(double x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::cos(x),
-        std::cos(x)
-    );
+    if (bl::detail::is_constant_evaluated())
+        return detail::_f64_impl::cos(x);
+#if defined(__MINGW32__)
+    if (std::fabs(x) >= 0x1p20) [[unlikely]]
+        return detail::_f64_runtime::cos_large(x);
+    const double result = std::cos(x);
+    if (std::fabs(result) < 0x1p-20) [[unlikely]]
+        return detail::_f64_runtime::cos_large(x);
+    return result;
+#else
+    return std::cos(x);
+#endif
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr bool sincos(double x, double& s_out, double& c_out) noexcept
@@ -838,10 +1313,13 @@ requires (detail::math::f64_promoted_math_args<Base, Exp> &&
 
 [[nodiscard]] BL_FORCE_INLINE constexpr double tan(double x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::tan(x),
-        std::tan(x)
-    );
+    if (bl::detail::is_constant_evaluated())
+        return detail::_f64_impl::tan(x);
+#if defined(__MINGW32__)
+    if (std::fabs(x) >= 0x1p20) [[unlikely]]
+        return detail::_f64_runtime::tan_large(x);
+#endif
+    return std::tan(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr double atan(double x) noexcept
@@ -931,10 +1409,13 @@ template<class Value> requires std::same_as<std::remove_cvref_t<Value>, double>
 
 [[nodiscard]] BL_FORCE_INLINE constexpr double acosh(double x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::acosh(x),
-        std::acosh(x)
-    );
+    if (bl::detail::is_constant_evaluated())
+        return detail::_f64_impl::acosh(x);
+#if defined(__MINGW32__)
+    if (x < 1.5)
+        return detail::_f64_impl::acosh(x);
+#endif
+    return std::acosh(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr double atanh(double x) noexcept
@@ -967,10 +1448,13 @@ template<class Value> requires std::same_as<std::remove_cvref_t<Value>, double>
 // gamma
 [[nodiscard]] BL_FORCE_INLINE constexpr double lgamma(double x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::lgamma(x),
-        std::lgamma(x)
-    );
+    if (bl::detail::is_constant_evaluated())
+        return detail::_f64_impl::lgamma(x);
+#if defined(__MINGW32__)
+    if (x >= 0.75 && x <= 1.25)
+        return static_cast<double>(std::lgamma(static_cast<long double>(x)));
+#endif
+    return std::lgamma(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr double tgamma(double x) noexcept

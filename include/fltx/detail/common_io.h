@@ -75,11 +75,13 @@ struct hybrid_parse_token
 {
     std::uint64_t coeff = 0;
     exact_decimal::biguint bounded_coeff;
+    std::uint32_t decimal_chunk = 0;
     int frac_digits = 0;
     int kept_sig_digits = 0;
     int sig_digits = 0;
     int exp10 = 0;
     int first_discarded_digit = -1;
+    unsigned char decimal_chunk_digits = 0;
     bool any_digit = false;
     bool seen_nonzero = false;
     bool coeff_overflow = false;
@@ -682,6 +684,30 @@ template<class Traits>
     return ((Traits::significand_bits * 30103 + 99999) / 100000) + 8;
 }
 
+BL_FORCE_INLINE constexpr void flush_hybrid_decimal_chunk(hybrid_parse_token& token) noexcept
+{
+    constexpr std::uint32_t pow10[] = {
+        1u,
+        10u,
+        100u,
+        1000u,
+        10000u,
+        100000u,
+        1000000u,
+        10000000u,
+        100000000u,
+        1000000000u
+    };
+
+    if (token.decimal_chunk_digits == 0)
+        return;
+
+    token.bounded_coeff.mul_small(pow10[token.decimal_chunk_digits]);
+    token.bounded_coeff.add_small(token.decimal_chunk);
+    token.decimal_chunk = 0;
+    token.decimal_chunk_digits = 0;
+}
+
 template<class Traits>
 BL_FORCE_INLINE constexpr void append_hybrid_decimal_digit(
     hybrid_parse_token& token,
@@ -713,9 +739,11 @@ BL_FORCE_INLINE constexpr void append_hybrid_decimal_digit(
 
     if (token.kept_sig_digits < max_bounded_decimal_digits<Traits>())
     {
-        token.bounded_coeff.mul_small(10);
-        token.bounded_coeff.add_small(static_cast<std::uint32_t>(digit));
+        token.decimal_chunk = token.decimal_chunk * 10u + static_cast<std::uint32_t>(digit);
+        ++token.decimal_chunk_digits;
         ++token.kept_sig_digits;
+        if (token.decimal_chunk_digits == 9)
+            flush_hybrid_decimal_chunk(token);
         return;
     }
 
@@ -787,6 +815,9 @@ BL_MSVC_NOINLINE constexpr bool scan_hybrid_decimal_token(
         return false;
 
     scan_optional_exp10<bounded>(p, last, token);
+
+    if (token.coeff_overflow)
+        flush_hybrid_decimal_chunk(token);
 
     if (token.coeff_overflow &&
         (token.first_discarded_digit > 5 ||
@@ -1199,7 +1230,65 @@ BL_FORCE_INLINE constexpr void parsed_decimal_to_value(
 
     const int skipped_sig_digits = token.sig_digits - token.kept_sig_digits;
     const int bounded_dec_exp = token.exp10 - token.frac_digits + skipped_sig_digits;
-    out = Traits::exact_decimal_to_value(token.bounded_coeff, bounded_dec_exp, neg);
+    out = Traits::exact_decimal_to_value(
+        token.bounded_coeff, bounded_dec_exp, neg);
+
+    if constexpr (requires(typename Traits::value_type value) {
+        Traits::nextafter(value, value);
+        Traits::max_finite();
+        Traits::needs_nominal_refinement(value);
+    })
+    {
+        if (Traits::isinf(out))
+        {
+            const typename Traits::value_type maximum = Traits::max_finite();
+            const int maximum_side =
+                exact_decimal::compare_decimal_twice_to_binary_sum<Traits>(
+                    token.bounded_coeff,
+                    bounded_dec_exp,
+                    maximum,
+                    maximum);
+            if (maximum_side <= 0)
+                out = neg ? -maximum : maximum;
+            return;
+        }
+        if (!Traits::needs_nominal_refinement(out)) [[likely]]
+            return;
+
+        // Long extended inputs already use the bigint path. Values whose guard
+        // limb remains representable return above; refine only underflow-edge
+        // candidates against the adjacent nominal value. Native floats, small
+        // integers, compact decimals, and ordinary-exponent bigint inputs keep
+        // their existing behavior and cost. The bounded coefficient includes
+        // decimal guard and sticky information, correcting pack/renormalization
+        // double-rounding without widening the public precision model.
+        typename Traits::value_type candidate = neg ? -out : out;
+        const int side =
+            exact_decimal::compare_decimal_twice_to_binary_sum<Traits>(
+                token.bounded_coeff,
+                bounded_dec_exp,
+                candidate,
+                candidate);
+        if (side == 0)
+            return;
+
+        const typename Traits::value_type neighbor = Traits::nextafter(
+            candidate,
+            side > 0 ? Traits::infinity(false) : Traits::zero(false));
+        if (Traits::isinf(neighbor))
+            return;
+
+        const int midpoint_side =
+            exact_decimal::compare_decimal_twice_to_binary_sum<Traits>(
+                token.bounded_coeff,
+                bounded_dec_exp,
+                candidate,
+                neighbor);
+        const bool neighbor_is_closer =
+            side > 0 ? midpoint_side > 0 : midpoint_side < 0;
+        if (neighbor_is_closer)
+            out = neg ? -neighbor : neighbor;
+    }
 }
 
 template<class Traits, bool bounded>

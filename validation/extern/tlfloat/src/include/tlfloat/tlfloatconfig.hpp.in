@@ -1,0 +1,22 @@
+//  See https://github.com/shibatch/tlfloat for our project.
+//        Copyright Naoki Shibata and contributors.
+// Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE.txt or copy at
+//          http://www.boost.org/LICENSE_1_0.txt)
+
+#ifndef __TLFLOATVERSION_HPP_INCLUDED__
+#define __TLFLOATVERSION_HPP_INCLUDED__
+
+#define TLFLOAT_VERSION_MAJOR @TLFLOAT_VERSION_MAJOR@
+#define TLFLOAT_VERSION_MINOR @TLFLOAT_VERSION_MINOR@
+#define TLFLOAT_VERSION_PATCH @TLFLOAT_VERSION_PATCH@
+
+#cmakedefine TLFLOAT_COMPILER_SUPPORTS_INT128
+#cmakedefine TLFLOAT_COMPILER_SUPPORTS_ISOFLOAT128
+#cmakedefine TLFLOAT_COMPILER_SUPPORTS_FLOAT128
+#cmakedefine TLFLOAT_LONGDOUBLE_IS_FLOAT128
+#cmakedefine TLFLOAT_COMPILER_SUPPORTS_FP16
+
+#cmakedefine TLFLOAT_ENABLE_INTSQRT
+
+#endif

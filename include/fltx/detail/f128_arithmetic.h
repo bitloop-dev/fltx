@@ -17,21 +17,30 @@ namespace bl {
 
 namespace detail::_f128 // primitives and kernels
 {
+    [[nodiscard]] BL_FORCE_INLINE constexpr bool limb_is_zero(double value) noexcept
+    {
+        return (std::bit_cast<std::uint64_t>(value) & 0x7fffffffffffffffull) == 0;
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr bool value_is_zero(const f128_s& value) noexcept
+    {
+        return limb_is_zero(value.hi) && limb_is_zero(value.lo);
+    }
+
     // public arithmetic special cases
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s quiet_nan() noexcept
     {
-        return { std::numeric_limits<double>::quiet_NaN(), 0.0 };
+        return { std::bit_cast<double>(0x7ff8000000000000ull), 0.0 };
     }
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s signed_infinity(bool negative) noexcept
     {
-        const double inf = std::numeric_limits<double>::infinity();
-        return { negative ? -inf : inf, 0.0 };
+        return { std::bit_cast<double>(negative ? 0xfff0000000000000ull : 0x7ff0000000000000ull), 0.0 };
     }
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s signed_zero(bool negative) noexcept
     {
-        return { negative ? -0.0 : 0.0, 0.0 };
+        return { std::bit_cast<double>(negative ? 0x8000000000000000ull : 0ull), 0.0 };
     }
 
     [[nodiscard]] BL_NO_INLINE constexpr f128_s add_special(const f128_s& a, const f128_s& b) noexcept
@@ -63,11 +72,13 @@ namespace detail::_f128 // primitives and kernels
 
         const bool a_inf = isinf(a.hi);
         const bool b_inf = isinf(b.hi);
-        if ((a_inf && b.hi == 0.0) || (b_inf && a.hi == 0.0))
+        const bool a_zero = value_is_zero(a);
+        const bool b_zero = value_is_zero(b);
+        if ((a_inf && b_zero) || (b_inf && a_zero))
             return quiet_nan();
 
         const bool negative = bl::signbit(a) != bl::signbit(b);
-        if ((a.hi == 0.0 && a.lo == 0.0) || (b.hi == 0.0 && b.lo == 0.0))
+        if (a_zero || b_zero)
             return signed_zero(negative);
 
         return signed_infinity(negative);
@@ -253,19 +264,66 @@ namespace detail::_f128 // primitives and kernels
     {
         if (detail::fp::isinf_or_nan(out.hi)) [[unlikely]]
             return mul_special(a, b);
-        if (out.hi == 0.0 && ((a.hi == 0.0 && a.lo == 0.0) || (b.hi == 0.0 && b.lo == 0.0))) [[unlikely]]
+        if (limb_is_zero(out.hi) && (value_is_zero(a) || value_is_zero(b))) [[unlikely]]
             return mul_special(a, b);
         return out;
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_checked_inline(const f128_s& a, const f128_s& b) noexcept
+    // Multiplication layers:
+    //
+    // - mul_inline is the small arithmetic kernel. Its Dekker path assumes the
+    //   leading limbs are within the normal splitter range.
+    // - mul_checked_fallback handles the complete range and public special-value
+    //   semantics. It is constexpr-capable but stays out of runtime hot paths.
+    // - mul_checked_inline is the thin public-operation dispatcher.
+    [[nodiscard]] BL_NO_INLINE constexpr f128_s mul_checked_fallback(
+        const f128_s& a,
+        const f128_s& b) noexcept
     {
+        if (detail::fp::isinf_or_nan(a.hi) || detail::fp::isinf_or_nan(b.hi) ||
+            value_is_zero(a) || value_is_zero(b)) [[unlikely]]
+            return mul_special(a, b);
+
         #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
         if (detail::fp::dekker_product_needs_scaling(a.hi, b.hi)) [[unlikely]]
             return finish_mul_checked_inline(a, b, mul_inline_checked(a, b));
         #endif
 
         return finish_mul_checked_inline(a, b, mul_inline(a, b));
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr bool mul_fast_path_is_safe(
+        double a,
+        double b) noexcept
+    {
+        constexpr std::uint64_t sign_mask = std::uint64_t{ 1 } << 63;
+        constexpr std::uint64_t minimum = UINT64_C(0x0370000000000000); // 2^-968
+        constexpr std::uint64_t maximum = UINT64_C(0x7e30000000000000); // 2^996
+
+        const std::uint64_t a_magnitude = std::bit_cast<std::uint64_t>(a) & ~sign_mask;
+        const std::uint64_t b_magnitude = std::bit_cast<std::uint64_t>(b) & ~sign_mask;
+        const std::uint64_t product_exponent_sum = (a_magnitude >> 52) + (b_magnitude >> 52);
+
+        // The magnitude bounds keep Dekker's split away from overflow and
+        // underflow. An exponent-field sum of at most 3068 guarantees that
+        // multiplying the two leading limbs stays finite. Keep the tests
+        // branchless so callers need only one cold-path branch.
+        return
+            ((a_magnitude - minimum) <= (maximum - minimum)) &
+            ((b_magnitude - minimum) <= (maximum - minimum)) &
+            (product_exponent_sum <= 3068u);
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_checked_inline(
+        const f128_s& a,
+        const f128_s& b) noexcept
+    {
+        BL_CONSTEXPR_RUNTIME_DISPATCH(
+            mul_checked_fallback(a, b),
+            mul_fast_path_is_safe(a.hi, b.hi)
+                ? mul_inline(a, b)
+                : mul_checked_fallback(a, b)
+        );
     }
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_dekker_checked_inline(const f128_s& a, const f128_s& b) noexcept
@@ -399,7 +457,7 @@ namespace detail::_f128 // primitives and kernels
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s div_double_inline(const f128_s& a, double b) noexcept
     {
-        if (bl::detail::use_constexpr_math())
+        if (bl::detail::is_constant_evaluated())
         {
             if (detail::fp::isnan(a.hi) || detail::fp::isnan(b)) [[unlikely]]
                 return std::numeric_limits<f128_s>::quiet_NaN();
@@ -410,7 +468,7 @@ namespace detail::_f128 // primitives and kernels
                     return std::numeric_limits<f128_s>::quiet_NaN();
 
                 const bool neg = signbit(a.hi) ^ signbit(b);
-                return f128_s{ neg ? -0.0 : 0.0, 0.0 };
+                return signed_zero(neg);
             }
 
             if (b == 0.0) [[unlikely]]
@@ -626,6 +684,11 @@ namespace detail::_f128 // primitives and kernels
 // reciprocal helpers
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 recip(f128_s b) noexcept
 {
+    if (iszero(b)) [[unlikely]]
+        return detail::_f128::signed_infinity(signbit(b));
+    if (isinf(b)) [[unlikely]]
+        return detail::_f128::signed_zero(signbit(b));
+
     constexpr f128_s one = f128_s{ 1.0 };
     f128_s y = f128_s{ 1.0 / b.hi };
     f128_s e = one - b * y;

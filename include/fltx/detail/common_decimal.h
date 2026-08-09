@@ -16,38 +16,44 @@
 #include <type_traits>
 
 #include "fltx/detail/biguint.h"
+#include "fltx/detail/pow_tables.h"
 
 namespace bl::detail::exact_decimal {
 
 [[nodiscard]] constexpr inline biguint pow5_big(int exponent) noexcept
 {
-    constexpr std::uint32_t pow5_chunks[] = {
-        1u,
-        5u,
-        25u,
-        125u,
-        625u,
-        3125u,
-        15625u,
-        78125u,
-        390625u,
-        1953125u,
-        9765625u,
-        48828125u,
-        244140625u,
-        1220703125u
-    };
-    constexpr int chunk_exp = 13;
+    constexpr int chunk_exp = pow_tables::power5_checkpoint_exponent;
+    const int chunks = exponent / chunk_exp;
+    const int remainder = exponent % chunk_exp;
 
-    biguint out{1};
-    while (exponent >= chunk_exp)
+    if (chunks < static_cast<int>(
+            sizeof(pow_tables::power5_checkpoints) /
+            sizeof(pow_tables::power5_checkpoints[0])))
     {
-        out.mul_small(pow5_chunks[chunk_exp]);
-        exponent -= chunk_exp;
+        const pow_tables::power5_checkpoint& cached =
+            pow_tables::power5_checkpoints[chunks];
+        biguint out = from_words(cached.words, cached.size);
+
+        if (remainder > 0)
+            out.mul_small(static_cast<std::uint32_t>(pow_tables::power5_u64[remainder]));
+        return out;
     }
 
-    if (exponent > 0)
-        out.mul_small(pow5_chunks[exponent]);
+    biguint out{1};
+    int remaining_chunks = chunks;
+    biguint factor{ pow_tables::power5_u64[chunk_exp] };
+    while (remaining_chunks != 0)
+    {
+        if ((remaining_chunks & 1) != 0)
+            out = mul_big(out, factor);
+
+        remaining_chunks >>= 1;
+        if (remaining_chunks != 0)
+            factor = mul_big(factor, factor);
+    }
+
+    if (remainder > 0)
+        out.mul_small(static_cast<std::uint32_t>(pow_tables::power5_u64[remainder]));
     return out;
 }
 
@@ -224,22 +230,16 @@ constexpr inline void divmod_limited_quotient(
             return false;
     }
 
-    for (;;)
+    remainder = numerator;
+    remainder.sub_inplace(product);
+    while (remainder.compare(denominator) >= 0)
     {
-        biguint next_product = product;
-        next_product.add_inplace(denominator);
-        if (next_product.compare(numerator) > 0)
-            break;
-
-        product = next_product;
+        remainder.sub_inplace(denominator);
         quotient.add_small(1);
 
         if (++corrections > 64)
             return false;
     }
-
-    remainder = numerator;
-    remainder.sub_inplace(product);
     return true;
 }
 
@@ -276,7 +276,7 @@ constexpr inline void divmod_limited_quotient(
     return quotient;
 }
 
-[[nodiscard]] inline double leading_value_as_double(const biguint& value) noexcept
+[[nodiscard]] constexpr inline double leading_value_as_double(const biguint& value) noexcept
 {
     const int bits = value.bit_length();
     if (bits <= 0)
@@ -284,13 +284,40 @@ constexpr inline void divmod_limited_quotient(
 
     const int keep_bits = bits < 53 ? bits : 53;
     const std::uint64_t top = value.get_bits(bits - keep_bits, keep_bits);
-    return std::ldexp(static_cast<double>(top), bits - keep_bits);
+    const int scale = bits - keep_bits;
+    if (scale > 1023)
+        return std::numeric_limits<double>::infinity();
+
+    const std::uint64_t scale_bits = static_cast<std::uint64_t>(scale + 1023) << 52;
+    return static_cast<double>(top) * std::bit_cast<double>(scale_bits);
 }
 
-[[nodiscard]] inline bool div_quotient_limited_estimate(
+[[nodiscard]] constexpr inline double leading_ratio_as_double(
+    const biguint& numerator,
+    const biguint& denominator) noexcept
+{
+    const int num_bits = numerator.bit_length();
+    const int den_bits = denominator.bit_length();
+    if (num_bits <= 0 || den_bits <= 0)
+        return 0.0;
+
+    const int num_keep = num_bits < 53 ? num_bits : 53;
+    const int den_keep = den_bits < 53 ? den_bits : 53;
+    const std::uint64_t num_top = numerator.get_bits(num_bits - num_keep, num_keep);
+    const std::uint64_t den_top = denominator.get_bits(den_bits - den_keep, den_keep);
+    const int scale = (num_bits - num_keep) - (den_bits - den_keep);
+    if (scale < -1022 || scale > 1023)
+        return 0.0;
+
+    const std::uint64_t scale_bits = static_cast<std::uint64_t>(scale + 1023) << 52;
+    const double pow2 = std::bit_cast<double>(scale_bits);
+    return (static_cast<double>(num_top) / static_cast<double>(den_top)) * pow2;
+}
+
+[[nodiscard]] constexpr inline bool div_quotient_limited_estimate_from_ratio(
     const biguint& numerator,
     const biguint& denominator,
-    double denominator_leading,
+    double approx,
     int quotient_bits,
     std::uint64_t& quotient,
     biguint& remainder) noexcept
@@ -310,10 +337,6 @@ constexpr inline void divmod_limited_quotient(
 
     const std::uint64_t max_quotient =
         quotient_bits == 64 ? ~std::uint64_t{ 0 } : ((std::uint64_t{ 1 } << quotient_bits) - 1u);
-    if (!(denominator_leading > 0.0))
-        return false;
-
-    const double approx = leading_value_as_double(numerator) / denominator_leading;
     if (!(approx >= 1.0))
         return false;
 
@@ -335,24 +358,38 @@ constexpr inline void divmod_limited_quotient(
         product.sub_inplace(denominator);
     }
 
-    for (;;)
+    remainder = numerator;
+    remainder.sub_inplace(product);
+    while (remainder.compare(denominator) >= 0)
     {
-        biguint next_product = product;
-        next_product.add_inplace(denominator);
-        if (next_product.compare(numerator) > 0)
-            break;
-
         if (candidate == max_quotient || ++corrections > 64)
             return false;
 
         ++candidate;
-        product = next_product;
+        remainder.sub_inplace(denominator);
     }
-
-    remainder = numerator;
-    remainder.sub_inplace(product);
     quotient = candidate;
     return true;
+}
+
+[[nodiscard]] inline bool div_quotient_limited_estimate(
+    const biguint& numerator,
+    const biguint& denominator,
+    double denominator_leading,
+    int quotient_bits,
+    std::uint64_t& quotient,
+    biguint& remainder) noexcept
+{
+    if (!(denominator_leading > 0.0))
+        return false;
+
+    return div_quotient_limited_estimate_from_ratio(
+        numerator,
+        denominator,
+        leading_value_as_double(numerator) / denominator_leading,
+        quotient_bits,
+        quotient,
+        remainder);
 }
 
 [[nodiscard]] inline bool div_quotient_limited_estimate(
@@ -378,9 +415,20 @@ constexpr inline void divmod_limited_quotient(
     int quotient_bits,
     biguint& remainder) noexcept
 {
-    if (!bl::detail::is_constant_evaluated())
+    std::uint64_t quotient = 0;
+    if (bl::detail::is_constant_evaluated())
     {
-        std::uint64_t quotient = 0;
+        if (div_quotient_limited_estimate_from_ratio(
+                numerator,
+                denominator,
+                leading_ratio_as_double(numerator, denominator),
+                quotient_bits,
+                quotient,
+                remainder))
+            return quotient;
+    }
+    else
+    {
         if (div_quotient_limited_estimate(numerator, denominator, denominator_leading, quotient_bits, quotient, remainder))
             return quotient;
     }
@@ -397,6 +445,16 @@ constexpr inline void divmod_limited_quotient(
             leading_value_as_double(denominator),
             quotient_bits,
             remainder);
+
+    std::uint64_t quotient = 0;
+    if (div_quotient_limited_estimate_from_ratio(
+            numerator,
+            denominator,
+            leading_ratio_as_double(numerator, denominator),
+            quotient_bits,
+            quotient,
+            remainder))
+        return quotient;
 
     return div_quotient_limited_bitwise(numerator, denominator, quotient_bits, remainder);
 }
@@ -458,30 +516,126 @@ constexpr inline void divmod_limited_quotient_chunked(
     remainder.trim();
 }
 
-[[nodiscard]] constexpr inline biguint extract_rounded_significand_chunks(const biguint& numerator, const biguint& denominator, int ratio_exp, int significand_bits) noexcept
+[[nodiscard]] constexpr inline bool try_extract_rounded_significand_reciprocal(
+    const biguint& numerator,
+    const biguint& denominator,
+    int denominator_power5_exponent,
+    int ratio_exp,
+    int significand_bits,
+    biguint& quotient) noexcept
+{
+    constexpr int reciprocal_guard_bits = 3;
+    constexpr int capacity_bits = biguint::max_words * 32;
+
+    if (denominator_power5_exponent <= 0 ||
+        denominator_power5_exponent > pow_tables::reciprocal_power5_max_exponent ||
+        significand_bits <= 0 ||
+        significand_bits + reciprocal_guard_bits >
+            pow_tables::reciprocal_power5_precision)
+    {
+        return false;
+    }
+
+    const int scale_bits = significand_bits - 1 - ratio_exp;
+    if (scale_bits < 0 || numerator.bit_length() + scale_bits > capacity_bits)
+        return false;
+
+    const pow_tables::reciprocal_power5& cached =
+        pow_tables::reciprocal_power5_table[denominator_power5_exponent - 1];
+    biguint reciprocal = from_words(
+        cached.words,
+        pow_tables::reciprocal_power5_word_count);
+
+    const int reciprocal_drop =
+        pow_tables::reciprocal_power5_precision -
+        (significand_bits + reciprocal_guard_bits);
+    if (reciprocal_drop > 0)
+    {
+        const bool round_up = any_low_bits_set(reciprocal, reciprocal_drop);
+        reciprocal = shr_bits_copy(reciprocal, reciprocal_drop);
+        if (round_up)
+            reciprocal.add_small(1);
+    }
+
+    const int product_shift =
+        static_cast<int>(cached.binary_shift) - reciprocal_drop - scale_bits;
+    if (product_shift < 0 ||
+        numerator.bit_length() + reciprocal.bit_length() > capacity_bits)
+    {
+        return false;
+    }
+
+    // The cached value is ceil(2^P / 5^n). Three guard bits constrain the
+    // candidate error to less than one unit; exact correction below recovers
+    // the floor and its remainder before applying ties-to-even rounding.
+    const biguint product = mul_big(numerator, reciprocal);
+    quotient = shr_bits_copy(product, product_shift);
+    if (quotient.is_zero() ||
+        quotient.bit_length() + denominator.bit_length() > capacity_bits)
+    {
+        return false;
+    }
+
+    biguint scaled_numerator = numerator;
+    scaled_numerator.shl_bits(scale_bits);
+    biguint quotient_product = mul_big(quotient, denominator);
+
+    int corrections = 0;
+    while (quotient_product.compare(scaled_numerator) > 0)
+    {
+        if (quotient.is_zero() || ++corrections > 2)
+            return false;
+
+        quotient.sub_small(1);
+        quotient_product.sub_inplace(denominator);
+    }
+
+    biguint remainder = scaled_numerator;
+    remainder.sub_inplace(quotient_product);
+    while (remainder.compare(denominator) >= 0)
+    {
+        if (++corrections > 2)
+            return false;
+
+        quotient.add_small(1);
+        remainder.sub_inplace(denominator);
+    }
+
+    remainder.shl1();
+    const int half_comparison = remainder.compare(denominator);
+    if (half_comparison > 0 || (half_comparison == 0 && quotient.is_odd()))
+        quotient.add_small(1);
+
+    quotient.trim();
+    return true;
+}
+
+[[nodiscard]] constexpr inline biguint extract_rounded_significand_chunks(
+    biguint& numerator,
+    biguint& denominator,
+    int ratio_exp,
+    int significand_bits) noexcept
 {
     const int chunk_bits = 53;
     const int chunk_count = (significand_bits + chunk_bits - 1) / chunk_bits;
     const int first_chunk_bits = significand_bits - (chunk_count - 1) * chunk_bits;
     const int first_scale_bits = first_chunk_bits - 1;
 
-    biguint normalized_num = numerator;
-    biguint normalized_den = denominator;
     if (ratio_exp >= 0)
-        normalized_den.shl_bits(ratio_exp);
+        denominator.shl_bits(ratio_exp);
     else
-        normalized_num.shl_bits(-ratio_exp);
+        numerator.shl_bits(-ratio_exp);
 
-    biguint scaled = normalized_num;
+    biguint scaled = numerator;
     if (first_scale_bits > 0)
         scaled.shl_bits(first_scale_bits);
 
     double normalized_den_leading = 0.0;
     if (!bl::detail::is_constant_evaluated())
-        normalized_den_leading = leading_value_as_double(normalized_den);
+        normalized_den_leading = leading_value_as_double(denominator);
 
     biguint remainder;
-    const std::uint64_t first_chunk = div_quotient_limited(scaled, normalized_den, normalized_den_leading, first_chunk_bits, remainder);
+    const std::uint64_t first_chunk = div_quotient_limited(scaled, denominator, normalized_den_leading, first_chunk_bits, remainder);
 
     biguint q{ first_chunk };
     for (int chunk_index = 1; chunk_index < chunk_count; ++chunk_index)
@@ -489,18 +643,18 @@ constexpr inline void divmod_limited_quotient_chunked(
         if (!remainder.is_zero())
             remainder.shl_bits(chunk_bits);
 
-        const std::uint64_t chunk = div_quotient_limited(remainder, normalized_den, normalized_den_leading, chunk_bits, remainder);
+        const std::uint64_t chunk = div_quotient_limited(remainder, denominator, normalized_den_leading, chunk_bits, remainder);
         q.shl_bits(chunk_bits);
         if (chunk != 0)
             q.add_inplace(biguint{ chunk });
     }
 
     if (!remainder.is_zero())
-        remainder.shl_bits(2);
+        remainder.shl1();
 
-    const std::uint64_t extra_bits = div_quotient_limited(remainder, normalized_den, normalized_den_leading, 2, remainder);
-    const bool guard_bit     = (extra_bits & 0x2u) != 0;
-    const bool trailing_bits = (extra_bits & 0x1u) != 0 || !remainder.is_zero();
+    const int half_comparison = remainder.compare(denominator);
+    const bool guard_bit = half_comparison >= 0;
+    const bool trailing_bits = half_comparison > 0;
 
     if (guard_bit && (trailing_bits || q.is_odd()))
         q.add_small(1);
@@ -691,6 +845,84 @@ template<class Traits>
     binary_exp = common_exp;
     neg = acc.neg;
     return !magnitude.is_zero();
+}
+
+[[nodiscard]] constexpr inline int compare_binary_scaled(
+    const biguint& lhs,
+    int lhs_exp,
+    const biguint& rhs,
+    int rhs_exp) noexcept
+{
+    if (lhs_exp == rhs_exp)
+        return compare(lhs, rhs);
+    if (lhs_exp > rhs_exp)
+        return -compare_shifted(rhs, lhs, lhs_exp - rhs_exp);
+    return compare_shifted(lhs, rhs, rhs_exp - lhs_exp);
+}
+
+template<class Traits>
+[[nodiscard]] constexpr inline int compare_decimal_twice_to_binary_sum(
+    const biguint& coefficient,
+    int decimal_exp,
+    const typename Traits::value_type& lhs,
+    const typename Traits::value_type& rhs) noexcept
+{
+    biguint lhs_magnitude;
+    biguint rhs_magnitude;
+    int lhs_exp = 0;
+    int rhs_exp = 0;
+    bool lhs_neg = false;
+    bool rhs_neg = false;
+    const bool have_lhs = exact_binary_components<Traits>(
+        lhs, lhs_magnitude, lhs_exp, lhs_neg);
+    const bool have_rhs = exact_binary_components<Traits>(
+        rhs, rhs_magnitude, rhs_exp, rhs_neg);
+
+    // This helper compares positive parse magnitudes and their adjacent
+    // positive candidates. A negative component sum would indicate a broken
+    // caller invariant, so leave the original candidate unchanged.
+    if ((have_lhs && lhs_neg) || (have_rhs && rhs_neg))
+        return 0;
+
+    biguint sum;
+    int sum_exp = 0;
+    if (!have_lhs)
+    {
+        sum = rhs_magnitude;
+        sum_exp = rhs_exp;
+    }
+    else if (!have_rhs)
+    {
+        sum = lhs_magnitude;
+        sum_exp = lhs_exp;
+    }
+    else
+    {
+        sum_exp = lhs_exp < rhs_exp ? lhs_exp : rhs_exp;
+        lhs_magnitude.shl_bits(lhs_exp - sum_exp);
+        rhs_magnitude.shl_bits(rhs_exp - sum_exp);
+        lhs_magnitude.add_inplace(rhs_magnitude);
+        sum = lhs_magnitude;
+    }
+
+    if (decimal_exp >= 0)
+    {
+        const biguint scaled_decimal =
+            mul_big(coefficient, pow5_big(decimal_exp));
+        return compare_binary_scaled(
+            scaled_decimal,
+            decimal_exp + 1,
+            sum,
+            sum_exp);
+    }
+
+    const int scale = -decimal_exp;
+    const biguint scaled_sum = mul_big(sum, pow5_big(scale));
+    return compare_binary_scaled(
+        coefficient,
+        1 - scale,
+        scaled_sum,
+        sum_exp);
 }
 
 template<class Traits>
@@ -973,41 +1205,11 @@ template<class Traits, typename String>
 
 [[nodiscard]] BL_FORCE_INLINE constexpr bool pow5_u64(int exponent, std::uint64_t& out) noexcept
 {
-    constexpr std::uint64_t pow5[] = {
-        1ull,
-        5ull,
-        25ull,
-        125ull,
-        625ull,
-        3125ull,
-        15625ull,
-        78125ull,
-        390625ull,
-        1953125ull,
-        9765625ull,
-        48828125ull,
-        244140625ull,
-        1220703125ull,
-        6103515625ull,
-        30517578125ull,
-        152587890625ull,
-        762939453125ull,
-        3814697265625ull,
-        19073486328125ull,
-        95367431640625ull,
-        476837158203125ull,
-        2384185791015625ull,
-        11920928955078125ull,
-        59604644775390625ull,
-        298023223876953125ull,
-        1490116119384765625ull,
-        7450580596923828125ull
-    };
-
-    if (exponent < 0 || exponent >= static_cast<int>(sizeof(pow5) / sizeof(pow5[0])))
+    if (exponent < 0 || exponent >= static_cast<int>(
+            sizeof(pow_tables::power5_u64) / sizeof(pow_tables::power5_u64[0])))
         return false;
 
-    out = pow5[exponent];
+    out = pow_tables::power5_u64[exponent];
     return true;
 }
 
@@ -1213,36 +1415,43 @@ constexpr inline typename Traits::value_type exact_decimal_to_value(const biguin
     if (compact_decimal_to_value<Traits>(coeff, dec_exp, neg, compact))
         return compact;
 
-    biguint numerator = coeff;
-    biguint denominator{ 1 };
-    int bin_exp = 0;
-
     if (dec_exp >= 0)
     {
-        numerator = mul_big(coeff, pow5_big(dec_exp));
+        biguint numerator = mul_big(coeff, pow5_big(dec_exp));
         return exact_binary_integer_to_value<Traits>(
             numerator,
             dec_exp,
             neg,
             decimal_conversion_significand_bits<Traits>());
     }
-    else
-    {
-        denominator = pow5_big(-dec_exp);
-        bin_exp = dec_exp;
-    }
+    biguint numerator = coeff;
+    biguint denominator = pow5_big(-dec_exp);
 
     int ratio_exp = floor_log2_ratio(numerator, denominator);
     const int conversion_bits = decimal_conversion_significand_bits<Traits>();
 
-    biguint q = extract_rounded_significand_chunks(numerator, denominator, ratio_exp, conversion_bits);
+    biguint q;
+    if (!try_extract_rounded_significand_reciprocal(
+            numerator,
+            denominator,
+            -dec_exp,
+            ratio_exp,
+            conversion_bits,
+            q))
+    {
+        q = extract_rounded_significand_chunks(
+            numerator,
+            denominator,
+            ratio_exp,
+            conversion_bits);
+    }
     if (q.bit_length() > conversion_bits)
     {
         q.shr1();
         ++ratio_exp;
     }
 
-    const int e2 = bin_exp + ratio_exp;
+    const int e2 = dec_exp + ratio_exp;
     if (e2 > Traits::max_binary_exponent)
         return Traits::infinity(neg);
     if (e2 < Traits::min_binary_exponent)

@@ -20,9 +20,9 @@ namespace bl::detail::exact_decimal {
 struct biguint
 {
     // Decimal parse/format/rounding paths stay well below this for canonical
-    // f128/f256 values. The limiting use is f256 Payne-Hanek reduction: the
-    // 2048-bit 2/pi table plus the low-limb span of a canonical f256 input
-    // needs roughly 2208 low product bits near the large-argument threshold.
+    // f128/f256 values. The limiting use is f256 Payne-Hanek reduction, whose
+    // 1888-bit 2/pi constant and 320-bit exact input accumulator use the
+    // complete 2208-bit capacity.
     static constexpr int max_words = 69;
 
     std::uint32_t words[max_words];
@@ -54,11 +54,13 @@ struct biguint
         for (int i = 0; i < size; ++i)
             words[i] = other.words[i];
 
-        if (bl::detail::is_constant_evaluated())
+        BL_IF_CONSTEVAL_WARNING_PUSH
+        BL_IF_CONSTEVAL
         {
             for (int i = size; i < max_words; ++i)
                 words[i] = 0;
         }
+        BL_IF_CONSTEVAL_WARNING_POP
     }
 
     constexpr biguint& operator=(const biguint& other) noexcept
@@ -70,11 +72,13 @@ struct biguint
         for (int i = 0; i < size; ++i)
             words[i] = other.words[i];
 
-        if (bl::detail::is_constant_evaluated())
+        BL_IF_CONSTEVAL_WARNING_PUSH
+        BL_IF_CONSTEVAL
         {
             for (int i = size; i < max_words; ++i)
                 words[i] = 0;
         }
+        BL_IF_CONSTEVAL_WARNING_POP
 
         return *this;
     }
@@ -613,15 +617,43 @@ constexpr inline biguint mul_big(const biguint& a, const biguint& b) noexcept
         return out;
     }
 
-    biguint low = value;
-    low.mul_small(static_cast<std::uint32_t>(multiplier));
+    const std::uint32_t multiplier_low = static_cast<std::uint32_t>(multiplier);
+    const std::uint32_t multiplier_high = static_cast<std::uint32_t>(multiplier >> 32);
 
-    biguint high = value;
-    high.mul_small(static_cast<std::uint32_t>(multiplier >> 32));
-    high.shl_bits(32);
+    biguint out;
+    const int product_size = value.size + 2;
+    out.size = product_size < biguint::max_words ? product_size : biguint::max_words;
+    out.words[0] = 0;
+    if (out.size > 1)
+        out.words[1] = 0;
 
-    low.add_inplace(high);
-    return low;
+    for (int i = 0; i < value.size; ++i)
+    {
+        std::uint64_t carry = 0;
+        std::uint64_t current =
+            static_cast<std::uint64_t>(out.words[i]) +
+            static_cast<std::uint64_t>(value.words[i]) * multiplier_low;
+        out.words[i] = static_cast<std::uint32_t>(current);
+        carry = current >> 32;
+
+        int k = i + 1;
+        if (k < out.size)
+        {
+            current =
+                static_cast<std::uint64_t>(out.words[k]) +
+                static_cast<std::uint64_t>(value.words[i]) * multiplier_high +
+                carry;
+            out.words[k] = static_cast<std::uint32_t>(current);
+            carry = current >> 32;
+            ++k;
+        }
+
+        if (k < out.size)
+            out.words[k] = static_cast<std::uint32_t>(carry);
+    }
+
+    out.trim();
+    return out;
 }
 
 [[nodiscard]] constexpr inline bool any_low_bits_set(const biguint& value, int bit_count) noexcept
