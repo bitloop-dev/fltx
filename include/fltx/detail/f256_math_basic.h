@@ -539,7 +539,7 @@ namespace detail::_f256_impl
         );
     }
 
-    #if FLTX_DETAIL_MSVC_GUARDED_X86_FMA
+    #if FLTX_GUARDED_X86_FMA
     if (!bl::detail::is_constant_evaluated())
     {
         const bool use_hardware_fma = detail::fp::runtime_hardware_fma_enabled();
@@ -681,11 +681,11 @@ namespace detail::_f256_impl
 
     if (fast)
     {
-        const f256_s half = mul_double_inline(ay, 0.5);
+        const f256_s half = mul_double_product_inline(ay, 0.5);
         const int half_cmp = detail::_f256::fmod_compare_remainder_to_half(r_abs, half);
         if (half_cmp > 0 || (half_cmp == 0 && ((quotient_abs & 1u) != 0u)))
         {
-            r_abs = sub_inline(r_abs, ay);
+            r_abs = sub_finite_inline(r_abs, ay);
             ++quotient_abs;
         }
 
@@ -701,17 +701,17 @@ namespace detail::_f256_impl
 
     std::uint64_t quotient_mod = 0;
     r_abs = fmod_exact_fixed_limb_abs_with_quotient_mod(ax, ay, quotient_mod);
-    const f256_s half = mul_double_inline(ay, 0.5);
+    const f256_s half = mul_double_product_inline(ay, 0.5);
     const int half_cmp = detail::_f256::fmod_compare_remainder_to_half(r_abs, half);
 
     if (half_cmp > 0)
     {
-        r_abs = sub_inline(r_abs, ay);
+        r_abs = sub_finite_inline(r_abs, ay);
         ++quotient_mod;
     }
     else if (half_cmp == 0 && ((quotient_mod & 1u) != 0u))
     {
-        r_abs = sub_inline(r_abs, ay);
+        r_abs = sub_finite_inline(r_abs, ay);
         ++quotient_mod;
     }
 
@@ -745,7 +745,7 @@ namespace detail::_f256_impl
     if (iptr)
         *iptr = i;
 
-    f256_s frac = sub_inline(x, i);
+    f256_s frac = sub_finite_inline(x, i);
     if (iszero(frac))
         frac = detail::_f256::signed_zero_like(x);
     return frac;
@@ -774,10 +774,17 @@ namespace detail::_f256_impl
     {
         e = detail::fp::frexp_exponent(x.x0);
     }
+#if BL_FP_BARRIER_ACTIVE
+    else
+    {
+        e = detail::fp::frexp_exponent(x.x0);
+    }
+#else
     else
     {
         (void)std::frexp(x.x0, &e);
     }
+#endif
 
     const bool safe_fast_scale =
         detail::fp::absd(x.x0) >= std::numeric_limits<double>::min();

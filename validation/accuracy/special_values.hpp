@@ -2,6 +2,7 @@
 #define FLTX_TESTS_ACCURACY_SPECIAL_VALUES_INCLUDED
 
 #include "../support/implementations.hpp"
+#include "../support/native_fp.hpp"
 
 #include <bit>
 #include <cmath>
@@ -32,23 +33,24 @@ namespace fltx::tests::accuracy::special_values
                 return "NaN";
             return "No";
         }
+
     };
 
-    [[nodiscard]] inline bool same_value(
+    [[nodiscard]] FLTX_VALIDATION_PRECISE_FUNCTION bool same_value(
         const mpfr::real& observed,
         double expected)
     {
-        if (std::isnan(expected))
+        if (native_fp::is_nan(expected))
             return mpfr::is_nan(observed);
-        if (std::isinf(expected))
+        if (native_fp::is_inf(expected))
         {
             return mpfr::is_inf(observed) &&
-                   mpfr::sign_bit(observed) == std::signbit(expected);
+                   mpfr::sign_bit(observed) == native_fp::sign_bit(expected);
         }
         if (expected == 0.0)
         {
             return observed == 0 &&
-                   mpfr::sign_bit(observed) == std::signbit(expected);
+                   mpfr::sign_bit(observed) == native_fp::sign_bit(expected);
         }
         return static_cast<double>(observed) == expected;
     }
@@ -61,14 +63,44 @@ namespace fltx::tests::accuracy::special_values
     }
 
     template<class Value>
-    [[nodiscard]] bool same_value(const Value& observed, double expected)
+    [[nodiscard]] FLTX_VALIDATION_PRECISE_FUNCTION bool same_value(
+        const Value& observed,
+        double expected)
     {
+        constexpr std::uint64_t sign_mask = UINT64_C(0x8000000000000000);
+        constexpr std::uint64_t magnitude_mask = ~sign_mask;
+        constexpr std::uint64_t infinity_bits = UINT64_C(0x7ff0000000000000);
+        const std::uint64_t expected_bits = native_fp::bits(expected);
+        const std::uint64_t expected_magnitude = expected_bits & magnitude_mask;
+
+        if (expected_magnitude >= infinity_bits || expected_magnitude == 0)
+        {
+            const auto components = implementations::observe(observed);
+            const std::uint64_t head_bits = native_fp::bits(components[0]);
+            const std::uint64_t head_magnitude = head_bits & magnitude_mask;
+
+            if (expected_magnitude > infinity_bits)
+                return head_magnitude > infinity_bits;
+            if (expected_magnitude == infinity_bits)
+            {
+                return head_magnitude == infinity_bits &&
+                       ((head_bits ^ expected_bits) & sign_mask) == 0;
+            }
+
+            for (const double component : components)
+            {
+                if ((native_fp::bits(component) & magnitude_mask) != 0)
+                    return false;
+            }
+            return ((head_bits ^ expected_bits) & sign_mask) == 0;
+        }
+
         return same_value(
             implementations::value_traits<Value>::to_real(observed),
             expected);
     }
 
-    [[nodiscard]] inline std::optional<double> unary_expected(
+    [[nodiscard]] FLTX_VALIDATION_PRECISE_FUNCTION std::optional<double> unary_expected(
         std::string_view operation,
         double x)
     {
@@ -157,7 +189,7 @@ namespace fltx::tests::accuracy::special_values
         return std::nullopt;
     }
 
-    [[nodiscard]] inline std::optional<double> binary_expected(
+    [[nodiscard]] FLTX_VALIDATION_PRECISE_FUNCTION std::optional<double> binary_expected(
         std::string_view operation,
         double x,
         double y)
@@ -246,14 +278,16 @@ namespace fltx::tests::accuracy::special_values
     {
         if constexpr (implementations::value_traits<Value>::nominal_bits <= 24.0)
         {
-            if (expected && std::isfinite(*expected))
+            if (expected && native_fp::is_finite(*expected))
                 *expected = static_cast<double>(static_cast<float>(*expected));
         }
         return expected;
     }
 
     template<class Value, class Eval>
-    [[nodiscard]] support unary(std::string_view operation, Eval evaluate)
+    [[nodiscard]] FLTX_VALIDATION_PRECISE_FUNCTION support unary(
+        std::string_view operation,
+        Eval evaluate)
     {
         const auto expected = [&](double value) {
             return at_value_precision<Value>(unary_expected(operation, value));
@@ -263,8 +297,8 @@ namespace fltx::tests::accuracy::special_values
 
         bool infinity = true;
         for (const double value : {
-                 std::numeric_limits<double>::infinity(),
-                 -std::numeric_limits<double>::infinity() })
+                 native_fp::positive_infinity<double>(),
+                 native_fp::negative_infinity<double>() })
         {
             try
             {
@@ -281,7 +315,7 @@ namespace fltx::tests::accuracy::special_values
         bool nan = true;
         try
         {
-            const double value = std::numeric_limits<double>::quiet_NaN();
+            const double value = native_fp::quiet_nan<double>();
             nan = same_value(
                 Value(evaluate(input<Value>(value))),
                 *expected(value));
@@ -294,7 +328,9 @@ namespace fltx::tests::accuracy::special_values
     }
 
     template<class Value, class Eval>
-    [[nodiscard]] support binary(std::string_view operation, Eval evaluate)
+    [[nodiscard]] FLTX_VALIDATION_PRECISE_FUNCTION support binary(
+        std::string_view operation,
+        Eval evaluate)
     {
         const auto expected = [&](double x, double y) {
             return at_value_precision<Value>(binary_expected(operation, x, y));
@@ -302,8 +338,8 @@ namespace fltx::tests::accuracy::special_values
         if (!expected(1.0, 2.0))
             return {};
 
-        constexpr double inf = std::numeric_limits<double>::infinity();
-        constexpr double nan_value = std::numeric_limits<double>::quiet_NaN();
+        const double inf = native_fp::positive_infinity<double>();
+        const double nan_value = native_fp::quiet_nan<double>();
         const std::pair<double, double> infinity_cases[] = {
             {inf, 1.0}, {-inf, 1.0}, {1.0, inf},
             {1.0, -inf}, {inf, inf}, {inf, -inf}
@@ -333,7 +369,9 @@ namespace fltx::tests::accuracy::special_values
     }
 
     template<class Value, class Eval>
-    [[nodiscard]] support predicate(std::string_view operation, Eval evaluate)
+    [[nodiscard]] FLTX_VALIDATION_PRECISE_FUNCTION support predicate(
+        std::string_view operation,
+        Eval evaluate)
     {
         if (!predicate_expected(operation, 1.0, 2.0))
             return {};
@@ -351,8 +389,8 @@ namespace fltx::tests::accuracy::special_values
             }
         };
 
-        constexpr double inf = std::numeric_limits<double>::infinity();
-        constexpr double nan_value = std::numeric_limits<double>::quiet_NaN();
+        const double inf = native_fp::positive_infinity<double>();
+        const double nan_value = native_fp::quiet_nan<double>();
         const std::pair<double, double> infinity_cases[] = {
             {inf, inf}, {-inf, -inf}, {inf, -inf}, {-inf, inf},
             {inf, 1.0}, {1.0, inf}, {-inf, 1.0}, {1.0, -inf}
@@ -373,13 +411,15 @@ namespace fltx::tests::accuracy::special_values
     }
 
     template<class Value, class Eval>
-    [[nodiscard]] support ternary(std::string_view operation, Eval evaluate)
+    [[nodiscard]] FLTX_VALIDATION_PRECISE_FUNCTION support ternary(
+        std::string_view operation,
+        Eval evaluate)
     {
         if (operation != "fma")
             return {};
 
-        constexpr double inf = std::numeric_limits<double>::infinity();
-        constexpr double nan_value = std::numeric_limits<double>::quiet_NaN();
+        const double inf = native_fp::positive_infinity<double>();
+        const double nan_value = native_fp::quiet_nan<double>();
         const auto matches = [&](double x, double y, double z) {
             try
             {
@@ -406,7 +446,7 @@ namespace fltx::tests::accuracy::special_values
     }
 
     template<class Value, class Parse>
-    [[nodiscard]] support parse(Parse evaluate)
+    [[nodiscard]] FLTX_VALIDATION_PRECISE_FUNCTION support parse(Parse evaluate)
     {
         const auto matches = [&](const char* text, double expected) {
             try
@@ -419,16 +459,16 @@ namespace fltx::tests::accuracy::special_values
             }
         };
 
-        constexpr double inf = std::numeric_limits<double>::infinity();
+        const double inf = native_fp::positive_infinity<double>();
         return {
             true,
             matches("inf", inf) && matches("-inf", -inf),
-            matches("nan", std::numeric_limits<double>::quiet_NaN())
+            matches("nan", native_fp::quiet_nan<double>())
         };
     }
 
     template<class Value, class Format>
-    [[nodiscard]] support format(Format evaluate)
+    [[nodiscard]] FLTX_VALIDATION_PRECISE_FUNCTION support format(Format evaluate)
     {
         const auto matches = [&](double input_value) {
             try
@@ -443,16 +483,18 @@ namespace fltx::tests::accuracy::special_values
             }
         };
 
-        constexpr double inf = std::numeric_limits<double>::infinity();
+        const double inf = native_fp::positive_infinity<double>();
         return {
             true,
             matches(inf) && matches(-inf),
-            matches(std::numeric_limits<double>::quiet_NaN())
+            matches(native_fp::quiet_nan<double>())
         };
     }
 
     template<class Value, class Eval>
-    [[nodiscard]] support unary_pair(std::string_view operation, Eval evaluate)
+    [[nodiscard]] FLTX_VALIDATION_PRECISE_FUNCTION support unary_pair(
+        std::string_view operation,
+        Eval evaluate)
     {
         if (operation != "modf" && operation != "frexp")
             return {};
@@ -463,7 +505,7 @@ namespace fltx::tests::accuracy::special_values
                 const auto [first, second] = evaluate(input<Value>(input_value));
                 if (operation == "modf")
                 {
-                    if (std::isinf(input_value))
+                    if (native_fp::is_inf(input_value))
                     {
                         return same_value(
                                    Value(first),
@@ -477,7 +519,7 @@ namespace fltx::tests::accuracy::special_values
                 int exponent = 0;
                 const double fraction = std::frexp(input_value, &exponent);
                 return same_value(Value(first), fraction) &&
-                       (!std::isfinite(input_value) ||
+                       (!native_fp::is_finite(input_value) ||
                         same_value(Value(second), static_cast<double>(exponent)));
             }
             catch (...)
@@ -485,8 +527,8 @@ namespace fltx::tests::accuracy::special_values
                 return false;
             }
         };
-        constexpr double inf = std::numeric_limits<double>::infinity();
-        constexpr double nan_value = std::numeric_limits<double>::quiet_NaN();
+        const double inf = native_fp::positive_infinity<double>();
+        const double nan_value = native_fp::quiet_nan<double>();
         return {
             true,
             matches(inf) && matches(-inf),
@@ -495,7 +537,9 @@ namespace fltx::tests::accuracy::special_values
     }
 
     template<class Value, class Eval>
-    [[nodiscard]] support binary_pair(std::string_view operation, Eval evaluate)
+    [[nodiscard]] FLTX_VALIDATION_PRECISE_FUNCTION support binary_pair(
+        std::string_view operation,
+        Eval evaluate)
     {
         if (operation != "remquo")
             return {};
@@ -509,7 +553,7 @@ namespace fltx::tests::accuracy::special_values
                 const double expected_remainder =
                     std::remquo(x, y, &expected_quotient);
                 return same_value(Value(remainder), expected_remainder) &&
-                       (std::isnan(expected_remainder) ||
+                       (native_fp::is_nan(expected_remainder) ||
                          same_value(
                              Value(quotient),
                              static_cast<double>(expected_quotient)));
@@ -519,8 +563,8 @@ namespace fltx::tests::accuracy::special_values
                 return false;
             }
         };
-        constexpr double inf = std::numeric_limits<double>::infinity();
-        constexpr double nan_value = std::numeric_limits<double>::quiet_NaN();
+        const double inf = native_fp::positive_infinity<double>();
+        const double nan_value = native_fp::quiet_nan<double>();
         return {
             true,
             matches(inf, 1.0) && matches(1.0, inf) && matches(inf, inf),

@@ -76,7 +76,7 @@ int main()
 #if defined(FLTX_TESTS_EXPECT_NO_LOCAL_FMA) && FLTX_TU_HAS_X86_FMA
     return fail("no-FMA consumer unexpectedly has translation-unit FMA");
 #endif
-#if defined(FLTX_TESTS_EXPECT_NO_LOCAL_FMA) && FLTX_DETAIL_X86_FMA_RUNTIME_CHECK
+#if defined(FLTX_TESTS_EXPECT_NO_LOCAL_FMA) && FLTX_X86_FMA_RUNTIME_CHECK
     if (bl::detail::fp::runtime_hardware_fma_enabled())
         return fail("injected runtime CPU probe did not disable FMA");
 #endif

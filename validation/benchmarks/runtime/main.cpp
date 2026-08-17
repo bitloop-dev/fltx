@@ -55,18 +55,18 @@ namespace
             {
                 out.sample_mode = value();
                 sample_mode_set = true;
-                if (out.sample_mode != "smoke" && out.sample_mode != "standard" &&
-                    out.sample_mode != "full")
+                if (out.sample_mode != "smoke" && out.sample_mode != "small" &&
+                    out.sample_mode != "standard" && out.sample_mode != "full")
                     throw std::runtime_error(
-                        "--sample-mode must be smoke, standard or full");
+                        "--sample-mode must be smoke, small, standard or full");
             }
             else if (argument == "--help")
             {
                 std::cout
                     << "fltx_benchmark --precision f128|f256 --output FILE "
                        "--run-id ID --source-revision REV "
-                       "[--sample-mode smoke|standard|full] [--samples N] "
-                       "[--trials N (maximum for standard)] "
+                       "[--sample-mode smoke|small|standard|full] [--samples N] "
+                       "[--trials N (maximum for small/standard)] "
                        "[--filter TEXT]\n"
                        "fltx_benchmark --describe\n";
                 std::exit(0);
@@ -83,6 +83,8 @@ namespace
             {
                 if (out.sample_mode == "smoke")
                     out.samples = 12;
+                else if (out.sample_mode == "small")
+                    out.samples = out.precision == "f128" ? 4096 : 2048;
                 else if (out.sample_mode == "standard")
                     out.samples = out.precision == "f128" ? 8192 : 4096;
                 else
@@ -92,7 +94,7 @@ namespace
                 out.trials = out.sample_mode == "smoke" ? 3 : 7;
             out.minimum_trial_ns = out.sample_mode == "smoke"
                 ? fltx::tests::benchmark::smoke_minimum_trial_ns
-                : out.sample_mode == "standard"
+                : out.sample_mode == "small" || out.sample_mode == "standard"
                     ? fltx::tests::benchmark::standard_minimum_trial_ns
                     : fltx::tests::benchmark::full_minimum_trial_ns;
         }
@@ -126,10 +128,11 @@ int main(int argc, char** argv)
             settings.trials);
         std::cout << "[timing] minimum-trial-ms="
                   << settings.minimum_trial_ns / 1'000'000.0 << '\n';
-        if (settings.sample_mode == "standard")
+        if (settings.sample_mode == "small" || settings.sample_mode == "standard")
         {
             std::cout
-                << "[timing] policy=adaptive-v1"
+                << "[timing] policy="
+                << fltx::tests::benchmark::timing_policy::identity
                 << " fast-threshold-ns="
                 << fltx::tests::benchmark::timing_policy::fast_threshold_ns
                 << " slow-threshold-ns="

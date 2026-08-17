@@ -25,14 +25,10 @@ namespace bl {
 // roots
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 sqrt(f128_s a)
 {
-    #if defined(FLTX_FAST_MATH)
-    return detail::_f128_impl::sqrt(a);
-    #else
     BL_CONSTEXPR_RUNTIME_DISPATCH(
         detail::_f128_impl::sqrt(a),
         detail::_f128_runtime::sqrt(a)
     );
-    #endif
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128 cbrt(const f128_s& a)
@@ -434,11 +430,6 @@ template<class Vec>
     f128_s s_out{};
     f128_s c_out{};
     const bool ok = bl::sincos(x, s_out, c_out);
-    if (!ok)
-    {
-        s_out = bl::sin(x);
-        c_out = bl::cos(x);
-    }
     detail::fp::assign_sincos_vector(out, s_out, c_out);
     return ok;
 }
@@ -451,11 +442,6 @@ template<class Value> requires (std::same_as<std::remove_cvref_t<Value>, f128> |
     Result s_out{};
     Result c_out{};
     const bool ok = bl::sincos(x, s_out, c_out);
-    if (!ok)
-    {
-        s_out = bl::sin(x);
-        c_out = bl::cos(x);
-    }
     return detail::fp::make_sincos_result(s_out, c_out, ok);
 }
 

@@ -11,7 +11,7 @@
 #include "fltx/detail/common_fp.h"
 #include "fltx/detail/f256_simd_config.h"
 
-#if FLTX_DETAIL_X86_FMA_RUNTIME_CHECK
+#if FLTX_X86_FMA_RUNTIME_CHECK
 #  if defined(_MSC_VER)
 #    include <intrin.h>
 #  elif defined(__GNUC__) || defined(__clang__)
@@ -40,7 +40,7 @@ namespace
         #endif
 }
 
-#if FLTX_DETAIL_X86_FMA_RUNTIME_CHECK
+#if FLTX_X86_FMA_RUNTIME_CHECK
 bool bl::detail::fp::runtime_x86_fma_available_uncached() noexcept
 {
     constexpr int bit_fma = 1 << 12;
@@ -95,11 +95,11 @@ const bl::detail::compiled_build_info& bl::detail::library_build_info() noexcept
         .tu_has_x86_fma = FLTX_TU_HAS_X86_FMA,
         .has_x86_fma = FLTX_HAS_X86_FMA,
         .compiled_x86_fma_backend = FLTX_HAS_COMPILED_X86_FMA_BACKEND,
-        .x86_fma_runtime_check = FLTX_DETAIL_X86_FMA_RUNTIME_CHECK,
-        .msvc_guarded_x86_fma = FLTX_DETAIL_MSVC_GUARDED_X86_FMA,
-        .scalar_x86_fma = FLTX_DETAIL_USE_SCALAR_X86_FMA,
-        .baseline_arm64_fma = FLTX_DETAIL_USE_BASELINE_ARM64_FMA,
-        .has_runtime_fma_path = FLTX_DETAIL_HAS_RUNTIME_FMA_PATH,
+        .x86_fma_runtime_check = FLTX_X86_FMA_RUNTIME_CHECK,
+        .msvc_guarded_x86_fma = FLTX_MSVC_GUARDED_X86_FMA,
+        .scalar_x86_fma = FLTX_USE_SCALAR_X86_FMA,
+        .baseline_arm64_fma = FLTX_USE_BASELINE_ARM64_FMA,
+        .has_runtime_fma_path = FLTX_HAS_RUNTIME_FMA_PATH,
         .has_sse2 = FLTX_HAS_SSE2,
         .has_neon = FLTX_HAS_NEON,
         .has_wasm_simd = FLTX_HAS_WASM_SIMD,

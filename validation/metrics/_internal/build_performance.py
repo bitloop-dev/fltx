@@ -23,6 +23,9 @@ from build_tables import (
     _OPERATIONS_BY_GROUP,
     _ratio_color,
     _report_group,
+    architecture_label,
+    compiler_label_lines,
+    platform_label,
 )
 from run_metrics import (
     CANONICAL_FIELDS,
@@ -49,24 +52,20 @@ PLATFORM_ORDER = {
     "macos": 2,
     "wasm32": 3,
 }
-PLATFORM_LABELS = {
-    "windows": "Windows",
-    "linux": "Linux",
-    "macos": "macOS",
-    "wasm32": "WebAssembly",
-}
 COMPILER_ORDER = {
     "msvc": 0,
-    "mingw": 1,
-    "gcc": 2,
-    "clang": 3,
-    "appleclang": 4,
+    "clangcl": 1,
+    "mingw": 2,
+    "gcc": 3,
+    "clang": 4,
+    "appleclang": 5,
     "nodejs": 5,
     "node": 5,
     "chrome": 6,
     "browser": 6,
-    "wasm32": 7,
+    "emscripten": 7,
 }
+ARCHITECTURE_ORDER = {"x86_64": 0, "arm64": 1, "wasm32": 2}
 
 PAGE = "#0f1115"
 FUNCTION_HEADER = "#2b2b2b"
@@ -93,8 +92,9 @@ COMPACT_FONTS = {
 
 TABLE_TITLE = "fltx performance"
 TABLE_DESCRIPTION = (
-    "FLTX time per iteration; the second line shows FLTX speed versus the "
-    "fastest available competitor for each target."
+    "Columns identify the target platform and build toolchain. FLTX time per "
+    "iteration; the second line shows FLTX speed versus the fastest available "
+    "competitor for each target."
 )
 
 
@@ -159,18 +159,17 @@ def _normalized_key(value: str) -> str:
     return re.sub(r"[^a-z0-9]", "", value.casefold())
 
 
-def _platform_label(value: str) -> str:
-    key = value.casefold()
-    return PLATFORM_LABELS.get(key, value[:1].upper() + value[1:])
-
-
-def _column_sort_key(column: ColumnKey) -> tuple[int, int, str, int, str]:
+def _column_sort_key(column: ColumnKey) -> tuple[int, int, str, int, str, int, str]:
     platform_key = column.target.platform.casefold()
     compiler_key = _normalized_key(column.target.compiler)
     return (
         PRECISIONS.index(column.precision),
         PLATFORM_ORDER.get(platform_key, len(PLATFORM_ORDER)),
-        _platform_label(column.target.platform).casefold(),
+        platform_label(column.target.platform).casefold(),
+        ARCHITECTURE_ORDER.get(
+            column.target.architecture.casefold(), len(ARCHITECTURE_ORDER)
+        ),
+        column.target.architecture.casefold(),
         COMPILER_ORDER.get(compiler_key, len(COMPILER_ORDER)),
         column.target.compiler.casefold(),
     )
@@ -261,7 +260,7 @@ def discover(
     input_root: Path,
     consumer_mode: str = "strict",
 ) -> PerformanceDataset:
-    """Load every canonical platform/compiler/precision CSV independently."""
+    """Load every canonical platform/architecture/compiler CSV independently."""
 
     if not input_root.is_dir():
         raise MetricsError(f"metrics input directory does not exist: {input_root}")
@@ -274,43 +273,51 @@ def discover(
     for platform_dir in sorted(input_root.iterdir(), key=lambda path: path.name.casefold()):
         if not platform_dir.is_dir():
             continue
-        for path in sorted(platform_dir.iterdir(), key=lambda item: item.name.casefold()):
-            if not path.is_file():
+        for architecture_dir in sorted(
+            platform_dir.iterdir(), key=lambda path: path.name.casefold()
+        ):
+            if not architecture_dir.is_dir():
                 continue
-            match = CANONICAL_FILE_RE.fullmatch(path.name)
-            if match is None:
-                continue
-            observed_mode = (
-                "fastmath" if match.group("consumer_suffix") else "strict"
-            )
-            if observed_mode != consumer_mode:
-                continue
-            try:
-                target = Target(
-                    _safe_component(platform_dir.name, "platform"),
-                    _safe_component(match.group("compiler"), "compiler"),
+            for path in sorted(
+                architecture_dir.iterdir(), key=lambda item: item.name.casefold()
+            ):
+                if not path.is_file():
+                    continue
+                match = CANONICAL_FILE_RE.fullmatch(path.name)
+                if match is None:
+                    continue
+                observed_mode = (
+                    "fastmath" if match.group("consumer_suffix") else "strict"
                 )
-            except MetricsError as error:
-                raise MetricsError(f"{path}: {error}") from error
-            column = ColumnKey(match.group("precision").casefold(), target)
-            if column in sources:
-                raise MetricsError(
-                    f"duplicate performance source for {column.precision} "
-                    f"{column.target.label}: {sources[column]} and {path}"
-                )
+                if observed_mode != consumer_mode:
+                    continue
+                try:
+                    target = Target(
+                        _safe_component(platform_dir.name, "platform"),
+                        _safe_component(architecture_dir.name, "architecture"),
+                        _safe_component(match.group("compiler"), "compiler"),
+                    )
+                except MetricsError as error:
+                    raise MetricsError(f"{path}: {error}") from error
+                column = ColumnKey(match.group("precision").casefold(), target)
+                if column in sources:
+                    raise MetricsError(
+                        f"duplicate performance source for {column.precision} "
+                        f"{column.target.label}: {sources[column]} and {path}"
+                    )
 
-            source_rows = _read_canonical(path, column)
-            sources[column] = path
-            run_ids[column] = source_rows[0]["run_id"]
-            for row in source_rows:
-                group = row["group"]
-                operation = row["operation"]
-                implementation = row["implementation"]
-                rows[(column, group, operation, implementation)] = row
-                key = (column, group, operation)
-                values = implementation_lists.setdefault(key, [])
-                if implementation not in values:
-                    values.append(implementation)
+                source_rows = _read_canonical(path, column)
+                sources[column] = path
+                run_ids[column] = source_rows[0]["run_id"]
+                for row in source_rows:
+                    group = row["group"]
+                    operation = row["operation"]
+                    implementation = row["implementation"]
+                    rows[(column, group, operation, implementation)] = row
+                    key = (column, group, operation)
+                    values = implementation_lists.setdefault(key, [])
+                    if implementation not in values:
+                        values.append(implementation)
 
     columns = tuple(sorted(sources, key=_column_sort_key))
     implementations = {
@@ -414,7 +421,7 @@ def _result_lines(cell: ResultCell, layout: str) -> tuple[str, ...]:
     lines = [_format_ns(cell.fltx_ns, layout)]
     if cell.competitor is not None and cell.fltx_speed_ratio is not None:
         lines.append(
-            f"{_format_ratio(cell.fltx_speed_ratio, layout)} vs "
+            f"{_format_ratio(cell.fltx_speed_ratio, layout)} "
             f"{cell.competitor['implementation_short']}"
         )
     return tuple(lines)
@@ -558,8 +565,9 @@ def _column_width(
     if layout == "full":
         return 116
     values = [
-        column.target.compiler,
-        _platform_label(column.target.platform),
+        *compiler_label_lines(column.target.compiler),
+        platform_label(column.target.platform),
+        architecture_label(column.target.architecture),
         PRECISION_LABELS[column.precision],
     ]
     for group, operation in operation_rows:
@@ -639,7 +647,7 @@ def render(dataset: PerformanceDataset, layout: str = "full") -> str:
     height = (
         margin * 2
         + title_height
-        + header_height * 3
+        + header_height * 4
         + group_height * len(grouped)
         + row_height * len(operation_rows)
     )
@@ -720,7 +728,7 @@ def render(dataset: PerformanceDataset, layout: str = "full") -> str:
             margin,
             y,
             operation_width,
-            header_height * 3,
+            header_height * 4,
             FUNCTION_HEADER,
             css_class="function-header-cell",
         )
@@ -728,9 +736,9 @@ def render(dataset: PerformanceDataset, layout: str = "full") -> str:
     parts.append(
         _svg_text(
             margin + CELL_PADDING,
-            y + header_height + header_height // 2 + 5,
+            y + header_height * 2 + 5,
             "Function",
-            13 if compact else 15,
+            12 if compact else 14,
             WHITE,
             weight=700,
         )
@@ -753,7 +761,7 @@ def render(dataset: PerformanceDataset, layout: str = "full") -> str:
                 column_x[start] + span_width / 2,
                 y + header_height // 2 + 5,
                 PRECISION_LABELS[dataset.columns[start].precision],
-                13 if compact else 15,
+                12 if compact else 14,
                 WHITE,
                 weight=700,
                 anchor="middle",
@@ -788,8 +796,8 @@ def render(dataset: PerformanceDataset, layout: str = "full") -> str:
             _svg_text(
                 column_x[index] + span_width / 2,
                 platform_y + header_height // 2 + 5,
-                _platform_label(column.target.platform),
-                13 if compact else 15,
+                platform_label(column.target.platform),
+                12 if compact else 14,
                 WHITE,
                 weight=700,
                 anchor="middle",
@@ -798,32 +806,105 @@ def render(dataset: PerformanceDataset, layout: str = "full") -> str:
         )
         index += count
 
-    compiler_y = platform_y + header_height
-    for index, column in enumerate(dataset.columns):
+    architecture_y = platform_y + header_height
+    index = 0
+    while index < len(dataset.columns):
+        column = dataset.columns[index]
+        count = 1
+        while (
+            index + count < len(dataset.columns)
+            and dataset.columns[index + count].precision == column.precision
+            and dataset.columns[index + count].target.platform
+            == column.target.platform
+            and dataset.columns[index + count].target.architecture
+            == column.target.architecture
+        ):
+            count += 1
+        span_width = sum(column_widths[index:index + count])
         parts.append(
             _svg_rect(
                 column_x[index],
-                compiler_y,
-                column_widths[index],
+                architecture_y,
+                span_width,
                 header_height,
                 LEAF_HEADER,
-                css_class="compiler-header-cell",
+                css_class="architecture-header-cell",
             )
         )
         parts.append(
             _svg_text(
-                column_x[index] + column_widths[index] / 2,
-                compiler_y + header_height // 2 + 5,
-                column.target.compiler,
-                13 if compact else 15,
+                column_x[index] + span_width / 2,
+                architecture_y + header_height // 2 + 5,
+                architecture_label(column.target.architecture),
+                12 if compact else 14,
                 WHITE,
                 weight=700,
                 anchor="middle",
-                css_class="compiler-header",
+                css_class="architecture-header",
             )
         )
+        index += count
 
-    y += header_height * 3
+    toolchain_y = architecture_y + header_height
+    for index, column in enumerate(dataset.columns):
+        parts.append(
+            _svg_rect(
+                column_x[index],
+                toolchain_y,
+                column_widths[index],
+                header_height,
+                LEAF_HEADER,
+                css_class="toolchain-header-cell",
+            )
+        )
+        labels = compiler_label_lines(column.target.compiler)
+        center_x = column_x[index] + column_widths[index] / 2
+        accessible_label = (
+            labels[0] if len(labels) == 1 else f"{labels[0]} ({labels[1]})"
+        )
+        parts.append(
+            f'<g class="toolchain-header" aria-label="'
+            f'{html.escape(accessible_label, quote=True)}">'
+        )
+        if len(labels) == 1:
+            parts.append(
+                _svg_text(
+                    center_x,
+                    toolchain_y + header_height // 2 + 5,
+                    labels[0],
+                    12 if compact else 14,
+                    WHITE,
+                    weight=700,
+                    anchor="middle",
+                    css_class="toolchain-header-primary",
+                )
+            )
+        else:
+            parts.extend([
+                _svg_text(
+                    center_x,
+                    toolchain_y + (11 if compact else 14),
+                    labels[0],
+                    11 if compact else 13,
+                    WHITE,
+                    weight=700,
+                    anchor="middle",
+                    css_class="toolchain-header-primary",
+                ),
+                _svg_text(
+                    center_x,
+                    toolchain_y + (23 if compact else 29),
+                    labels[1],
+                    10 if compact else 11,
+                    MUTED,
+                    weight=700,
+                    anchor="middle",
+                    css_class="toolchain-header-environment",
+                ),
+            ])
+        parts.append("</g>")
+
+    y += header_height * 4
     row_index = 0
     for report_group, rows_in_group in grouped:
         spans = _precision_spans(dataset.columns)
@@ -840,7 +921,7 @@ def render(dataset: PerformanceDataset, layout: str = "full") -> str:
                 margin + CELL_PADDING,
                 y + group_height // 2 + 5,
                 GROUP_LABELS.get(report_group, report_group),
-                12 if compact else 14,
+                11 if compact else 13,
                 WHITE,
                 weight=700,
                 css_class="group-label",
@@ -864,9 +945,9 @@ def render(dataset: PerformanceDataset, layout: str = "full") -> str:
                     margin + CELL_PADDING,
                     y + row_height // 2 + 5,
                     operation,
-                    12 if compact else 15,
+                    11 if compact else 14,
                     BODY_TEXT,
-                    weight=600,
+                    weight=400,
                     css_class="operation-label",
                 )
             )
@@ -917,9 +998,9 @@ def render(dataset: PerformanceDataset, layout: str = "full") -> str:
                             column_x[index] + column_widths[index] / 2,
                             baseline,
                             line,
-                            12 if compact else (15 if line == lines[0] else 13),
+                            11 if compact else (14 if line == lines[0] else 12),
                             foreground,
-                            weight=700 if line == lines[0] else 400,
+                            weight=400,
                             anchor="middle",
                             css_class="result-line",
                         )
@@ -960,6 +1041,7 @@ def build(
         "sources": [
             {
                 "platform": column.target.platform,
+                "architecture": column.target.architecture,
                 "compiler": column.target.compiler,
                 "precision": column.precision,
                 "run_id": dataset.run_ids[column],

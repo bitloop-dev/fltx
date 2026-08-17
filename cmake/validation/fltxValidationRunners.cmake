@@ -127,12 +127,22 @@ set(FLTX_METRICS_QDPP_CONTRACT_TARGET)
 if(FLTX_METRICS_QDPP)
     if(EXISTS "${FLTX_METRICS_QDPP_INCLUDE_DIR}/qd/dd.h" AND
        EXISTS "${FLTX_METRICS_QDPP_INCLUDE_DIR}/qd/qd_real.h")
-        foreach(target IN LISTS FLTX_RUNTIME_ACCURACY_TARGETS FLTX_BENCHMARK_TARGETS)
+        foreach(target fltx_accuracy fltx_benchmark)
             target_include_directories(${target} PRIVATE
                 "${FLTX_METRICS_QDPP_INCLUDE_DIR}"
             )
             target_compile_definitions(${target} PRIVATE
                 FLTX_METRICS_HAS_QDPP=1
+                FLTX_METRICS_QDPP_ENABLED=1
+            )
+        endforeach()
+
+        # Consumer-fast-math reports intentionally contain FLTX rows only.
+        # Do not parse qdpp headers in those translation units: qdpp rejects
+        # aggressive fast-math at compile time even when its rows are disabled.
+        foreach(target fltx_accuracy_fastmath fltx_benchmark_fastmath)
+            target_compile_definitions(${target} PRIVATE
+                FLTX_METRICS_HAS_QDPP=0
                 FLTX_METRICS_QDPP_ENABLED=1
             )
         endforeach()
@@ -209,13 +219,15 @@ foreach(target IN LISTS FLTX_ACCURACY_TARGETS FLTX_BENCHMARK_TARGETS)
     )
 endforeach()
 
-function(fltx_tests_add_native_accuracy_target target runner output_name label)
+function(fltx_tests_add_native_accuracy_target
+    target runner output_name label consumer_mode)
     add_custom_target(${target}
         COMMAND "${Python3_EXECUTABLE}"
             "${PROJECT_SOURCE_DIR}/validation/metrics/_internal/run_native_accuracy.py"
             --accuracy "$<TARGET_FILE:${runner}>"
             --output-root "${FLTX_VALIDATION_BINARY_DIR}/${output_name}"
             --sample-mode full
+            --consumer-mode "${consumer_mode}"
         DEPENDS ${runner}
         USES_TERMINAL
         COMMENT "Running complete ${label} f32/f64 accuracy domains"
@@ -228,12 +240,14 @@ fltx_tests_add_native_accuracy_target(
     fltx_accuracy
     native_accuracy
     strict-consumer
+    strict
 )
 fltx_tests_add_native_accuracy_target(
     fltx_native_accuracy_fastmath_full
     fltx_accuracy_fastmath
     native_accuracy_fastmath
     fast-math-consumer
+    fastmath
 )
 
 if(BUILD_TESTING)

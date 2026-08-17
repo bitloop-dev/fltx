@@ -42,7 +42,7 @@ namespace fltx::tests::benchmark::samples
         return std::abs(signed_log(rng, minimum_exponent, maximum_exponent));
     }
 
-    [[nodiscard]] inline bool uses_large_standard_corpus(
+    [[nodiscard]] inline bool uses_large_adaptive_corpus(
         std::string_view operation)
     {
         constexpr std::string_view operations[] = {
@@ -64,15 +64,16 @@ namespace fltx::tests::benchmark::samples
         std::size_t base_count,
         std::string_view sample_mode = "custom")
     {
+        const bool adaptive = sample_mode == "small" || sample_mode == "standard";
         if (
-            sample_mode == "standard" &&
+            adaptive &&
             (operation == "erf" || operation == "erfc" ||
              operation == "lgamma" || operation == "tgamma"))
         {
             return std::max<std::size_t>(1, base_count / 32);
         }
 
-        if (sample_mode == "standard" && uses_large_standard_corpus(operation))
+        if (adaptive && uses_large_adaptive_corpus(operation))
             return base_count * 10;
 
         if (operation == "lround" || operation == "llround")

@@ -60,7 +60,7 @@ def output_paths(output: Path, target: build_tables.Target) -> tuple[Path, ...]:
     return tuple(
         output
         / (
-            f"{target.platform}_{target.compiler}_{precision}"
+            f"{target.platform}_{target.architecture}_{target.compiler}_{precision}"
             f"{COMPARISON_SUFFIX}"
         )
         for precision in PRECISIONS
@@ -72,14 +72,14 @@ def _evidence_paths(
     target: build_tables.Target,
     consumer_mode: str,
 ) -> tuple[Path, ...]:
-    detail = input_root / target.platform / "detail"
+    detail = input_root / target.platform / target.architecture / "detail"
     paths = [
         detail / f"{run_metadata_stem(target.compiler, consumer_mode)}.json"
     ]
     for precision in PRECISIONS:
         stem = metrics_stem(target.compiler, precision, consumer_mode)
         paths.extend((
-            input_root / target.platform / f"{stem}.csv",
+            input_root / target.platform / target.architecture / f"{stem}.csv",
             detail / f"{stem}_accuracy.csv",
             detail / f"{stem}_benchmark.csv",
         ))
@@ -120,22 +120,34 @@ def _fltx_rows(
     target: build_tables.Target,
     precision: str,
 ) -> dict[tuple[str, str], dict[str, str]]:
-    return {
-        (group, operation): row
-        for (
-            row_target,
-            row_precision,
+    rows: dict[tuple[str, str], dict[str, str]] = {}
+    for (
+        row_target,
+        row_precision,
+        group,
+        operation,
+        implementation,
+    ), row in dataset.canonical.items():
+        if (
+            row_target != target
+            or row_precision != precision
+            or implementation != "fltx"
+            or (group, operation) in build_tables.REPORT_EXCLUDED_OPERATIONS
+        ):
+            continue
+        display = overview._display_row(
+            dataset,
+            target,
+            precision,
             group,
             operation,
             implementation,
-        ), row in dataset.canonical.items()
-        if (
-            row_target == target
-            and row_precision == precision
-            and implementation == "fltx"
-            and (group, operation) not in build_tables.REPORT_EXCLUDED_OPERATIONS
+            row,
+            normal_only=True,
         )
-    }
+        assert display is not None
+        rows[(group, operation)] = display
+    return rows
 
 
 def _ordered_operations(
@@ -197,6 +209,24 @@ def _comparison_rows(
                 f"{target.label} {precision} {key[1]}: "
                 "strict/fast-math special-value applicability differs"
             )
+        if (
+            left.get("signed_zero_support", "-") == "-"
+        ) != (
+            right.get("signed_zero_support", "-") == "-"
+        ):
+            raise MetricsError(
+                f"{target.label} {precision} {key[1]}: "
+                "strict/fast-math signed-zero applicability differs"
+            )
+        if (
+            left.get("subnormal_support", "-") == "-"
+        ) != (
+            right.get("subnormal_support", "-") == "-"
+        ):
+            raise MetricsError(
+                f"{target.label} {precision} {key[1]}: "
+                "strict/fast-math subnormal applicability differs"
+            )
     return strict, fastmath, _ordered_operations(strict)
 
 
@@ -204,7 +234,7 @@ def load_comparison(
     input_root: Path,
     target: build_tables.Target,
 ) -> Comparison:
-    detail = input_root / target.platform / "detail"
+    detail = input_root / target.platform / target.architecture / "detail"
     strict_path = detail / f"{run_metadata_stem(target.compiler, 'strict')}.json"
     fastmath_path = detail / f"{run_metadata_stem(target.compiler, 'fastmath')}.json"
     strict_metadata = build_tables._metadata(strict_path, target)
@@ -338,6 +368,43 @@ def _special_spans(
     return tuple(spans)
 
 
+def _boolean_support_spans(
+    strict_value: str,
+    fastmath_value: str,
+    label: str,
+) -> tuple[tuple[str, str], ...]:
+    symbols = {"yes": "✓", "no": "✗", "-": "-"}
+    colors = {"yes": IMPROVEMENT_TEXT, "no": REGRESSION_TEXT, "-": MUTED_TEXT}
+    if strict_value not in symbols or fastmath_value not in symbols:
+        raise MetricsError(f"malformed {label} support category")
+    spans = [(symbols[strict_value], colors[strict_value])]
+    if strict_value != fastmath_value:
+        spans.extend((
+            (" (", NEUTRAL_TEXT),
+            (symbols[fastmath_value], colors[fastmath_value]),
+            (")", NEUTRAL_TEXT),
+        ))
+    return tuple(spans)
+
+
+def _signed_zero_spans(
+    strict_value: str,
+    fastmath_value: str,
+) -> tuple[tuple[str, str], ...]:
+    return _boolean_support_spans(
+        strict_value, fastmath_value, "signed-zero",
+    )
+
+
+def _subnormal_spans(
+    strict_value: str,
+    fastmath_value: str,
+) -> tuple[tuple[str, str], ...]:
+    return _boolean_support_spans(
+        strict_value, fastmath_value, "subnormal",
+    )
+
+
 def _plain(spans: tuple[tuple[str, str], ...]) -> str:
     return "".join(text for text, _ in spans)
 
@@ -355,6 +422,14 @@ def _cell_spans(
             strict_row.get("special_support", "-"),
             fastmath_row.get("special_support", "-"),
         ),
+        _signed_zero_spans(
+            strict_row.get("signed_zero_support", "-"),
+            fastmath_row.get("signed_zero_support", "-"),
+        ),
+        _subnormal_spans(
+            strict_row.get("subnormal_support", "-"),
+            fastmath_row.get("subnormal_support", "-"),
+        ),
     )
 
 
@@ -369,6 +444,8 @@ def _column_widths(
         "pass": ["pass"],
         "benchmark": ["time"],
         "special": ["Inf/", "NaN"],
+        "signed_zero": ["±0"],
+        "subnormal": ["Subnorm"],
     }
     keys = tuple(visible)
     for operation in operations:
@@ -387,7 +464,7 @@ def _column_widths(
 
     widths = [
         max(minimum, required(visible[key]))
-        for (key, _, minimum) in overview.COLUMN_SPECS
+        for (key, _, minimum) in overview._column_specs("fastmath")
     ]
     accuracy_width = required(("bits accurate",))
     deficit = max(0, accuracy_width - widths[0] - widths[1])
@@ -396,6 +473,8 @@ def _column_widths(
     widths[2] = max(widths[2], required(("domain",)))
     widths[3] = max(widths[3], required(("performance",)))
     widths[4] = max(widths[4], required(("Inf/", "NaN")))
+    widths[5] = max(widths[5], required(("±0",)))
+    widths[6] = max(widths[6], required(("Subnorm",)))
     return tuple(widths)
 
 
@@ -422,6 +501,14 @@ def _tooltip(
         (
             f"special values: {strict.get('special_support', '-')} -> "
             f"{fastmath.get('special_support', '-')}"
+        ),
+        (
+            f"signed zero: {strict.get('signed_zero_support', '-')} -> "
+            f"{fastmath.get('signed_zero_support', '-')}"
+        ),
+        (
+            f"subnormal support: {strict.get('subnormal_support', '-')} -> "
+            f"{fastmath.get('subnormal_support', '-')}"
         ),
     ))
 
@@ -474,7 +561,10 @@ def render_comparison(
     add_text(
         overview.MARGIN,
         42,
-        "Strict values are shown first; parenthesized changes are fast-math - strict.",
+        (
+            "Strict first; deltas are fast-math - strict. Accuracy excludes "
+            "the separate subnormal domain."
+        ),
         anchor="start",
         fill="#aeb4bf",
         size=10,
@@ -517,6 +607,8 @@ def render_comparison(
         (("domain",), column_widths[2], False),
         (("performance",), column_widths[3], False),
         (("Inf/", "NaN"), column_widths[4], True),
+        (("±0",), column_widths[5], True),
+        (("Subnorm",), column_widths[6], True),
     )
     group_x = block_x
     for lines, group_width, spans_subheader in groups:
@@ -539,7 +631,9 @@ def render_comparison(
 
     third_y = second_y + overview.HEADER_HEIGHTS[1]
     column_x = block_x
-    leaf_headers = (("mean",), ("worst",), ("pass",), ("time",), ())
+    leaf_headers = (
+        ("mean",), ("worst",), ("pass",), ("time",), (), (), (),
+    )
     for lines, column_width in zip(leaf_headers, column_widths):
         if lines:
             overview._rect(
@@ -659,7 +753,7 @@ def render_comparison(
         parts,
         block_x,
         third_y,
-        block_x + sum(column_widths[:-1]),
+        block_x + sum(column_widths[:4]),
         third_y,
         stroke=overview.GRID_REGULAR,
     )

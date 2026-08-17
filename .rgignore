@@ -1,0 +1,18 @@
+# Local dependencies and build products
+/vcpkg/
+/build/
+/TestResults/
+/validation/extern/
+
+# Generated metrics evidence and presentation assets
+/validation/metrics/data/
+/validation/metrics/generated/
+/validation/metrics/_unversioned/
+/validation/metrics/assets/
+
+# IDE and agent scratch state
+/.git/
+/.vs/
+/.idea/
+/.codex/
+/.agents/

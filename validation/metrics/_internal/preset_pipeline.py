@@ -31,6 +31,7 @@ RUNNER_TARGETS = tuple(
     for targets in RUNNER_SETS.values()
     for target in targets
 )
+DEFAULT_WORKFLOW = "standard"
 _MACRO = re.compile(r"\$\{([^{}]+)\}|\$(p?env)\{([^{}]+)\}")
 
 
@@ -48,6 +49,26 @@ class PresetSelection:
     compiler_hint: str
     target_hint: str
     environment: Mapping[str, str]
+
+
+@dataclass(frozen=True)
+class MetricsWorkflow:
+    sample_mode: str
+    canonical_publication: bool = False
+
+
+@dataclass(frozen=True)
+class MetricsPaths:
+    data: Path
+    generated: Path
+
+
+METRICS_WORKFLOWS = {
+    "quick": MetricsWorkflow("small"),
+    "standard": MetricsWorkflow("standard"),
+    "full": MetricsWorkflow("full"),
+    "release": MetricsWorkflow("full", canonical_publication=True),
+}
 
 
 def _read_json(path: Path) -> dict[str, object]:
@@ -352,7 +373,7 @@ def resolve_preset(root: Path, name: str) -> PresetSelection:
     )
 
 
-def needs_msvc_x64_environment(
+def needs_msvc_environment(
     selection: PresetSelection,
     *,
     host_system: str | None = None,
@@ -368,15 +389,13 @@ def needs_msvc_x64_environment(
         return False
 
     hints = f"{selection.compiler_hint} {selection.target_hint}".casefold()
-    alternatives = (
-        "mingw",
-        "emscripten",
-        "clang",
-        "gcc",
-        "g++",
-        "wasm32",
-    )
+    alternatives = ("mingw", "emscripten", "gcc", "g++", "wasm32")
     return not any(value in hints for value in alternatives)
+
+
+def msvc_target_architecture(selection: PresetSelection) -> str:
+    hints = f"{selection.compiler_hint} {selection.target_hint}".casefold()
+    return "arm64" if "arm64" in hints else "x64"
 
 
 def _environment_value(environment: Mapping[str, str], name: str) -> str:
@@ -451,17 +470,24 @@ def _find_vsdevcmd(environment: Mapping[str, str]) -> Path:
     )
 
 
-def msvc_x64_environment(
+def msvc_environment(
+    target_architecture: str,
     parent_environment: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
-    """Capture a clean x64 MSVC command environment from Visual Studio."""
+    """Capture a clean native MSVC/clang-cl environment from Visual Studio."""
+
+    if target_architecture not in {"x64", "arm64"}:
+        raise PipelineError(
+            f"unsupported Visual Studio target architecture {target_architecture!r}"
+        )
 
     parent = dict(
         os.environ if parent_environment is None else parent_environment
     )
     vsdevcmd = _find_vsdevcmd(parent)
     command = (
-        f'call "{vsdevcmd}" -no_logo -arch=x64 -host_arch=x64 '
+        f'call "{vsdevcmd}" -no_logo -arch={target_architecture} '
+        f'-host_arch={target_architecture} '
         ">nul && set"
     )
     try:
@@ -476,7 +502,10 @@ def msvc_x64_environment(
             check=False,
         )
     except OSError as error:
-        raise PipelineError(f"cannot initialize the x64 MSVC environment: {error}") from error
+        raise PipelineError(
+            f"cannot initialize the {target_architecture} Visual Studio "
+            f"environment: {error}"
+        ) from error
     if process.returncode:
         detail = process.stderr.strip() or process.stdout.strip()
         suffix = f": {detail}" if detail else ""
@@ -491,13 +520,20 @@ def msvc_x64_environment(
         key, value = line.split("=", 1)
         if key:
             environment[key] = value
-    if _environment_value(environment, "VSCMD_ARG_TGT_ARCH").casefold() != "x64":
-        raise PipelineError("Visual Studio did not initialize an x64 target environment")
+    if (
+        _environment_value(environment, "VSCMD_ARG_TGT_ARCH").casefold()
+        != target_architecture
+    ):
+        raise PipelineError(
+            f"Visual Studio did not initialize a {target_architecture} target environment"
+        )
     if not _environment_value(environment, "LIB") or not _environment_value(
         environment,
         "PATH",
     ):
-        raise PipelineError("Visual Studio returned an incomplete x64 build environment")
+        raise PipelineError(
+            f"Visual Studio returned an incomplete {target_architecture} build environment"
+        )
     return environment
 
 
@@ -655,8 +691,37 @@ def _run(
         )
 
 
-def metrics_root(root: Path, release: bool) -> Path:
-    return root / ("validation/metrics" if release else "build/metrics")
+def metrics_paths(
+    root: Path,
+    workflow: str,
+    output_root: Path | None = None,
+) -> MetricsPaths:
+    policy = METRICS_WORKFLOWS.get(workflow)
+    if policy is None:
+        raise PipelineError(f"unsupported metrics workflow {workflow!r}")
+
+    metrics = (root / "validation" / "metrics").resolve()
+    canonical = MetricsPaths(
+        data=metrics / "data",
+        generated=metrics / "generated",
+    )
+    if policy.canonical_publication:
+        if output_root is not None:
+            raise PipelineError("--release cannot be combined with --output-root")
+        return canonical
+
+    selected = (
+        output_root.resolve()
+        if output_root is not None
+        else metrics / "_unversioned" / workflow
+    )
+    paths = MetricsPaths(
+        data=selected / "data",
+        generated=selected / "generated",
+    )
+    if paths == canonical:
+        raise PipelineError("canonical metrics output requires --release")
+    return paths
 
 
 def existing_runner_artifacts(
@@ -690,7 +755,7 @@ def existing_runner_artifacts(
             raise PipelineError(
                 "strict and consumer-fast-math runners identify different targets"
             )
-        platform_name, compiler_name = next(iter(identities))
+        platform_name, architecture_name, compiler_name = next(iter(identities))
     except (PipelineError, run_metrics.MetricsError, OSError) as error:
         print(
             f"existing metrics runners cannot be reused: {error}; "
@@ -701,7 +766,8 @@ def existing_runner_artifacts(
 
     print(
         "existing metrics runners match the current source fingerprint "
-        f"for {platform_name}/{compiler_name}; CMake configure/build skipped",
+        f"for {platform_name}/{architecture_name}/{compiler_name}; "
+        "CMake configure/build skipped",
         flush=True,
     )
     return artifacts
@@ -711,7 +777,8 @@ def run_pipeline(
     root: Path,
     preset: str,
     *,
-    release: bool = False,
+    workflow: str = DEFAULT_WORKFLOW,
+    output_root: Path | None = None,
     force_rerun: bool = False,
     consumer_mode: str = "strict",
 ) -> list[Path]:
@@ -722,20 +789,26 @@ def run_pipeline(
         requested_modes = (consumer_mode,)
     else:
         raise PipelineError(f"unsupported consumer mode {consumer_mode!r}")
-    sample_mode = "full" if release else "standard"
-    output_root = metrics_root(root, release)
+    policy = METRICS_WORKFLOWS.get(workflow)
+    if policy is None:
+        raise PipelineError(f"unsupported metrics workflow {workflow!r}")
+    selected_sample_mode = policy.sample_mode
+    selected_paths = metrics_paths(root, workflow, output_root)
     selection = resolve_preset(root, preset)
     environment = selection.environment
     artifacts = existing_runner_artifacts(
         root,
         selection,
-        sample_mode,
+        selected_sample_mode,
         environment,
     )
     if artifacts is None:
         cmake_environment: Mapping[str, str] | None = None
-        if needs_msvc_x64_environment(selection):
-            cmake_environment = msvc_x64_environment()
+        if needs_msvc_environment(selection):
+            cmake_environment = msvc_environment(
+                msvc_target_architecture(selection),
+                parent_environment=selection.environment,
+            )
             environment = cmake_environment
         prepare_file_api_query(selection.binary_dir)
         try:
@@ -772,10 +845,10 @@ def run_pipeline(
         )
 
     generated: list[Path] = []
-    output = output_root / "generated"
+    output = selected_paths.generated
     comparison_target: str | None = None
     comparison_input_root: str | None = None
-    comparison_identity: tuple[str, str] | None = None
+    comparison_identity: tuple[str, str, str] | None = None
     for mode in requested_modes:
         accuracy_target, benchmark_target = RUNNER_SETS[mode]
         handoff = (
@@ -803,9 +876,14 @@ def run_pipeline(
                 "--consumer-mode",
                 mode,
                 "--sample-mode",
-                sample_mode,
+                selected_sample_mode,
                 "--output-root",
-                str(output_root / "data"),
+                str(selected_paths.data),
+                *(
+                    ["--canonical-publication"]
+                    if policy.canonical_publication
+                    else []
+                ),
                 "--result-file",
                 str(handoff),
                 *([] if force_rerun else ["--reuse-compatible"]),
@@ -820,6 +898,7 @@ def run_pipeline(
             "sample_mode",
             "consumer_mode",
             "platform",
+            "architecture",
             "compiler",
             "target",
             "input_root",
@@ -827,7 +906,7 @@ def run_pipeline(
         }
         if (
             set(result) != expected_fields
-            or result.get("sample_mode") != sample_mode
+            or result.get("sample_mode") != selected_sample_mode
             or result.get("consumer_mode") != mode
         ):
             raise PipelineError(f"{handoff}: invalid metrics result handoff")
@@ -835,7 +914,11 @@ def run_pipeline(
         input_root = result.get("input_root")
         if not isinstance(target, str) or not isinstance(input_root, str):
             raise PipelineError(f"{handoff}: invalid metrics target or input root")
-        identity = (str(result["platform"]), str(result["compiler"]))
+        identity = (
+            str(result["platform"]),
+            str(result["architecture"]),
+            str(result["compiler"]),
+        )
         if comparison_target is None:
             comparison_target = target
             comparison_input_root = input_root
@@ -847,6 +930,68 @@ def run_pipeline(
         ):
             raise PipelineError(
                 "consumer modes produced incompatible metrics targets"
+            )
+
+        native_handoff = handoff.with_name(f"{mode}_native_result.json")
+        _run(
+            [
+                sys.executable,
+                str(
+                    root
+                    / "validation"
+                    / "metrics"
+                    / "_internal"
+                    / "run_native_accuracy.py"
+                ),
+                "--accuracy",
+                str(artifacts[accuracy_target]),
+                "--consumer-mode",
+                mode,
+                "--sample-mode",
+                selected_sample_mode,
+                "--output-root",
+                str(selected_paths.data / "native" / mode),
+                "--result-file",
+                str(native_handoff),
+                *([] if force_rerun else ["--reuse-compatible"]),
+            ],
+            root,
+            environment,
+        )
+        native_result = _read_json(native_handoff)
+        native_fields = {
+            "schema_version",
+            "run_id",
+            "sample_mode",
+            "consumer_mode",
+            "platform",
+            "architecture",
+            "compiler",
+            "target",
+            "run_directory",
+            "metadata",
+        }
+        if (
+            set(native_result) != native_fields
+            or native_result.get("sample_mode") != selected_sample_mode
+            or native_result.get("consumer_mode") != mode
+            or native_result.get("target") != target
+            or native_result.get("platform") != result["platform"]
+            or native_result.get("architecture") != result["architecture"]
+            or native_result.get("compiler") != result["compiler"]
+        ):
+            raise PipelineError(f"{native_handoff}: invalid native result handoff")
+        native_directory = Path(str(native_result["run_directory"]))
+        native_outputs = [
+            Path(str(native_result["metadata"])),
+            *(native_directory / f"{precision}_accuracy.csv"
+              for precision in ("f32", "f64")),
+        ]
+        missing_native = [path for path in native_outputs if not path.is_file()]
+        if missing_native:
+            raise PipelineError(
+                "native baseline did not create complete evidence: "
+                + ", ".join(str(path) for path in missing_native)
             )
 
         _run(
@@ -875,7 +1020,8 @@ def run_pipeline(
         ]
         for precision in run_metrics.PRECISIONS:
             base = (
-                f"{result['platform']}_{result['compiler']}_{precision}"
+                f"{result['platform']}_{result['architecture']}_"
+                f"{result['compiler']}_{precision}"
                 f"{mode_suffix}_overview"
             )
             mode_outputs.extend(
@@ -917,10 +1063,10 @@ def run_pipeline(
         root,
         environment,
     )
-    platform_name, compiler_name = comparison_identity
+    platform_name, architecture_name, compiler_name = comparison_identity
     comparison_outputs = build_profile_comparison.output_paths(
         comparison_output,
-        Target(platform_name, compiler_name),
+        Target(platform_name, architecture_name, compiler_name),
     )
     existing_comparisons = tuple(
         path for path in comparison_outputs if path.is_file()
@@ -939,41 +1085,104 @@ def run_pipeline(
     return generated
 
 
-def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--preset", required=True, help="CMake build preset")
-    parser.add_argument(
+def add_workflow_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add the metrics workflow arguments shared by public entry points."""
+
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument(
+        "--quick",
+        action="store_const",
+        const="quick",
+        dest="workflow",
+        help="run the half-sized small profile without publishing",
+    )
+    modes.add_argument(
+        "--standard",
+        action="store_const",
+        const="standard",
+        dest="workflow",
+        help="run the standard development profile (default)",
+    )
+    modes.add_argument(
+        "--full",
+        action="store_const",
+        const="full",
+        dest="workflow",
+        help="run the full profile without publishing",
+    )
+    modes.add_argument(
         "--release",
-        action="store_true",
-        help="run and publish the full canonical metrics profile",
+        action="store_const",
+        const="release",
+        dest="workflow",
+        help=(
+            "publish the full canonical metrics profile; this flag takes no "
+            "value and cannot be combined with --output-root"
+        ),
+    )
+    parser.set_defaults(workflow=DEFAULT_WORKFLOW)
+    parser.add_argument(
+        "--output-root",
+        type=Path,
+        metavar="PATH",
+        help=(
+            "development metrics root; data and generated directories are "
+            "created below PATH (not allowed with --release)"
+        ),
     )
     parser.add_argument(
         "--force-rerun",
         action="store_true",
         help=(
-            "run the metrics phases even when compatible evidence exists; "
-            "source-current runner executables are still reused"
+            "rerun metrics phases even when compatible evidence exists; this "
+            "flag takes no value and source-current executables are still reused"
         ),
     )
     parser.add_argument(
         "--consumer-mode",
         choices=("strict", "fastmath", "all"),
         default="strict",
-        help="run strict consumers, fast-math consumers, or both in sequence",
+        metavar="{strict,fastmath,all}",
+        help=(
+            "consumer profile; allowed values are strict, fastmath, and all "
+            "(default: strict)"
+        ),
     )
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--preset",
+        required=True,
+        metavar="PRESET",
+        help="CMakePresets.json preset name",
+    )
+    add_workflow_arguments(parser)
     return parser.parse_args(argv)
+
+
+def run_pipeline_from_args(
+    root: Path,
+    preset: str,
+    args: argparse.Namespace,
+) -> list[Path]:
+    """Forward parsed public workflow arguments to one preset run."""
+
+    return run_pipeline(
+        root,
+        preset,
+        workflow=args.workflow,
+        output_root=args.output_root,
+        force_rerun=args.force_rerun,
+        consumer_mode=args.consumer_mode,
+    )
 
 
 def main(root: Path, argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
-        outputs = run_pipeline(
-            root,
-            args.preset,
-            release=args.release,
-            force_rerun=args.force_rerun,
-            consumer_mode=args.consumer_mode,
-        )
+        outputs = run_pipeline_from_args(root, args.preset, args)
     except PipelineError as error:
         print(f"preset metrics failed: {error}", file=sys.stderr)
         return 1

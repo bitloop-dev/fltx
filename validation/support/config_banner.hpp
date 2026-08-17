@@ -16,6 +16,10 @@
 #define FLTX_TESTS_COMPILER_VERSION "unknown"
 #endif
 
+#ifndef FLTX_TESTS_COMPILER_FRONTEND_VARIANT
+#define FLTX_TESTS_COMPILER_FRONTEND_VARIANT "unknown"
+#endif
+
 #ifndef FLTX_TESTS_BUILD_CONFIG
 #define FLTX_TESTS_BUILD_CONFIG "unknown"
 #endif
@@ -42,6 +46,36 @@
 
 #ifndef FLTX_METRICS_HAS_TLFLOAT
 #define FLTX_METRICS_HAS_TLFLOAT 0
+#endif
+
+#if defined(__wasm32__)
+  #define FLTX_TESTS_ARCHITECTURE_NAME "wasm32"
+  #define FLTX_TESTS_ARCH_WASM32 1
+  #define FLTX_TESTS_ARCH_ARM64 0
+  #define FLTX_TESTS_ARCH_X86_64 0
+#elif defined(_M_ARM64) || defined(__aarch64__)
+  #define FLTX_TESTS_ARCHITECTURE_NAME "arm64"
+  #define FLTX_TESTS_ARCH_WASM32 0
+  #define FLTX_TESTS_ARCH_ARM64 1
+  #define FLTX_TESTS_ARCH_X86_64 0
+#elif defined(_M_X64) || defined(__x86_64__)
+  #define FLTX_TESTS_ARCHITECTURE_NAME "x86_64"
+  #define FLTX_TESTS_ARCH_WASM32 0
+  #define FLTX_TESTS_ARCH_ARM64 0
+  #define FLTX_TESTS_ARCH_X86_64 1
+#else
+  #define FLTX_TESTS_ARCHITECTURE_NAME "unknown"
+  #define FLTX_TESTS_ARCH_WASM32 0
+  #define FLTX_TESTS_ARCH_ARM64 0
+  #define FLTX_TESTS_ARCH_X86_64 0
+#endif
+
+#if defined(FLTX_TESTS_EXPECT_X86_64) && !FLTX_TESTS_ARCH_X86_64
+  #error "validation preset requires an x86_64 target compiler"
+#elif defined(FLTX_TESTS_EXPECT_ARM64) && !FLTX_TESTS_ARCH_ARM64
+  #error "validation preset requires an ARM64 target compiler"
+#elif defined(FLTX_TESTS_EXPECT_WASM32) && !FLTX_TESTS_ARCH_WASM32
+  #error "validation preset requires a wasm32 target compiler"
 #endif
 
 #if defined(FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH)
@@ -102,16 +136,22 @@ namespace fltx::tests::support
         }
         std::fprintf(stderr, "[harness] qdpp=%s tlfloat=%s\n", FLTX_METRICS_QDPP_ENABLED ? "on" : "off",
                      FLTX_METRICS_HAS_TLFLOAT ? "on" : "off");
+#if defined(FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH) && FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH
+        std::fprintf(stderr, "[implementations] f128=fltx f256=fltx\n");
+#else
         std::fprintf(stderr,
                      "[implementations] f128=fltx%s,cppdd%s "
                      "f256=fltx%s,mpfr64%s\n",
                      FLTX_METRICS_QDPP_ENABLED ? ",qdpp" : "", FLTX_METRICS_HAS_TLFLOAT ? ",tlfloat" : "",
                      FLTX_METRICS_QDPP_ENABLED ? ",qdpp" : "", FLTX_METRICS_HAS_TLFLOAT ? ",tlfloat" : "");
+#endif
         std::fprintf(stderr,
                      "[build] compiler-id=%s compiler-version=%s config=%s optimized=%d "
-                     "system=%s processor=%s flags-hash=%s source-fingerprint=%s\n",
+                     "system=%s processor=%s architecture=%s frontend-variant=%s "
+                     "flags-hash=%s source-fingerprint=%s\n",
                      FLTX_TESTS_COMPILER_ID, FLTX_TESTS_COMPILER_VERSION, FLTX_TESTS_BUILD_CONFIG,
                      FLTX_TESTS_BUILD_OPTIMIZED, FLTX_TESTS_SYSTEM_NAME, FLTX_TESTS_SYSTEM_PROCESSOR,
+                     FLTX_TESTS_ARCHITECTURE_NAME, FLTX_TESTS_COMPILER_FRONTEND_VARIANT,
                      FLTX_TESTS_BUILD_FLAGS_HASH, source_fingerprint);
         std::fprintf(stderr,
                      "[consumer] fma=%s simd=%s fast-math=%s simulated-consteval=%s "

@@ -70,6 +70,12 @@ if(_FLTX_TARGET_PROCESSOR MATCHES "(^|;)(x86_64|amd64|x64|win32|i[3-6]86)(;|$)")
     set(_FLTX_X86_FMA_TARGET_OPTIONS_SUPPORTED ON)
 endif()
 
+set(_FLTX_CLANG_CL OFF)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
+   CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+    set(_FLTX_CLANG_CL ON)
+endif()
+
 function(fltx_resolve_fast_math_mode _OUT _MODE)
     string(TOUPPER "${_MODE}" _FLTX_MODE)
 
@@ -203,10 +209,12 @@ function(fltx_configure_public_header_contract _TARGET)
 
     if(_FLTX_FMA_MODE_NORMALIZED STREQUAL "ASSUME" AND
        _FLTX_X86_FMA_TARGET_OPTIONS_SUPPORTED AND
-       NOT EMSCRIPTEN AND
-       NOT MSVC AND
-       CMAKE_CXX_COMPILER_ID MATCHES "^(GNU|Clang|AppleClang)$")
-        target_compile_options(${_TARGET} ${_FLTX_VISIBILITY} -mfma)
+       NOT EMSCRIPTEN)
+        if(_FLTX_CLANG_CL)
+            target_compile_options(${_TARGET} ${_FLTX_VISIBILITY} /clang:-mfma)
+        elseif(NOT MSVC AND CMAKE_CXX_COMPILER_ID MATCHES "^(GNU|Clang|AppleClang)$")
+            target_compile_options(${_TARGET} ${_FLTX_VISIBILITY} -mfma)
+        endif()
     endif()
 
     if(EMSCRIPTEN AND FLTX_SIMD)
@@ -219,6 +227,16 @@ endfunction()
 
 function(fltx_configure_internal_target _TARGET)
     cmake_parse_arguments(FLTX_INTERNAL "" "FAST_MATH_MODE" "" ${ARGN})
+
+    # Consumer -ffast-math can enable process-wide FTZ/DAZ on MinGW, while
+    # Emscripten may optimize the final linked module as a whole. Compile the
+    # affected runtime implementations with their local evaluation barriers so
+    # public APIs can retain the normal out-of-line dispatch boundary.
+    if(MINGW OR EMSCRIPTEN)
+        target_compile_definitions(${_TARGET} PRIVATE
+            FLTX_DETAIL_COMPILED_RUNTIME_FP_BARRIERS=1
+        )
+    endif()
 
     if(DEFINED FLTX_INTERNAL_FAST_MATH_MODE)
         set(_FLTX_INTERNAL_FAST_MATH_MODE "${FLTX_INTERNAL_FAST_MATH_MODE}")
@@ -314,8 +332,12 @@ function(fltx_assert_package_safe_interface _TARGET)
         endforeach()
 
         string(TOUPPER "${FLTX_FMA_MODE}" _FLTX_FMA_MODE_NORMALIZED)
-        if("${_VALUE}" MATCHES "(^|;)-mfma($|;)" AND NOT _FLTX_FMA_MODE_NORMALIZED STREQUAL "ASSUME")
-            message(FATAL_ERROR "${_TARGET} ${_PROPERTY} contains -mfma outside FLTX_FMA_MODE=ASSUME: ${_VALUE}")
+        if("${_VALUE}" MATCHES "(^|;)(-mfma|/clang:-mfma)($|;)" AND
+           NOT _FLTX_FMA_MODE_NORMALIZED STREQUAL "ASSUME")
+            message(FATAL_ERROR
+                "${_TARGET} ${_PROPERTY} contains an FMA target option outside "
+                "FLTX_FMA_MODE=ASSUME: ${_VALUE}"
+            )
         endif()
 
         if("${_VALUE}" MATCHES "(^|;)-msimd128($|;)" AND NOT (EMSCRIPTEN AND FLTX_SIMD))

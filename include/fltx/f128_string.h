@@ -274,6 +274,117 @@ namespace detail::_f128 // primitives and kernels
         static constexpr int max_binary_exponent = 1023;
         static constexpr int min_binary_exponent = -1074;
 
+        static constexpr double scaled_significand_limb(
+            std::uint64_t coefficient,
+            int exponent) noexcept
+        {
+            if (coefficient == 0)
+                return 0.0;
+
+#if BL_FP_BARRIER_ACTIVE
+            constexpr std::uint64_t hidden_bit = 0x0010000000000000ull;
+            constexpr std::uint64_t fraction_mask = 0x000fffffffffffffull;
+            constexpr std::uint64_t exponent_mask = 0x7ff0000000000000ull;
+
+            const int leading_bit = detail::fp::highest_bit_index(coefficient);
+            const std::uint64_t significand = coefficient << (52 - leading_bit);
+            const int unbiased_exponent = leading_bit + exponent;
+
+            if (unbiased_exponent > 1023)
+                return std::bit_cast<double>(exponent_mask);
+            if (unbiased_exponent >= -1022)
+            {
+                const std::uint64_t exponent_bits =
+                    static_cast<std::uint64_t>(unbiased_exponent + 1023) << 52;
+                return std::bit_cast<double>(
+                    exponent_bits | (significand & fraction_mask));
+            }
+
+            const int shift = -1022 - unbiased_exponent;
+            if (shift >= 64)
+                return 0.0;
+
+            const std::uint64_t truncated = significand >> shift;
+            const std::uint64_t remainder_mask =
+                (std::uint64_t{ 1 } << shift) - 1;
+            const std::uint64_t remainder = significand & remainder_mask;
+            const std::uint64_t halfway = std::uint64_t{ 1 } << (shift - 1);
+            const bool round_up = remainder > halfway ||
+                (remainder == halfway && (truncated & 1u) != 0);
+            const std::uint64_t rounded = truncated + static_cast<std::uint64_t>(round_up);
+            return std::bit_cast<double>(
+                rounded >= hidden_bit ? hidden_bit : rounded);
+#else
+            return detail::fp::ldexp(static_cast<double>(coefficient), exponent);
+#endif
+        }
+
+#if BL_FP_BARRIER_ACTIVE
+        // Canonicalizes the guarded integer significand without passing a
+        // subnormal residual through floating-point arithmetic.
+        static constexpr value_type pack_guarded_significand(
+            const detail::exact_decimal::biguint& q,
+            int e2,
+            bool neg) noexcept
+        {
+            constexpr std::uint64_t sign_mask = 0x8000000000000000ull;
+            constexpr std::uint64_t limb_unit = std::uint64_t{ 1 } << 53;
+            const int discarded_bits = q.bit_length() - significand_bits;
+
+            std::uint64_t lo_coefficient = q.get_bits(discarded_bits, 53);
+            std::uint64_t hi_coefficient = q.get_bits(discarded_bits + 53, 53);
+            if (discarded_bits > 0)
+            {
+                const bool round_bit = q.get_bit(discarded_bits - 1);
+                const bool sticky = discarded_bits > 1 &&
+                    detail::exact_decimal::any_low_bits_set(q, discarded_bits - 1);
+                if (round_bit && (sticky || (lo_coefficient & 1u) != 0))
+                {
+                    ++lo_coefficient;
+                    if (lo_coefficient == limb_unit)
+                    {
+                        lo_coefficient = 0;
+                        ++hi_coefficient;
+                    }
+                }
+            }
+
+            if (hi_coefficient == limb_unit)
+            {
+                hi_coefficient = std::uint64_t{ 1 } << 52;
+                ++e2;
+            }
+
+            constexpr std::uint64_t halfway = std::uint64_t{ 1 } << 52;
+            const bool round_hi = lo_coefficient > halfway ||
+                (lo_coefficient == halfway && (hi_coefficient & 1u) != 0);
+            if (round_hi)
+                ++hi_coefficient;
+
+            double hi{};
+            if (hi_coefficient == limb_unit)
+                hi = scaled_significand_limb(std::uint64_t{ 1 } << 52, e2 - 51);
+            else
+                hi = scaled_significand_limb(hi_coefficient, e2 - 52);
+
+            const std::int64_t residual = static_cast<std::int64_t>(lo_coefficient) -
+                (round_hi ? static_cast<std::int64_t>(limb_unit) : 0);
+            const std::uint64_t residual_magnitude = residual < 0
+                ? static_cast<std::uint64_t>(-residual)
+                : static_cast<std::uint64_t>(residual);
+            double lo = scaled_significand_limb(residual_magnitude, e2 - 105);
+            if (residual < 0)
+                lo = std::bit_cast<double>(std::bit_cast<std::uint64_t>(lo) | sign_mask);
+
+            if (neg)
+            {
+                hi = std::bit_cast<double>(std::bit_cast<std::uint64_t>(hi) ^ sign_mask);
+                lo = std::bit_cast<double>(std::bit_cast<std::uint64_t>(lo) ^ sign_mask);
+            }
+            return { hi, lo };
+        }
+#endif
+
         static constexpr double limb(const value_type& x, int index) noexcept
         {
             return index == 0 ? x.hi : x.lo;
@@ -309,9 +420,17 @@ namespace detail::_f128 // primitives and kernels
                 const std::uint64_t c1 = q.get_bits(0, lo_width);
                 const std::uint64_t c0 = q.get_bits(lo_width, 53);
 
-                const double hi = c0 ? detail::fp::ldexp(static_cast<double>(c0), e2 - 52) : 0.0;
-                const double lo = c1 ? detail::fp::ldexp(static_cast<double>(c1), e2 - (bits - 1)) : 0.0;
+                const double hi = scaled_significand_limb(c0, e2 - 52);
+                const double lo = scaled_significand_limb(c1, e2 - (bits - 1));
+#if BL_FP_BARRIER_ACTIVE
+                double guarded_hi = hi;  BL_FP_BARRIER(guarded_hi);
+                double guarded_lo = lo;  BL_FP_BARRIER(guarded_lo);
+                value_type out = detail::_f128::is_subnormal_limb(guarded_lo)
+                    ? value_type{ guarded_hi, guarded_lo }
+                    : detail::_f128::renorm(guarded_hi, guarded_lo);
+#else
                 value_type out = detail::_f128::renorm(hi, lo);
+#endif
                 return neg ? -out : out;
             }
 
@@ -320,11 +439,39 @@ namespace detail::_f128 // primitives and kernels
             const std::uint64_t c1 = q.get_bits(lo_width, 53);
             const std::uint64_t c0 = q.get_bits(bits - 53, 53);
 
-            const double hi = c0 ? detail::fp::ldexp(static_cast<double>(c0), e2 - 52) : 0.0;
-            const double mid = c1 ? detail::fp::ldexp(static_cast<double>(c1), e2 - 105) : 0.0;
-            const double lo = c2 ? detail::fp::ldexp(static_cast<double>(c2), e2 - (bits - 1)) : 0.0;
+#if BL_FP_BARRIER_ACTIVE
+            constexpr int guarded_significand_bits = significand_bits + 53;
+            constexpr int guarded_underflow_exponent =
+                min_binary_exponent + guarded_significand_bits - 1;
+            if (e2 < guarded_underflow_exponent)
+                return pack_guarded_significand(q, e2, neg);
+#endif
 
+            const double hi = scaled_significand_limb(c0, e2 - 52);
+            const double mid = scaled_significand_limb(c1, e2 - 105);
+            const double lo = scaled_significand_limb(c2, e2 - (bits - 1));
+
+#if BL_FP_BARRIER_ACTIVE
+            double guarded_hi = hi;    BL_FP_BARRIER(guarded_hi);
+            double guarded_mid = mid;  BL_FP_BARRIER(guarded_mid);
+            double guarded_lo = lo;    BL_FP_BARRIER(guarded_lo);
+            if (detail::_f128::is_subnormal_limb(guarded_mid))
+            {
+                constexpr std::uint64_t magnitude_mask = 0x7fffffffffffffffull;
+                const std::uint64_t tail_bits =
+                    (std::bit_cast<std::uint64_t>(guarded_mid) & magnitude_mask) +
+                    (std::bit_cast<std::uint64_t>(guarded_lo) & magnitude_mask);
+                value_type out{
+                    guarded_hi,
+                    std::bit_cast<double>(tail_bits)
+                };
+                return neg ? -out : out;
+            }
+
+            const f128_s tail = detail::_f128::renorm(guarded_mid, guarded_lo);
+#else
             const f128_s tail = detail::_f128::renorm(mid, lo);
+#endif
             f128_s out = detail::_f128::renorm(hi, tail.hi);
             out = detail::_f128::renorm(out.hi, out.lo + tail.lo);
             if (neg)

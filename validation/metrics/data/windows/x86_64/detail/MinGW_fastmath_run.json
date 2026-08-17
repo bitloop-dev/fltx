@@ -1,0 +1,154 @@
+{
+  "accuracy_parallel": true,
+  "accuracy_samples": 4096,
+  "architecture": "x86_64",
+  "benchmark_corpus_policy": "adaptive-v1",
+  "benchmark_fast_minimum_trial_ms": 15,
+  "benchmark_fast_threshold_ns": 20,
+  "benchmark_fast_trials": 7,
+  "benchmark_maximum_row_ms": 5000,
+  "benchmark_minimum_trial_ms": 8,
+  "benchmark_ordinary_trials": 3,
+  "benchmark_policy": "adaptive-v2",
+  "benchmark_samples": {
+    "f128": 8192,
+    "f256": 4096
+  },
+  "benchmark_slow_threshold_ns": 10000,
+  "benchmark_trials": 7,
+  "compiler": "MinGW",
+  "configuration": {
+    "build": {
+      "architecture": "x86_64",
+      "compiler-id": "GNU",
+      "compiler-version": "13.1.0",
+      "config": "Release",
+      "flags-hash": "58af7dec3ba5f6621e8a5a7b2fb270d74cd1bcbd3a5216604c9df63e81c05960",
+      "frontend-variant": "GNU",
+      "optimized": "1",
+      "processor": "AMD64",
+      "source-fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
+      "system": "Windows"
+    },
+    "consumer": {
+      "arm64": "0",
+      "fast-math": "on",
+      "fma": "AUTO",
+      "has-x86-fma": "0",
+      "simd": "on",
+      "simulated-consteval": "off",
+      "tu-x86-fma": "0",
+      "x86": "1"
+    },
+    "harness": {
+      "qdpp": "on",
+      "tlfloat": "on"
+    },
+    "library": {
+      "arm64": "0",
+      "fast-math": "off",
+      "fast-math-request": "AUTO",
+      "fma": "AUTO",
+      "runtime-fma": "available",
+      "simd": "on",
+      "tu-x86-fma": "0",
+      "x86": "1"
+    },
+    "library_strategy": {
+      "baseline-arm64": "0",
+      "compiled-x86-backend": "1",
+      "f256-simd": "1",
+      "msvc-guarded": "0",
+      "neon": "0",
+      "runtime-check": "1",
+      "runtime-path": "0",
+      "scalar-x86": "0",
+      "sse2": "1",
+      "trig-simd": "1",
+      "wasm-simd": "0"
+    }
+  },
+  "consumer_mode": "fastmath",
+  "created_utc": "2026-08-15T16:03:27.373439+00:00",
+  "executables": {
+    "accuracy": {
+      "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-mingw-release\\validation\\fltx_accuracy_fastmath.exe",
+      "sha256": "50f20f4e1b6b6fd08e7b96e2d30e297ad9921e0e193c2aa4d6a5ea4b54206307",
+      "wasm-sha256": "not-present"
+    },
+    "benchmark": {
+      "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-mingw-release\\validation\\fltx_benchmark_fastmath.exe",
+      "sha256": "01ea43e02271ca018be9638ed9cdb692f8335a0be3db4992854be26204881b67",
+      "wasm-sha256": "not-present"
+    }
+  },
+  "host": {
+    "machine": "AMD64",
+    "node": "not-used",
+    "os": "Windows",
+    "os-release": "11",
+    "processor": "AMD64 Family 26 Model 68 Stepping 0, AuthenticAMD",
+    "python": "CPython 3.13.14"
+  },
+  "implementations": {
+    "f128": [
+      {
+        "id": "fltx",
+        "label": "fltx bl::f128",
+        "short_label": "fltx"
+      }
+    ],
+    "f256": [
+      {
+        "id": "fltx",
+        "label": "fltx bl::f256",
+        "short_label": "fltx"
+      }
+    ]
+  },
+  "outputs": {
+    "MinGW_f128_fastmath.csv": "6bc956a90de1f65e382697dc9140e0ef2027c53d93f24bf716b9100707e30ed2",
+    "MinGW_f256_fastmath.csv": "c532c6c305e6de9f70bff9b0c2b9f635043232d277db9434a496a786af981aa8",
+    "detail/MinGW_f128_fastmath_accuracy.csv": "6979b7860b072c9980f9d219f586a90a5062a8f62c0530f8b46db7b6827b4f0f",
+    "detail/MinGW_f128_fastmath_benchmark.csv": "9fa38ed62343155767b50098330bfd07e5e752a9d54b539c9e143bf4689740e5",
+    "detail/MinGW_f256_fastmath_accuracy.csv": "68b24cda916efc8d7687c45b9901776e5f25437603b05378ea1aecd7c7990dfc",
+    "detail/MinGW_f256_fastmath_benchmark.csv": "65ee41a06ebdcdddcd1cb3bfd726b5c4a4dacc3b061e6f173e309598099b46a0"
+  },
+  "phases": {
+    "f128.accuracy": {
+      "output": "MinGW_f128_fastmath_accuracy.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "f128.benchmark": {
+      "output": "MinGW_f128_fastmath_benchmark.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "f256.accuracy": {
+      "output": "MinGW_f256_fastmath_accuracy.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "f256.benchmark": {
+      "output": "MinGW_f256_fastmath_benchmark.csv",
+      "return_code": 0,
+      "status": "passed"
+    }
+  },
+  "phases_requested": [
+    "accuracy",
+    "benchmark"
+  ],
+  "platform": "windows",
+  "precisions": [
+    "f128",
+    "f256"
+  ],
+  "run_id": "1f47748c24e4435f9d017479a2e54bbd",
+  "sample_mode": "standard",
+  "schema_version": "6",
+  "source_fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
+  "source_revision": "b38d8f2a0c9da2eeae373bce48a1aa42bf88fcdc-dirty-7cd523deac97",
+  "status": "complete"
+}

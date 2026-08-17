@@ -691,6 +691,12 @@ namespace bl
         }
         else
         {
+            #if BL_FP_BARRIER_ACTIVE
+            if constexpr (
+                std::is_same_v<Value, f128_s> || std::is_same_v<Value, f128> ||
+                std::is_same_v<Value, f256_s> || std::is_same_v<Value, f256>)
+                return detail::charconv::parse_constexpr<Value>(text, fmt);
+            #endif
             BL_CONSTEXPR_RUNTIME_DISPATCH(
                 detail::charconv::parse_constexpr<Value>(text, fmt),
                 detail::charconv::parse_runtime_dispatch<Value>(text, fmt)

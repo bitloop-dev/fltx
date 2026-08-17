@@ -305,10 +305,9 @@ namespace fltx::tests::accuracy
 
         run.binary_pairs(
             "arithmetic", "add",
-            {domains::arithmetic_general(
+            domains::arithmetic(
                 domains::arithmetic_operation::add,
-                n,
-                std::numeric_limits<Float>::digits)},
+                n, std::numeric_limits<Float>::digits),
             [](auto x, auto y) { return x + y; },
             [](const real& x, const real& y) { return x + y; },
             qdpp<Float>("qdpp operator+", [](auto x, auto y) { return x + y; }),
@@ -317,10 +316,9 @@ namespace fltx::tests::accuracy
             tlfloat_impl<Float>("TLFloat operator+", [](auto x, auto y) { return x + y; }));
         run.binary_pairs(
             "arithmetic", "subtract",
-            {domains::arithmetic_general(
+            domains::arithmetic(
                 domains::arithmetic_operation::subtract,
-                n,
-                std::numeric_limits<Float>::digits)},
+                n, std::numeric_limits<Float>::digits),
             [](auto x, auto y) { return x - y; },
             [](const real& x, const real& y) { return x - y; },
             qdpp<Float>("qdpp operator-", [](auto x, auto y) { return x - y; }),
@@ -329,10 +327,9 @@ namespace fltx::tests::accuracy
             tlfloat_impl<Float>("TLFloat operator-", [](auto x, auto y) { return x - y; }));
         run.binary_pairs(
             "arithmetic", "multiply",
-            {domains::arithmetic_general(
+            domains::arithmetic(
                 domains::arithmetic_operation::multiply,
-                n,
-                std::numeric_limits<Float>::digits)},
+                n, std::numeric_limits<Float>::digits),
             [](auto x, auto y) { return x * y; },
             [](const real& x, const real& y) { return x * y; },
             qdpp<Float>("qdpp operator*", [](auto x, auto y) { return x * y; }),
@@ -341,10 +338,9 @@ namespace fltx::tests::accuracy
             tlfloat_impl<Float>("TLFloat operator*", [](auto x, auto y) { return x * y; }));
         run.binary_pairs(
             "arithmetic", "divide",
-            {domains::arithmetic_general(
+            domains::arithmetic(
                 domains::arithmetic_operation::divide,
-                n,
-                std::numeric_limits<Float>::digits)},
+                n, std::numeric_limits<Float>::digits),
             [](auto x, auto y) { return x / y; },
             [](const real& x, const real& y) { return x / y; },
             qdpp<Float>("qdpp operator/", [](auto x, auto y) { return x / y; }),
@@ -521,7 +517,7 @@ namespace fltx::tests::accuracy
                 const real integral = mpfr::trunc(x);
                 real fractional = x == 0 ? x : x - integral;
                 if (fractional == 0 && x < 0)
-                    fractional = real{-0.0};
+                    fractional = mpfr::signed_zero(true);
                 return std::pair{fractional, integral};
             },
             boost_impl<Float>("boost::multiprecision::modf", [](auto x) { return boost_modf(x); }),
@@ -877,7 +873,7 @@ namespace fltx::tests::accuracy
                               [](auto x) { return boost_tgamma(x); }),
             tlfloat_impl<Float>("tlfloat::tgamma", [](auto x) { return tlfloat_ops::tgamma(x); }));
 
-        run.require_complete(123);
+        run.require_complete(127);
         return run.failures();
     }
 } // namespace fltx::tests::accuracy

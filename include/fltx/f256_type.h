@@ -37,9 +37,6 @@ namespace detail::_f256 // primitives and kernels
     using detail::fp::ceil;
     using detail::fp::integer_fits_exact_double;
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s sub_mul_scalar_fast(const f256_s& r, const f256_s& b, double q) noexcept;
-    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s sub_mul_scalar_exact(const f256_s& r, const f256_s& b, double q) noexcept;
-
     BL_FORCE_INLINE constexpr bool f256_runtime_simd_enabled() noexcept
     {
         #if FLTX_F256_ENABLE_SIMD && (FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD)

@@ -5,6 +5,7 @@
 #include "../../support/domains.hpp"
 #include "../../support/implementations.hpp"
 #include "../../support/source_identity.hpp"
+#include "integer_observer.hpp"
 #include "samples.hpp"
 #include "timing_policy.hpp"
 
@@ -13,6 +14,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <iomanip>
 #include <iostream>
@@ -28,14 +30,14 @@
 
 namespace fltx::tests::benchmark
 {
-    inline constexpr std::string_view schema_version = "4";
+    inline constexpr std::string_view schema_version = "6";
 #if defined(FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH) && FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH
     inline constexpr bool external_implementations_enabled = false;
 #else
     inline constexpr bool external_implementations_enabled = true;
 #endif
     inline volatile std::size_t timing_batches = 0;
-    inline volatile double timing_sink = 0.0;
+    inline volatile std::uint64_t timing_sink = 0;
     inline constexpr double minimum_credible_iteration_ns = 0.001;
     inline constexpr double full_minimum_trial_ns = 25'000'000.0;
     inline constexpr double standard_minimum_trial_ns =
@@ -138,26 +140,16 @@ namespace fltx::tests::benchmark
         template<class Value>
         void add(const Value& value)
         {
-            const auto components = implementations::observe(value);
-            lane0_ += components[0];
-            lane1_ += components[1];
-            lane2_ += components[2];
-            lane3_ += components[3];
+            observer_.add(implementations::observe(value));
         }
 
-        [[nodiscard]] double value() const noexcept
+        [[nodiscard]] std::uint64_t value() const noexcept
         {
-            return lane0_ +
-                   lane1_ * 0x1p52 +
-                   lane2_ * 0x1p104 +
-                   lane3_ * 0x1p156;
+            return observer_.value();
         }
 
     private:
-        double lane0_ = 0.0;
-        double lane1_ = 0.0;
-        double lane2_ = 0.0;
-        double lane3_ = 0.0;
+        integer_observer observer_;
     };
 
     [[nodiscard]] inline std::string number(double value)
@@ -173,7 +165,7 @@ namespace fltx::tests::benchmark
         std::atomic_signal_fence(std::memory_order_seq_cst);
         const auto start = std::chrono::steady_clock::now();
         timing_batches = batches;
-        const double checksum = trial(timing_batches);
+        const std::uint64_t checksum = trial(timing_batches);
         timing_sink = checksum;
         std::atomic_signal_fence(std::memory_order_seq_cst);
         const auto elapsed = std::chrono::steady_clock::now() - start;
@@ -267,7 +259,7 @@ namespace fltx::tests::benchmark
             measurements.push_back(make_unary(
                 fltx_info(operation), inputs,
                 implementation<Float>(
-                    implementations::fltx_identity<Float>,
+                    implementations::primary_identity<Float>,
                     fltx_api(operation),
                     std::move(evaluate))));
             (add_unary(measurements, inputs, std::move(comparisons)), ...);
@@ -290,7 +282,7 @@ namespace fltx::tests::benchmark
             measurements.push_back(make_unary_result(
                 fltx_info(operation), inputs,
                 implementation<Float>(
-                    implementations::fltx_identity<Float>,
+                    implementations::primary_identity<Float>,
                     fltx_api(operation),
                     std::move(evaluate))));
             (add_unary_result(measurements, inputs, std::move(comparisons)), ...);
@@ -313,7 +305,7 @@ namespace fltx::tests::benchmark
             measurements.push_back(make_binary(
                 fltx_info(operation), inputs,
                 implementation<Float>(
-                    implementations::fltx_identity<Float>,
+                    implementations::primary_identity<Float>,
                     fltx_api(operation),
                     std::move(evaluate))));
             (add_binary(measurements, inputs, std::move(comparisons)), ...);
@@ -336,7 +328,7 @@ namespace fltx::tests::benchmark
             measurements.push_back(make_binary_result(
                 fltx_info(operation), inputs,
                 implementation<Float>(
-                    implementations::fltx_identity<Float>,
+                    implementations::primary_identity<Float>,
                     fltx_api(operation),
                     std::move(evaluate))));
             (add_binary_result(measurements, inputs, std::move(comparisons)), ...);
@@ -359,7 +351,7 @@ namespace fltx::tests::benchmark
             measurements.push_back(make_ternary(
                 fltx_info(operation), inputs,
                 implementation<Float>(
-                    implementations::fltx_identity<Float>,
+                    implementations::primary_identity<Float>,
                     fltx_api(operation),
                     std::move(evaluate))));
             (add_ternary(measurements, inputs, std::move(comparisons)), ...);
@@ -381,7 +373,7 @@ namespace fltx::tests::benchmark
                 fltx_info(operation),
                 iterations,
                 task(
-                    implementations::fltx_identity<Float>,
+                    implementations::primary_identity<Float>,
                     "same workload",
                     std::move(fltx_trial))));
             (add_workload_task(
@@ -407,7 +399,7 @@ namespace fltx::tests::benchmark
                 fltx_info(operation),
                 operations_per_batch,
                 task(
-                    implementations::fltx_identity<Float>,
+                    implementations::primary_identity<Float>,
                     fltx_api(operation),
                     std::move(fltx_trial))));
             (add_task(
@@ -480,7 +472,7 @@ namespace fltx::tests::benchmark
             std::string_view operation) const
         {
             return describe(
-                implementations::fltx_identity<Float>,
+                implementations::primary_identity<Float>,
                 fltx_api(operation));
         }
 
@@ -816,106 +808,79 @@ namespace fltx::tests::benchmark
                 result.elapsed_trials_ns.reserve(settings_.trials);
             }
 
-            if (settings_.sample_mode == "standard")
+            if (settings_.sample_mode == "small" ||
+                settings_.sample_mode == "standard")
             {
-                struct adaptive_plan
-                {
-                    std::size_t batches = 1;
-                    std::size_t trials = 1;
-                    bool calibration_is_result = false;
-                    double calibration_elapsed_ns = 0.0;
-                };
+                timing_policy::for_each_measurement_primary_first(
+                    measurements.size(),
+                    [&](std::size_t index) {
+                        measurement& value = measurements[index];
+                        const double pilot = value.elapsed(1);
+                        const double ns_per_iteration = pilot /
+                            static_cast<double>(value.operations_per_batch);
+                        const auto policy = timing_policy::select(ns_per_iteration);
+                        const auto calibration = timing_policy::calibrate_after_pilot(
+                            value.elapsed,
+                            pilot,
+                            policy.target_trial_ns,
+                            maximum_batches);
 
-                std::vector<adaptive_plan> plans(measurements.size());
-                for (std::size_t index = 0; index < measurements.size(); ++index)
-                {
-                    measurement& value = measurements[index];
-                    const double pilot = value.elapsed(1);
-                    const double ns_per_iteration = pilot /
-                        static_cast<double>(value.operations_per_batch);
-                    const auto policy = timing_policy::select(ns_per_iteration);
-                    const auto calibration = timing_policy::calibrate_after_pilot(
-                        value.elapsed,
-                        pilot,
-                        policy.target_trial_ns,
-                        maximum_batches);
+                        std::size_t requested =
+                            std::min(settings_.trials, policy.trials);
+                        if (requested % 2 == 0)
+                            --requested;
+                        requested = std::max<std::size_t>(1, requested);
+                        const std::size_t trials = timing_policy::fitting_trials(
+                            requested,
+                            calibration.elapsed_ns);
 
-                    adaptive_plan& plan = plans[index];
-                    plan.batches = calibration.batches;
-                    plan.calibration_elapsed_ns = calibration.elapsed_ns;
-                    std::size_t requested =
-                        std::min(settings_.trials, policy.trials);
-                    if (requested % 2 == 0)
-                        --requested;
-                    requested = std::max<std::size_t>(1, requested);
-                    plan.trials = timing_policy::fitting_trials(
-                        requested,
-                        calibration.elapsed_ns);
+                        if (calibration.elapsed_ns > timing_policy::maximum_row_ns)
+                        {
+                            std::cerr
+                                << "warning: benchmark row exceeded the adaptive "
+                                   "five-second budget during calibration; using "
+                                   "that measurement as its sole trial: "
+                                << implementations::precision_name<Float> << ' '
+                                << operation << ' ' << value.info.id << '\n';
+                            append_elapsed(
+                                results[index],
+                                value.operations_per_batch,
+                                calibration.batches,
+                                calibration.elapsed_ns);
+                            return;
+                        }
 
-                    if (calibration.elapsed_ns > timing_policy::maximum_row_ns)
-                    {
-                        plan.trials = 1;
-                        plan.calibration_is_result = true;
-                        std::cerr
-                            << "warning: benchmark row exceeded the standard "
-                               "five-second budget during calibration; using "
-                               "that measurement as its sole trial: "
-                            << implementations::precision_name<Float> << ' '
-                            << operation << ' ' << value.info.id << '\n';
-                    }
-                }
-
-                for (std::size_t trial = 0;
-                     trial < settings_.trials;
-                     ++trial)
-                {
-                    for (std::size_t position = 0;
-                         position < measurements.size();
-                         ++position)
-                    {
-                        const std::size_t index =
-                            (trial + position) % measurements.size();
-                        adaptive_plan& plan = plans[index];
-                        if (trial >= plan.trials)
-                            continue;
-                        const double elapsed =
-                            plan.calibration_is_result
-                                ? plan.calibration_elapsed_ns
-                                : measurements[index].elapsed(plan.batches);
-                        append_elapsed(
-                            results[index],
-                            measurements[index].operations_per_batch,
-                            plan.batches,
-                            elapsed);
-                        plan.calibration_is_result = false;
-                    }
-                }
+                        for (std::size_t trial = 0; trial < trials; ++trial)
+                        {
+                            append_elapsed(
+                                results[index],
+                                value.operations_per_batch,
+                                calibration.batches,
+                                value.elapsed(calibration.batches));
+                        }
+                    });
             }
             else
             {
-                for (std::size_t trial = 0;
-                     trial < settings_.trials;
-                     ++trial)
-                {
-                    for (std::size_t position = 0;
-                         position < measurements.size();
-                         ++position)
-                    {
-                        const std::size_t index =
-                            (trial + position) % measurements.size();
+                timing_policy::for_each_measurement_primary_first(
+                    measurements.size(),
+                    [&](std::size_t index) {
                         measurement& value = measurements[index];
-                        const std::size_t batches =
-                            timing_policy::calibrate_once(
-                                value.elapsed,
-                                settings_.minimum_trial_ns,
-                                maximum_batches).batches;
-                        append_elapsed(
-                            results[index],
-                            value.operations_per_batch,
-                            batches,
-                            value.elapsed(batches));
-                    }
-                }
+                        const auto calibration = timing_policy::calibrate_once(
+                            value.elapsed,
+                            settings_.minimum_trial_ns,
+                            maximum_batches);
+                        for (std::size_t trial = 0;
+                             trial < settings_.trials;
+                             ++trial)
+                        {
+                            append_elapsed(
+                                results[index],
+                                value.operations_per_batch,
+                                calibration.batches,
+                                value.elapsed(calibration.batches));
+                        }
+                    });
             }
             for (timing_result& result : results)
                 finish_timing(result);

@@ -2,13 +2,16 @@
 #define FLTX_TESTS_SUPPORT_MPFR_INCLUDED
 
 #include "samples.hpp"
+#include "native_fp.hpp"
 #include "thresholds.hpp"
 
 #include <boost/multiprecision/mpfr.hpp>
 
 #include <algorithm>
+#include <bit>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <iomanip>
 #include <limits>
 #include <sstream>
@@ -24,6 +27,64 @@ namespace fltx::tests::mpfr
     using real = boost::multiprecision::number<
         boost::multiprecision::mpfr_float_backend<400>,
         boost::multiprecision::et_off>;
+
+    [[nodiscard]] inline real signed_zero(bool negative)
+    {
+        real value;
+        mpfr_set_zero(value.backend().data(), negative ? -1 : 1);
+        return value;
+    }
+
+    template<class Float>
+    [[nodiscard]] real native_float_to_real(Float value)
+    {
+        static_assert(
+            std::is_same_v<Float, float> || std::is_same_v<Float, double>);
+
+        using format = native_fp::binary_format<Float>;
+        using bits_type = typename format::bits_type;
+        const bits_type value_bits = native_fp::bits(value);
+        const bool negative = (value_bits & format::sign_mask) != 0;
+        const bits_type fraction = value_bits & format::fraction_mask;
+        const bits_type exponent_bits =
+            (value_bits & format::exponent_mask) >> format::fraction_bits;
+        const bits_type maximum_exponent =
+            format::exponent_mask >> format::fraction_bits;
+
+        if (exponent_bits == maximum_exponent)
+        {
+            if (fraction != 0)
+                return std::numeric_limits<real>::quiet_NaN();
+            const real infinity = std::numeric_limits<real>::infinity();
+            return negative ? -infinity : infinity;
+        }
+
+        if (exponent_bits == 0 && fraction == 0)
+            return signed_zero(negative);
+
+        const bits_type significand = exponent_bits == 0
+            ? fraction
+            : (bits_type{1} << format::fraction_bits) | fraction;
+        const int exponent = exponent_bits == 0
+            ? 1 - format::exponent_bias - format::fraction_bits
+            : static_cast<int>(exponent_bits) -
+                format::exponent_bias - format::fraction_bits;
+        using boost::multiprecision::ldexp;
+        const real magnitude = ldexp(real{significand}, exponent);
+        return negative ? -magnitude : magnitude;
+    }
+
+    [[nodiscard]] constexpr double exact_score() noexcept
+    {
+        return std::bit_cast<double>(
+            native_fp::binary_format<double>::infinity - UINT64_C(1));
+    }
+
+    [[nodiscard]] constexpr bool is_exact_score(double value) noexcept
+    {
+        return native_fp::bits(value) ==
+            native_fp::binary_format<double>::infinity - UINT64_C(1);
+    }
 
     template<class Float>
     struct traits;
@@ -41,17 +102,17 @@ namespace fltx::tests::mpfr
 
         [[nodiscard]] static real to_real(float value)
         {
-            return real{ value };
+            return native_float_to_real(value);
         }
 
         [[nodiscard]] static bool is_finite(float value)
         {
-            return std::isfinite(value);
+            return native_fp::is_finite(value);
         }
 
         [[nodiscard]] static bool sign_bit(float value)
         {
-            return std::signbit(value);
+            return native_fp::sign_bit(value);
         }
     };
 
@@ -68,17 +129,17 @@ namespace fltx::tests::mpfr
 
         [[nodiscard]] static real to_real(double value)
         {
-            return real{ value };
+            return native_float_to_real(value);
         }
 
         [[nodiscard]] static bool is_finite(double value)
         {
-            return std::isfinite(value);
+            return native_fp::is_finite(value);
         }
 
         [[nodiscard]] static bool sign_bit(double value)
         {
-            return std::signbit(value);
+            return native_fp::sign_bit(value);
         }
     };
 
@@ -95,20 +156,22 @@ namespace fltx::tests::mpfr
 
         [[nodiscard]] static real to_real(const bl::f128_s& value)
         {
-            const real out = real{ value.hi } + real{ value.lo };
-            return out == 0 && std::signbit(value.hi)
-                ? real{ -0.0 }
+            const real out = native_float_to_real(value.hi) +
+                             native_float_to_real(value.lo);
+            return out == 0 && native_fp::sign_bit(value.hi)
+                ? signed_zero(true)
                 : out;
         }
 
         [[nodiscard]] static bool is_finite(const bl::f128_s& value)
         {
-            return std::isfinite(value.hi) && std::isfinite(value.lo);
+            return native_fp::is_finite(value.hi) &&
+                   native_fp::is_finite(value.lo);
         }
 
         [[nodiscard]] static bool sign_bit(const bl::f128_s& value)
         {
-            return std::signbit(value.hi);
+            return native_fp::sign_bit(value.hi);
         }
     };
 
@@ -125,29 +188,35 @@ namespace fltx::tests::mpfr
 
         [[nodiscard]] static real to_real(const bl::f256_s& value)
         {
-            const real out = real{ value.x0 } + real{ value.x1 } +
-                             real{ value.x2 } + real{ value.x3 };
-            return out == 0 && std::signbit(value.x0)
-                ? real{ -0.0 }
+            const real out = native_float_to_real(value.x0) +
+                             native_float_to_real(value.x1) +
+                             native_float_to_real(value.x2) +
+                             native_float_to_real(value.x3);
+            return out == 0 && native_fp::sign_bit(value.x0)
+                ? signed_zero(true)
                 : out;
         }
 
         [[nodiscard]] static bool is_finite(const bl::f256_s& value)
         {
-            return std::isfinite(value.x0) && std::isfinite(value.x1) &&
-                   std::isfinite(value.x2) && std::isfinite(value.x3);
+            return native_fp::is_finite(value.x0) &&
+                   native_fp::is_finite(value.x1) &&
+                   native_fp::is_finite(value.x2) &&
+                   native_fp::is_finite(value.x3);
         }
 
         [[nodiscard]] static bool sign_bit(const bl::f256_s& value)
         {
-            return std::signbit(value.x0);
+            return native_fp::sign_bit(value.x0);
         }
     };
 
     [[nodiscard]] inline real to_real(const sample& value)
     {
-        return real{ value.limb[0] } + real{ value.limb[1] } +
-               real{ value.limb[2] } + real{ value.limb[3] };
+        return native_float_to_real(value.limb[0]) +
+               native_float_to_real(value.limb[1]) +
+               native_float_to_real(value.limb[2]) +
+               native_float_to_real(value.limb[3]);
     }
 
     template<class Float>
@@ -155,16 +224,17 @@ namespace fltx::tests::mpfr
     {
         real out;
         if constexpr (std::is_same_v<Float, float>)
-            out = real{ static_cast<float>(value.limb[0]) };
+            out = native_float_to_real(static_cast<float>(value.limb[0]));
         else if constexpr (std::is_same_v<Float, double>)
-            out = real{ value.limb[0] };
+            out = native_float_to_real(value.limb[0]);
         else if constexpr (std::is_same_v<Float, bl::f128>)
-            out = real{ value.limb[0] } + real{ value.limb[1] };
+            out = native_float_to_real(value.limb[0]) +
+                  native_float_to_real(value.limb[1]);
         else
             out = to_real(value);
 
-        if (out == 0 && std::signbit(value.limb[0]))
-            return real{ -0.0 };
+        if (out == 0 && native_fp::sign_bit(value.limb[0]))
+            return signed_zero(true);
         return out;
     }
 
@@ -197,7 +267,7 @@ namespace fltx::tests::mpfr
             rounded = lower + 1;
         else
             rounded = floor(lower / 2) * 2 == lower ? lower : lower + 1;
-        return rounded == 0 && value < 0 ? real{ -0.0 } : rounded;
+        return rounded == 0 && value < 0 ? signed_zero(true) : rounded;
     }
 
     [[nodiscard]] inline real round_away_from_zero(const real& value)
@@ -210,7 +280,7 @@ namespace fltx::tests::mpfr
         const real rounded = value < 0
             ? ceil(value - real{ 0.5 })
             : floor(value + real{ 0.5 });
-        return rounded == 0 && value < 0 ? real{ -0.0 } : rounded;
+        return rounded == 0 && value < 0 ? signed_zero(true) : rounded;
     }
 
     [[nodiscard]] inline real trunc(const real& value)
@@ -221,7 +291,7 @@ namespace fltx::tests::mpfr
         using boost::multiprecision::ceil;
         using boost::multiprecision::floor;
         const real rounded = value < 0 ? ceil(value) : floor(value);
-        return rounded == 0 && value < 0 ? real{ -0.0 } : rounded;
+        return rounded == 0 && value < 0 ? signed_zero(true) : rounded;
     }
 
     [[nodiscard]] inline real round_decimals(const real& value, int digits)
@@ -258,7 +328,7 @@ namespace fltx::tests::mpfr
             return result;
 
         using boost::multiprecision::signbit;
-        return signbit(x) ? real{ -0.0 } : real{ 0.0 };
+        return signed_zero(signbit(x));
     }
 
     [[nodiscard]] inline int remquo_bits(const real& x, const real& y)
@@ -293,20 +363,17 @@ namespace fltx::tests::mpfr
 
     [[nodiscard]] inline bool sign_bit(const real& value)
     {
-        using boost::multiprecision::signbit;
-        return signbit(value);
+        return mpfr_signbit(value.backend().data()) != 0;
     }
 
     template<class Float>
     [[nodiscard]] real absolute_resolution()
     {
-        if constexpr (std::is_same_v<Float, float>)
-            return real{ std::numeric_limits<float>::denorm_min() };
-        else
-            return real{ std::numeric_limits<double>::denorm_min() };
+        using boost::multiprecision::ldexp;
+        return ldexp(real{1}, std::is_same_v<Float, float> ? -149 : -1074);
     }
 
-    [[nodiscard]] inline double resolution_adjusted_bits(
+    [[nodiscard]] FLTX_VALIDATION_PRECISE_FUNCTION double resolution_adjusted_bits(
         const real& observed,
         const real& reference,
         const real& absolute_resolution,
@@ -314,18 +381,18 @@ namespace fltx::tests::mpfr
     {
         if (is_nan(observed) || is_nan(reference))
             return is_nan(observed) && is_nan(reference)
-                ? std::numeric_limits<double>::infinity()
+                ? exact_score()
                 : 0.0;
 
         if (is_inf(observed) || is_inf(reference))
             return is_inf(observed) && is_inf(reference) && sign_bit(observed) == sign_bit(reference)
-                ? std::numeric_limits<double>::infinity()
+                ? exact_score()
                 : 0.0;
 
         if (reference == 0)
         {
-            return observed == 0 && sign_bit(observed) == sign_bit(reference)
-                ? std::numeric_limits<double>::infinity()
+            return observed == 0
+                ? exact_score()
                 : 0.0;
         }
 
@@ -340,8 +407,8 @@ namespace fltx::tests::mpfr
         if (absolute_resolution > 0 &&
             reference_magnitude <= absolute_resolution / 2)
         {
-            return observed == 0 && sign_bit(observed) == sign_bit(reference)
-                ? std::numeric_limits<double>::infinity()
+            return observed == 0
+                ? exact_score()
                 : 0.0;
         }
         if (observed == 0 || sign_bit(observed) != sign_bit(reference))
@@ -351,7 +418,7 @@ namespace fltx::tests::mpfr
         if (error < 0)
             error = -error;
         if (error == 0)
-            return std::numeric_limits<double>::infinity();
+            return exact_score();
 
         real scale = reference_magnitude;
         // Expansions retain their nominal precision only while another
@@ -432,7 +499,7 @@ namespace fltx::tests::mpfr
             return result;
 
         using boost::multiprecision::signbit;
-        return signbit(x) ? real{ -0.0 } : real{ 0.0 };
+        return signed_zero(signbit(x));
     }
 }
 

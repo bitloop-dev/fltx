@@ -14,7 +14,7 @@ import subprocess
 import tempfile
 import threading
 import unittest
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -26,7 +26,9 @@ import manifest
 import preset_pipeline
 import report_pipeline
 import run_metrics
+import run_native_accuracy
 import source_fingerprint
+import supported_preset_pipeline
 from svg_table import Cell, Column, Row, Table, WHITE, render
 
 
@@ -69,6 +71,7 @@ def accuracy_row(
         "margin_bits": "10" if gated else "",
         "pass": "yes" if gated else "",
         "special_support": "Both",
+        "signed_zero_support": "yes",
         "worst_input": "1",
         "observed": "1",
         "reference": "1",
@@ -111,7 +114,7 @@ def benchmark_row(
 
 
 def synthetic_dataset(order: tuple[str, ...]) -> tuple[build_tables.Dataset, build_tables.Target]:
-    target = build_tables.Target("windows", "MSVC")
+    target = build_tables.Target("windows", "x86_64", "MSVC")
     rows = {
         "fltx": {
             **benchmark_row(),
@@ -120,6 +123,7 @@ def synthetic_dataset(order: tuple[str, ...]) -> tuple[build_tables.Dataset, bui
                 "domains_passed": "1", "domains_total": "1",
                 "min_margin_bits": "10", "accuracy_pass": "yes",
                 "special_support": "Both",
+                "signed_zero_support": "yes",
                 "run_id": "run",
             },
         },
@@ -129,7 +133,8 @@ def synthetic_dataset(order: tuple[str, ...]) -> tuple[build_tables.Dataset, bui
                 "mean_bits": "100", "p01_bits": "95", "worst_bits": "90",
                 "domains_passed": "1", "domains_total": "1",
                 "min_margin_bits": "0", "accuracy_pass": "yes",
-                "special_support": "Both", "run_id": "run",
+                "special_support": "Both", "signed_zero_support": "yes",
+                "run_id": "run",
             },
         },
         "cppdd": {
@@ -138,7 +143,8 @@ def synthetic_dataset(order: tuple[str, ...]) -> tuple[build_tables.Dataset, bui
                 "mean_bits": "108", "p01_bits": "102", "worst_bits": "98",
                 "domains_passed": "1", "domains_total": "1",
                 "min_margin_bits": "8", "accuracy_pass": "yes",
-                "special_support": "Both", "run_id": "run",
+                "special_support": "Both", "signed_zero_support": "yes",
+                "run_id": "run",
             },
         },
         "tlfloat": {
@@ -147,7 +153,8 @@ def synthetic_dataset(order: tuple[str, ...]) -> tuple[build_tables.Dataset, bui
                 "mean_bits": "112", "p01_bits": "108", "worst_bits": "101",
                 "domains_passed": "1", "domains_total": "1",
                 "min_margin_bits": "11", "accuracy_pass": "yes",
-                "special_support": "Both", "run_id": "run",
+                "special_support": "Both", "signed_zero_support": "yes",
+                "run_id": "run",
             },
         },
     }
@@ -193,7 +200,7 @@ def synthetic_performance_dataset(
                 (column, "arithmetic", "add"): order,
             },
             run_ids={column: "run"},
-            sources={column: Path("windows/MSVC_f128.csv")},
+            sources={column: Path("windows/x86_64/MSVC_f128.csv")},
         ),
         target,
     )
@@ -317,10 +324,10 @@ class ManifestTests(unittest.TestCase):
              manifest.accuracy_manifest(
                  "f256", qdpp=True, tlfloat=True,
              ).items()},
-            {"fltx": 123, "qdpp": 91, "mpfr64": 114, "tlfloat": 107},
+            {"fltx": 127, "qdpp": 95, "mpfr64": 118, "tlfloat": 111},
         )
 
-    def test_extended_accuracy_uses_one_weighted_arithmetic_domain(self) -> None:
+    def test_extended_accuracy_separates_arithmetic_subnormal_evidence(self) -> None:
         rows = manifest.accuracy_manifest(
             "f256", qdpp=True, tlfloat=True,
         )["fltx"]
@@ -332,9 +339,13 @@ class ManifestTests(unittest.TestCase):
             arithmetic,
             {
                 ("arithmetic", "add", "general"),
+                ("arithmetic", "add", "subnormal"),
                 ("arithmetic", "subtract", "general"),
+                ("arithmetic", "subtract", "subnormal"),
                 ("arithmetic", "multiply", "general"),
+                ("arithmetic", "multiply", "subnormal"),
                 ("arithmetic", "divide", "general"),
+                ("arithmetic", "divide", "subnormal"),
             },
         )
 
@@ -357,6 +368,20 @@ class ManifestTests(unittest.TestCase):
         rows = manifest.EXPECTED_ACCURACY["f64"]
         self.assertIn(("arithmetic", "add", "near_one"), rows)
         self.assertNotIn(("arithmetic", "add", "general"), rows)
+
+    def test_native_accuracy_rows_are_threshold_gated_baselines(self) -> None:
+        row = accuracy_row()
+        row["implementation"] = "native"
+        row["implementation_short"] = "float"
+        row["implementation_label"] = "native float"
+
+        _, _, _, margin, passed, _ = run_metrics._accuracy_values(
+            row,
+            Path("native.csv"),
+        )
+
+        self.assertEqual(margin, 10.0)
+        self.assertIs(passed, True)
 
     def test_trig_accuracy_requires_quadrant_boundaries(self) -> None:
         for precision in ("f128", "f256"):
@@ -449,6 +474,8 @@ class ValidationTests(unittest.TestCase):
                 "config": "Release",
                 "system": "Windows",
                 "processor": "x64",
+                "architecture": "x86_64",
+                "frontend-variant": "MSVC",
                 "optimized": "1",
                 "flags-hash": FINGERPRINT,
                 "source-fingerprint": FINGERPRINT,
@@ -508,6 +535,7 @@ class ValidationTests(unittest.TestCase):
             )["consumer"]["fast-math"],
             "on",
         )
+
         with self.assertRaisesRegex(run_metrics.MetricsError, "expected off"):
             run_metrics.require_consumer_mode(
                 fastmath,
@@ -528,8 +556,19 @@ class ValidationTests(unittest.TestCase):
             "MSVC_fastmath_run",
         )
 
+    def test_fastmath_accuracy_is_advisory(self) -> None:
+        self.assertEqual(run_metrics.accuracy_policy_arguments("strict"), ())
+        self.assertEqual(
+            run_metrics.accuracy_policy_arguments("fastmath"),
+            ("--advisory",),
+        )
+
     def test_metrics_runner_accepts_either_phase_independently(self) -> None:
-        common = ["--platform", "windows", "--compiler", "MSVC"]
+        common = [
+            "--platform", "windows",
+            "--architecture", "x86_64",
+            "--compiler", "MSVC",
+        ]
         accuracy = run_metrics.parse_args([
             "--accuracy", "accuracy.exe", *common,
         ])
@@ -555,13 +594,214 @@ class ValidationTests(unittest.TestCase):
             "--force-rerun",
         ])
         self.assertTrue(args.force_rerun)
-        self.assertFalse(args.release)
+        self.assertEqual(args.workflow, "standard")
+
+    def test_preset_metrics_help_describes_every_public_option(self) -> None:
+        output = io.StringIO()
+        with redirect_stdout(output), self.assertRaises(SystemExit) as exit_status:
+            preset_pipeline.parse_args(["--help"])
+
+        self.assertEqual(exit_status.exception.code, 0)
+        help_text = output.getvalue()
+        for expected in (
+            "--preset PRESET",
+            "CMakePresets.json preset name",
+            "--quick",
+            "--standard",
+            "--full",
+            "--release",
+            "--output-root PATH",
+            "--force-rerun",
+            "--consumer-mode {strict,fastmath,all}",
+        ):
+            self.assertIn(expected, help_text)
+        self.assertNotIn("--sample-mode", help_text)
+
+    def test_all_supported_metrics_help_omits_preset(self) -> None:
+        output = io.StringIO()
+        with redirect_stdout(output), self.assertRaises(SystemExit) as exit_status:
+            supported_preset_pipeline.parse_args(["--help"])
+
+        self.assertEqual(exit_status.exception.code, 0)
+        help_text = output.getvalue()
+        self.assertNotIn("--preset", help_text)
+        for expected in (
+            "--quick",
+            "--standard",
+            "--full",
+            "--release",
+            "--output-root PATH",
+            "--force-rerun",
+            "--consumer-mode {strict,fastmath,all}",
+        ):
+            self.assertIn(expected, help_text)
+        self.assertNotIn("--sample-mode", help_text)
+
+    def test_native_accuracy_runner_supports_compatible_reuse(self) -> None:
+        args = run_native_accuracy.parse_args([
+            "--accuracy", "accuracy.exe",
+            "--reuse-compatible",
+        ])
+        self.assertTrue(args.reuse_compatible)
+
+    def test_native_accuracy_reuses_matching_complete_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output_root = Path(temporary)
+            run_directory = output_root / "cached-run"
+            run_directory.mkdir()
+            outputs = {}
+            for precision in run_native_accuracy.NATIVE_PRECISIONS:
+                path = run_directory / f"{precision}_accuracy.csv"
+                path.write_text(f"{precision}\n", encoding="utf-8")
+                outputs[path.name] = run_metrics._sha256_file(path)
+
+            configuration = self.configuration_banner()
+            host = {
+                "os": "Windows",
+                "os-release": "11",
+                "machine": "AMD64",
+                "processor": "test-cpu",
+                "python": "CPython test",
+                "node": "not-used",
+            }
+            metadata_path = run_directory / "native_accuracy_run.json"
+            metadata_path.write_text(
+                json.dumps({
+                    "schema_version": run_native_accuracy.NATIVE_SCHEMA_VERSION,
+                    "status": "complete",
+                    "run_id": "cached-run",
+                    "source_revision": "revision",
+                    "source_fingerprint": FINGERPRINT,
+                    "sample_mode": "standard",
+                    "accuracy_samples": 4096,
+                    "consumer_mode": "strict",
+                    "platform": "windows",
+                    "architecture": "x86_64",
+                    "compiler": "MSVC",
+                    "target": "windows/x86_64/MSVC",
+                    "precisions": list(run_native_accuracy.NATIVE_PRECISIONS),
+                    "policy": run_native_accuracy.NATIVE_POLICY,
+                    "thresholds": "advisory",
+                    "configuration": configuration,
+                    "host": host,
+                    "executables": {
+                        "accuracy": {
+                            "path": "C:/test/accuracy.exe",
+                            "sha256": FINGERPRINT,
+                            "wasm-sha256": "not-present",
+                        },
+                    },
+                    "outputs": outputs,
+                }),
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(
+                run_native_accuracy,
+                "_validate_accuracy_evidence",
+            ) as validate_evidence:
+                reusable, rejection = run_native_accuracy._find_reusable_run(
+                    output_root,
+                    sample_mode="standard",
+                    consumer_mode="strict",
+                    platform="windows",
+                    architecture="x86_64",
+                    compiler="MSVC",
+                    fingerprint=FINGERPRINT,
+                    configuration=configuration,
+                    host=host,
+                )
+
+            self.assertEqual(rejection, "")
+            self.assertIsNotNone(reusable)
+            assert reusable is not None
+            self.assertEqual(reusable["run_id"], "cached-run")
+            self.assertEqual(validate_evidence.call_count, 2)
+
+            stale, rejection = run_native_accuracy._find_reusable_run(
+                output_root,
+                sample_mode="standard",
+                consumer_mode="strict",
+                platform="windows",
+                architecture="x86_64",
+                compiler="MSVC",
+                fingerprint="b" * 64,
+                configuration=configuration,
+                host=host,
+            )
+            self.assertIsNone(stale)
+            self.assertIn("source_fingerprint mismatch", rejection)
+
+    def test_native_accuracy_reuse_skips_both_runner_phases(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output_root = Path(temporary)
+            result_file = output_root / "result.json"
+            run_directory = output_root / "cached-run"
+            metadata = run_directory / "native_accuracy_run.json"
+            reusable = run_native_accuracy._result_handoff(
+                run_id="cached-run",
+                sample_mode="standard",
+                consumer_mode="strict",
+                platform="windows",
+                architecture="x86_64",
+                compiler="MSVC",
+                run_directory=run_directory,
+                metadata=metadata,
+            )
+            configuration = self.configuration_banner()
+            identity = source_fingerprint.SourceIdentity(
+                revision="revision",
+                fingerprint=FINGERPRINT,
+            )
+
+            with (
+                mock.patch.object(
+                    run_native_accuracy,
+                    "source_identity",
+                    return_value=identity,
+                ),
+                mock.patch.object(
+                    run_native_accuracy,
+                    "_run_provenance",
+                    return_value={"host": {}, "executables": {}},
+                ),
+                mock.patch.object(
+                    run_native_accuracy,
+                    "_preflight_runners",
+                    return_value=configuration,
+                ),
+                mock.patch.object(
+                    run_native_accuracy,
+                    "_find_reusable_run",
+                    return_value=(reusable, ""),
+                ),
+                mock.patch.object(
+                    run_native_accuracy,
+                    "_run_precision",
+                ) as run_precision,
+                redirect_stdout(io.StringIO()) as output,
+            ):
+                status = run_native_accuracy.main([
+                    "--accuracy", "accuracy.exe",
+                    "--sample-mode", "standard",
+                    "--output-root", str(output_root),
+                    "--result-file", str(result_file),
+                    "--reuse-compatible",
+                ])
+
+            self.assertEqual(status, 0)
+            run_precision.assert_not_called()
+            self.assertEqual(
+                json.loads(result_file.read_text(encoding="utf-8")),
+                reusable,
+            )
+            self.assertIn("f32/f64 phases skipped", output.getvalue())
 
     def test_preset_pipeline_defaults_to_local_standard_profile(self) -> None:
         args = preset_pipeline.parse_args([
             "--preset", "native-release",
         ])
-        self.assertFalse(args.release)
+        self.assertEqual(args.workflow, "standard")
         self.assertEqual(
             run_metrics.SAMPLE_PROFILES["standard"],
             {
@@ -569,7 +809,7 @@ class ValidationTests(unittest.TestCase):
                 "benchmark_samples": {"f128": 8192, "f256": 4096},
                 "benchmark_trials": 7,
                 "benchmark_minimum_trial_ms": 8,
-                "benchmark_policy": "adaptive-v1",
+                "benchmark_policy": "adaptive-v2",
                 "benchmark_fast_threshold_ns": 20,
                 "benchmark_slow_threshold_ns": 10_000,
                 "benchmark_fast_trials": 7,
@@ -581,12 +821,56 @@ class ValidationTests(unittest.TestCase):
             },
         )
 
+    def test_small_profile_halves_standard_sample_counts(self) -> None:
+        small = run_metrics.SAMPLE_PROFILES["small"]
+        standard = run_metrics.SAMPLE_PROFILES["standard"]
+
+        self.assertEqual(small["accuracy_samples"], 2048)
+        self.assertEqual(
+            small["benchmark_samples"],
+            {"f128": 4096, "f256": 2048},
+        )
+        self.assertEqual(
+            {
+                key: value
+                for key, value in small.items()
+                if key not in {"accuracy_samples", "benchmark_samples"}
+            },
+            {
+                key: value
+                for key, value in standard.items()
+                if key not in {"accuracy_samples", "benchmark_samples"}
+            },
+        )
+
+    def test_public_workflow_flags_map_to_internal_sample_modes(self) -> None:
+        cases = (
+            ((), "standard", "standard", False),
+            (("--quick",), "quick", "small", False),
+            (("--standard",), "standard", "standard", False),
+            (("--full",), "full", "full", False),
+            (("--release",), "release", "full", True),
+        )
+        for flags, workflow, sample_mode, canonical in cases:
+            with self.subTest(flags=flags):
+                args = preset_pipeline.parse_args([
+                    "--preset", "native-release", *flags,
+                ])
+                policy = preset_pipeline.METRICS_WORKFLOWS[args.workflow]
+                self.assertEqual(args.workflow, workflow)
+                self.assertEqual(policy.sample_mode, sample_mode)
+                self.assertEqual(policy.canonical_publication, canonical)
+
     def test_preset_pipeline_release_flag_selects_publication_profile(self) -> None:
         args = preset_pipeline.parse_args([
             "--preset", "native-release",
             "--release",
         ])
-        self.assertTrue(args.release)
+        self.assertEqual(args.workflow, "release")
+        self.assertEqual(
+            preset_pipeline.METRICS_WORKFLOWS[args.workflow].sample_mode,
+            "full",
+        )
         self.assertEqual(
             run_metrics.SAMPLE_PROFILES["full"],
             {
@@ -600,7 +884,7 @@ class ValidationTests(unittest.TestCase):
     def test_preset_pipeline_rejects_removed_report_options(self) -> None:
         for removed in (
             ("--mode", "quick"),
-            ("--sample-mode", "smoke"),
+            ("--sample-mode", "standard"),
             ("--layout", "compact"),
         ):
             with self.subTest(option=removed[0]), redirect_stderr(io.StringIO()):
@@ -609,10 +893,25 @@ class ValidationTests(unittest.TestCase):
                         "--preset", "native-release", *removed,
                     ])
 
+    def test_preset_pipeline_rejects_conflicting_workflow_flags(self) -> None:
+        for flags in (
+            ("--quick", "--standard"),
+            ("--quick", "--full"),
+            ("--standard", "--release"),
+            ("--full", "--release"),
+        ):
+            with self.subTest(flags=flags), redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit):
+                    preset_pipeline.parse_args([
+                        "--preset", "native-release", *flags,
+                    ])
+
     def test_compatible_evidence_handoff_reuses_the_existing_run(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             input_root = Path(temporary)
-            metadata_path = input_root / "windows" / "detail" / "MSVC_run.json"
+            metadata_path = (
+                input_root / "windows" / "x86_64" / "detail" / "MSVC_run.json"
+            )
             metadata_path.parent.mkdir(parents=True)
             configuration = {"build": {"source-fingerprint": FINGERPRINT}}
             profile = run_metrics.SAMPLE_PROFILES["full"]
@@ -622,6 +921,7 @@ class ValidationTests(unittest.TestCase):
                 "source_revision": "revision",
                 "source_fingerprint": FINGERPRINT,
                 "platform": "windows",
+                "architecture": "x86_64",
                 "compiler": "MSVC",
                 "precisions": list(run_metrics.PRECISIONS),
                 "sample_mode": "full",
@@ -675,6 +975,7 @@ class ValidationTests(unittest.TestCase):
                     metadata_path,
                     sample_mode="full",
                     platform="windows",
+                    architecture="x86_64",
                     compiler="MSVC",
                     fingerprint=FINGERPRINT,
                     configuration=configuration,
@@ -683,7 +984,7 @@ class ValidationTests(unittest.TestCase):
             self.assertEqual(result["run_id"], "cached")
             self.assertEqual(result["input_root"], str(input_root.resolve()))
 
-    def test_metrics_runner_requires_explicit_target_as_a_pair(self) -> None:
+    def test_metrics_runner_requires_complete_explicit_target(self) -> None:
         with redirect_stderr(io.StringIO()):
             with self.assertRaises(SystemExit):
                 run_metrics.parse_args([
@@ -693,18 +994,38 @@ class ValidationTests(unittest.TestCase):
 
     def test_canonical_target_inference_covers_supported_builds(self) -> None:
         identities = {
-            ("Windows", "MSVC"): ("windows", "MSVC"),
-            ("Windows", "GNU"): ("windows", "MinGW"),
-            ("Emscripten", "Clang"): ("wasm32", "Wasm32"),
-            ("Linux", "GNU"): ("linux", "GCC"),
-            ("Linux", "Clang"): ("linux", "Clang"),
-            ("Darwin", "AppleClang"): ("macos", "AppleClang"),
+            ("Windows", "x86_64", "MSVC", "MSVC"):
+                ("windows", "x86_64", "MSVC"),
+            ("Windows", "x86_64", "Clang", "MSVC"):
+                ("windows", "x86_64", "ClangCL"),
+            ("Windows", "arm64", "MSVC", "MSVC"):
+                ("windows", "arm64", "MSVC"),
+            ("Windows", "arm64", "Clang", "MSVC"):
+                ("windows", "arm64", "ClangCL"),
+            ("Windows", "x86_64", "GNU", "GNU"):
+                ("windows", "x86_64", "MinGW"),
+            ("Emscripten", "wasm32", "Clang", "GNU"):
+                ("wasm32", "wasm32", "Emscripten"),
+            ("Linux", "x86_64", "GNU", "GNU"):
+                ("linux", "x86_64", "GCC"),
+            ("Linux", "arm64", "GNU", "GNU"):
+                ("linux", "arm64", "GCC"),
+            ("Linux", "x86_64", "Clang", "GNU"):
+                ("linux", "x86_64", "Clang"),
+            ("Linux", "arm64", "Clang", "GNU"):
+                ("linux", "arm64", "Clang"),
+            ("Darwin", "x86_64", "AppleClang", "GNU"):
+                ("macos", "x86_64", "AppleClang"),
+            ("Darwin", "arm64", "AppleClang", "GNU"):
+                ("macos", "arm64", "AppleClang"),
         }
-        for (system, compiler_id), expected in identities.items():
+        for (system, architecture, compiler_id, frontend), expected in identities.items():
             configuration = {
                 "build": {
                     "system": system,
+                    "architecture": architecture,
                     "compiler-id": compiler_id,
+                    "frontend-variant": frontend,
                     "processor": "test",
                 },
             }
@@ -727,6 +1048,44 @@ class ValidationTests(unittest.TestCase):
                     },
                 },
                 "test",
+            )
+
+    def test_explicit_target_rejects_wrong_architecture_or_frontend(self) -> None:
+        configuration = self.configuration_banner()
+        with self.assertRaisesRegex(run_metrics.MetricsError, "does not match"):
+            run_metrics._validate_target_labels(
+                "windows", "arm64", "MSVC", configuration, "test"
+            )
+
+        clang = self.configuration_banner()
+        clang["build"]["compiler-id"] = "Clang"
+        clang["build"]["frontend-variant"] = "GNU"
+        with self.assertRaisesRegex(run_metrics.MetricsError, "does not match"):
+            run_metrics._validate_target_labels(
+                "windows", "x86_64", "ClangCL", clang, "test"
+            )
+
+    def test_noncanonical_full_profile_has_an_isolated_output_root(self) -> None:
+        args = preset_pipeline.parse_args([
+            "--preset", "windows-x64-msvc-release",
+            "--full",
+            "--output-root", "build/metrics/verification/msvc",
+        ])
+        self.assertEqual(args.workflow, "full")
+        self.assertEqual(
+            args.output_root,
+            Path("build/metrics/verification/msvc"),
+        )
+
+        root = Path("C:/source/fltx")
+        with self.assertRaisesRegex(
+            preset_pipeline.PipelineError,
+            "canonical metrics output requires --release",
+        ):
+            preset_pipeline.metrics_paths(
+                root,
+                "standard",
+                root / "validation" / "metrics",
             )
 
     def test_duplicate_implementation_operation_is_rejected(self) -> None:
@@ -784,6 +1143,18 @@ class ValidationTests(unittest.TestCase):
         self.assertEqual(cppdd["speed_ratio"], 2)
         self.assertEqual(cppdd["accuracy_pass"], "yes")
         self.assertEqual(cppdd["domains_passed"], 1)
+
+    def test_accuracy_aggregation_requires_stable_signed_zero_support(self) -> None:
+        preserved = accuracy_row(domain="moderate")
+        lost = accuracy_row(domain="wide_exponent")
+        lost["signed_zero_support"] = "no"
+        thresholds = {"moderate": 90.0, "wide_exponent": 90.0}
+        with self.assertRaisesRegex(
+            run_metrics.MetricsError, "inconsistent signed_zero_support",
+        ):
+            run_metrics._accuracy_summary(
+                [preserved, lost], Path("accuracy.csv"), thresholds,
+            )
 
     def test_standard_accepts_only_policy_compliant_trial_counts(self) -> None:
         for count in (1, 3, 7):
@@ -969,7 +1340,9 @@ class RenderingTests(unittest.TestCase):
         )
 
     def test_overview_uses_metrics_directories_by_default(self) -> None:
-        args = build_overview.parse_args(["--target", "windows/MSVC"])
+        args = build_overview.parse_args(
+            ["--target", "windows/x86_64/MSVC"]
+        )
         self.assertEqual(args.input, Path(build_overview.__file__).parents[1] / "data")
         self.assertEqual(args.output, Path(build_overview.__file__).parents[1] / "generated")
         self.assertEqual(args.layout, "full")
@@ -998,9 +1371,9 @@ class RenderingTests(unittest.TestCase):
             (column, "arithmetic", "add", "qdpp")
         ]["worst_bits"] = ""
         svg = build_performance.render(dataset)
-        self.assertIn(">0.80× vs ddreal<", svg)
-        self.assertNotIn("× vs cppdd<", svg)
-        self.assertNotIn("× vs tlquad<", svg)
+        self.assertIn(">0.80× ddreal<", svg)
+        self.assertNotIn("× cppdd<", svg)
+        self.assertNotIn("× tlquad<", svg)
         self.assertIn("Fastest competitor: qdpp dd_real", svg)
         self.assertIn("FLTX speed vs fastest competitor: 0.8×", svg)
 
@@ -1010,7 +1383,7 @@ class RenderingTests(unittest.TestCase):
         )
         svg = build_performance.render(dataset)
         self.assertIn(
-            f'fill="{build_tables._ratio_color(0.8)}" font-size="13" '
+            f'fill="{build_tables._ratio_color(0.8)}" font-size="12" '
             'font-weight="400"',
             svg,
         )
@@ -1078,6 +1451,46 @@ class RenderingTests(unittest.TestCase):
             "8,770ns",
         )
 
+    def test_report_labels_name_compiler_then_environment(self) -> None:
+        self.assertEqual(
+            build_tables.platform_label("windows"),
+            "Windows",
+        )
+        self.assertEqual(
+            build_tables.compiler_label_lines("MSVC"),
+            ("MSVC",),
+        )
+        self.assertEqual(
+            build_tables.compiler_label_lines("ClangCL"),
+            ("Clang", "clang-cl"),
+        )
+        self.assertEqual(
+            build_tables.compiler_label_lines("MinGW"),
+            ("GCC", "MinGW-w64"),
+        )
+        self.assertEqual(
+            build_tables.compiler_label_lines("Emscripten"),
+            ("Clang", "Emscripten"),
+        )
+        self.assertEqual(build_tables.compiler_label("GCC"), "GCC")
+        self.assertEqual(build_tables.compiler_label("Clang"), "Clang")
+        self.assertEqual(
+            build_tables.compiler_label("AppleClang"),
+            "Apple Clang",
+        )
+        self.assertEqual(
+            build_tables.Target("windows", "x86_64", "ClangCL").label,
+            "Windows / x64 / Clang (clang-cl)",
+        )
+        self.assertEqual(
+            build_tables.Target("windows", "x86_64", "MinGW").label,
+            "Windows / x64 / GCC (MinGW-w64)",
+        )
+        self.assertEqual(
+            build_tables.Target("wasm32", "wasm32", "Emscripten").label,
+            "WebAssembly / wasm32 / Clang (Emscripten)",
+        )
+
     def test_performance_discovery_combines_independent_precisions_and_runs(
         self,
     ) -> None:
@@ -1099,9 +1512,12 @@ class RenderingTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            write_canonical(root / "windows" / "MSVC_f128.csv", add_rows)
             write_canonical(
-                root / "wasm32" / "Wasm32_f256.csv",
+                root / "windows" / "x86_64" / "MSVC_f128.csv",
+                add_rows,
+            )
+            write_canonical(
+                root / "wasm32" / "wasm32" / "Emscripten_f256.csv",
                 f256_abs_rows,
             )
             dataset = build_performance.discover(root)
@@ -1116,12 +1532,15 @@ class RenderingTests(unittest.TestCase):
         self.assertNotIn("source_revision", metadata)
         self.assertEqual(
             {
-                (source["platform"], source["compiler"], source["precision"])
+                (
+                    source["platform"], source["architecture"],
+                    source["compiler"], source["precision"],
+                )
                 for source in metadata["sources"]
             },
             {
-                ("windows", "MSVC", "f128"),
-                ("wasm32", "Wasm32", "f256"),
+                ("windows", "x86_64", "MSVC", "f128"),
+                ("wasm32", "wasm32", "Emscripten", "f256"),
             },
         )
         self.assertEqual(
@@ -1136,14 +1555,24 @@ class RenderingTests(unittest.TestCase):
             "bl::f128",
             "bl::f256",
             "Windows",
+            "x64",
             "WebAssembly",
             "MSVC",
-            "Wasm32",
+            "Clang",
+            "Emscripten",
         ):
             self.assertIn(f">{text}<", svg)
         self.assertEqual(svg.count('class="precision-header"'), 2)
         self.assertEqual(svg.count('class="platform-header"'), 2)
-        self.assertEqual(svg.count('class="compiler-header"'), 2)
+        self.assertEqual(svg.count('class="architecture-header"'), 2)
+        self.assertEqual(svg.count('class="toolchain-header"'), 2)
+        for css_class in ("operation-label", "result-line"):
+            body_text = re.findall(
+                rf'<text[^>]+class="{css_class}"[^>]*>',
+                svg,
+            )
+            self.assertTrue(body_text)
+            self.assertTrue(all('font-weight="400"' in text for text in body_text))
         precision_cells = [
             (int(x), int(width))
             for x, width in re.findall(
@@ -1169,9 +1598,12 @@ class RenderingTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            write_canonical(root / "windows" / "MSVC_f128.csv", strict_rows)
             write_canonical(
-                root / "windows" / "MSVC_f128_fastmath.csv",
+                root / "windows" / "x86_64" / "MSVC_f128.csv",
+                strict_rows,
+            )
+            write_canonical(
+                root / "windows" / "x86_64" / "MSVC_f128_fastmath.csv",
                 fastmath_rows,
             )
             strict = build_performance.discover(root)
@@ -1191,9 +1623,38 @@ class RenderingTests(unittest.TestCase):
         self.assertIn("consumer fast-math performance", svg)
         self.assertEqual(metadata["consumer_mode"], "fastmath")
 
+    def test_performance_discovery_keeps_architectures_separate(self) -> None:
+        source, target = synthetic_dataset(("fltx",))
+        rows = [dict(source.canonical[
+            (target, "f128", "arithmetic", "add", "fltx")
+        ])]
+        arm_rows = [dict(rows[0])]
+        arm_rows[0]["run_id"] = "arm-run"
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            write_canonical(
+                root / "linux" / "x86_64" / "GCC_f128.csv",
+                rows,
+            )
+            write_canonical(
+                root / "linux" / "arm64" / "GCC_f128.csv",
+                arm_rows,
+            )
+            dataset = build_performance.discover(root)
+
+        self.assertEqual(len(dataset.columns), 2)
+        self.assertEqual(
+            {column.target.architecture for column in dataset.columns},
+            {"x86_64", "arm64"},
+        )
+        self.assertEqual(set(dataset.run_ids.values()), {"run", "arm-run"})
+
     def test_performance_discovery_rejects_a_malformed_present_csv(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            path = Path(temporary) / "windows" / "MSVC_f128.csv"
+            path = (
+                Path(temporary) / "windows" / "x86_64" / "MSVC_f128.csv"
+            )
             path.parent.mkdir(parents=True)
             path.write_text("wrong\nvalue\n", encoding="utf-8")
             with self.assertRaisesRegex(
@@ -1231,7 +1692,7 @@ class RenderingTests(unittest.TestCase):
             full.count('class="operation-label"'),
             compact.count('class="operation-label"'),
         )
-        self.assertIn(">0.8× vs ddreal<", compact)
+        self.assertIn(">0.8× ddreal<", compact)
         self.assertNotIn('font-size="24"', compact)
 
     def test_overview_has_one_body_row_per_operation_and_fltx_first(self) -> None:
@@ -1325,6 +1786,84 @@ class RenderingTests(unittest.TestCase):
             self.assertEqual(foreground, build_overview.SUPPORT[category])
         with self.assertRaises(run_metrics.MetricsError):
             build_overview._special_style({"special_support": "maybe"})
+
+    def test_overview_formats_signed_zero_as_a_thin_status_column(self) -> None:
+        expected = {
+            "yes": ("✓", "#4ade80"),
+            "no": ("✗", "#f87171"),
+            "-": ("-", "#a5abb5"),
+        }
+        for category, (text, foreground) in expected.items():
+            self.assertEqual(
+                build_overview._signed_zero_style(
+                    {"signed_zero_support": category}, "#123456",
+                ),
+                (text, "#123456", foreground),
+            )
+        with self.assertRaises(run_metrics.MetricsError):
+            build_overview._signed_zero_style(
+                {"signed_zero_support": "maybe"}
+            )
+
+    def test_fastmath_overview_separates_subnormal_support_from_accuracy(self) -> None:
+        dataset, target = synthetic_dataset(("fltx",))
+        dataset.consumer_mode = "fastmath"
+        general = accuracy_row(domain="general")
+        subnormal = accuracy_row(domain="subnormal")
+        subnormal.update({
+            "mean_bits": "0",
+            "p01_bits": "0",
+            "worst_bits": "0",
+            "margin_bits": "-90",
+            "pass": "no",
+        })
+        dataset.accuracy.update({
+            (target, "f128", "arithmetic", "add", "fltx", "general"):
+                general,
+            (target, "f128", "arithmetic", "add", "fltx", "subnormal"):
+                subnormal,
+        })
+        canonical = dataset.canonical[
+            (target, "f128", "arithmetic", "add", "fltx")
+        ]
+        canonical.update({
+            "mean_bits": "55",
+            "p01_bits": "0",
+            "worst_bits": "0",
+            "domains_passed": "1",
+            "domains_total": "2",
+            "min_margin_bits": "-90",
+            "accuracy_pass": "no",
+        })
+
+        display = build_overview._display_row(
+            dataset,
+            target,
+            "f128",
+            "arithmetic",
+            "add",
+            "fltx",
+            canonical,
+            normal_only=True,
+        )
+        self.assertIsNotNone(display)
+        assert display is not None
+        self.assertEqual(display["mean_bits"], "110.0")
+        self.assertEqual(display["worst_bits"], "100.0")
+        self.assertEqual(display["domains_passed"], "1")
+        self.assertEqual(display["domains_total"], "1")
+        self.assertEqual(display["subnormal_support"], "no")
+
+        svg = build_overview.render_overview(dataset, target, "f128")
+        self.assertIn(">Subnorm</text>", svg)
+        self.assertIn(">110.0</text>", svg)
+        self.assertIn(">100.0</text>", svg)
+        self.assertIn(">✗</text>", svg)
+
+        dataset.consumer_mode = "strict"
+        strict_svg = build_overview.render_overview(dataset, target, "f128")
+        self.assertNotIn(">Subnorm</text>", strict_svg)
+        self.assertIn(">55.0</text>", strict_svg)
 
     def test_overview_shows_implementation_speed_relative_to_fltx(self) -> None:
         row = {"ns_iter": "348.1", "speed_ratio": "2.05"}
@@ -1450,12 +1989,12 @@ class RenderingTests(unittest.TestCase):
         self.assertIn(">(ns)<", compact_competitor_header)
         self.assertNotIn(">performance<", compact)
         self.assertNotIn(">time · speed vs FLTX<", compact)
-        self.assertEqual(compact_fltx_header.count("<rect"), 8)
+        self.assertEqual(compact_fltx_header.count("<rect"), 9)
         self.assertRegex(
             compact_fltx_header,
             r'<rect[^>]+height="66" fill="#244b70"/>',
         )
-        self.assertEqual(compact_competitor_header.count("<rect"), 8)
+        self.assertEqual(compact_competitor_header.count("<rect"), 9)
         self.assertRegex(
             compact_competitor_header,
             r'<rect[^>]+height="66" fill="#40354f"/>',
@@ -1807,6 +2346,8 @@ class RenderingTests(unittest.TestCase):
         self.assertIn(">time · speed vs FLTX<", svg)
         self.assertIn("speed is implementation ÷ FLTX", svg)
         self.assertIn(">Inf/<", svg)
+        self.assertIn(">±0<", svg)
+        self.assertIn(">✓</text>", svg)
         fltx_header = svg.split(
             'data-implementation="fltx"', 1,
         )[1].split("</g>", 1)[0]
@@ -1822,16 +2363,16 @@ class RenderingTests(unittest.TestCase):
             svg,
             r'<rect x="12" y="54"[^>]+height="84" fill="#2B2B2B"/>',
         )
-        self.assertEqual(fltx_header.count("<rect"), 9)
+        self.assertEqual(fltx_header.count("<rect"), 10)
         self.assertRegex(
             fltx_header,
             r'<rect[^>]+height="28" fill="#244b70"/>',
         )
-        self.assertEqual(qdpp_header.count("<rect"), 9)
+        self.assertEqual(qdpp_header.count("<rect"), 10)
         self.assertEqual(build_overview.CELL_PADDING, 8)
         self.assertEqual(
             tuple(specification[2] for specification in build_overview.COLUMN_SPECS),
-            (44, 44, 40, 40, 40),
+            (44, 44, 40, 40, 40, 24),
         )
         def required(*lines: str) -> int:
             return (
@@ -2043,6 +2584,24 @@ class ProfileComparisonTests(unittest.TestCase):
             build_profile_comparison._special_spans("Both", "Both"),
             (("Both", build_overview.SUPPORT["Both"]),),
         )
+        self.assertEqual(
+            build_profile_comparison._signed_zero_spans("yes", "no"),
+            (
+                ("✓", build_profile_comparison.IMPROVEMENT_TEXT),
+                (" (", build_profile_comparison.NEUTRAL_TEXT),
+                ("✗", build_profile_comparison.REGRESSION_TEXT),
+                (")", build_profile_comparison.NEUTRAL_TEXT),
+            ),
+        )
+        self.assertEqual(
+            build_profile_comparison._subnormal_spans("yes", "no"),
+            (
+                ("✓", build_profile_comparison.IMPROVEMENT_TEXT),
+                (" (", build_profile_comparison.NEUTRAL_TEXT),
+                ("✗", build_profile_comparison.REGRESSION_TEXT),
+                (")", build_profile_comparison.NEUTRAL_TEXT),
+            ),
+        )
 
     def test_comparison_metadata_allows_separate_compatible_runs(self) -> None:
         strict = self.metadata("strict", "strict-run")
@@ -2090,6 +2649,9 @@ class ProfileComparisonTests(unittest.TestCase):
         )
         self.assertIn("f128 strict vs consumer fast-math", svg)
         self.assertEqual(svg.count(">bl::f128</text>"), 1)
+        self.assertIn(">±0</text>", svg)
+        self.assertIn(">Subnorm</text>", svg)
+        self.assertIn(">✓</tspan>", svg)
         self.assertIn(">100.0</tspan>", svg)
         self.assertIn("> (-1.0)</tspan>", svg)
         self.assertIn("> (-1.00 ns)</tspan>", svg)
@@ -2099,10 +2661,54 @@ class ProfileComparisonTests(unittest.TestCase):
         self.assertIn("fast-math run: fastmath-run", svg)
         self.assertIn(FINGERPRINT, svg)
 
+    def test_comparison_uses_normal_accuracy_and_reports_subnormal_loss(self) -> None:
+        comparison, target = self.comparison()
+        for dataset, passed in (
+            (comparison.strict, True),
+            (comparison.fastmath, False),
+        ):
+            general = accuracy_row(domain="general")
+            subnormal = accuracy_row(domain="subnormal")
+            if not passed:
+                subnormal.update({
+                    "mean_bits": "0",
+                    "p01_bits": "0",
+                    "worst_bits": "0",
+                    "margin_bits": "-90",
+                    "pass": "no",
+                })
+            dataset.accuracy.update({
+                (target, "f128", "arithmetic", "add", "fltx", "general"):
+                    general,
+                (target, "f128", "arithmetic", "add", "fltx", "subnormal"):
+                    subnormal,
+            })
+            dataset.canonical[
+                (target, "f128", "arithmetic", "add", "fltx")
+            ].update({
+                "domains_passed": "2" if passed else "1",
+                "domains_total": "2",
+            })
+
+        strict, fastmath, _ = build_profile_comparison._comparison_rows(
+            comparison, target, "f128",
+        )
+        key = ("arithmetic", "add")
+        self.assertEqual(strict[key]["mean_bits"], "110.0")
+        self.assertEqual(fastmath[key]["mean_bits"], "110.0")
+        self.assertEqual(strict[key]["subnormal_support"], "yes")
+        self.assertEqual(fastmath[key]["subnormal_support"], "no")
+
+        svg = build_profile_comparison.render_comparison(
+            comparison, target, "f128",
+        )
+        self.assertIn(">✗</tspan>", svg)
+        self.assertIn("subnormal support: yes -&gt; no", svg)
+
     def test_optional_comparison_clears_stale_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            target = build_tables.Target("windows", "MSVC")
+            target = build_tables.Target("windows", "x86_64", "MSVC")
             output = root / "generated" / "profile_comparison"
             paths = build_profile_comparison.output_paths(output, target)
             output.mkdir(parents=True)
@@ -2123,11 +2729,187 @@ class ProfileComparisonTests(unittest.TestCase):
 
 
 class PresetPipelineTests(unittest.TestCase):
+    def test_checked_in_preset_surface_is_uniform(self) -> None:
+        root = Path(__file__).resolve().parents[3]
+        presets = json.loads(
+            (root / "CMakePresets.json").read_text(encoding="utf-8")
+        )
+        matrix = {
+            preset
+            for host_presets in supported_preset_pipeline.SUPPORTED_PRESETS.values()
+            for preset in host_presets
+        }
+        configure = {
+            value["name"]
+            for value in presets["configurePresets"]
+            if not value.get("hidden", False)
+        }
+        self.assertEqual(configure, matrix | {"vs2026", "xcode"})
+        build = {value["name"] for value in presets["buildPresets"]}
+        tests = {value["name"] for value in presets["testPresets"]}
+        self.assertTrue(matrix.issubset(build))
+        self.assertTrue(matrix.issubset(tests))
+        self.assertFalse({
+            "native-release", "clang-release", "mingw-release",
+            "macos-release", "wasm32-release",
+        } & (configure | build | tests))
+
+        public_presets = {
+            value["name"]: value
+            for value in presets["configurePresets"]
+            if value["name"] in matrix
+        }
+        for name, value in public_presets.items():
+            cache = value["cacheVariables"]
+            if name == "wasm32-emscripten-release":
+                self.assertNotIn("CMAKE_C_COMPILER", cache)
+                self.assertNotIn("CMAKE_CXX_COMPILER", cache)
+                self.assertTrue(
+                    cache["VCPKG_CHAINLOAD_TOOLCHAIN_FILE"].endswith(
+                        "/Emscripten.cmake"
+                    )
+                )
+            else:
+                self.assertIn("CMAKE_C_COMPILER", cache)
+                self.assertIn("CMAKE_CXX_COMPILER", cache)
+        for name in (
+            "windows-x64-clangcl-release",
+            "windows-arm64-clangcl-release",
+        ):
+            cache = public_presets[name]["cacheVariables"]
+            self.assertEqual(cache["CMAKE_LINKER"], "lld-link.exe")
+            self.assertEqual(cache["CMAKE_AR"], "llvm-lib.exe")
+            self.assertEqual(cache["FLTX_METRICS_QDPP"], "OFF")
+            self.assertEqual(
+                public_presets[name]["environment"]["PATH"],
+                "$env{PROGRAMFILES}/LLVM/bin;$penv{PATH}",
+            )
+
+    def test_supported_presets_are_selected_by_host_and_architecture(self) -> None:
+        self.assertEqual(
+            supported_preset_pipeline.supported_presets("Windows", "AMD64"),
+            (
+                "windows-x64-msvc-release",
+                "windows-x64-clangcl-release",
+                "windows-x64-mingw-release",
+                "wasm32-emscripten-release",
+            ),
+        )
+        self.assertEqual(
+            supported_preset_pipeline.supported_presets("Linux", "aarch64"),
+            (
+                "linux-arm64-gcc-release",
+                "linux-arm64-clang-release",
+            ),
+        )
+        self.assertEqual(
+            supported_preset_pipeline.supported_presets("Darwin", "arm64"),
+            (
+                "macos-arm64-appleclang-release",
+            ),
+        )
+
+    def test_supported_presets_reject_an_unknown_host(self) -> None:
+        with self.assertRaisesRegex(
+            preset_pipeline.PipelineError,
+            "unsupported metrics host Plan9/mips64",
+        ):
+            supported_preset_pipeline.supported_presets("Plan9", "mips64")
+
+    def test_all_supported_pipeline_forwards_workflow_arguments(self) -> None:
+        root = Path("source")
+        output = io.StringIO()
+        with (
+            mock.patch.object(
+                supported_preset_pipeline,
+                "supported_presets",
+                return_value=("first-release", "second-release"),
+            ),
+            mock.patch.object(
+                preset_pipeline,
+                "run_pipeline",
+                side_effect=((Path("first.svg"),), (Path("second.svg"),)),
+            ) as run,
+            redirect_stdout(output),
+        ):
+            status = supported_preset_pipeline.main(
+                root,
+                [
+                    "--consumer-mode", "all",
+                    "--full",
+                    "--output-root", "staging",
+                    "--force-rerun",
+                ],
+            )
+
+        self.assertEqual(status, 0)
+        self.assertEqual(
+            run.call_args_list,
+            [
+                mock.call(
+                    root,
+                    "first-release",
+                    workflow="full",
+                    output_root=Path("staging"),
+                    force_rerun=True,
+                    consumer_mode="all",
+                ),
+                mock.call(
+                    root,
+                    "second-release",
+                    workflow="full",
+                    output_root=Path("staging"),
+                    force_rerun=True,
+                    consumer_mode="all",
+                ),
+            ],
+        )
+        self.assertIn("running metrics preset 1/2: first-release", output.getvalue())
+        self.assertIn("generated metrics reports for second-release", output.getvalue())
+
+    def test_all_supported_pipeline_does_not_accept_a_preset(self) -> None:
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            supported_preset_pipeline.parse_args([
+                "--preset", "windows-x64-msvc-release",
+            ])
+
+    def test_all_supported_pipeline_stops_at_the_first_failed_preset(self) -> None:
+        errors = io.StringIO()
+        with (
+            mock.patch.object(
+                supported_preset_pipeline,
+                "supported_presets",
+                return_value=(
+                    "first-release",
+                    "second-release",
+                    "third-release",
+                ),
+            ),
+            mock.patch.object(
+                preset_pipeline,
+                "run_pipeline_from_args",
+                side_effect=(
+                    (),
+                    preset_pipeline.PipelineError("missing toolchain"),
+                ),
+            ) as run,
+            redirect_stdout(io.StringIO()),
+            redirect_stderr(errors),
+        ):
+            status = supported_preset_pipeline.main(Path("source"), [])
+
+        self.assertEqual(status, 1)
+        self.assertEqual(run.call_count, 2)
+        self.assertIn(
+            "all-supported metrics failed for second-release: missing toolchain",
+            errors.getvalue(),
+        )
+
     def test_report_rebuild_uses_matching_category_layouts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             output = root / "generated"
-            target = build_tables.Target("windows", "MSVC")
+            target = build_tables.Target("windows", "x86_64", "MSVC")
 
             def build_accuracy(_input, _targets, destination, _consumer_mode):
                 path = destination / "accuracy_table.svg"
@@ -2174,7 +2956,7 @@ class PresetPipelineTests(unittest.TestCase):
             {"accuracy", "performance", "overview"},
         )
         self.assertIn(
-            "windows_MSVC_f128_overview_compact.svg",
+            "windows_x86_64_MSVC_f128_overview_compact.svg",
             {path.name for path in outputs},
         )
 
@@ -2222,10 +3004,42 @@ class PresetPipelineTests(unittest.TestCase):
                             "sample_mode": "standard",
                             "consumer_mode": consumer_mode,
                             "platform": "windows",
+                            "architecture": "x86_64",
                             "compiler": "MSVC",
-                            "target": "windows/MSVC",
+                            "target": "windows/x86_64/MSVC",
                             "input_root": str(input_root),
                             "metadata": "metadata.json",
+                        }),
+                        encoding="utf-8",
+                    )
+                    return
+
+                if script == "run_native_accuracy.py":
+                    consumer_mode = command[command.index("--consumer-mode") + 1]
+                    output_root = Path(command[command.index("--output-root") + 1])
+                    run_directory = output_root / "native-run"
+                    run_directory.mkdir(parents=True, exist_ok=True)
+                    for precision in ("f32", "f64"):
+                        (run_directory / f"{precision}_accuracy.csv").write_text(
+                            "evidence\n",
+                            encoding="utf-8",
+                        )
+                    metadata = run_directory / "native_accuracy_run.json"
+                    metadata.write_text("{}", encoding="utf-8")
+                    handoff = Path(command[command.index("--result-file") + 1])
+                    handoff.parent.mkdir(parents=True, exist_ok=True)
+                    handoff.write_text(
+                        json.dumps({
+                            "schema_version": run_native_accuracy.NATIVE_SCHEMA_VERSION,
+                            "run_id": "native-run",
+                            "sample_mode": "standard",
+                            "consumer_mode": consumer_mode,
+                            "platform": "windows",
+                            "architecture": "x86_64",
+                            "compiler": "MSVC",
+                            "target": "windows/x86_64/MSVC",
+                            "run_directory": str(run_directory),
+                            "metadata": str(metadata),
                         }),
                         encoding="utf-8",
                     )
@@ -2237,7 +3051,7 @@ class PresetPipelineTests(unittest.TestCase):
                     for precision in run_metrics.PRECISIONS:
                         path = (
                             output
-                            / f"windows_MSVC_{precision}_strict_fastmath_comp.svg"
+                            / f"windows_x86_64_MSVC_{precision}_strict_fastmath_comp.svg"
                         )
                         path.parent.mkdir(parents=True, exist_ok=True)
                         path.write_text("<svg/>", encoding="utf-8")
@@ -2251,10 +3065,10 @@ class PresetPipelineTests(unittest.TestCase):
                     output / "accuracy" / f"accuracy_table{mode_suffix}.svg",
                     output / "performance" / f"performance_table{mode_suffix}.svg",
                     output / "performance" / f"performance_table{mode_suffix}_compact.svg",
-                    output / "overview" / f"windows_MSVC_f128{mode_suffix}_overview.svg",
-                    output / "overview" / f"windows_MSVC_f128{mode_suffix}_overview_compact.svg",
-                    output / "overview" / f"windows_MSVC_f256{mode_suffix}_overview.svg",
-                    output / "overview" / f"windows_MSVC_f256{mode_suffix}_overview_compact.svg",
+                    output / "overview" / f"windows_x86_64_MSVC_f128{mode_suffix}_overview.svg",
+                    output / "overview" / f"windows_x86_64_MSVC_f128{mode_suffix}_overview_compact.svg",
+                    output / "overview" / f"windows_x86_64_MSVC_f256{mode_suffix}_overview.svg",
+                    output / "overview" / f"windows_x86_64_MSVC_f256{mode_suffix}_overview_compact.svg",
                 )
                 for path in generated:
                     path.parent.mkdir(parents=True, exist_ok=True)
@@ -2295,9 +3109,14 @@ class PresetPipelineTests(unittest.TestCase):
         )
         self.assertEqual(
             Path(metrics_command[metrics_command.index("--output-root") + 1]),
-            root / "build" / "metrics" / "data",
+            root
+            / "validation"
+            / "metrics"
+            / "_unversioned"
+            / "standard"
+            / "data",
         )
-        self.assertEqual(len(commands), 5)
+        self.assertEqual(len(commands), 7)
         self.assertEqual(
             environments,
             [dict(selection.environment)] * len(commands),
@@ -2306,22 +3125,35 @@ class PresetPipelineTests(unittest.TestCase):
             [Path(command[1]).name for command in commands],
             [
                 "run_metrics.py",
+                "run_native_accuracy.py",
                 "rebuild_tables.py",
                 "run_metrics.py",
+                "run_native_accuracy.py",
                 "rebuild_tables.py",
                 "build_profile_comparison.py",
             ],
         )
+        self.assertTrue(all(
+            "--reuse-compatible" in command
+            for command in commands
+            if Path(command[1]).name == "run_native_accuracy.py"
+        ))
         self.assertEqual(
             [
                 command[command.index("--consumer-mode") + 1]
-                for command in commands[:4]
+                for command in commands[:6]
             ],
-            ["strict", "strict", "fastmath", "fastmath"],
+            ["strict", "strict", "strict", "fastmath", "fastmath", "fastmath"],
         )
         self.assertEqual(len(outputs), 16)
         self.assertTrue(all(
-            root / "build" / "metrics" / "generated" in path.parents
+            root
+            / "validation"
+            / "metrics"
+            / "_unversioned"
+            / "standard"
+            / "generated"
+            in path.parents
             for path in outputs
         ))
 
@@ -2367,6 +3199,7 @@ class PresetPipelineTests(unittest.TestCase):
                 "--accuracy", "accuracy.exe",
                 "--benchmark", "benchmark.exe",
                 "--platform", "windows",
+                "--architecture", "x86_64",
                 "--compiler", "MSVC",
                 "--sample-mode", "smoke",
             ])
@@ -2432,6 +3265,7 @@ class PresetPipelineTests(unittest.TestCase):
                 "--accuracy", "accuracy.exe",
                 "--benchmark", "benchmark.exe",
                 "--platform", "windows",
+                "--architecture", "x86_64",
                 "--compiler", "MSVC",
                 "--sample-mode", "standard",
             ])
@@ -2478,6 +3312,7 @@ class PresetPipelineTests(unittest.TestCase):
                 "--accuracy", "accuracy.exe",
                 "--benchmark", "benchmark.exe",
                 "--platform", "windows",
+                "--architecture", "x86_64",
                 "--compiler", "MSVC",
                 "--sample-mode", "standard",
             ])
@@ -2512,7 +3347,7 @@ class PresetPipelineTests(unittest.TestCase):
             mock.patch.object(
                 run_metrics,
                 "validate_runner_artifacts",
-                return_value=("windows", "MSVC"),
+                return_value=("windows", "x86_64", "MSVC"),
             ) as validate,
         ):
             observed = preset_pipeline.existing_runner_artifacts(
@@ -2583,7 +3418,7 @@ class PresetPipelineTests(unittest.TestCase):
             )
         self.assertIsNone(observed)
 
-    def test_msvc_bootstrap_is_limited_to_native_windows_ninja(self) -> None:
+    def test_visual_studio_bootstrap_is_limited_to_windows_ninja(self) -> None:
         def selection(
             generator: str,
             *,
@@ -2603,40 +3438,98 @@ class PresetPipelineTests(unittest.TestCase):
 
         native = selection("Ninja")
         self.assertTrue(
-            preset_pipeline.needs_msvc_x64_environment(
+            preset_pipeline.needs_msvc_environment(
                 native,
                 host_system="Windows",
             )
         )
         self.assertFalse(
-            preset_pipeline.needs_msvc_x64_environment(
+            preset_pipeline.needs_msvc_environment(
                 native,
                 host_system="Linux",
             )
         )
         self.assertFalse(
-            preset_pipeline.needs_msvc_x64_environment(
+            preset_pipeline.needs_msvc_environment(
                 selection("Visual Studio 18 2026"),
                 host_system="Windows",
             )
         )
         self.assertFalse(
-            preset_pipeline.needs_msvc_x64_environment(
+            preset_pipeline.needs_msvc_environment(
                 selection("Ninja", target="x64-mingw-static"),
                 host_system="Windows",
             )
         )
-        self.assertFalse(
-            preset_pipeline.needs_msvc_x64_environment(
-                selection("Ninja", compiler="clang++"),
+        self.assertTrue(
+            preset_pipeline.needs_msvc_environment(
+                selection("Ninja", compiler="clang-cl.exe"),
                 host_system="Windows",
             )
         )
         self.assertFalse(
-            preset_pipeline.needs_msvc_x64_environment(
+            preset_pipeline.needs_msvc_environment(
                 selection("Ninja", target="wasm32-emscripten"),
                 host_system="Windows",
             )
+        )
+
+    def test_visual_studio_bootstrap_preserves_preset_environment(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            selection = preset_pipeline.PresetSelection(
+                build_name="windows-x64-clangcl-release",
+                configure_name="windows-x64-clangcl-release",
+                binary_dir=root / "build",
+                configuration=None,
+                generator="Ninja",
+                compiler_hint="clang-cl.exe",
+                target_hint="x64-windows",
+                environment={"PATH": "preset-llvm-path"},
+            )
+            initialized = {"PATH": "initialized-msvc-and-llvm-path"}
+            with (
+                mock.patch.object(
+                    preset_pipeline,
+                    "resolve_preset",
+                    return_value=selection,
+                ),
+                mock.patch.object(
+                    preset_pipeline,
+                    "existing_runner_artifacts",
+                    return_value=None,
+                ),
+                mock.patch.object(
+                    preset_pipeline,
+                    "needs_msvc_environment",
+                    return_value=True,
+                ),
+                mock.patch.object(
+                    preset_pipeline,
+                    "msvc_environment",
+                    return_value=initialized,
+                ) as bootstrap,
+                mock.patch.object(preset_pipeline, "prepare_file_api_query"),
+                mock.patch.object(
+                    preset_pipeline,
+                    "_run",
+                    side_effect=preset_pipeline.PipelineError("stop after configure"),
+                ) as run,
+            ):
+                with self.assertRaisesRegex(
+                    preset_pipeline.PipelineError,
+                    "stop after configure",
+                ):
+                    preset_pipeline.run_pipeline(root, selection.build_name)
+
+        bootstrap.assert_called_once_with(
+            "x64",
+            parent_environment=selection.environment,
+        )
+        run.assert_called_once_with(
+            ["cmake", "--preset", selection.configure_name],
+            root.resolve(),
+            initialized,
         )
 
     def test_resolves_included_and_inherited_build_preset(self) -> None:
@@ -2780,17 +3673,96 @@ class PresetPipelineTests(unittest.TestCase):
             self.assertEqual(set(artifacts), set(preset_pipeline.RUNNER_TARGETS))
             self.assertTrue(all(path.is_file() for path in artifacts.values()))
 
-    def test_preset_output_roots_separate_local_and_release_evidence(self) -> None:
+    def test_preset_output_paths_separate_workflow_evidence_and_reports(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             self.assertEqual(
-                preset_pipeline.metrics_root(root, False),
-                root / "build" / "metrics",
+                preset_pipeline.metrics_paths(root, "standard"),
+                preset_pipeline.MetricsPaths(
+                    data=(
+                        root
+                        / "validation"
+                        / "metrics"
+                        / "_unversioned"
+                        / "standard"
+                        / "data"
+                    ),
+                    generated=(
+                        root
+                        / "validation"
+                        / "metrics"
+                        / "_unversioned"
+                        / "standard"
+                        / "generated"
+                    ),
+                ),
             )
             self.assertEqual(
-                preset_pipeline.metrics_root(root, True),
-                root / "validation" / "metrics",
+                preset_pipeline.metrics_paths(root, "quick"),
+                preset_pipeline.MetricsPaths(
+                    data=(
+                        root
+                        / "validation"
+                        / "metrics"
+                        / "_unversioned"
+                        / "quick"
+                        / "data"
+                    ),
+                    generated=(
+                        root
+                        / "validation"
+                        / "metrics"
+                        / "_unversioned"
+                        / "quick"
+                        / "generated"
+                    ),
+                ),
             )
+            self.assertEqual(
+                preset_pipeline.metrics_paths(root, "full"),
+                preset_pipeline.MetricsPaths(
+                    data=(
+                        root
+                        / "validation"
+                        / "metrics"
+                        / "_unversioned"
+                        / "full"
+                        / "data"
+                    ),
+                    generated=(
+                        root
+                        / "validation"
+                        / "metrics"
+                        / "_unversioned"
+                        / "full"
+                        / "generated"
+                    ),
+                ),
+            )
+            self.assertEqual(
+                preset_pipeline.metrics_paths(root, "release"),
+                preset_pipeline.MetricsPaths(
+                    data=root / "validation" / "metrics" / "data",
+                    generated=root / "validation" / "metrics" / "generated",
+                ),
+            )
+
+    def test_custom_output_root_is_noncanonical_and_release_rejects_it(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            custom = root / "staging"
+            self.assertEqual(
+                preset_pipeline.metrics_paths(root, "quick", custom),
+                preset_pipeline.MetricsPaths(
+                    data=custom / "data",
+                    generated=custom / "generated",
+                ),
+            )
+            with self.assertRaisesRegex(
+                preset_pipeline.PipelineError,
+                "--release cannot be combined with --output-root",
+            ):
+                preset_pipeline.metrics_paths(root, "release", custom)
 
 
 if __name__ == "__main__":

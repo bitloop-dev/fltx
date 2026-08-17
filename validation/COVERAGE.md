@@ -31,7 +31,7 @@ public call and return-type contracts.
 | Public family | Types exercised | C | CE / CA / O | A / B | Notes |
 |---|---|---|---|---|---|
 | f128/f256 storage and value construction, assignment, scalar/integer and cross-precision conversion | f128/f256 | `contracts/core.cpp` | CE: `constexpr/core.cpp`; O: `contracts/overloads.cpp`, `contracts/overload_matrix.cpp` | — | Covers representative signed/unsigned integer widths, native floats, storage/value types and both cross-precision directions |
-| unary, binary and compound `+ - * /` | f128/f256 | `contracts/core.cpp` | CE: `constexpr/core.cpp`, `constexpr/accuracy.cpp`; CA: all; O: `contracts/overloads.cpp` | A: f32/f64/f128/f256; B: f128/f256 | Every distinct scalar category and cross-precision route is instantiated |
+| unary, binary and compound `+ - * /` | f128/f256 | `contracts/core.cpp` | CE: `constexpr/core.cpp`, `constexpr/accuracy.cpp`; CA: all; O: `contracts/overloads.cpp` | A: f32/f64/f128/f256; B: f128/f256 | Every distinct scalar category and cross-precision route is instantiated; runtime fast-math waives NaN, infinity, and signed-zero guarantees for basic f128/f256 arithmetic while genuine constant evaluation remains checked |
 | comparison, `<=>`, unordered NaN behaviour | f128/f256 | `contracts/core.cpp` | CE: `constexpr/core.cpp` | B: six f128/f256 relational operators | |
 | `almost_equal` | same-precision f128/f256 | `contracts/approx_comparison.cpp` | CE: threshold cases; O: accepted same-precision and rejected scalar/mixed calls | — | Covers relative and absolute limits, signed zero, infinities, NaNs, invalid tolerances, symmetry, and exact threshold boundaries |
 | classification, signed zero, subnormals, infinities and NaNs | all | `contracts/core.cpp` | CE: `constexpr/core.cpp` for f128/f256 | — | Includes unordered comparisons |
@@ -63,8 +63,9 @@ double-only test values. CTest owns the deterministic smoke runs;
 `fltx_ci_checks` runs the complete corpus for all four types through both the
 normal and fixed-simulation runners, and `fltx_native_accuracy_full` retains a
 standalone complete f32/f64 orchestration target. Detailed output remains under
-the build tree. Native accuracy is never published in the f128/f256 summary
-tables.
+the build tree. The native orchestration target records threshold misses as
+advisory policy evidence; direct CTest accuracy runs remain gating. Native
+accuracy is never published in the f128/f256 summary tables.
 
 | Public family | C | CE | CA | O | A | B |
 |---|---|---|---|---|---|---|
@@ -100,7 +101,9 @@ component-owned contracts rather than missing numerical rows.
 to f32, f64, f128 and f256. They cover NaN propagation, both infinities,
 positive and negative zero, invalid domains, poles and signed results across
 arithmetic helpers, roots and powers, trigonometric/hyperbolic/special
-functions, rounding, remainder, decomposition and stepping.
+functions, rounding, remainder, decomposition and stepping. Consumer
+fast-math excludes runtime f128/f256 `+`, `-`, `*`, and `/` from that matrix;
+their genuine constant-evaluation special-value behavior remains covered.
 
 The rounding contracts include long/long-long minimum `+0.5`-limb witnesses,
 the `2^52`/`2^53` integer boundaries, and varied
@@ -124,7 +127,7 @@ Before emitting rows, every runner also compares representative `sin`, `exp`,
 `log1p`, and `erfc` references from the 400-decimal-digit oracle with an
 independent 800-decimal-digit backend.
 
-An unfiltered f128/f256 run writes 123 independently gated operation/domain
+An unfiltered f128/f256 run writes 127 independently gated operation/domain
 rows; the native f32/f64 runs retain their 119 numerical rows. Every row keeps
 its deterministic seed and worst witness, so no aggregate score can make a
 failed domain pass.
@@ -199,7 +202,7 @@ enabled implementation independently; disabling one optional implementation
 does not weaken the others' manifests.
 
 Accuracy uses the same samples, domains, seed, and 400-digit MPFR result for
-every registered implementation. It records 123 FLTX and 114 Boost rows per
+every registered implementation. It records 127 FLTX and 118 Boost rows per
 precision and, when enabled, 87 f128 or 91 f256 qdpp rows and 107 TLFloat
 rows. These counts are asserted by the internal metrics manifest.
 Parse accuracy uses the original exact decimal value rather than a

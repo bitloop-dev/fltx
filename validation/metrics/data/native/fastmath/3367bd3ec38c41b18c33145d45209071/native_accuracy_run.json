@@ -1,0 +1,90 @@
+{
+  "accuracy_samples": 4096,
+  "architecture": "x86_64",
+  "compiler": "ClangCL",
+  "configuration": {
+    "build": {
+      "architecture": "x86_64",
+      "compiler-id": "Clang",
+      "compiler-version": "22.1.8",
+      "config": "Release",
+      "flags-hash": "47db04c453478949a87df17aee6c905f188a5d962d12b76bf2ba37d99f614ec7",
+      "frontend-variant": "MSVC",
+      "optimized": "1",
+      "processor": "AMD64",
+      "source-fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
+      "system": "Windows"
+    },
+    "consumer": {
+      "arm64": "0",
+      "fast-math": "on",
+      "fma": "AUTO",
+      "has-x86-fma": "0",
+      "simd": "on",
+      "simulated-consteval": "off",
+      "tu-x86-fma": "0",
+      "x86": "1"
+    },
+    "harness": {
+      "qdpp": "off",
+      "tlfloat": "on"
+    },
+    "library": {
+      "arm64": "0",
+      "fast-math": "off",
+      "fast-math-request": "AUTO",
+      "fma": "AUTO",
+      "runtime-fma": "available",
+      "simd": "on",
+      "tu-x86-fma": "0",
+      "x86": "1"
+    },
+    "library_strategy": {
+      "baseline-arm64": "0",
+      "compiled-x86-backend": "0",
+      "f256-simd": "1",
+      "msvc-guarded": "0",
+      "neon": "0",
+      "runtime-check": "1",
+      "runtime-path": "1",
+      "scalar-x86": "0",
+      "sse2": "1",
+      "trig-simd": "1",
+      "wasm-simd": "0"
+    }
+  },
+  "consumer_mode": "fastmath",
+  "executables": {
+    "accuracy": {
+      "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-clangcl-release\\validation\\fltx_accuracy_fastmath.exe",
+      "sha256": "10a63056d8021ca117fcea276fdd5aa23ffd765928873a5fe6256d81b2d5869c",
+      "wasm-sha256": "not-present"
+    }
+  },
+  "host": {
+    "machine": "AMD64",
+    "node": "not-used",
+    "os": "Windows",
+    "os-release": "11",
+    "processor": "AMD64 Family 26 Model 68 Stepping 0, AuthenticAMD",
+    "python": "CPython 3.13.14"
+  },
+  "outputs": {
+    "f32_accuracy.csv": "74589606b242fe627770674416845ca58c69709fa7cf96ec3a5cba87f64e018b",
+    "f64_accuracy.csv": "42c4145423fb43b9384ce5fde9a6318d57d68d2fcd52e1164e5c2ab5504d8091"
+  },
+  "platform": "windows",
+  "policy": "native-float-libm-baseline-v1",
+  "precisions": [
+    "f32",
+    "f64"
+  ],
+  "run_id": "3367bd3ec38c41b18c33145d45209071",
+  "sample_mode": "standard",
+  "schema_version": 2,
+  "source_fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
+  "source_revision": "b38d8f2a0c9da2eeae373bce48a1aa42bf88fcdc-dirty-7cd523deac97",
+  "status": "complete",
+  "target": "windows/x86_64/ClangCL",
+  "thresholds": "advisory"
+}

@@ -1,0 +1,86 @@
+group,operation,precision,implementation,implementation_short,implementation_label,api,samples,mean_bits,p01_bits,worst_bits,domains_passed,domains_total,min_margin_bits,accuracy_pass,special_support,signed_zero_support,ns_iter,speed_ratio,run_id
+arithmetic,add,f128,fltx,fltx,fltx bl::f128,bl::add,4096,120.266239506,106.483519,105.736235,2,2,15.736235,yes,No,no,0.926152,,680cbf9c13134cc08ab2b5bd2bd1191c
+arithmetic,divide,f128,fltx,fltx,fltx bl::f128,bl::divide,4100,110.909104952,105.971646,105.124683,2,2,15.124683,yes,No,no,2.490718,,680cbf9c13134cc08ab2b5bd2bd1191c
+arithmetic,multiply,f128,fltx,fltx,fltx bl::f128,bl::multiply,4100,108.702461473,105.665876,105.380753,2,2,15.380753,yes,No,no,2.028785,,680cbf9c13134cc08ab2b5bd2bd1191c
+arithmetic,subtract,f128,fltx,fltx,fltx bl::f128,bl::subtract,4096,120.053476095,106.530508,105.744857,2,2,15.744857,yes,No,no,0.923213,,680cbf9c13134cc08ab2b5bd2bd1191c
+comparisons,equal,f128,fltx,fltx,fltx bl::f128,bl::equal,8198,inf,inf,inf,1,1,inf,yes,Both,-,1.115677,,680cbf9c13134cc08ab2b5bd2bd1191c
+comparisons,greater,f128,fltx,fltx,fltx bl::f128,bl::greater,8198,inf,inf,inf,1,1,inf,yes,Both,-,2.102405,,680cbf9c13134cc08ab2b5bd2bd1191c
+comparisons,greater_equal,f128,fltx,fltx,fltx bl::f128,bl::greater_equal,8198,inf,inf,inf,1,1,inf,yes,Both,-,2.173572,,680cbf9c13134cc08ab2b5bd2bd1191c
+comparisons,less,f128,fltx,fltx,fltx bl::f128,bl::less,8198,inf,inf,inf,1,1,inf,yes,Both,-,2.152808,,680cbf9c13134cc08ab2b5bd2bd1191c
+comparisons,less_equal,f128,fltx,fltx,fltx bl::f128,bl::less_equal,8198,inf,inf,inf,1,1,inf,yes,Both,-,2.170292,,680cbf9c13134cc08ab2b5bd2bd1191c
+comparisons,not_equal,f128,fltx,fltx,fltx bl::f128,bl::not_equal,8198,inf,inf,inf,1,1,inf,yes,Both,-,1.114032,,680cbf9c13134cc08ab2b5bd2bd1191c
+exponentials,exp,f128,fltx,fltx,fltx bl::f128,bl::exp,8198,106.9987285,104.374273,103.64511,2,2,23.64511,yes,NaN,-,121.788025,,680cbf9c13134cc08ab2b5bd2bd1191c
+exponentials,exp2,f128,fltx,fltx,fltx bl::f128,bl::exp2,8198,108.8963935,106.013023,105.117537,2,2,25.117537,yes,NaN,-,115.408573,,680cbf9c13134cc08ab2b5bd2bd1191c
+exponentials,expm1,f128,fltx,fltx,fltx bl::f128,bl::expm1,8197,121.61686848,105.111574,104.102752,2,2,24.102752,yes,NaN,yes,121.780396,,680cbf9c13134cc08ab2b5bd2bd1191c
+floating_point_utilities,abs,f128,fltx,fltx,fltx bl::f128,bl::abs,8196,inf,inf,inf,2,2,inf,yes,NaN,yes,0.812795,,680cbf9c13134cc08ab2b5bd2bd1191c
+floating_point_utilities,copysign,f128,fltx,fltx,fltx bl::f128,bl::copysign,4099,inf,inf,inf,1,1,inf,yes,No,yes,0.385447,,680cbf9c13134cc08ab2b5bd2bd1191c
+floating_point_utilities,fabs,f128,fltx,fltx,fltx bl::f128,bl::fabs,4099,inf,inf,inf,1,1,inf,yes,NaN,yes,0.812937,,680cbf9c13134cc08ab2b5bd2bd1191c
+floating_point_utilities,fdim,f128,fltx,fltx,fltx bl::f128,bl::fdim,8197,137.996123973,inf,106.227061,2,2,16.227061,yes,No,yes,3.088129,,680cbf9c13134cc08ab2b5bd2bd1191c
+floating_point_utilities,fma,f128,fltx,fltx,fltx bl::f128,bl::fma,12293,117.187792693,104.040192,99.5802,3,3,9.5802,yes,Both,no,7.590419,,680cbf9c13134cc08ab2b5bd2bd1191c
+floating_point_utilities,fmax,f128,fltx,fltx,fltx bl::f128,bl::fmax,8195,inf,inf,inf,2,2,inf,yes,No,yes,0.974309,,680cbf9c13134cc08ab2b5bd2bd1191c
+floating_point_utilities,fmin,f128,fltx,fltx,fltx bl::f128,bl::fmin,8195,inf,inf,inf,2,2,inf,yes,No,yes,1.031455,,680cbf9c13134cc08ab2b5bd2bd1191c
+floating_point_utilities,frexp,f128,fltx,fltx,fltx bl::f128,bl::frexp,8196,inf,inf,inf,2,2,inf,yes,Both,yes,3.496782,,680cbf9c13134cc08ab2b5bd2bd1191c
+floating_point_utilities,ilogb,f128,fltx,fltx,fltx bl::f128,bl::ilogb,8195,inf,inf,inf,2,2,inf,yes,-,-,1.845929,,680cbf9c13134cc08ab2b5bd2bd1191c
+floating_point_utilities,ldexp,f128,fltx,fltx,fltx bl::f128,bl::ldexp,4096,inf,inf,inf,1,1,inf,yes,NaN,yes,2.904016,,680cbf9c13134cc08ab2b5bd2bd1191c
+floating_point_utilities,logb,f128,fltx,fltx,fltx bl::f128,bl::logb,8195,inf,inf,inf,2,2,inf,yes,NaN,-,1.983617,,680cbf9c13134cc08ab2b5bd2bd1191c
+floating_point_utilities,modf,f128,fltx,fltx,fltx bl::f128,bl::modf,8195,inf,inf,inf,2,2,inf,yes,NaN,yes,6.810724,,680cbf9c13134cc08ab2b5bd2bd1191c
+floating_point_utilities,nextafter,f128,fltx,fltx,fltx bl::f128,bl::nextafter,,,,,,,,,-,-,5.917627,,680cbf9c13134cc08ab2b5bd2bd1191c
+floating_point_utilities,nexttoward,f128,fltx,fltx,fltx bl::f128,bl::nexttoward,,,,,,,,,-,-,5.904433,,680cbf9c13134cc08ab2b5bd2bd1191c
+floating_point_utilities,recip,f128,fltx,fltx,fltx bl::f128,bl::recip,8195,109.025331959,105.925795,105.189487,2,2,15.189487,yes,NaN,no,32.824326,,680cbf9c13134cc08ab2b5bd2bd1191c
+floating_point_utilities,scalbln,f128,fltx,fltx,fltx bl::f128,bl::scalbln,4096,inf,inf,inf,1,1,inf,yes,NaN,yes,3.00978,,680cbf9c13134cc08ab2b5bd2bd1191c
+floating_point_utilities,scalbn,f128,fltx,fltx,fltx bl::f128,bl::scalbn,4096,inf,inf,inf,1,1,inf,yes,NaN,yes,3.019962,,680cbf9c13134cc08ab2b5bd2bd1191c
+hyperbolic,cosh,f128,fltx,fltx,fltx bl::f128,bl::cosh,8198,107.9070545,105.118172,104.370708,2,2,24.370708,yes,Both,-,139.153856,,680cbf9c13134cc08ab2b5bd2bd1191c
+hyperbolic,sinh,f128,fltx,fltx,fltx bl::f128,bl::sinh,8198,107.4201585,104.726423,103.568829,2,2,23.568829,yes,Both,yes,140.209961,,680cbf9c13134cc08ab2b5bd2bd1191c
+hyperbolic,tanh,f128,fltx,fltx,fltx bl::f128,bl::tanh,8198,109.217494,105.123457,103.771823,2,2,23.771823,yes,NaN,yes,146.486119,,680cbf9c13134cc08ab2b5bd2bd1191c
+inverse_hyperbolic,acosh,f128,fltx,fltx,fltx bl::f128,bl::acosh,8200,108.031519376,104.331717,103.672888,2,2,23.672888,yes,NaN,-,165.884165,,680cbf9c13134cc08ab2b5bd2bd1191c
+inverse_hyperbolic,asinh,f128,fltx,fltx,fltx bl::f128,bl::asinh,8198,108.081857,105.155677,103.818628,2,2,23.818628,yes,NaN,yes,142.642107,,680cbf9c13134cc08ab2b5bd2bd1191c
+inverse_hyperbolic,atanh,f128,fltx,fltx,fltx bl::f128,bl::atanh,8204,108.11583849,104.54201,103.139045,2,2,23.139045,yes,NaN,yes,163.069661,,680cbf9c13134cc08ab2b5bd2bd1191c
+io,parse,f128,fltx,fltx,fltx bl::f128,bl::parse,8195,109.907318229,106.715617,106.003381,2,2,0.003381,yes,Both,yes,282.75799,,680cbf9c13134cc08ab2b5bd2bd1191c
+io,to_chars,f128,fltx,fltx,fltx bl::f128,bl::to_chars,8195,113.981524548,110.936216,110.695372,2,2,20.695372,yes,Both,yes,219.817842,,680cbf9c13134cc08ab2b5bd2bd1191c
+io,to_string,f128,fltx,fltx,fltx bl::f128,bl::to_string,8195,113.981524548,110.936216,110.695372,2,2,20.695372,yes,Both,yes,254.208343,,680cbf9c13134cc08ab2b5bd2bd1191c
+logarithms,log,f128,fltx,fltx,fltx bl::f128,bl::log,12291,108.40767633,104.625423,103.727726,3,3,23.727726,yes,NaN,-,144.369612,,680cbf9c13134cc08ab2b5bd2bd1191c
+logarithms,log10,f128,fltx,fltx,fltx bl::f128,bl::log10,12291,107.503050022,104.469291,103.762278,3,3,23.762278,yes,NaN,-,148.4375,,680cbf9c13134cc08ab2b5bd2bd1191c
+logarithms,log1p,f128,fltx,fltx,fltx bl::f128,bl::log1p,8197,121.372231555,105.150365,103.619384,2,2,23.619384,yes,NaN,yes,152.109712,,680cbf9c13134cc08ab2b5bd2bd1191c
+logarithms,log2,f128,fltx,fltx,fltx bl::f128,bl::log2,12291,108.785650924,104.550799,103.716432,3,3,23.716432,yes,NaN,-,148.693427,,680cbf9c13134cc08ab2b5bd2bd1191c
+mixed_workloads,affine_trig,f128,fltx,fltx,fltx bl::f128,same workload,,,,,,,,,-,-,233.701087,,680cbf9c13134cc08ab2b5bd2bd1191c
+mixed_workloads,chained_arithmetic,f128,fltx,fltx,fltx bl::f128,same workload,,,,,,,,,-,-,20.29797,,680cbf9c13134cc08ab2b5bd2bd1191c
+mixed_workloads,haversine,f128,fltx,fltx,fltx bl::f128,same workload,,,,,,,,,-,-,551.58782,,680cbf9c13134cc08ab2b5bd2bd1191c
+mixed_workloads,horner_polynomial,f128,fltx,fltx,fltx bl::f128,same workload,,,,,,,,,-,-,98.520878,,680cbf9c13134cc08ab2b5bd2bd1191c
+mixed_workloads,log_sum_exp,f128,fltx,fltx,fltx bl::f128,same workload,,,,,,,,,-,-,965.639013,,680cbf9c13134cc08ab2b5bd2bd1191c
+mixed_workloads,mandelbrot,f128,fltx,fltx,fltx bl::f128,same workload,,,,,,,,,-,-,15.092775,,680cbf9c13134cc08ab2b5bd2bd1191c
+mixed_workloads,matrix_vector_4x4,f128,fltx,fltx,fltx bl::f128,same workload,,,,,,,,,-,-,49.691219,,680cbf9c13134cc08ab2b5bd2bd1191c
+mixed_workloads,newton_root,f128,fltx,fltx,fltx bl::f128,same workload,,,,,,,,,-,-,30.129882,,680cbf9c13134cc08ab2b5bd2bd1191c
+mixed_workloads,product_sum,f128,fltx,fltx,fltx bl::f128,bl::product_sum,,,,,,,,,-,-,7.539445,,680cbf9c13134cc08ab2b5bd2bd1191c
+random,mt19937_64,f128,fltx,fltx,fltx bl::f128,bl::mt19937_64,,,,,,,,,-,-,1.738011,,680cbf9c13134cc08ab2b5bd2bd1191c
+random,normal,f128,fltx,fltx,fltx bl::f128,bl::normal,,,,,,,,,-,-,40.864702,,680cbf9c13134cc08ab2b5bd2bd1191c
+random,uniform_real,f128,fltx,fltx,fltx bl::f128,bl::uniform_real,,,,,,,,,-,-,5.827391,,680cbf9c13134cc08ab2b5bd2bd1191c
+remainders,fmod,f128,fltx,fltx,fltx bl::f128,bl::fmod,8197,inf,inf,inf,3,3,inf,yes,No,yes,20.511512,,680cbf9c13134cc08ab2b5bd2bd1191c
+remainders,remainder,f128,fltx,fltx,fltx bl::f128,bl::remainder,4099,137.991491,inf,103.120938,1,1,13.120938,yes,No,yes,22.835104,,680cbf9c13134cc08ab2b5bd2bd1191c
+remainders,remquo,f128,fltx,fltx,fltx bl::f128,bl::remquo,4099,inf,inf,inf,1,1,inf,yes,Both,yes,22.600911,,680cbf9c13134cc08ab2b5bd2bd1191c
+roots_and_powers,cbrt,f128,fltx,fltx,fltx bl::f128,bl::cbrt,8195,108.521255256,104.960828,104.098992,2,2,14.098992,yes,NaN,yes,18.259215,,680cbf9c13134cc08ab2b5bd2bd1191c
+roots_and_powers,hypot,f128,fltx,fltx,fltx bl::f128,bl::hypot,8195,122.379786777,105.55647,104.375984,2,2,14.375984,yes,No,yes,11.565531,,680cbf9c13134cc08ab2b5bd2bd1191c
+roots_and_powers,ipow,f128,fltx,fltx,fltx bl::f128,bl::ipow,8195,106.491467825,103.779117,103.190083,2,2,13.190083,yes,Both,no,26.582746,,680cbf9c13134cc08ab2b5bd2bd1191c
+roots_and_powers,pow,f128,fltx,fltx,fltx bl::f128,bl::pow,8198,107.1276135,102.267431,101.314349,2,2,21.314349,yes,No,yes,241.251149,,680cbf9c13134cc08ab2b5bd2bd1191c
+roots_and_powers,sqr,f128,fltx,fltx,fltx bl::f128,bl::sqr,8195,108.712755765,105.598081,105.370295,2,2,15.370295,yes,Both,yes,1.230516,,680cbf9c13134cc08ab2b5bd2bd1191c
+roots_and_powers,sqrt,f128,fltx,fltx,fltx bl::f128,bl::sqrt,16391,109.760683649,105.75112,104.669867,4,4,14.669867,yes,NaN,yes,4.944255,,680cbf9c13134cc08ab2b5bd2bd1191c
+rounding,ceil,f128,fltx,fltx,fltx bl::f128,bl::ceil,4108,inf,inf,inf,1,1,inf,yes,Both,yes,1.514958,,680cbf9c13134cc08ab2b5bd2bd1191c
+rounding,floor,f128,fltx,fltx,fltx bl::f128,bl::floor,4108,inf,inf,inf,1,1,inf,yes,Both,yes,0.761136,,680cbf9c13134cc08ab2b5bd2bd1191c
+rounding,llround,f128,fltx,fltx,fltx bl::f128,bl::llround,4114,inf,inf,inf,1,1,inf,yes,-,-,6.273768,,680cbf9c13134cc08ab2b5bd2bd1191c
+rounding,lround,f128,fltx,fltx,fltx bl::f128,bl::lround,4110,inf,inf,inf,1,1,inf,yes,-,-,6.760378,,680cbf9c13134cc08ab2b5bd2bd1191c
+rounding,round,f128,fltx,fltx,fltx bl::f128,bl::round,4108,inf,inf,inf,1,1,inf,yes,Both,yes,8.782349,,680cbf9c13134cc08ab2b5bd2bd1191c
+rounding,round_decimals,f128,fltx,fltx,fltx bl::f128,bl::round_decimals,4099,110.177573,107.236356,107.022726,1,1,17.022726,yes,NaN,yes,93.270597,,680cbf9c13134cc08ab2b5bd2bd1191c
+rounding,round_significant,f128,fltx,fltx,fltx bl::f128,bl::round_significant,4096,121.33026,107.34042,107.049597,1,1,17.049597,yes,NaN,yes,140.171814,,680cbf9c13134cc08ab2b5bd2bd1191c
+rounding,roundeven,f128,fltx,fltx,fltx bl::f128,bl::roundeven,4108,inf,inf,inf,1,1,inf,yes,NaN,yes,10.331055,,680cbf9c13134cc08ab2b5bd2bd1191c
+rounding,trunc,f128,fltx,fltx,fltx bl::f128,bl::trunc,4108,inf,inf,inf,1,1,inf,yes,Both,yes,2.298459,,680cbf9c13134cc08ab2b5bd2bd1191c
+special_functions,erf,f128,fltx,fltx,fltx bl::f128,bl::erf,8198,110.8988915,104.260004,103.47754,2,2,23.47754,yes,Both,yes,814.523237,,680cbf9c13134cc08ab2b5bd2bd1191c
+special_functions,erfc,f128,fltx,fltx,fltx bl::f128,bl::erfc,8198,107.1893035,100.123363,99.167646,2,2,19.167646,yes,Both,-,813.301282,,680cbf9c13134cc08ab2b5bd2bd1191c
+special_functions,lgamma,f128,fltx,fltx,fltx bl::f128,bl::lgamma,4099,107.30017,103.199673,102.168212,1,1,22.168212,yes,NaN,-,657.828125,,680cbf9c13134cc08ab2b5bd2bd1191c
+special_functions,tgamma,f128,fltx,fltx,fltx bl::f128,bl::tgamma,4099,105.565044,98.349598,97.317514,1,1,17.317514,yes,Both,-,593.503289,,680cbf9c13134cc08ab2b5bd2bd1191c
+trigonometric,acos,f128,fltx,fltx,fltx bl::f128,bl::acos,8204,106.470630111,95.825547,81.584963,2,2,1.584963,yes,NaN,-,202.055664,,680cbf9c13134cc08ab2b5bd2bd1191c
+trigonometric,asin,f128,fltx,fltx,fltx bl::f128,bl::asin,8204,108.580073592,105.096123,104.081582,2,2,24.081582,yes,NaN,yes,196.608887,,680cbf9c13134cc08ab2b5bd2bd1191c
+trigonometric,atan,f128,fltx,fltx,fltx bl::f128,bl::atan,8198,108.728555,105.953468,104.92639,2,2,24.92639,yes,NaN,yes,142.117513,,680cbf9c13134cc08ab2b5bd2bd1191c
+trigonometric,atan2,f128,fltx,fltx,fltx bl::f128,bl::atan2,8206,108.727143624,105.799026,104.520841,3,3,24.520841,yes,No,yes,148.882185,,680cbf9c13134cc08ab2b5bd2bd1191c
+trigonometric,cos,f128,fltx,fltx,fltx bl::f128,bl::cos,12524,113.520718505,100.266388,99.209588,3,3,19.209588,yes,Both,-,106.911058,,680cbf9c13134cc08ab2b5bd2bd1191c
+trigonometric,sin,f128,fltx,fltx,fltx bl::f128,bl::sin,12524,110.553532277,98.777563,98.619216,3,3,18.619216,yes,NaN,yes,107.149465,,680cbf9c13134cc08ab2b5bd2bd1191c
+trigonometric,sincos,f128,fltx,fltx,fltx bl::f128,bl::sincos,,,,,,,,,-,-,118.104677,,680cbf9c13134cc08ab2b5bd2bd1191c
+trigonometric,tan,f128,fltx,fltx,fltx bl::f128,bl::tan,12524,106.671100353,98.776698,98.614153,3,3,23.614153,yes,NaN,yes,116.382496,,680cbf9c13134cc08ab2b5bd2bd1191c

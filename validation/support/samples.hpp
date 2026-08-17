@@ -1,6 +1,8 @@
 #ifndef FLTX_TESTS_SUPPORT_SAMPLES_INCLUDED
 #define FLTX_TESTS_SUPPORT_SAMPLES_INCLUDED
 
+#include "native_fp.hpp"
+
 #include <array>
 #include <algorithm>
 #include <cmath>
@@ -57,7 +59,7 @@ namespace fltx::tests
     [[nodiscard]] inline sample make_sample(double value, std::string label = {})
     {
         const double scale = std::abs(value);
-        if (scale == 0.0 || !std::isfinite(scale))
+        if (scale == 0.0 || !native_fp::is_finite(scale))
             return { { value, 0.0, 0.0, 0.0 }, std::move(label) };
 
         const double tail1 = std::copysign(std::ldexp(scale, -55), value == 0.0 ? 1.0 : value);

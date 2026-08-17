@@ -962,7 +962,7 @@ namespace detail::_f64_impl
             double next_hi{};
             double product_error{};
             #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
-            detail::fp::two_prod_precise_dekker_checked(
+            detail::fp::two_prod_precise_dekker_range_safe(
                 product_hi, factor, next_hi, product_error);
             #else
             detail::fp::two_prod_precise_dekker(
@@ -1001,7 +1001,7 @@ namespace detail::_f64_impl
         double result_hi{};
         double result_error{};
         #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
-        detail::fp::two_prod_precise_dekker_checked(
+        detail::fp::two_prod_precise_dekker_range_safe(
             local, product_hi, result_hi, result_error);
         #else
         detail::fp::two_prod_precise_dekker(

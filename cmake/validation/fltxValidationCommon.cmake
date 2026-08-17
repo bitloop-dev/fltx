@@ -1,5 +1,19 @@
 # Shared configuration for validation executables and libraries.
 
+set(FLTX_VALIDATION_EXPECTED_ARCHITECTURE "" CACHE STRING
+    "Expected validation target architecture (x86_64, arm64, or wasm32)."
+)
+set_property(CACHE FLTX_VALIDATION_EXPECTED_ARCHITECTURE PROPERTY STRINGS
+    "" x86_64 arm64 wasm32
+)
+if(NOT FLTX_VALIDATION_EXPECTED_ARCHITECTURE STREQUAL "" AND
+   NOT FLTX_VALIDATION_EXPECTED_ARCHITECTURE MATCHES "^(x86_64|arm64|wasm32)$")
+    message(FATAL_ERROR
+        "Unsupported FLTX_VALIDATION_EXPECTED_ARCHITECTURE="
+        "'${FLTX_VALIDATION_EXPECTED_ARCHITECTURE}'."
+    )
+endif()
+
 function(fltx_tests_build_configuration_identity config output_hash output_optimized)
     string(TOUPPER "${config}" config_upper)
     set(compile_flags
@@ -65,12 +79,20 @@ function(fltx_tests_add_build_identity target)
     target_compile_definitions(${target} PRIVATE
         "FLTX_TESTS_COMPILER_ID=\"${CMAKE_CXX_COMPILER_ID}\""
         "FLTX_TESTS_COMPILER_VERSION=\"${CMAKE_CXX_COMPILER_VERSION}\""
+        "FLTX_TESTS_COMPILER_FRONTEND_VARIANT=\"${CMAKE_CXX_COMPILER_FRONTEND_VARIANT}\""
         "FLTX_TESTS_BUILD_CONFIG=\"$<CONFIG>\""
         "FLTX_TESTS_SYSTEM_NAME=\"${CMAKE_SYSTEM_NAME}\""
         "FLTX_TESTS_SYSTEM_PROCESSOR=\"${CMAKE_SYSTEM_PROCESSOR}\""
         "FLTX_TESTS_BUILD_FLAGS_HASH=\"${flags_hash}\""
         "FLTX_TESTS_BUILD_OPTIMIZED=${optimized}"
     )
+    if(FLTX_VALIDATION_EXPECTED_ARCHITECTURE STREQUAL "x86_64")
+        target_compile_definitions(${target} PRIVATE FLTX_TESTS_EXPECT_X86_64=1)
+    elseif(FLTX_VALIDATION_EXPECTED_ARCHITECTURE STREQUAL "arm64")
+        target_compile_definitions(${target} PRIVATE FLTX_TESTS_EXPECT_ARM64=1)
+    elseif(FLTX_VALIDATION_EXPECTED_ARCHITECTURE STREQUAL "wasm32")
+        target_compile_definitions(${target} PRIVATE FLTX_TESTS_EXPECT_WASM32=1)
+    endif()
 endfunction()
 
 function(fltx_tests_prepare_target target)

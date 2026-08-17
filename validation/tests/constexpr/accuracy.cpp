@@ -526,6 +526,26 @@ namespace
     }
 }
 
+TEST_CASE("MPFR observation preserves native values by representation",
+          "[constexpr][oracle]")
+{
+    namespace native_fp = fltx::tests::native_fp;
+    using boost::multiprecision::ldexp;
+
+    const double negative_zero = native_fp::signed_zero<double>(true);
+    const double denorm = native_fp::denorm_min<double>();
+    const double infinity = native_fp::positive_infinity<double>();
+    const double nan = native_fp::quiet_nan<double>();
+
+    const oracle::real observed_zero = oracle::native_float_to_real(negative_zero);
+    CHECK(observed_zero == 0);
+    CHECK(oracle::sign_bit(observed_zero));
+    CHECK(oracle::native_float_to_real(denorm) == ldexp(oracle::real{1}, -1074));
+    CHECK(oracle::is_inf(oracle::native_float_to_real(infinity)));
+    CHECK(oracle::is_nan(oracle::native_float_to_real(nan)));
+    CHECK(oracle::is_exact_score(oracle::exact_score()));
+}
+
 TEST_CASE("genuine constexpr f128 corpus meets MPFR accuracy gates",
           "[constexpr][accuracy][corpus][f128]")
 {

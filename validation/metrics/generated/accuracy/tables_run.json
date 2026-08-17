@@ -4,12 +4,12 @@
     "accuracy_table.svg"
   ],
   "run_ids": {
-    "windows/MSVC": "818eddd51e1c4c0c9f12ab1c9425cf18"
+    "wasm32/wasm32/Emscripten": "07cb9aa0af7241f981735eab48f97723"
   },
-  "schema_version": "4",
-  "source_fingerprint": "109de0c6f38539c777d07facfe9296e1f881fdc142de260574f32ca1717dec35",
-  "source_revision": "ed1828d24dd27853af5667ac12b6c6c06a406c96-dirty-109de0c6f385",
+  "schema_version": "6",
+  "source_fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
+  "source_revision": "b38d8f2a0c9da2eeae373bce48a1aa42bf88fcdc-dirty-7cd523deac97",
   "targets": [
-    "windows/MSVC"
+    "wasm32/wasm32/Emscripten"
   ]
 }

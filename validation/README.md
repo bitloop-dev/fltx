@@ -9,6 +9,17 @@ The validation executables have five roles. Each role has a strict-consumer
 target and a matching `_fastmath` target compiled with the platform's real
 consumer fast-math option (`/fp:fast` or `-ffast-math`):
 
+MinGW/GCC validation deliberately applies only `-ffast-math`, including at
+link time, so it measures the compiler's unmodified consumer configuration.
+On MinGW, GCC may consequently link `crtfastmath.o` and globally enable DAZ/FTZ,
+which flushes binary64 subnormals and can discard low expansion limbs. Consumers
+that want fast-math transformations while retaining gradual underflow can add
+`-mno-daz-ftz`; the standard fast-math reports do not use that mitigation.
+
+For f128/f256 basic `+`, `-`, `*`, and `/`, consumer fast-math also selects
+finite-input runtime kernels that omit NaN, infinity, and signed-zero handling.
+Strict consumers and genuine constant evaluation retain the checked semantics.
+
 - `fltx_contract_tests` checks public behaviour, I/O, random facilities,
   expression fusion, dispatch, and named numerical edge cases.
 - `fltx_constexpr_tests` checks genuine compiler constant evaluation, including
@@ -65,8 +76,36 @@ installed headers or CMake state cannot make the fixture pass.
 The development metrics workflow can be run from one CMake build preset:
 
 ```powershell
-python .\validation\metrics\run_preset_metrics.py --preset native-release
+python .\validation\metrics\run_preset_metrics.py `
+    --preset windows-x64-msvc-release
 ```
+
+To run every release preset supported by the current host OS and architecture,
+omit the preset and use the host-matrix entry point. It accepts the same
+workflow arguments as the single-preset command:
+
+```powershell
+python .\validation\metrics\run_all_supported_metrics.py --consumer-mode all
+python .\validation\metrics\run_all_supported_metrics.py `
+    --consumer-mode all --quick
+```
+
+The host matrix is explicit rather than inferred from installed tools:
+
+| Host | Presets |
+|---|---|
+| Windows x64 | MSVC, clang-cl, MinGW, wasm32 Emscripten |
+| Windows ARM64 | MSVC, clang-cl |
+| Linux x64/ARM64 | native GCC and Clang for the host architecture |
+| macOS x64/ARM64 | native AppleClang for the host architecture |
+
+Every selected preset is required and runs in order; a missing toolchain fails
+the command rather than silently producing a partial matrix. The alternate
+`vs2026` and `xcode` generator presets are excluded because their native
+compiler coverage is already represented by the release matrix. Windows x64
+is the designated automatic wasm32 metrics host so canonical Emscripten
+evidence is not overwritten by several hosts. Other hosts can still run the
+`wasm32-emscripten-release` preset explicitly with the single-preset command.
 
 The command configures the preset, builds `fltx_accuracy` and `fltx_benchmark`
 plus their `_fastmath` variants, and locates their artifacts through the CMake
@@ -80,34 +119,49 @@ fast-math profile comparisons whenever a compatible pair exists. An `all` run
 requires those comparison reports; a focused run simply skips them when the
 other mode is unavailable or stale.
 
-With no workflow flag the command uses the development profile and writes all
-data and reports below `build/metrics`. Pass `--release` to use the full
-publication profile and write canonical evidence below `validation/metrics`.
+The public commands use mutually exclusive, value-free workflow flags. With no
+workflow flag, `--standard` is implied. `--quick` selects the half-sized
+`small` sample profile, `--full` runs the full profile without publishing, and
+`--release` runs that same full profile and publishes canonical evidence.
+`--output-root` remains available for nonrelease isolation and creates
+`data/` and `generated/` below the supplied path; it cannot be combined with
+`--release`.
 The pipeline checks each executable's configuration banner before measurement,
 so fast-math evidence cannot be produced by a strict binary (or vice versa).
 
 ```powershell
 python .\validation\metrics\run_preset_metrics.py `
-    --preset native-release --release
+    --preset windows-x64-msvc-release `
+    --consumer-mode all `
+    --full
+
+# Publish only after the complete evidence has been accepted.
+python .\validation\metrics\run_preset_metrics.py `
+    --preset windows-x64-msvc-release --consumer-mode all --release
 ```
 
-| Workflow | Accuracy samples | Benchmark base (f128/f256) | Trials | Timing |
-|---|---:|---:|---:|---:|
-| Default | 4,096 | 8,192 / 4,096 | adaptive 1 / 3 / 7 | 8 or 15 ms target |
-| `--release` | 65,536 | 81,920 / 40,960 | 7 | 25 ms minimum |
+| Workflow | Internal profile | Accuracy samples | Benchmark base (f128/f256) | Trials | Timing |
+|---|---|---:|---:|---:|---:|
+| `--quick` | `small` | 2,048 | 4,096 / 2,048 | adaptive 1 / 3 / 7 | 8 or 15 ms target |
+| Default / `--standard` | `standard` | 4,096 | 8,192 / 4,096 | adaptive 1 / 3 / 7 | 8 or 15 ms target |
+| `--full` | `full` | 65,536 | 81,920 / 40,960 | 7 | 25 ms minimum |
+| `--release` | `full` | 65,536 | 81,920 / 40,960 | 7 | 25 ms minimum |
 
-The default workflow runs the f128 and f256 accuracy phases concurrently, then
-benchmarks sequentially. Cheap primitives use release-sized benchmark corpora
-and seven 15 ms trials; ordinary operations use three 8 ms trials; operations
-measured at 10 microseconds or slower use three single-batch trials. A soft
-five-second row budget can reduce the trial count to one or three. The four
-slow gamma/error functions use 256 f128 or 128 f256 samples.
+The quick and standard workflows run the f128 and f256 accuracy phases
+concurrently, then benchmark sequentially. They share the same adaptive corpus
+and timing policy, with every quick corpus exactly half its standard size.
+Cheap primitives use large corpora and seven 15 ms trials; ordinary operations
+use three 8 ms trials; operations measured at 10 microseconds or slower use
+three single-batch trials. A soft five-second row budget can reduce the trial
+count to one or three. In standard mode, the four slow gamma/error functions
+use 256 f128 or 128 f256 samples; quick mode uses 128 or 64.
 
-The only other public Python command in `validation/metrics/` rebuilds every report from
-existing data without running the metrics executables:
+The remaining public Python command in `validation/metrics/` rebuilds every
+report from existing data without running the metrics executables:
 
 ```powershell
-python .\validation\metrics\rebuild_tables.py --targets windows/MSVC
+python .\validation\metrics\rebuild_tables.py `
+    --targets windows/x86_64/MSVC
 ```
 
 Omit `--targets` when all canonical datasets belong to a compatible run. The
@@ -125,97 +179,129 @@ seven SVGs per consumer mode are regenerated; `--force-rerun` explicitly
 bypasses reuse.
 Renderer-only Python changes do not alter the runner source fingerprint.
 
-The two output roots deliberately have the same shape:
+Canonical release output and the profile-separated unversioned output are:
 
 ```text
-build/metrics/                     validation/metrics/
-  data/                              data/
-  generated/                         generated/
-    accuracy/                          accuracy/
-    overview/                          overview/
-    performance/                       performance/
-    profile_comparison/                profile_comparison/
+validation/metrics/
+  data/                                  # canonical release evidence
+  generated/                             # canonical release reports
+  _unversioned/
+    quick/
+      data/                              # --quick evidence
+      generated/                         # --quick reports
+    standard/
+      data/                              # default/--standard evidence
+      generated/                         # default/--standard reports
+    full/
+      data/                              # --full evidence
+      generated/                         # --full reports
 ```
 
-The default workflow replaces the compatible local snapshot under
-`build/metrics/data`; `--release` publishes canonical data under
-`validation/metrics/data`. Report filenames are identical across the roots,
-with `_compact` distinguishing presentation variants and `_fastmath`
-identifying consumer-fast-math evidence and reports. Strict and fast-math data
-also have separate run metadata and publication locks. Comparison reports use
-names such as `windows_MSVC_f256_strict_fastmath_comp.svg`. They show strict
+Nonrelease workflows replace only their compatible unversioned profile
+snapshot; `--release` publishes canonical data under `validation/metrics/data`.
+The unversioned trees are ignored by Git and repository search. Report
+filenames are identical across the roots, with `_compact` distinguishing
+presentation variants and `_fastmath` identifying consumer-fast-math evidence
+and reports. Strict and fast-math data also have separate run metadata and
+publication locks. Comparison reports use
+names such as `windows_x86_64_MSVC_f256_strict_fastmath_comp.svg`. They show strict
 values first and colour the parenthesized `fast-math - strict` delta. Pairing
 requires matching source, target, sample policy, host, and build/library
 configuration; run IDs and collection times may differ.
-The output target is inferred from the build identity embedded in both
-runners; Windows MSVC and MinGW, Emscripten, Linux GCC and Clang, and macOS
-AppleClang builds have canonical labels.
-On Windows, a native Ninja preset with no explicit alternative compiler is
-run in an x64 Visual Studio developer environment discovered through
-`vswhere`. This makes the command independent of whether it was launched from
-plain PowerShell or from an x86/x64 Developer PowerShell; MinGW, Clang,
-Emscripten, and Visual Studio-generator presets keep their own environments.
+Both overview layouts and the profile comparison keep Inf/NaN support in its
+existing column and report signed-zero preservation separately in a narrow
+`±0` column. A tick or cross summarizes deterministic signed-zero contract
+probes for that operation; `-` means the operation has no applicable
+accuracy probe (including predicates, integer-return APIs, and benchmark-only
+rows whose semantics are covered by the contract suites).
+Opposite zero signs are numerically exact in the bits-accuracy columns, so this
+semantic distinction cannot distort mean, worst, or domain-pass results.
+Consumer-fast-math overviews and strict/fast-math comparisons also show a
+narrow `Subnorm` column. Their headline accuracy and domain count exclude the
+dedicated subnormal corpus, while a tick or cross reports whether that corpus
+passes its normal release threshold; `-` means no separate subnormal corpus is
+defined for the operation. Strict overviews retain their existing aggregate
+accuracy presentation.
+The output target is inferred from the system, target architecture, compiler
+ID, and compiler frontend embedded in both runners. This separates x64 from
+ARM64 and distinguishes Windows clang-cl from ordinary Clang. On Windows,
+MSVC and clang-cl Ninja presets run in the matching x64 or ARM64 Visual Studio
+developer environment discovered through `vswhere`; MinGW, Emscripten, and
+Visual Studio-generator presets keep their own environments.
 
 ## Quick MSVC run
 
 ```powershell
-cmake --preset msvc-release-codex
-cmake --build --preset msvc-release-codex --target `
+cmake --preset windows-x64-msvc-release
+cmake --build --preset windows-x64-msvc-release --target `
     fltx_compile_contract fltx_accuracy fltx_accuracy_fastmath `
     fltx_constexpr_accuracy fltx_constexpr_accuracy_fastmath `
     fltx_benchmark fltx_benchmark_fastmath
 
-.\build\msvc-release-codex\validation\Release\fltx_contract_tests.exe
-.\build\msvc-release-codex\validation\Release\fltx_constexpr_tests.exe
-.\build\msvc-release-codex\validation\Release\fltx_constexpr_accuracy.exe `
+.\build\windows-x64-msvc-release\validation\fltx_contract_tests.exe
+.\build\windows-x64-msvc-release\validation\fltx_constexpr_tests.exe
+.\build\windows-x64-msvc-release\validation\fltx_constexpr_accuracy.exe `
     --precision f128 --sample-mode smoke
 ```
 
-Boost comparisons are always enabled because Boost, GMP, and MPFR are already
-test dependencies. The vendored qdpp headers are enabled by default for both
-accuracy and benchmark runners, including Emscripten. The qdpp smoke target
+Boost comparisons are always enabled in strict metrics because Boost, GMP, and
+MPFR are already test dependencies. The vendored qdpp headers are enabled by
+default for the strict accuracy and benchmark runners, including Emscripten.
+The Windows clang-cl presets explicitly disable qdpp because it treats every
+`_MSC_VER` frontend as having baseline-safe x86 FMA intrinsics; clang-cl
+correctly rejects those intrinsics when the translation unit does not target
+FMA. This keeps the presets baseline-safe without modifying vendored code.
+Consumer-fast-math runners contain FLTX rows only and do not parse qdpp headers,
+because qdpp deliberately rejects aggressive fast-math. The qdpp smoke target
 also compiles and executes representative `dd_real` and `qd_real` operations.
 To test a different qdpp checkout, override its include directory:
 
 ```powershell
-cmake --preset msvc-release-codex `
+cmake --preset windows-x64-msvc-release `
     -DFLTX_METRICS_QDPP_INCLUDE_DIR=C:/path/to/qdpp/include
-cmake --build --preset msvc-release-codex --target `
+cmake --build --preset windows-x64-msvc-release --target `
     fltx_qdpp_smoke fltx_accuracy fltx_benchmark
 ```
 
 `FLTX_METRICS_QDPP=OFF` remains available as an explicit opt-out for a
 dependency-isolation build.
 
-Then run the complete f128/f256 publication:
+For a direct noncanonical full f128/f256 run:
 
 ```powershell
 python validation/metrics/_internal/run_metrics.py `
-    --accuracy build/msvc-release-codex/validation/Release/fltx_accuracy.exe `
-    --benchmark build/msvc-release-codex/validation/Release/fltx_benchmark.exe `
+    --accuracy build/windows-x64-msvc-release/validation/fltx_accuracy.exe `
+    --benchmark build/windows-x64-msvc-release/validation/fltx_benchmark.exe `
     --platform windows `
+    --architecture x86_64 `
     --compiler MSVC `
-    --sample-mode full
+    --sample-mode full `
+    --output-root validation/metrics/_unversioned/direct-full/data
 ```
 
 For a direct consumer-fast-math run, use `fltx_accuracy_fastmath.exe` and
 `fltx_benchmark_fastmath.exe` and add `--consumer-mode fastmath`. The compiled
 fltx library is the same target in both runs; only the consumer translation
-units and executable link receive the consumer fast-math option.
+units and executable link receive the consumer fast-math option. Preset
+fast-math accuracy runs are advisory: every strict-threshold miss remains a
+visible `FAIL` with its measured margin and worst case, but does not prevent the
+benchmark phase or report generation. Strict consumer metrics remain gating.
 
-`--platform` and `--compiler` remain available for explicit validation, but
-may be omitted together to infer the canonical target from the runners.
+`--platform`, `--architecture`, and `--compiler` remain available for explicit
+validation, but must be supplied together and may all be omitted to infer the
+canonical target from the runners.
 
 The runners print their configuration and requested sample profile once,
 stream rows in real time, and flush each row to a `.partial.csv`. Benchmark
 detail rows retain every trial plus total timed iterations and elapsed time.
 A complete passing run atomically publishes
-the detail files and canonical `validation/metrics/data/<platform>/<compiler>_<type>.csv`
+the detail files and canonical
+`validation/metrics/data/<platform>/<architecture>/<compiler>_<type>.csv`
 files. Filtered and smoke runs stay under `build/` and cannot replace published
 results. The banner records the ordered implementation set for each precision.
 The manifest requires 85 FLTX benchmark rows, 75 Boost rows per precision, and,
 when enabled, 60 f128 or 62 f256 qdpp rows and 71 TLFloat rows per precision.
-Accuracy contributes 123 FLTX and 114 Boost domain rows per precision. When
+Accuracy contributes 127 FLTX and 118 Boost domain rows per precision. When
 enabled, qdpp contributes 87 f128 or 91 f256 rows and TLFloat contributes 107
 rows per precision. These are registration checks, not assumptions in the
 runner or SVG renderer.
@@ -259,30 +345,37 @@ consumer translation unit.
 
 ## Native accuracy
 
-f32 and f64 use the same 119 independently gated accuracy rows, but they are
-not merged into the published f128/f256 summary tables. Run both complete
-native suites with one command:
+f32 and f64 use the same 119 accuracy rows as a native/libm policy baseline,
+but they are not merged into the f128/f256 summary tables. The preset metrics
+pipeline records the matching strict or fast-math baseline after each requested
+f128/f256 metrics mode. Run both complete native suites independently with:
 
 ```powershell
-cmake --build --preset msvc-release-codex --target fltx_native_accuracy_full
+cmake --build --preset windows-x64-msvc-release --target fltx_native_accuracy_full
 ```
 
-The target invokes both precisions even if the first fails. Every invocation
-gets a new directory under `build/<preset>/validation/native_accuracy`, retaining
-the streamed `.partial.csv` witnesses for known failures. The equivalent
-direct command is:
+The target invokes both precisions and gives every invocation a new directory
+under `build/<preset>/validation/native_accuracy`. Numerical threshold misses
+are retained as advisory baseline data; crashes, stale binaries, mode
+mismatches, and incomplete manifests still fail. The equivalent direct strict
+command is:
 
 ```powershell
 python validation/metrics/_internal/run_native_accuracy.py `
-    --accuracy build/msvc-release-codex/validation/Release/fltx_accuracy.exe
+    --accuracy build/windows-x64-msvc-release/validation/fltx_accuracy.exe
 ```
+
+Pass `--consumer-mode fastmath` with `fltx_accuracy_fastmath.exe` to record the
+native fast-math baseline. Each completed bundle includes f32/f64 CSVs plus a
+fingerprinted metadata manifest with the host, compiler configuration, runner
+hash, and consumer mode.
 
 ## CI policy
 
 The pull-request and branch badge command is:
 
 ```powershell
-cmake --build --preset msvc-release-codex --target fltx_ci_checks
+cmake --build --preset windows-x64-msvc-release --target fltx_ci_checks
 ```
 
 It builds isolated public-header and C++ standard probes, both comparison
@@ -300,14 +393,15 @@ performance, and canonical metrics publication remain outside that pull-request 
 The release matrix configures separate `AUTO`, `OFF`, and `ASSUME` build trees,
 then runs `fltx_native_accuracy_full`, `fltx_package_tests`, and a full
 internal metrics-runner invocation with qdpp enabled when comparative ratios are
-wanted. Every command is gating: thresholds and exit codes must reflect the
-library contract rather than the desired automation colour.
+wanted. Package and f128/f256 contract thresholds remain gating; native
+accuracy is retained as observational policy evidence for comparing the
+consumer-facing extended types against the platform's float/double behavior.
 
 Compile and size telemetry have distinct opt-in targets:
 
 ```powershell
-cmake --build --preset msvc-release-codex --target fltx_compile_benchmarks_full
-cmake --build --preset msvc-release-codex --target fltx_binary_size
+cmake --build --preset windows-x64-msvc-release --target fltx_compile_benchmarks_full
+cmake --build --preset windows-x64-msvc-release --target fltx_binary_size
 ```
 
 The first writes a summary covering public-header cost and expression growth at
@@ -322,7 +416,8 @@ After matching full runs exist for all requested targets:
 ```powershell
 python validation/metrics/rebuild_tables.py `
     --input validation/metrics/data `
-    --targets windows/MSVC windows/MinGW wasm32/Wasm32 `
+    --targets windows/x86_64/MSVC windows/x86_64/MinGW `
+        wasm32/wasm32/Emscripten `
     --output validation/metrics/generated
 ```
 

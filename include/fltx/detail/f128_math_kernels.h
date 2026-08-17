@@ -35,6 +35,15 @@ namespace detail::_f128 // primitives and kernels
     using detail::fp::frexp_exponent_limb;
     using detail::fp::ldexp_limb;
 
+    [[nodiscard]] BL_FORCE_INLINE constexpr bool is_subnormal_limb(double value) noexcept
+    {
+        constexpr std::uint64_t magnitude_mask = 0x7fffffffffffffffull;
+        constexpr std::uint64_t exponent_mask = 0x7ff0000000000000ull;
+        const std::uint64_t magnitude =
+            std::bit_cast<std::uint64_t>(value) & magnitude_mask;
+        return magnitude != 0 && (magnitude & exponent_mask) == 0;
+    }
+
     BL_FORCE_INLINE constexpr int ilogb_finite_fast(const f128_s& x) noexcept
     {
         const double hi = x.hi != 0.0 ? x.hi : x.lo;
@@ -53,7 +62,7 @@ namespace detail::_f128 // primitives and kernels
     // scaling helpers
     BL_FORCE_INLINE constexpr bool ldexp_normal_limb(double value, int exponent, double& out) noexcept
     {
-        if (value == 0.0 || exponent == 0)
+        if (exponent == 0)
         {
             out = value;
             return true;
@@ -64,6 +73,12 @@ namespace detail::_f128 // primitives and kernels
         constexpr std::uint64_t sign_mask     = 0x8000000000000000ull;
 
         const std::uint64_t bits = std::bit_cast<std::uint64_t>(value);
+        if ((bits & ~sign_mask) == 0u)
+        {
+            out = value;
+            return true;
+        }
+
         const std::uint32_t exponent_bits =
             static_cast<std::uint32_t>((bits & exponent_mask) >> 52);
         if (exponent_bits == 0u || exponent_bits == 0x7ffu)
@@ -101,9 +116,17 @@ namespace detail::_f128 // primitives and kernels
 
     BL_FORCE_INLINE constexpr f128_s ldexp_terms(const f128_s& value, int exponent) noexcept
     {
+#if BL_FP_BARRIER_ACTIVE
+        double hi = detail::fp::ldexp(value.hi, exponent);  BL_FP_BARRIER(hi);
+        double lo = detail::fp::ldexp(value.lo, exponent);  BL_FP_BARRIER(lo);
+        if (is_subnormal_limb(lo))
+            return { hi, lo };
+        return renorm(hi, lo);
+#else
         return renorm(
             ldexp_limb(value.hi, exponent),
             ldexp_limb(value.lo, exponent));
+#endif
     }
 
     BL_FORCE_INLINE constexpr f128_s _ldexp(const f128_s& x, int e)
@@ -120,10 +143,18 @@ namespace detail::_f128 // primitives and kernels
             );
         }
 
+#if BL_FP_BARRIER_ACTIVE
+        double hi = detail::fp::ldexp(x.hi, e);  BL_FP_BARRIER(hi);
+        double lo = detail::fp::ldexp(x.lo, e);  BL_FP_BARRIER(lo);
+        if (is_subnormal_limb(lo))
+            return { hi, lo };
+        return renorm(hi, lo);
+#else
         return renorm(
             std::ldexp(x.hi, e),
             std::ldexp(x.lo, e)
         );
+#endif
     }
 
     struct fmod_u128
@@ -644,13 +675,13 @@ namespace detail::_f128 // primitives and kernels
         {
             if (r < 0.0)
             {
-                r = add_inline(r, modulus);
+                r = add_finite_inline(r, modulus);
                 continue;
             }
 
             if (r >= modulus)
             {
-                r = sub_inline(r, modulus);
+                r = sub_finite_inline(r, modulus);
                 continue;
             }
 
@@ -669,7 +700,7 @@ namespace detail::_f128 // primitives and kernels
         {
             if (r < 0.0)
             {
-                r = add_inline(r, modulus);
+                r = add_finite_inline(r, modulus);
                 if (quotient == 0u)
                     return false;
                 --quotient;
@@ -678,7 +709,7 @@ namespace detail::_f128 // primitives and kernels
 
             if (r >= modulus)
             {
-                r = sub_inline(r, modulus);
+                r = sub_finite_inline(r, modulus);
                 ++quotient;
                 continue;
             }
@@ -691,7 +722,7 @@ namespace detail::_f128 // primitives and kernels
 
     BL_FORCE_INLINE constexpr int fmod_compare_remainder_to_half(const f128_s& r_abs, const f128_s& half) noexcept
     {
-        const f128_s delta = sub_inline(r_abs, half);
+        const f128_s delta = sub_finite_inline(r_abs, half);
         if (iszero(delta))
             return 0;
         return delta < 0.0 ? -1 : 1;
@@ -718,15 +749,15 @@ namespace detail::_f128 // primitives and kernels
         if (q < 0x1p48 && abs_double_is_power_of_two(q))
         {
             std::uint64_t cheap_quotient = quotient;
-            f128_s r = sub_inline(ax, mul_pwr2_inline(ay, q));
+            f128_s r = sub_finite_inline(ax, mul_pwr2_inline(ay, q));
             if (fmod_normalize_remainder_with_quotient(r, ay, cheap_quotient))
             {
-                const f128_s edge_slack = mul_double_inline(ay, 0x1p-44);
-                const f128_s half = mul_double_inline(ay, 0.5);
-                const f128_s distance_to_half = mag(sub_inline(r, half));
+                const f128_s edge_slack = mul_double_product_inline(ay, 0x1p-44);
+                const f128_s half = mul_double_product_inline(ay, 0.5);
+                const f128_s distance_to_half = mag(sub_finite_inline(r, half));
 
                 if (r > edge_slack &&
-                    sub_inline(ay, r) > edge_slack &&
+                    sub_finite_inline(ay, r) > edge_slack &&
                     distance_to_half > edge_slack)
                 {
                     out = r;
@@ -742,11 +773,11 @@ namespace detail::_f128 // primitives and kernels
             f128_s r = fmod_sub_mul_scalar_compact(ax, ay, q);
             if (fmod_normalize_remainder_with_quotient(r, ay, compact_quotient))
             {
-                const f128_s edge_slack = mul_double_inline(ay, 0x1p-80);
-                const f128_s half = mul_double_inline(ay, 0.5);
+                const f128_s edge_slack = mul_double_product_inline(ay, 0x1p-80);
+                const f128_s half = mul_double_product_inline(ay, 0.5);
                 if (r <= edge_slack ||
-                    sub_inline(ay, r) <= edge_slack ||
-                    mag(sub_inline(r, half)) <= edge_slack)
+                    sub_finite_inline(ay, r) <= edge_slack ||
+                    mag(sub_finite_inline(r, half)) <= edge_slack)
                 {
                     return false;
                 }
@@ -761,14 +792,14 @@ namespace detail::_f128 // primitives and kernels
         if (!fmod_normalize_remainder_with_quotient(r, ay, quotient))
             return false;
 
-        const f128_s edge_slack = mul_double_inline(ay, 0x1p-80);
-        if (r <= edge_slack || sub_inline(ay, r) <= edge_slack)
+        const f128_s edge_slack = mul_double_product_inline(ay, 0x1p-80);
+        if (r <= edge_slack || sub_finite_inline(ay, r) <= edge_slack)
             return false;
 
         if (allow_compact_residual)
         {
-            const f128_s half = mul_double_inline(ay, 0.5);
-            if (mag(sub_inline(r, half)) <= edge_slack)
+            const f128_s half = mul_double_product_inline(ay, 0.5);
+            if (mag(sub_finite_inline(r, half)) <= edge_slack)
                 return false;
         }
 
@@ -1084,7 +1115,7 @@ namespace detail::_f128 // primitives and kernels
             return false;
 
         const int64_t hi_part = static_cast<int64_t>(xi.hi);
-        const f128_s rem = sub_inline(xi, detail::_f128_impl::to_f128(hi_part));
+        const f128_s rem = sub_finite_inline(xi, detail::_f128_impl::to_f128(hi_part));
         out = hi_part + static_cast<int64_t>(rem.hi + rem.lo);
         return true;
     }
@@ -1138,7 +1169,7 @@ namespace detail::_f128 // primitives and kernels
             }
             else if (abs_frac_hi >= 0.5 - abs_frac_lo)
             {
-                const f128_s frac = sub_double_inline(x, base_d);
+                const f128_s frac = sub_double_finite_inline(x, base_d);
                 if (mag(frac) >= f128_s{ 0.5 })
                     rounded += signbit(frac) ? -1 : 1;
             }
@@ -1151,13 +1182,13 @@ namespace detail::_f128 // primitives and kernels
 
         if (signbit(x))
         {
-            f128_s y = -detail::_f128_impl::floor(add_double_inline(-x, 0.5));
+            f128_s y = -detail::_f128_impl::floor(add_double_finite_inline(-x, 0.5));
             if (iszero(y))
                 return f128_s{ -0.0, 0.0 };
             return y;
         }
 
-        return detail::_f128_impl::floor(add_double_inline(x, 0.5));
+        return detail::_f128_impl::floor(add_double_finite_inline(x, 0.5));
     }
 
     template<typename SignedInt>
@@ -1207,7 +1238,7 @@ namespace detail::_f128 // primitives and kernels
                 --base;
         }
 
-        const f128_s frac     = sub_double_inline(x, static_cast<double>(base));
+        const f128_s frac     = sub_double_finite_inline(x, static_cast<double>(base));
         const f128_s abs_frac = mag(frac);
         std::int64_t rounded = base;
 
@@ -1285,9 +1316,14 @@ namespace detail::_f128 // primitives and kernels
             : y;
     }
 
+    // clang-cl /fp:fast can collapse the compensated square back to binary64.
+    // Keep reassociation disabled only inside the affected sqrt helpers.
     [[nodiscard]] BL_FORCE_INLINE constexpr double sqrt_tail_square(double c_lo, double correction) noexcept
     {
-        #if FLTX_DETAIL_HAS_RUNTIME_FMA_PATH
+#if defined(_MSC_VER) && defined(__clang__) && defined(FLTX_FAST_MATH)
+#pragma clang fp reassociate(off)
+#endif
+        #if FLTX_HAS_RUNTIME_FMA_PATH
         if (!bl::detail::is_constant_evaluated() && detail::fp::runtime_hardware_fma_enabled())
         {
             return detail::fp::fmadd_fma(c_lo, c_lo, correction);
@@ -1306,6 +1342,35 @@ namespace detail::_f128 // primitives and kernels
 
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s sqrt_compensated(const f128_s& scaled_a, double c) noexcept
     {
+#if defined(_MSC_VER) && defined(__clang__) && defined(FLTX_FAST_MATH)
+#pragma clang fp reassociate(off)
+#endif
+#if BL_FP_BARRIER_ACTIVE
+        double c_hi = product_split_high(c);             BL_FP_BARRIER(c_hi);
+        double c_lo = c - c_hi;                          BL_FP_BARRIER(c_lo);
+
+        double q = c_hi * c_lo;                          BL_FP_BARRIER(q);
+        q += q;                                          BL_FP_BARRIER(q);
+
+        double p = c_hi * c_hi;                          BL_FP_BARRIER(p);
+        double u = p + q;                                BL_FP_BARRIER(u);
+
+        double correction = p - u;                       BL_FP_BARRIER(correction);
+        correction += q;                                 BL_FP_BARRIER(correction);
+        double uu = sqrt_tail_square(c_lo, correction);  BL_FP_BARRIER(uu);
+
+        double residual = scaled_a.hi - u;               BL_FP_BARRIER(residual);
+        residual -= uu;                                  BL_FP_BARRIER(residual);
+        residual += scaled_a.lo;                         BL_FP_BARRIER(residual);
+
+        double denominator = c + c;                      BL_FP_BARRIER(denominator);
+        double cc = residual / denominator;              BL_FP_BARRIER(cc);
+
+        double y_hi = c + cc;                            BL_FP_BARRIER(y_hi);
+        double y_lo = c - y_hi;                          BL_FP_BARRIER(y_lo);
+        y_lo += cc;                                      BL_FP_BARRIER(y_lo);
+        return { y_hi, y_lo };
+#else
         const double c_hi = product_split_high(c);
         const double c_lo = c - c_hi;
 
@@ -1319,6 +1384,7 @@ namespace detail::_f128 // primitives and kernels
 
         const double y_hi = c + cc;
         return { y_hi, (c - y_hi) + cc };
+#endif
     }
 
 } // namespace detail::_f128

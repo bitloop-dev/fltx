@@ -9,6 +9,7 @@
 #include <boost/math/special_functions/next.hpp>
 #include <charconv>
 #include <cstddef>
+#include <cstdint>
 #include <ios>
 #include <limits>
 #include <stdexcept>
@@ -1032,12 +1033,12 @@ namespace fltx::tests::benchmark
             run.measured_task(
                 "io", "to_string", values.size(),
                 [&](std::size_t batches) {
-                    double checksum = 0.0;
+                    std::uint64_t checksum = 0;
                     for (std::size_t batch = 0; batch < batches; ++batch)
                     {
                         for (const Float& value : values)
                         {
-                            checksum += static_cast<double>(
+                            checksum += static_cast<std::uint64_t>(
                                 bl::to_string(value, digits, std::ios_base::scientific).size());
                         }
                     }
@@ -1045,23 +1046,23 @@ namespace fltx::tests::benchmark
                 },
                 task(implementations::qdpp_identity<Float>, "qdpp to_string",
                      [&](std::size_t batches) {
-                         double checksum = 0.0;
+                         std::uint64_t checksum = 0;
                          for (std::size_t batch = 0; batch < batches; ++batch)
                          {
                              for (const auto& value : qd_values)
-                                 checksum +=
-                                     static_cast<double>(reference_to_string(value, digits).size());
+                                 checksum += static_cast<std::uint64_t>(
+                                     reference_to_string(value, digits).size());
                          }
                          return checksum;
                      }),
                 task(implementations::boost_identity<Float>, "Boost number::str",
                      [&](std::size_t batches) {
-                         double checksum = 0.0;
+                         std::uint64_t checksum = 0;
                          for (std::size_t batch = 0; batch < batches; ++batch)
                          {
                              for (const auto& value : boost_values)
                              {
-                                 checksum += static_cast<double>(
+                                 checksum += static_cast<std::uint64_t>(
                                      value.str(digits, std::ios_base::scientific).size());
                              }
                          }
@@ -1069,12 +1070,12 @@ namespace fltx::tests::benchmark
                      }),
                 task(implementations::tlfloat_identity<Float>, "tlfloat::to_string",
                      [&](std::size_t batches) {
-                         double checksum = 0.0;
+                         std::uint64_t checksum = 0;
                          for (std::size_t batch = 0; batch < batches; ++batch)
                          {
                              for (const auto& value : tlfloat_values)
                              {
-                                 checksum += static_cast<double>(
+                                 checksum += static_cast<std::uint64_t>(
                                      tlfloat_ops::to_string(value, digits).size());
                              }
                          }
@@ -1084,7 +1085,7 @@ namespace fltx::tests::benchmark
                 "io", "to_chars", values.size(),
                 [&](std::size_t batches) {
                     std::array<char, 512> buffer{};
-                    double checksum = 0.0;
+                    std::uint64_t checksum = 0;
                     for (std::size_t batch = 0; batch < batches; ++batch)
                     {
                         for (const Float& value : values)
@@ -1092,14 +1093,15 @@ namespace fltx::tests::benchmark
                             const auto result =
                                 bl::to_chars(buffer.data(), buffer.data() + buffer.size(), value,
                                              std::chars_format::scientific, digits);
-                            checksum += static_cast<double>(result.ptr - buffer.data());
+                            checksum += static_cast<std::uint64_t>(
+                                result.ptr - buffer.data());
                         }
                     }
                     return checksum;
                 },
                 task(implementations::qdpp_identity<Float>, "qdpp write", [&](std::size_t batches) {
                     std::array<char, 512> buffer{};
-                    double checksum = 0.0;
+                    std::uint64_t checksum = 0;
                     for (std::size_t batch = 0; batch < batches; ++batch)
                     {
                         for (const auto& value : qd_values)
@@ -1170,10 +1172,10 @@ namespace fltx::tests::benchmark
             constexpr std::size_t random_draws = 64;
             run.measured_task("random", "mt19937_64", random_draws, [](std::size_t batches) {
                 bl::mt19937_64 engine{0x1020304050607080ull};
-                double checksum = 0.0;
+                std::uint64_t checksum = 0;
                 for (std::size_t batch = 0; batch < batches; ++batch)
                     for (std::size_t i = 0; i < random_draws; ++i)
-                        checksum += static_cast<double>(engine());
+                    checksum += engine();
                 return checksum;
             });
             run.measured_task(

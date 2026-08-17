@@ -17,11 +17,28 @@
 
 #include "fltx/config.h"
 
-#if FLTX_DETAIL_X86_FMA_RUNTIME_CHECK
+// Discard arithmetic-only constant-evaluation guards structurally when the compiler supports it.
+#if defined(FLTX_SIMULATE_FIXED_CONSTEVAL_MODE)
+  #define BL_FP_IF_CONSTEVAL_WARNING_PUSH
+  #define BL_FP_IF_CONSTEVAL_WARNING_POP
+  #define BL_FP_IF_CONSTEVAL if (true)
+#elif !BL_HAS_IF_CONSTEVAL && defined(__clang__) && (__clang_major__ >= 14)
+  #define BL_FP_IF_CONSTEVAL_WARNING_PUSH \
+      _Pragma("clang diagnostic push")                  \
+      _Pragma("clang diagnostic ignored \"-Wc++23-extensions\"")
+  #define BL_FP_IF_CONSTEVAL_WARNING_POP _Pragma("clang diagnostic pop")
+  #define BL_FP_IF_CONSTEVAL if consteval
+#else
+  #define BL_FP_IF_CONSTEVAL_WARNING_PUSH BL_IF_CONSTEVAL_WARNING_PUSH
+  #define BL_FP_IF_CONSTEVAL_WARNING_POP BL_IF_CONSTEVAL_WARNING_POP
+  #define BL_FP_IF_CONSTEVAL BL_IF_CONSTEVAL
+#endif
+
+#if FLTX_X86_FMA_RUNTIME_CHECK
 #  include <atomic>
 #endif
 
-#if FLTX_DETAIL_USE_SCALAR_X86_FMA || FLTX_DETAIL_MSVC_GUARDED_X86_FMA
+#if FLTX_USE_SCALAR_X86_FMA || FLTX_GUARDED_X86_FMA
 #  include <immintrin.h>
 #endif
 
@@ -719,6 +736,7 @@ BL_FORCE_INLINE constexpr void two_prod_precise_dekker(double a, double b, doubl
 inline constexpr double dekker_split_overflow_threshold = 0x1p996;
 inline constexpr double dekker_split_underflow_threshold = 0x1p-968;
 
+// Tests whether Dekker splitting needs temporary operand scaling.
 [[nodiscard]] BL_FORCE_INLINE constexpr bool dekker_product_needs_scaling(double a, double b) noexcept
 {
     const double aa = absd(a);
@@ -729,7 +747,8 @@ inline constexpr double dekker_split_underflow_threshold = 0x1p-968;
 }
 
 template<class ExpUnsigned>
-[[nodiscard]] BL_FORCE_INLINE constexpr bool ipow_loop_needs_checked_dekker(double head, ExpUnsigned exp) noexcept
+// Predicts whether repeated powers can leave the ordinary Dekker split range.
+[[nodiscard]] BL_FORCE_INLINE constexpr bool ipow_loop_needs_range_safe_dekker(double head, ExpUnsigned exp) noexcept
 {
     if (exp <= ExpUnsigned{ 4 } || iszero_or_inf_or_nan(head)) [[likely]]
         return false;
@@ -743,6 +762,7 @@ template<class ExpUnsigned>
     return exp > static_cast<ExpUnsigned>(996 / bits_per_power);
 }
 
+// Forms an exact product after scaling operands into Dekker's safe range.
 BL_MSVC_NOINLINE constexpr void two_prod_precise_dekker_scaled(double a, double b, double& p, double& err) noexcept
 {
     p = a * b;
@@ -774,7 +794,8 @@ BL_MSVC_NOINLINE constexpr void two_prod_precise_dekker_scaled(double a, double 
     err = ldexp((scaled_product - direct_scaled_product) + scaled_error, -product_scale);
 }
 
-BL_FORCE_INLINE constexpr void two_prod_precise_dekker_checked(double a, double b, double& p, double& err) noexcept
+// Forms an exact Dekker product with scaling only when the operand range requires it.
+BL_FORCE_INLINE constexpr void two_prod_precise_dekker_range_safe(double a, double b, double& p, double& err) noexcept
 {
     if (dekker_product_needs_scaling(a, b)) [[unlikely]]
     {
@@ -786,6 +807,7 @@ BL_FORCE_INLINE constexpr void two_prod_precise_dekker_checked(double a, double 
     }
 }
 #else
+// Reports that scaling is disabled when range-safe Dekker support is not configured.
 [[nodiscard]] BL_FORCE_INLINE constexpr bool dekker_product_needs_scaling(double a, double b) noexcept
 {
     (void)a;
@@ -794,7 +816,8 @@ BL_FORCE_INLINE constexpr void two_prod_precise_dekker_checked(double a, double 
 }
 
 template<class ExpUnsigned>
-[[nodiscard]] BL_FORCE_INLINE constexpr bool ipow_loop_needs_checked_dekker(double head, ExpUnsigned exp) noexcept
+// Reports that power-loop scaling is disabled without range-safe Dekker support.
+[[nodiscard]] BL_FORCE_INLINE constexpr bool ipow_loop_needs_range_safe_dekker(double head, ExpUnsigned exp) noexcept
 {
     (void)head;
     (void)exp;
@@ -803,7 +826,7 @@ template<class ExpUnsigned>
 #endif
 BL_POP_PRECISE
 
-#if FLTX_DETAIL_X86_FMA_RUNTIME_CHECK
+#if FLTX_X86_FMA_RUNTIME_CHECK
 [[nodiscard]] bool runtime_x86_fma_available_uncached() noexcept;
 
 inline constinit std::atomic<std::int8_t> x86_fma_available_state{-1};
@@ -834,9 +857,9 @@ static_assert(decltype(x86_fma_available_state)::is_always_lock_free);
 
 [[nodiscard]] BL_FORCE_INLINE bool runtime_hardware_fma_enabled() noexcept
 {
-    #if FLTX_DETAIL_X86_FMA_RUNTIME_CHECK
+    #if FLTX_X86_FMA_RUNTIME_CHECK
     return x86_fma_available_cached();
-    #elif FLTX_DETAIL_USE_SCALAR_X86_FMA || FLTX_DETAIL_USE_BASELINE_ARM64_FMA
+    #elif FLTX_USE_SCALAR_X86_FMA || FLTX_USE_BASELINE_ARM64_FMA
     return true;
     #else
     return false;
@@ -844,16 +867,16 @@ static_assert(decltype(x86_fma_available_state)::is_always_lock_free);
 }
 
 BL_PUSH_PRECISE
-BL_FORCE_INLINE double fmsub_fma(double a, double b, double c) noexcept
+FLTX_X86_FMA_LEAF_INLINE double fmsub_fma(double a, double b, double c) noexcept
 {
-    #if FLTX_DETAIL_USE_SCALAR_X86_FMA || FLTX_DETAIL_MSVC_GUARDED_X86_FMA
+    #if FLTX_USE_SCALAR_X86_FMA || FLTX_GUARDED_X86_FMA
     const __m128d aw = _mm_set_sd(a);
     const __m128d bw = _mm_set_sd(b);
     const __m128d cw = _mm_set_sd(c);
     return _mm_cvtsd_f64(_mm_fmsub_sd(aw, bw, cw));
-    #elif FLTX_DETAIL_USE_BASELINE_ARM64_FMA && (defined(__clang__) || defined(__GNUC__))
+    #elif FLTX_USE_BASELINE_ARM64_FMA && (defined(__clang__) || defined(__GNUC__))
     return __builtin_fma(a, b, -c);
-    #elif FLTX_DETAIL_USE_BASELINE_ARM64_FMA
+    #elif FLTX_USE_BASELINE_ARM64_FMA
     return std::fma(a, b, -c);
     #elif defined(__clang__) || defined(__GNUC__)
     return __builtin_fma(a, b, -c);
@@ -862,16 +885,16 @@ BL_FORCE_INLINE double fmsub_fma(double a, double b, double c) noexcept
     #endif
 }
 
-BL_FORCE_INLINE double fmadd_fma(double a, double b, double c) noexcept
+FLTX_X86_FMA_LEAF_INLINE double fmadd_fma(double a, double b, double c) noexcept
 {
-    #if FLTX_DETAIL_USE_SCALAR_X86_FMA || FLTX_DETAIL_MSVC_GUARDED_X86_FMA
+    #if FLTX_USE_SCALAR_X86_FMA || FLTX_GUARDED_X86_FMA
     const __m128d aw = _mm_set_sd(a);
     const __m128d bw = _mm_set_sd(b);
     const __m128d cw = _mm_set_sd(c);
     return _mm_cvtsd_f64(_mm_fmadd_sd(aw, bw, cw));
-    #elif FLTX_DETAIL_USE_BASELINE_ARM64_FMA && (defined(__clang__) || defined(__GNUC__))
+    #elif FLTX_USE_BASELINE_ARM64_FMA && (defined(__clang__) || defined(__GNUC__))
     return __builtin_fma(a, b, c);
-    #elif FLTX_DETAIL_USE_BASELINE_ARM64_FMA
+    #elif FLTX_USE_BASELINE_ARM64_FMA
     return std::fma(a, b, c);
     #elif defined(__clang__) || defined(__GNUC__)
     return __builtin_fma(a, b, c);
@@ -880,16 +903,16 @@ BL_FORCE_INLINE double fmadd_fma(double a, double b, double c) noexcept
     #endif
 }
 
-BL_FORCE_INLINE float fmadd_fma(float a, float b, float c) noexcept
+FLTX_X86_FMA_LEAF_INLINE float fmadd_fma(float a, float b, float c) noexcept
 {
-    #if FLTX_DETAIL_USE_SCALAR_X86_FMA || FLTX_DETAIL_MSVC_GUARDED_X86_FMA
+    #if FLTX_USE_SCALAR_X86_FMA || FLTX_GUARDED_X86_FMA
     const __m128 aw = _mm_set_ss(a);
     const __m128 bw = _mm_set_ss(b);
     const __m128 cw = _mm_set_ss(c);
     return _mm_cvtss_f32(_mm_fmadd_ss(aw, bw, cw));
-    #elif FLTX_DETAIL_USE_BASELINE_ARM64_FMA && (defined(__clang__) || defined(__GNUC__))
+    #elif FLTX_USE_BASELINE_ARM64_FMA && (defined(__clang__) || defined(__GNUC__))
     return __builtin_fmaf(a, b, c);
-    #elif FLTX_DETAIL_USE_BASELINE_ARM64_FMA
+    #elif FLTX_USE_BASELINE_ARM64_FMA
     return std::fma(a, b, c);
     #elif defined(__clang__) || defined(__GNUC__)
     return __builtin_fmaf(a, b, c);
@@ -928,9 +951,10 @@ BL_POP_PRECISE
 #undef FLTX_DETAIL_GNU_FAST_MATH_EFT_BARRIER
 #undef FLTX_DETAIL_EFT_BARRIER
 
+// Selects the available exact-product implementation for ordinary operand ranges.
 BL_FORCE_INLINE constexpr void two_prod_precise(double a, double b, double& p, double& err) noexcept
 {
-    #if FLTX_DETAIL_HAS_RUNTIME_FMA_PATH
+    #if FLTX_HAS_RUNTIME_FMA_PATH
     if (bl::detail::is_constant_evaluated()) [[unlikely]]
     {
         two_prod_precise_dekker(a, b, p, err);
@@ -949,12 +973,13 @@ BL_FORCE_INLINE constexpr void two_prod_precise(double a, double b, double& p, d
 }
 
 #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
-BL_FORCE_INLINE constexpr void two_prod_precise_checked(double a, double b, double& p, double& err) noexcept
+// Selects the available exact-product implementation with Dekker range protection.
+BL_FORCE_INLINE constexpr void two_prod_precise_range_safe(double a, double b, double& p, double& err) noexcept
 {
-    #if FLTX_DETAIL_HAS_RUNTIME_FMA_PATH
+    #if FLTX_HAS_RUNTIME_FMA_PATH
     if (bl::detail::is_constant_evaluated()) [[unlikely]]
     {
-        two_prod_precise_dekker_checked(a, b, p, err);
+        two_prod_precise_dekker_range_safe(a, b, p, err);
     }
     else if (runtime_hardware_fma_enabled())
     {
@@ -962,10 +987,10 @@ BL_FORCE_INLINE constexpr void two_prod_precise_checked(double a, double b, doub
     }
     else
     {
-        two_prod_precise_dekker_checked(a, b, p, err);
+        two_prod_precise_dekker_range_safe(a, b, p, err);
     }
     #else
-    two_prod_precise_dekker_checked(a, b, p, err);
+    two_prod_precise_dekker_range_safe(a, b, p, err);
     #endif
 }
 #endif

@@ -94,14 +94,28 @@ namespace
                 observed, reference, resolution, 106.0);
         };
 
-        if (bits(real{ 0 }, resolution) != 0.0 ||
-            bits(-resolution, resolution) != 0.0 ||
-            !std::isinf(bits(real{ 0 }, resolution / 4)) ||
-            bits(real{ 0 }, -resolution / 4) != 0.0 ||
-            !std::isinf(bits(real{ -0.0 }, -resolution / 4)) ||
-            !std::isinf(bits(resolution, resolution)))
+        const double zero_at_resolution = bits(real{0}, resolution);
+        const double wrong_sign = bits(-resolution, resolution);
+        const double rounded_positive_zero = bits(real{0}, resolution / 4);
+        const double opposite_zero_sign = bits(real{0}, -resolution / 4);
+        const double rounded_negative_zero =
+            bits(fltx::tests::mpfr::signed_zero(true), -resolution / 4);
+        const double exact = bits(resolution, resolution);
+
+        if (zero_at_resolution != 0.0 || wrong_sign != 0.0 ||
+            !fltx::tests::mpfr::is_exact_score(rounded_positive_zero) ||
+            !fltx::tests::mpfr::is_exact_score(opposite_zero_sign) ||
+            !fltx::tests::mpfr::is_exact_score(rounded_negative_zero) ||
+            !fltx::tests::mpfr::is_exact_score(exact))
         {
-            throw std::logic_error("accuracy metric failed its zero/resolution self-check");
+            throw std::logic_error(
+                "accuracy metric failed its zero/resolution self-check: " +
+                fltx::tests::accuracy::number(zero_at_resolution) + "," +
+                fltx::tests::accuracy::number(wrong_sign) + "," +
+                fltx::tests::accuracy::number(rounded_positive_zero) + "," +
+                fltx::tests::accuracy::number(opposite_zero_sign) + "," +
+                fltx::tests::accuracy::number(rounded_negative_zero) + "," +
+                fltx::tests::accuracy::number(exact));
         }
     }
 
@@ -159,18 +173,20 @@ namespace
             {
                 out.sample_mode = value();
                 sample_mode_set = true;
-                if (out.sample_mode != "smoke" && out.sample_mode != "standard" &&
-                    out.sample_mode != "full")
+                if (out.sample_mode != "smoke" && out.sample_mode != "small" &&
+                    out.sample_mode != "standard" && out.sample_mode != "full")
                     throw std::runtime_error(
-                        "--sample-mode must be smoke, standard or full");
+                        "--sample-mode must be smoke, small, standard or full");
             }
+            else if (argument == "--advisory")
+                out.advisory = true;
             else if (argument == "--help")
             {
                 std::cout
                     << "fltx_accuracy --precision f32|f64|f128|f256 --output FILE "
                        "--run-id ID --source-revision REV "
-                       "[--sample-mode smoke|standard|full] [--samples N] "
-                       "[--filter TEXT]\n"
+                       "[--sample-mode smoke|small|standard|full] [--samples N] "
+                       "[--filter TEXT] [--advisory]\n"
                        "fltx_accuracy --describe\n";
                 std::exit(0);
             }
@@ -184,7 +200,9 @@ namespace
         if (sample_mode_set && !samples_set)
             out.samples = out.sample_mode == "smoke"
                 ? 12
-                : out.sample_mode == "standard" ? 4096 : 65536;
+                : out.sample_mode == "small"
+                    ? 2048
+                    : out.sample_mode == "standard" ? 4096 : 65536;
         else if (!sample_mode_set && samples_set)
             out.sample_mode = "custom";
         if (out.output.empty() || out.run_id.empty() || out.source_revision.empty())
@@ -220,7 +238,7 @@ int main(int argc, char** argv)
             "implementation", "implementation_short", "implementation_label",
             "api", "domain", "samples", "seed",
             "mean_bits", "p01_bits", "worst_bits", "required_worst_bits",
-            "margin_bits", "pass", "special_support",
+            "margin_bits", "pass", "special_support", "signed_zero_support",
             "worst_input", "observed", "reference"
         });
 
@@ -233,10 +251,16 @@ int main(int argc, char** argv)
             failures = fltx::tests::accuracy::run_f128(output, settings);
         else
             failures = fltx::tests::accuracy::run_f256(output, settings);
-        if (failures != 0)
+        if (failures != 0 && !settings.advisory)
             return 1;
 
         output.finish();
+        if (failures != 0)
+        {
+            std::cerr
+                << "fltx_accuracy: recorded " << failures
+                << " advisory threshold failure(s)\n";
+        }
         return 0;
     }
     catch (const std::exception& error)

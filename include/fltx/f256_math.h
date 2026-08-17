@@ -115,7 +115,13 @@ namespace bl {
 // arithmetic and comparisons
 [[nodiscard]] BL_FORCE_INLINE constexpr f256 fma(const f256_s& x, const f256_s& y, const f256_s& z)
 {
-#if FLTX_DETAIL_MSVC_GUARDED_X86_FMA
+#if defined(__EMSCRIPTEN__) && defined(__clang__) && defined(__wasm32__) && \
+    defined(FLTX_FAST_MATH)
+    BL_CONSTEXPR_RUNTIME_DISPATCH(
+        detail::_f256_impl::fma(x, y, z),
+        detail::_f256_runtime::fma(x, y, z)
+    );
+#elif FLTX_GUARDED_X86_FMA
     BL_CONSTEXPR_RUNTIME_DISPATCH(
         detail::_f256_impl::fma(x, y, z),
         detail::_f256_runtime::fma(x, y, z)
@@ -439,11 +445,6 @@ template<class Vec>
     f256_s s_out{};
     f256_s c_out{};
     const bool ok = bl::sincos(x, s_out, c_out);
-    if (!ok)
-    {
-        s_out = bl::sin(x);
-        c_out = bl::cos(x);
-    }
     detail::fp::assign_sincos_vector(out, s_out, c_out);
     return ok;
 }
@@ -456,11 +457,6 @@ template<class Value> requires (std::same_as<std::remove_cvref_t<Value>, f256> |
     Result s_out{};
     Result c_out{};
     const bool ok = bl::sincos(x, s_out, c_out);
-    if (!ok)
-    {
-        s_out = bl::sin(x);
-        c_out = bl::cos(x);
-    }
     return detail::fp::make_sincos_result(s_out, c_out, ok);
 }
 

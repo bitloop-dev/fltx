@@ -30,10 +30,25 @@ from manifest import (
 from source_fingerprint import source_identity, valid_fingerprint
 
 
-SCHEMA_VERSION = "4"
+SCHEMA_VERSION = "6"
 PRECISIONS = ("f128", "f256")
 CONSUMER_MODES = ("strict", "fastmath")
 MINIMUM_CREDIBLE_BENCHMARK_NS = 0.001
+ADAPTIVE_SAMPLE_MODES = frozenset(("small", "standard"))
+DURABLE_SAMPLE_MODES = ADAPTIVE_SAMPLE_MODES | {"full"}
+_ADAPTIVE_PROFILE = {
+    "benchmark_trials": 7,
+    "benchmark_minimum_trial_ms": 8,
+    "benchmark_policy": "adaptive-v2",
+    "benchmark_fast_threshold_ns": 20,
+    "benchmark_slow_threshold_ns": 10_000,
+    "benchmark_fast_trials": 7,
+    "benchmark_ordinary_trials": 3,
+    "benchmark_fast_minimum_trial_ms": 15,
+    "benchmark_maximum_row_ms": 5_000,
+    "benchmark_corpus_policy": "adaptive-v1",
+    "accuracy_parallel": True,
+}
 SAMPLE_PROFILES = {
     "smoke": {
         "accuracy_samples": 12,
@@ -41,20 +56,15 @@ SAMPLE_PROFILES = {
         "benchmark_trials": 3,
         "benchmark_minimum_trial_ms": 3,
     },
+    "small": {
+        "accuracy_samples": 2048,
+        "benchmark_samples": {"f128": 4096, "f256": 2048},
+        **_ADAPTIVE_PROFILE,
+    },
     "standard": {
         "accuracy_samples": 4096,
         "benchmark_samples": {"f128": 8192, "f256": 4096},
-        "benchmark_trials": 7,
-        "benchmark_minimum_trial_ms": 8,
-        "benchmark_policy": "adaptive-v1",
-        "benchmark_fast_threshold_ns": 20,
-        "benchmark_slow_threshold_ns": 10_000,
-        "benchmark_fast_trials": 7,
-        "benchmark_ordinary_trials": 3,
-        "benchmark_fast_minimum_trial_ms": 15,
-        "benchmark_maximum_row_ms": 5_000,
-        "benchmark_corpus_policy": "adaptive-v1",
-        "accuracy_parallel": True,
+        **_ADAPTIVE_PROFILE,
     },
     "full": {
         "accuracy_samples": 65536,
@@ -69,18 +79,24 @@ def _expected_benchmark_trials(
     sample_mode: str,
     profile: Mapping[str, object],
 ) -> int | tuple[int, ...]:
-    if sample_mode == "standard":
+    if sample_mode in ADAPTIVE_SAMPLE_MODES:
         return (1, 3, 7)
     return int(profile["benchmark_trials"])
 
 
 CANONICAL_TARGETS = {
-    ("windows", "MSVC"): ("windows", "msvc"),
-    ("windows", "MinGW"): ("windows", "gnu"),
-    ("wasm32", "Wasm32"): ("emscripten", "clang"),
-    ("linux", "GCC"): ("linux", "gnu"),
-    ("linux", "Clang"): ("linux", "clang"),
-    ("macos", "AppleClang"): ("darwin", "appleclang"),
+    ("windows", "x86_64", "MSVC"): ("windows", "msvc", frozenset(("", "msvc"))),
+    ("windows", "x86_64", "ClangCL"): ("windows", "clang", frozenset(("msvc",))),
+    ("windows", "x86_64", "MinGW"): ("windows", "gnu", frozenset(("", "gnu"))),
+    ("windows", "arm64", "MSVC"): ("windows", "msvc", frozenset(("", "msvc"))),
+    ("windows", "arm64", "ClangCL"): ("windows", "clang", frozenset(("msvc",))),
+    ("linux", "x86_64", "GCC"): ("linux", "gnu", frozenset(("", "gnu"))),
+    ("linux", "x86_64", "Clang"): ("linux", "clang", frozenset(("", "gnu"))),
+    ("linux", "arm64", "GCC"): ("linux", "gnu", frozenset(("", "gnu"))),
+    ("linux", "arm64", "Clang"): ("linux", "clang", frozenset(("", "gnu"))),
+    ("macos", "x86_64", "AppleClang"): ("darwin", "appleclang", frozenset(("", "gnu"))),
+    ("macos", "arm64", "AppleClang"): ("darwin", "appleclang", frozenset(("", "gnu"))),
+    ("wasm32", "wasm32", "Emscripten"): ("emscripten", "clang", frozenset(("", "gnu"))),
 }
 REQUIRED_CONFIGURATION_FIELDS = {
     "harness": {
@@ -127,6 +143,8 @@ BUILD_CONFIGURATION_FIELDS = {
     "config",
     "system",
     "processor",
+    "architecture",
+    "frontend-variant",
     "optimized",
     "flags-hash",
     "source-fingerprint",
@@ -175,6 +193,7 @@ ACCURACY_FIELDS = (
     "margin_bits",
     "pass",
     "special_support",
+    "signed_zero_support",
     "worst_input",
     "observed",
     "reference",
@@ -215,6 +234,7 @@ CANONICAL_FIELDS = (
     "min_margin_bits",
     "accuracy_pass",
     "special_support",
+    "signed_zero_support",
     "ns_iter",
     "speed_ratio",
     "run_id",
@@ -229,6 +249,12 @@ def consumer_mode_suffix(consumer_mode: str) -> str:
     if consumer_mode not in CONSUMER_MODES:
         raise MetricsError(f"unsupported consumer mode {consumer_mode!r}")
     return "" if consumer_mode == "strict" else "_fastmath"
+
+
+def accuracy_policy_arguments(consumer_mode: str) -> tuple[str, ...]:
+    if consumer_mode not in CONSUMER_MODES:
+        raise MetricsError(f"unsupported consumer mode {consumer_mode!r}")
+    return ("--advisory",) if consumer_mode == "fastmath" else ()
 
 
 def metrics_stem(compiler: str, precision: str, consumer_mode: str) -> str:
@@ -463,6 +489,7 @@ def _require_source_fingerprint(
 
 def _validate_target_labels(
     platform: str,
+    architecture: str,
     compiler: str,
     configuration: Mapping[str, Mapping[str, str]],
     source: Path | str,
@@ -474,26 +501,35 @@ def _validate_target_labels(
         return
 
     system = build["system"].casefold()
+    reported_architecture = build["architecture"]
     compiler_id = build["compiler-id"].casefold()
+    frontend_variant = build["frontend-variant"].casefold()
 
-    expected = CANONICAL_TARGETS.get((platform, compiler))
+    expected = CANONICAL_TARGETS.get((platform, architecture, compiler))
     if expected is None:
         raise MetricsError(
-            f"{source}: unsupported canonical target label {platform}/{compiler}"
+            f"{source}: unsupported canonical target label "
+            f"{platform}/{architecture}/{compiler}"
         )
 
-    expected_system, expected_compiler_id = expected
-    if system != expected_system or compiler_id != expected_compiler_id:
+    expected_system, expected_compiler_id, expected_frontends = expected
+    if (
+        system != expected_system
+        or reported_architecture != architecture
+        or compiler_id != expected_compiler_id
+        or frontend_variant not in expected_frontends
+    ):
         raise MetricsError(
-            f"{source}: target label {platform}/{compiler} does not match "
-            f"reported {build['system']}/{build['compiler-id']}/{build['processor']} build"
+            f"{source}: target label {platform}/{architecture}/{compiler} does not "
+            f"match reported {build['system']}/{build['architecture']}/"
+            f"{build['compiler-id']}/{build['frontend-variant']} build"
         )
 
 
 def infer_canonical_target(
     configuration: Mapping[str, Mapping[str, str]],
     source: Path | str,
-) -> tuple[str, str]:
+) -> tuple[str, str, str]:
     """Return the canonical output labels reported by a metrics runner."""
 
     build = configuration.get("build")
@@ -502,19 +538,28 @@ def infer_canonical_target(
 
     identity = (
         build.get("system", "").casefold(),
+        build.get("architecture", ""),
         build.get("compiler-id", "").casefold(),
+        build.get("frontend-variant", "").casefold(),
     )
     matches = [
         target
-        for target, expected_identity in CANONICAL_TARGETS.items()
-        if expected_identity == identity
+        for target, (expected_system, expected_compiler, expected_frontends)
+        in CANONICAL_TARGETS.items()
+        if (
+            identity[0] == expected_system
+            and identity[1] == target[1]
+            and identity[2] == expected_compiler
+            and identity[3] in expected_frontends
+        )
     ]
     if len(matches) != 1:
         raise MetricsError(
             f"{source}: unsupported canonical build identity "
             f"{build.get('system', '<missing>')}/"
+            f"{build.get('architecture', '<missing>')}/"
             f"{build.get('compiler-id', '<missing>')}/"
-            f"{build.get('processor', '<missing>')}"
+            f"{build.get('frontend-variant', '<missing>')}"
         )
     return matches[0]
 
@@ -679,6 +724,7 @@ def _preflight_runners(
     *,
     fingerprint: str,
     platform: str | None,
+    architecture: str | None,
     compiler: str | None,
     publishable: bool,
     environment: Mapping[str, str] | None = None,
@@ -692,6 +738,7 @@ def _preflight_runners(
             source=f"{runner_name} preflight",
             fingerprint=fingerprint,
             platform=platform,
+            architecture=architecture,
             compiler=compiler,
             publishable=publishable,
         )
@@ -706,7 +753,7 @@ def validate_runner_artifacts(
     sample_mode: str,
     consumer_mode: str = "strict",
     environment: Mapping[str, str] | None = None,
-) -> tuple[str, str]:
+) -> tuple[str, str, str]:
     """Validate existing runners without configuring, building, or measuring."""
 
     if sample_mode not in SAMPLE_PROFILES:
@@ -726,6 +773,7 @@ def validate_runner_artifacts(
         ),
         fingerprint=identity.fingerprint,
         platform=None,
+        architecture=None,
         compiler=None,
         publishable=sample_mode == "full",
         environment=environment,
@@ -773,13 +821,14 @@ def _accept_runner_configuration(
     source: str,
     fingerprint: str,
     platform: str | None,
+    architecture: str | None,
     compiler: str | None,
     publishable: bool,
 ) -> dict[str, dict[str, str]]:
     candidate = _require_matching_configuration(expected, observed, source)
     _require_source_fingerprint(candidate, fingerprint, source)
-    if platform is not None and compiler is not None:
-        _validate_target_labels(platform, compiler, candidate, source)
+    if platform is not None and architecture is not None and compiler is not None:
+        _validate_target_labels(platform, architecture, compiler, candidate, source)
     if publishable:
         _validate_publishable_build(candidate, source)
     return candidate
@@ -1074,7 +1123,7 @@ def _accuracy_values(
         raise MetricsError(f"{source}: non-exact result has exact worst bits")
     if min(mean, p01, worst) < 0 or p01 < worst or mean < worst:
         raise MetricsError(f"{source}: invalid accuracy ordering for {row['operation']}")
-    if row["implementation"] != "fltx":
+    if row["implementation"] not in {"fltx", "native"}:
         if any(row[field] for field in ("required_worst_bits", "margin_bits", "pass")):
             raise MetricsError(f"{source}: competitor threshold fields must be empty")
         return mean, p01, worst, None, None, exact
@@ -1162,6 +1211,14 @@ def _accuracy_summary(
             f"{source}: inconsistent special_support for "
             f"{detail[0]['implementation']} {detail[0]['operation']}"
         )
+    signed_zero = {row["signed_zero_support"] for row in detail}
+    if not signed_zero.issubset({"yes", "no", "-"}):
+        raise MetricsError(f"{source}: malformed signed_zero_support category")
+    if len(signed_zero) != 1:
+        raise MetricsError(
+            f"{source}: inconsistent signed_zero_support for "
+            f"{detail[0]['implementation']} {detail[0]['operation']}"
+        )
     return {
         "samples": total,
         "mean_bits": (
@@ -1176,6 +1233,7 @@ def _accuracy_summary(
         "min_margin_bits": min(evaluated_margins),
         "accuracy_pass": "yes" if all(evaluated_passes) else "no",
         "special_support": special.pop(),
+        "signed_zero_support": signed_zero.pop(),
     }
 
 
@@ -1249,11 +1307,12 @@ def aggregate(
         ) if detail else dict.fromkeys(
             ("samples", "mean_bits", "p01_bits", "worst_bits", "domains_passed",
              "domains_total", "min_margin_bits", "accuracy_pass",
-             "special_support"),
+             "special_support", "signed_zero_support"),
             "",
         )
         if not detail:
             accuracy_values["special_support"] = "-"
+            accuracy_values["signed_zero_support"] = "-"
         benchmark_values = (
             _benchmark_summary(benchmark, benchmark_path, expected_trials)
             if benchmark
@@ -1424,6 +1483,7 @@ def _result_handoff(
     sample_mode: str,
     consumer_mode: str,
     platform: str,
+    architecture: str,
     compiler: str,
     input_root: Path,
     metadata: Path,
@@ -1434,8 +1494,9 @@ def _result_handoff(
         "sample_mode": sample_mode,
         "consumer_mode": consumer_mode,
         "platform": platform,
+        "architecture": architecture,
         "compiler": compiler,
-        "target": f"{platform}/{compiler}",
+        "target": f"{platform}/{architecture}/{compiler}",
         "input_root": str(input_root.resolve()),
         "metadata": str(metadata.resolve()),
     }
@@ -1467,6 +1528,7 @@ def _validate_reusable_candidate(
     sample_mode: str,
     consumer_mode: str = "strict",
     platform: str,
+    architecture: str,
     compiler: str,
     fingerprint: str,
     configuration: Mapping[str, Mapping[str, str]],
@@ -1481,6 +1543,7 @@ def _validate_reusable_candidate(
         "status": "complete",
         "source_fingerprint": fingerprint,
         "platform": platform,
+        "architecture": architecture,
         "compiler": compiler,
         "sample_mode": sample_mode,
         "precisions": list(PRECISIONS),
@@ -1529,8 +1592,8 @@ def _validate_reusable_candidate(
     ):
         raise MetricsError(f"{metadata_path}: reusable phases are incomplete")
 
-    input_root = metadata_path.parents[2]
-    target_root = input_root / platform
+    input_root = metadata_path.parents[3]
+    target_root = input_root / platform / architecture
     expected_outputs = {
         f"{metrics_stem(compiler, precision, consumer_mode)}.csv"
         for precision in PRECISIONS
@@ -1620,6 +1683,7 @@ def _validate_reusable_candidate(
         sample_mode=sample_mode,
         consumer_mode=consumer_mode,
         platform=platform,
+        architecture=architecture,
         compiler=compiler,
         input_root=input_root,
         metadata=metadata_path,
@@ -1633,22 +1697,24 @@ def _find_reusable_run(
     sample_mode: str,
     consumer_mode: str,
     platform: str,
+    architecture: str,
     compiler: str,
     fingerprint: str,
     configuration: Mapping[str, Mapping[str, str]],
     host: object,
 ) -> tuple[dict[str, object] | None, str]:
-    if sample_mode in {"standard", "full"}:
+    if sample_mode in DURABLE_SAMPLE_MODES:
         candidates = [
             output_root
             / platform
+            / architecture
             / "detail"
             / f"{run_metadata_stem(compiler, consumer_mode)}.json"
         ]
     else:
         candidates = list(
             (root / "build" / "metrics" / "runs").glob(
-                f"*/{platform}/detail/"
+                f"*/{platform}/{architecture}/detail/"
                 f"{run_metadata_stem(compiler, consumer_mode)}.json"
             )
         )
@@ -1668,6 +1734,7 @@ def _find_reusable_run(
                     sample_mode=sample_mode,
                     consumer_mode=consumer_mode,
                     platform=platform,
+                    architecture=architecture,
                     compiler=compiler,
                     fingerprint=fingerprint,
                     configuration=configuration,
@@ -1803,7 +1870,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--platform",
         help="Output folder, for example windows or wasm32",
     )
-    parser.add_argument("--compiler", help="File prefix, for example MSVC or Wasm32")
+    parser.add_argument("--architecture", help="Target architecture, for example x86_64")
+    parser.add_argument("--compiler", help="File prefix, for example MSVC or Emscripten")
     parser.add_argument("--precision", action="append", choices=PRECISIONS, dest="precisions")
     parser.add_argument(
         "--sample-mode",
@@ -1818,25 +1886,38 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--result-file", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--reuse-compatible", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--canonical-publication", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     if args.accuracy is None and args.benchmark is None:
         parser.error("at least one of --accuracy or --benchmark is required")
-    if (args.platform is None) != (args.compiler is None):
-        parser.error("--platform and --compiler must be supplied together")
+    explicit_identity = (args.platform, args.architecture, args.compiler)
+    if any(value is not None for value in explicit_identity) and not all(
+        value is not None for value in explicit_identity
+    ):
+        parser.error(
+            "--platform, --architecture, and --compiler must be supplied together"
+        )
     return args
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     platform: str | None = None
+    architecture: str | None = None
     compiler: str | None = None
-    if args.platform is not None and args.compiler is not None:
+    if (
+        args.platform is not None
+        and args.architecture is not None
+        and args.compiler is not None
+    ):
         try:
             platform = _safe_component(args.platform, "platform")
+            architecture = _safe_component(args.architecture, "architecture")
             compiler = _safe_component(args.compiler, "compiler")
-            if (platform, compiler) not in CANONICAL_TARGETS:
+            if (platform, architecture, compiler) not in CANONICAL_TARGETS:
                 raise MetricsError(
-                    f"unsupported canonical target label {platform}/{compiler}"
+                    "unsupported canonical target label "
+                    f"{platform}/{architecture}/{compiler}"
                 )
         except MetricsError as error:
             print(f"metrics failed: {error}", file=sys.stderr)
@@ -1866,20 +1947,26 @@ def main(argv: list[str] | None = None) -> int:
         runner_names == {"accuracy", "benchmark"}
         and set(precisions) == set(PRECISIONS)
     )
-    durable_run = complete_suite and args.sample_mode in {"standard", "full"}
+    durable_run = complete_suite and args.sample_mode in DURABLE_SAMPLE_MODES
     canonical_output_root = (root / "validation" / "metrics" / "data").resolve()
     output_root = (
         args.output_root.resolve()
         if args.output_root is not None
-        else (
-            canonical_output_root
-            if args.sample_mode == "full"
-            else root / "build" / "metrics" / "data"
-        )
+        else root / "build" / "metrics" / "data"
     )
-    if args.sample_mode != "full" and output_root == canonical_output_root:
+    if output_root == canonical_output_root and not args.canonical_publication:
         print(
-            "metrics failed: only the full profile may write canonical data",
+            "metrics failed: canonical data may only be written by "
+            "run_preset_metrics.py --release",
+            file=sys.stderr,
+        )
+        return 1
+    if args.canonical_publication and (
+        args.sample_mode != "full" or output_root != canonical_output_root
+    ):
+        print(
+            "metrics failed: canonical publication requires the full profile "
+            "and canonical output root",
             file=sys.stderr,
         )
         return 1
@@ -1895,6 +1982,7 @@ def main(argv: list[str] | None = None) -> int:
             runners,
             fingerprint=fingerprint,
             platform=platform,
+            architecture=architecture,
             compiler=compiler,
             publishable=complete_run,
         )
@@ -1903,15 +1991,15 @@ def main(argv: list[str] | None = None) -> int:
             args.consumer_mode,
             "metrics runner preflight",
         )
-        if platform is None or compiler is None:
-            platform, compiler = infer_canonical_target(
+        if platform is None or architecture is None or compiler is None:
+            platform, architecture, compiler = infer_canonical_target(
                 configuration,
                 "metrics runner preflight",
             )
     except MetricsError as error:
         print(f"metrics failed: {error}", file=sys.stderr)
         return 1
-    assert platform is not None and compiler is not None
+    assert platform is not None and architecture is not None and compiler is not None
     if args.reuse_compatible and complete_suite:
         reusable, rejection = _find_reusable_run(
             root,
@@ -1919,6 +2007,7 @@ def main(argv: list[str] | None = None) -> int:
             sample_mode=args.sample_mode,
             consumer_mode=args.consumer_mode,
             platform=platform,
+            architecture=architecture,
             compiler=compiler,
             fingerprint=fingerprint,
             configuration=configuration,
@@ -1950,8 +2039,9 @@ def main(argv: list[str] | None = None) -> int:
 
     target = (
         output_root / platform
+        / architecture
         if durable_run
-        else root / "build" / "metrics" / "runs" / run_id / platform
+        else root / "build" / "metrics" / "runs" / run_id / platform / architecture
     )
     detail = target / "detail"
     staging = detail / ".staging" / run_id
@@ -1961,6 +2051,7 @@ def main(argv: list[str] | None = None) -> int:
         "source_revision": revision,
         "source_fingerprint": fingerprint,
         "platform": platform,
+        "architecture": architecture,
         "compiler": compiler,
         "precisions": list(precisions),
         "implementations": {
@@ -2012,7 +2103,7 @@ def main(argv: list[str] | None = None) -> int:
     stop_phases = False
 
     parallel_accuracy = (
-        args.sample_mode == "standard"
+        bool(profile.get("accuracy_parallel", False))
         and "accuracy" in runner_names
         and len(precisions) > 1
     )
@@ -2040,6 +2131,7 @@ def main(argv: list[str] | None = None) -> int:
                     args.sample_mode,
                     "--samples",
                     str(requested_samples),
+                    *accuracy_policy_arguments(args.consumer_mode),
                     "--output",
                     str(output),
                 ],
@@ -2067,6 +2159,7 @@ def main(argv: list[str] | None = None) -> int:
                         source=f"accuracy/{precision}",
                         fingerprint=fingerprint,
                         platform=platform,
+                        architecture=architecture,
                         compiler=compiler,
                         publishable=complete_run,
                     )
@@ -2139,6 +2232,11 @@ def main(argv: list[str] | None = None) -> int:
                             if runner_name == "benchmark"
                             else []
                         ),
+                        *(
+                            accuracy_policy_arguments(args.consumer_mode)
+                            if runner_name == "accuracy"
+                            else ()
+                        ),
                         "--output",
                         str(output),
                     ],
@@ -2153,6 +2251,7 @@ def main(argv: list[str] | None = None) -> int:
                     source=f"{runner_name}/{precision}",
                     fingerprint=fingerprint,
                     platform=platform,
+                    architecture=architecture,
                     compiler=compiler,
                     publishable=complete_run,
                 )
@@ -2271,7 +2370,7 @@ def main(argv: list[str] | None = None) -> int:
         staging.parent.rmdir()
     except OSError:
         pass
-    action = "published" if complete_run else "completed"
+    action = "published" if args.canonical_publication else "completed"
     if args.result_file is not None:
         try:
             _write_json(
@@ -2281,8 +2380,9 @@ def main(argv: list[str] | None = None) -> int:
                     sample_mode=args.sample_mode,
                     consumer_mode=args.consumer_mode,
                     platform=platform,
+                    architecture=architecture,
                     compiler=compiler,
-                    input_root=target.parent,
+                    input_root=target.parents[1],
                     metadata=final_metadata,
                 ),
             )

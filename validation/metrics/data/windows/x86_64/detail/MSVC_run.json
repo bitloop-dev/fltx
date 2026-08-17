@@ -1,0 +1,184 @@
+{
+  "accuracy_parallel": true,
+  "accuracy_samples": 4096,
+  "architecture": "x86_64",
+  "benchmark_corpus_policy": "adaptive-v1",
+  "benchmark_fast_minimum_trial_ms": 15,
+  "benchmark_fast_threshold_ns": 20,
+  "benchmark_fast_trials": 7,
+  "benchmark_maximum_row_ms": 5000,
+  "benchmark_minimum_trial_ms": 8,
+  "benchmark_ordinary_trials": 3,
+  "benchmark_policy": "adaptive-v2",
+  "benchmark_samples": {
+    "f128": 8192,
+    "f256": 4096
+  },
+  "benchmark_slow_threshold_ns": 10000,
+  "benchmark_trials": 7,
+  "compiler": "MSVC",
+  "configuration": {
+    "build": {
+      "architecture": "x86_64",
+      "compiler-id": "MSVC",
+      "compiler-version": "19.51.36244.0",
+      "config": "Release",
+      "flags-hash": "a7783233a2a1c2360aa486f3fcd069edd7b754c80c337bb23b401ee04591097b",
+      "frontend-variant": "MSVC",
+      "optimized": "1",
+      "processor": "AMD64",
+      "source-fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
+      "system": "Windows"
+    },
+    "consumer": {
+      "arm64": "0",
+      "fast-math": "off",
+      "fma": "AUTO",
+      "has-x86-fma": "0",
+      "simd": "on",
+      "simulated-consteval": "off",
+      "tu-x86-fma": "0",
+      "x86": "1"
+    },
+    "harness": {
+      "qdpp": "on",
+      "tlfloat": "on"
+    },
+    "library": {
+      "arm64": "0",
+      "fast-math": "off",
+      "fast-math-request": "AUTO",
+      "fma": "AUTO",
+      "runtime-fma": "available",
+      "simd": "on",
+      "tu-x86-fma": "0",
+      "x86": "1"
+    },
+    "library_strategy": {
+      "baseline-arm64": "0",
+      "compiled-x86-backend": "0",
+      "f256-simd": "1",
+      "msvc-guarded": "1",
+      "neon": "0",
+      "runtime-check": "1",
+      "runtime-path": "1",
+      "scalar-x86": "0",
+      "sse2": "1",
+      "trig-simd": "1",
+      "wasm-simd": "0"
+    }
+  },
+  "consumer_mode": "strict",
+  "created_utc": "2026-08-15T15:54:19.613451+00:00",
+  "executables": {
+    "accuracy": {
+      "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-msvc-release\\validation\\fltx_accuracy.exe",
+      "sha256": "4ba63c29232cb5d0d74635804780276bdf11d4529a230167a9310b851eb0b829",
+      "wasm-sha256": "not-present"
+    },
+    "benchmark": {
+      "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-msvc-release\\validation\\fltx_benchmark.exe",
+      "sha256": "7900599869eb450db06a3a7e01f2f19c098456b8d756488d26a334108d8d40d5",
+      "wasm-sha256": "not-present"
+    }
+  },
+  "host": {
+    "machine": "AMD64",
+    "node": "not-used",
+    "os": "Windows",
+    "os-release": "11",
+    "processor": "AMD64 Family 26 Model 68 Stepping 0, AuthenticAMD",
+    "python": "CPython 3.13.14"
+  },
+  "implementations": {
+    "f128": [
+      {
+        "id": "fltx",
+        "label": "fltx bl::f128",
+        "short_label": "fltx"
+      },
+      {
+        "id": "qdpp",
+        "label": "qdpp dd_real",
+        "short_label": "ddreal"
+      },
+      {
+        "id": "cppdd",
+        "label": "boost::multiprecision::cpp_double_double",
+        "short_label": "cppdd"
+      },
+      {
+        "id": "tlfloat",
+        "label": "TLFloat Quad",
+        "short_label": "tlquad"
+      }
+    ],
+    "f256": [
+      {
+        "id": "fltx",
+        "label": "fltx bl::f256",
+        "short_label": "fltx"
+      },
+      {
+        "id": "qdpp",
+        "label": "qdpp qd_real",
+        "short_label": "qdreal"
+      },
+      {
+        "id": "mpfr64",
+        "label": "boost::multiprecision::mpfr_float_backend<64>",
+        "short_label": "mpfr64"
+      },
+      {
+        "id": "tlfloat",
+        "label": "TLFloat Octuple",
+        "short_label": "tloct"
+      }
+    ]
+  },
+  "outputs": {
+    "MSVC_f128.csv": "7971934eac5c75c9f3118579aefb1600a6d0e9eef1bdedca0ce232c9aa81db45",
+    "MSVC_f256.csv": "619f5545eb06903c3b0aff4a351c27d2894738b61b78785c253b73f85982391d",
+    "detail/MSVC_f128_accuracy.csv": "9cc5b048a2cbb469fd7326cf6a3908047762d3bb78a3a057af9d9a050974f1c9",
+    "detail/MSVC_f128_benchmark.csv": "85f446cfac78c3cfb7d5e8168dff2adb00a7371c02fcf8471bc85953570e02cf",
+    "detail/MSVC_f256_accuracy.csv": "c185892d72eec1edcb9457c86db0998053b384ba4801aefbc0225be6248f129c",
+    "detail/MSVC_f256_benchmark.csv": "e26e04f0e637897ca14f6c4f92aff4a63acb65bf2589926ad9116403f6c427dc"
+  },
+  "phases": {
+    "f128.accuracy": {
+      "output": "MSVC_f128_accuracy.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "f128.benchmark": {
+      "output": "MSVC_f128_benchmark.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "f256.accuracy": {
+      "output": "MSVC_f256_accuracy.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "f256.benchmark": {
+      "output": "MSVC_f256_benchmark.csv",
+      "return_code": 0,
+      "status": "passed"
+    }
+  },
+  "phases_requested": [
+    "accuracy",
+    "benchmark"
+  ],
+  "platform": "windows",
+  "precisions": [
+    "f128",
+    "f256"
+  ],
+  "run_id": "ff1951e869c9480085d12c8d2f11f164",
+  "sample_mode": "standard",
+  "schema_version": "6",
+  "source_fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
+  "source_revision": "b38d8f2a0c9da2eeae373bce48a1aa42bf88fcdc-dirty-7cd523deac97",
+  "status": "complete"
+}

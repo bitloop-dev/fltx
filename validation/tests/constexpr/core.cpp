@@ -100,6 +100,24 @@ namespace
     }
 
     template<class T>
+    consteval bool arithmetic_special_values_are_constant_evaluated()
+    {
+        constexpr T zero{ 0.0 };
+        constexpr T negative_zero{ -0.0 };
+        constexpr T one{ 1.0 };
+        constexpr T infinity = std::numeric_limits<T>::infinity();
+
+        const T positive_infinity = one / zero;
+        const T negative_infinity = one / negative_zero;
+
+        return bl::isinf(positive_infinity) && !bl::signbit(positive_infinity) &&
+               bl::isinf(negative_infinity) && bl::signbit(negative_infinity) &&
+               bl::isnan(zero / zero) &&
+               bl::isnan(infinity - infinity) &&
+               bl::isnan(infinity * zero);
+    }
+
+    template<class T>
     consteval bool exact_math_is_constant_evaluated()
     {
         T integral{};
@@ -223,6 +241,8 @@ namespace
     static_assert(within_bits(qd_sincos.c, qd_cos_expected, 178));
     static_assert(core_is_constant_evaluated<bl::f128>());
     static_assert(core_is_constant_evaluated<bl::f256>());
+    static_assert(arithmetic_special_values_are_constant_evaluated<bl::f128>());
+    static_assert(arithmetic_special_values_are_constant_evaluated<bl::f256>());
     static_assert(exact_math_is_constant_evaluated<bl::f128>());
     static_assert(exact_math_is_constant_evaluated<bl::f256>());
     static_assert(nominal_navigation_is_constant_evaluated<bl::f128>());
@@ -257,6 +277,8 @@ TEST_CASE("genuine constant evaluation covers representative heavy paths", "[con
 
     STATIC_CHECK(core_is_constant_evaluated<bl::f128>());
     STATIC_CHECK(core_is_constant_evaluated<bl::f256>());
+    STATIC_CHECK(arithmetic_special_values_are_constant_evaluated<bl::f128>());
+    STATIC_CHECK(arithmetic_special_values_are_constant_evaluated<bl::f256>());
     STATIC_CHECK(exact_math_is_constant_evaluated<bl::f128>());
     STATIC_CHECK(exact_math_is_constant_evaluated<bl::f256>());
     STATIC_CHECK(nominal_navigation_is_constant_evaluated<bl::f128>());

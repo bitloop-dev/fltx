@@ -25,6 +25,7 @@ from build_tables import (
     load,
 )
 from run_metrics import CONSUMER_MODES, MetricsError, consumer_mode_suffix
+from manifest import IMPLEMENTATIONS
 
 
 PRECISIONS = ("f128", "f256")
@@ -112,7 +113,10 @@ COLUMN_SPECS = (
     ("pass", ("pass",), 40),
     ("benchmark", ("time · speed vs FLTX",), 40),
     ("special", (), 40),
+    ("signed_zero", (), 24),
 )
+SUBNORMAL_COLUMN_SPEC = ("subnormal", (), 52)
+SUBNORMAL_DOMAIN = "subnormal"
 MARGIN = 12
 COMPACT_MARGIN = 0
 TITLE_HEIGHT = 54
@@ -248,6 +252,130 @@ def _special_style(
     if category not in SUPPORT:
         raise MetricsError(f"malformed special_support category {category!r}")
     return category, body_fill, SUPPORT[category]
+
+
+def _boolean_support_style(
+    row: dict[str, str] | None,
+    field: str,
+    label: str,
+    body_fill: str = "#33363d",
+) -> tuple[str, str, str]:
+    category = "-" if row is None else row.get(field, "-")
+    styles = {
+        "yes": ("✓", "#4ade80"),
+        "no": ("✗", "#f87171"),
+        "-": ("-", "#a5abb5"),
+    }
+    if category not in styles:
+        raise MetricsError(
+            f"malformed {label} support category {category!r}"
+        )
+    text, foreground = styles[category]
+    return text, body_fill, foreground
+
+
+def _signed_zero_style(
+    row: dict[str, str] | None,
+    body_fill: str = "#33363d",
+) -> tuple[str, str, str]:
+    return _boolean_support_style(
+        row, "signed_zero_support", "signed-zero", body_fill,
+    )
+
+
+def _subnormal_style(
+    row: dict[str, str] | None,
+    body_fill: str = "#33363d",
+) -> tuple[str, str, str]:
+    return _boolean_support_style(
+        row, "subnormal_support", "subnormal", body_fill,
+    )
+
+
+def _column_specs(consumer_mode: str) -> tuple[tuple[str, tuple[str, ...], int], ...]:
+    return (
+        COLUMN_SPECS + (SUBNORMAL_COLUMN_SPEC,)
+        if consumer_mode == "fastmath"
+        else COLUMN_SPECS
+    )
+
+
+def _display_row(
+    dataset: Dataset,
+    target: Target,
+    precision: str,
+    group: str,
+    operation: str,
+    implementation: str,
+    row: dict[str, str] | None,
+    *,
+    normal_only: bool,
+) -> dict[str, str] | None:
+    """Return report values while retaining subnormal evidence separately."""
+
+    if row is None:
+        return None
+    display = dict(row)
+    details = [
+        detail
+        for (
+            detail_target, detail_precision, detail_group,
+            detail_operation, detail_implementation, _,
+        ), detail in dataset.accuracy.items()
+        if (
+            detail_target, detail_precision, detail_group,
+            detail_operation, detail_implementation,
+        ) == (target, precision, group, operation, implementation)
+    ]
+    subnormal = [
+        detail for detail in details
+        if detail["domain"] == SUBNORMAL_DOMAIN
+    ]
+    if implementation == "fltx" and subnormal:
+        display["subnormal_support"] = (
+            "yes" if all(detail["pass"] == "yes" for detail in subnormal)
+            else "no"
+        )
+    else:
+        display["subnormal_support"] = "-"
+
+    primary = [
+        detail for detail in details
+        if detail["domain"] != SUBNORMAL_DOMAIN
+    ]
+    if not normal_only or not subnormal or not primary:
+        return display
+
+    counts = [int(detail["samples"]) for detail in primary]
+    exact = [math.isinf(float(detail["mean_bits"])) for detail in primary]
+    means = [float(detail["mean_bits"]) for detail in primary]
+    total = sum(counts)
+    nominal_bits = next(
+        item.nominal_bits
+        for item in IMPLEMENTATIONS[precision]
+        if item.id == implementation
+    )
+    pooled = [
+        nominal_bits + 32.0 if is_exact else mean
+        for mean, is_exact in zip(means, exact)
+    ]
+    display.update({
+        "samples": str(total),
+        "mean_bits": (
+            "inf" if all(exact)
+            else str(sum(value * count for value, count in zip(pooled, counts)) / total)
+        ),
+        "p01_bits": str(min(float(detail["p01_bits"]) for detail in primary)),
+        "worst_bits": str(min(float(detail["worst_bits"]) for detail in primary)),
+        "domains_passed": str(sum(detail["pass"] == "yes" for detail in primary)),
+        "domains_total": str(len(primary)),
+        "min_margin_bits": str(min(float(detail["margin_bits"]) for detail in primary)),
+        "accuracy_pass": (
+            "yes" if all(detail["pass"] == "yes" for detail in primary)
+            else "no"
+        ),
+    })
+    return display
 
 
 def _accuracy_style(
@@ -391,6 +519,8 @@ def _tooltip(
             f"domains: {row['domains_passed']}/{row['domains_total']}",
             f"minimum threshold margin: {_fmt_bits(row['min_margin_bits'])} bits",
             f"special values: {row['special_support']}",
+            f"signed zero: {row.get('signed_zero_support', '-')}",
+            f"subnormal support: {row.get('subnormal_support', '-')}",
         ))
         details = sorted(
             (
@@ -664,8 +794,9 @@ def _column_widths(
     implementation: str,
     layout: str = "full",
 ) -> tuple[int, ...]:
+    column_specs = _column_specs(dataset.consumer_mode)
     visible = {}
-    for key, lines, _ in COLUMN_SPECS:
+    for key, lines, _ in column_specs:
         visible[key] = list(
             _column_header_lines(key, lines, layout, implementation)
         )
@@ -675,6 +806,10 @@ def _column_widths(
     for group, operation in operations:
         row = dataset.canonical.get(
             (target, precision, group, operation, implementation)
+        )
+        row = _display_row(
+            dataset, target, precision, group, operation, implementation, row,
+            normal_only=dataset.consumer_mode == "fastmath",
         )
         visible["mean"].append(
             "-" if row is None else bits_formatter(row["mean_bits"])
@@ -687,6 +822,9 @@ def _column_widths(
             _benchmark_text(row, implementation, layout)
         )
         visible["special"].append(_special_style(row)[0])
+        visible["signed_zero"].append(_signed_zero_style(row)[0])
+        if dataset.consumer_mode == "fastmath":
+            visible["subnormal"].append(_subnormal_style(row)[0])
 
     def required_width(lines: tuple[str, ...] | list[str]) -> int:
         return (
@@ -706,7 +844,7 @@ def _column_widths(
             ),
             required_width(visible[key]),
         )
-        for key, _, minimum in COLUMN_SPECS
+        for key, _, minimum in column_specs
     ]
 
     # Second-level headers span one or more leaf columns. Apply their width
@@ -726,6 +864,9 @@ def _column_widths(
     )
     widths[3] = max(widths[3], required_width(benchmark_group_header))
     widths[4] = max(widths[4], required_width(("Inf/", "NaN")))
+    widths[5] = max(widths[5], required_width(("±0",)))
+    if dataset.consumer_mode == "fastmath":
+        widths[6] = max(widths[6], required_width(("Subnorm",)))
     return tuple(widths)
 
 
@@ -843,6 +984,25 @@ def render_overview(
         margin * 2 + operation_width +
         len(implementations) * table_gap + sum(block_widths)
     )
+    title_mode = (
+        " consumer fast-math" if dataset.consumer_mode == "fastmath" else ""
+    )
+    title = f"{precision}{title_mode} metrics overview — {target.label}"
+    subtitle = (
+        "Accuracy excludes the subnormal domain; support is reported separately. "
+        "Speed is relative to FLTX."
+        if dataset.consumer_mode == "fastmath"
+        else
+        "Accuracy is MPFR-relative; domain pass counts use FLTX release "
+        "thresholds; speed is implementation ÷ FLTX."
+    )
+    if layout == "full":
+        character_width = _estimated_character_width("full", 10)
+        width = max(
+            width,
+            math.ceil(len(title) * character_width * 1.5) + margin * 2,
+            math.ceil(len(subtitle) * character_width) + margin * 2,
+        )
     header_height = sum(header_heights)
     body_y = title_height + header_height
     operation_groups = _grouped_operations(operations)
@@ -859,17 +1019,14 @@ def render_overview(
         f'<rect width="{width}" height="{height}" fill="#0f1115"/>',
     ]
     if layout == "full":
-        title_mode = (
-            " consumer fast-math" if dataset.consumer_mode == "fastmath" else ""
-        )
         add_text(
             parts, margin, 23,
-            f"{precision}{title_mode} metrics overview — {target.label}",
+            title,
             anchor="start", weight="bold", size=15,
         )
         add_text(
             parts, margin, 42,
-            "Accuracy is MPFR-relative; domain pass counts use FLTX release thresholds; speed is implementation ÷ FLTX.",
+            subtitle,
             anchor="start", fill="#aeb4bf", size=10,
         )
 
@@ -955,7 +1112,10 @@ def render_overview(
                 layout == "compact",
             ),
             (("Inf/", "NaN"), column_widths[4], True),
+            (("±0",), column_widths[5], True),
         )
+        if dataset.consumer_mode == "fastmath":
+            groups += ((("Subnorm",), column_widths[6], True),)
         group_x = x
         for group_lines, group_width, spans_subheader in groups:
             group_height = (
@@ -977,10 +1137,10 @@ def render_overview(
         third_y = second_y + header_heights[1]
         column_x = x
         for (key, header_lines, _), column_width in zip(
-            COLUMN_SPECS, column_widths
+            _column_specs(dataset.consumer_mode), column_widths
         ):
             if (
-                key == "special" or
+                key in {"special", "signed_zero", "subnormal"} or
                 (
                     layout == "compact" and
                     key == "benchmark"
@@ -1071,6 +1231,16 @@ def render_overview(
                 row = dataset.canonical.get(
                     (target, precision, group, operation, implementation)
                 )
+                row = _display_row(
+                    dataset,
+                    target,
+                    precision,
+                    group,
+                    operation,
+                    implementation,
+                    row,
+                    normal_only=dataset.consumer_mode == "fastmath",
+                )
                 body_fill = OPERATION_ROW_FILLS[row_index % 2]
                 tooltip = _tooltip(
                     dataset,
@@ -1095,7 +1265,10 @@ def render_overview(
                     _domain_style(row, body_fill),
                     _benchmark_style(row, implementation, body_fill, layout),
                     _special_style(row, body_fill),
+                    _signed_zero_style(row, body_fill),
                 ]
+                if dataset.consumer_mode == "fastmath":
+                    values.append(_subnormal_style(row, body_fill))
                 parts.append("<g>")
                 parts.append(f"<title>{html.escape(tooltip)}</title>")
                 column_x = x
@@ -1192,7 +1365,7 @@ def render_overview(
         _line(parts, x, header_y, x, grid_bottom, stroke=GRID_STRONG)
         _line(parts, right, header_y, right, grid_bottom, stroke=GRID_STRONG)
         _line(parts, x, second_y, right, second_y, stroke=GRID_REGULAR)
-        special_x = x + sum(column_widths[:-1])
+        special_x = x + sum(column_widths[:4])
         third_row_right = (
             x + sum(column_widths[:3])
             if layout == "compact"
@@ -1343,7 +1516,8 @@ def main(argv: list[str] | None = None) -> int:
         for precision in PRECISIONS:
             path = (
                 args.output /
-                f"{args.target.platform}_{args.target.compiler}_{precision}"
+                f"{args.target.platform}_{args.target.architecture}_"
+                f"{args.target.compiler}_{precision}"
                 f"{mode_suffix}_overview{layout_suffix}.svg"
             )
             path.write_text(

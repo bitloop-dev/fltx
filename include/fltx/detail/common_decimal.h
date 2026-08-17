@@ -802,7 +802,7 @@ template<class Traits>
     for (int i = 0; i < Traits::limb_count; ++i)
     {
         const double limb = Traits::limb(x, i);
-        if (limb == 0.0)
+        if ((std::bit_cast<std::uint64_t>(limb) & 0x7fffffffffffffffull) == 0)
             continue;
 
         int exponent = 0;
@@ -827,7 +827,7 @@ template<class Traits>
     for (int i = 0; i < Traits::limb_count; ++i)
     {
         const double limb = Traits::limb(x, i);
-        if (limb == 0.0)
+        if ((std::bit_cast<std::uint64_t>(limb) & 0x7fffffffffffffffull) == 0)
             continue;
 
         int exponent = 0;

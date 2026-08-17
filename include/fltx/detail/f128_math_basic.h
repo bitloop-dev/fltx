@@ -178,7 +178,7 @@ namespace detail::_f128
             return fma_cancellation_exact(x, y, z);
         }
 
-        #if FLTX_DETAIL_MSVC_GUARDED_X86_FMA
+        #if FLTX_GUARDED_X86_FMA
         if (!bl::detail::is_constant_evaluated())
         {
             const bool use_hardware_fma = detail::fp::runtime_hardware_fma_enabled();
@@ -219,21 +219,21 @@ namespace detail::_f128
     [[nodiscard]] BL_NO_INLINE constexpr f128_s round_nearest_even_large(const f128_s& a)
     {
         f128_s t = detail::_f128_impl::floor(a);
-        f128_s frac = sub_inline(a, t);
+        f128_s frac = sub_finite_inline(a, t);
 
         if (frac < f128_s{ 0.5 })
             return t;
 
         if (frac > f128_s{ 0.5 })
         {
-            t = add_double_inline(t, 1.0);
+            t = add_double_finite_inline(t, 1.0);
             if (iszero(t))
                 return signed_zero(signbit(a.hi));
             return t;
         }
 
         if (detail::_f128_impl::fmod(t, f128_s{ 2.0 }) != f128_s{ 0.0 })
-            t = add_double_inline(t, 1.0);
+            t = add_double_finite_inline(t, 1.0);
 
         if (iszero(t))
             return signed_zero(signbit(a.hi));
@@ -283,7 +283,7 @@ namespace detail::_f128
                 }
                 else if (abs_frac_hi >= 0.5 - abs_frac_lo)
                 {
-                    const f128_s frac = sub_double_inline(a, base_d);
+                    const f128_s frac = sub_double_finite_inline(a, base_d);
                     const f128_s abs_frac = detail::_f128::mag(frac);
                     if (abs_frac > f128_s{ 0.5 } ||
                         (abs_frac == f128_s{ 0.5 } && (base & 1ll) != 0))
@@ -367,7 +367,7 @@ namespace detail::_f128_impl
         if (detail::fp::isposinf(a.hi))
             return a;
 
-        return f128_s{ std::numeric_limits<double>::quiet_NaN() };
+        return detail::_f128::quiet_nan();
     }
 
     constexpr double fast_min = 0x1p-900;
@@ -428,14 +428,20 @@ namespace detail::_f128_impl
     // Squaring below 2^-484 cannot retain all 106 result bits before the
     // double component floor at 2^-1074. Use the ratio form there so the
     // smaller square is formed near unity instead of losing low components.
-    if (ax.hi >= 0x1p-484 && ax.hi < 0x1p500)
+#if BL_FP_BARRIER_ACTIVE
+    // Leave headroom for the square's low cross terms when FTZ is enabled.
+    constexpr double direct_square_min = 0x1p-480;
+#else
+    constexpr double direct_square_min = 0x1p-484;
+#endif
+    if (ax.hi >= direct_square_min && ax.hi < 0x1p500)
     {
-        const f128_s sum = add_inline(sqr_inline(ax), sqr_inline(ay));
+        const f128_s sum = add_finite_inline(sqr_inline(ax), sqr_inline(ay));
         return hypot_sqrt_sum(sum);
     }
 
-    const f128_s r = div_inline(ay, ax);
-    return mul_inline(ax, detail::_f128_impl::sqrt(add_double_inline(mul_inline(r, r), 1.0)));
+    const f128_s r = div_prechecked_inline(ay, ax);
+    return mul_product_inline(ax, detail::_f128_impl::sqrt(add_double_finite_inline(mul_product_inline(r, r), 1.0)));
 }
 
 // rounding and decimals
@@ -669,7 +675,7 @@ namespace detail::_f128_impl
     if (!detail::fp::isinf_or_nan(x.hi) && !detail::fp::isinf_or_nan(y.hi))
     {
         const bool x_greater_y = (x.hi > y.hi) || (x.hi == y.hi && x.lo > y.lo);
-        return x_greater_y ? sub_inline(x, y) : f128_s{ 0.0 };
+        return x_greater_y ? sub_finite_inline(x, y) : f128_s{ 0.0 };
     }
 
     if (detail::fp::isnan(x.hi) || detail::fp::isnan(y.hi))
@@ -683,7 +689,7 @@ namespace detail::_f128_impl
     if (isinf(y))
         return signbit(y) ? std::numeric_limits<f128_s>::infinity() : f128_s{ 0.0 };
 
-    return (x > y) ? sub_inline(x, y) : f128_s{ 0.0 };
+    return (x > y) ? sub_finite_inline(x, y) : f128_s{ 0.0 };
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f128_s detail::_f128_impl::copysign(const f128_s& x, const f128_s& y)
@@ -761,11 +767,11 @@ namespace detail::_f128_impl
 
     if (fast)
     {
-        const f128_s half = mul_double_inline(ay, 0.5);
+        const f128_s half = mul_double_product_inline(ay, 0.5);
         const int half_cmp = detail::_f128::fmod_compare_remainder_to_half(r_abs, half);
         if (half_cmp > 0 || (half_cmp == 0 && ((quotient_abs & 1u) != 0u)))
         {
-            r_abs = sub_inline(r_abs, ay);
+            r_abs = sub_finite_inline(r_abs, ay);
             ++quotient_abs;
         }
 
@@ -781,17 +787,17 @@ namespace detail::_f128_impl
 
     std::uint64_t quotient_mod = 0;
     r_abs = fmod_exact_fixed_limb_abs_with_quotient_mod(ax, ay, quotient_mod);
-    const f128_s half = mul_double_inline(ay, 0.5);
+    const f128_s half = mul_double_product_inline(ay, 0.5);
     const int half_cmp = detail::_f128::fmod_compare_remainder_to_half(r_abs, half);
 
     if (half_cmp > 0)
     {
-        r_abs = sub_inline(r_abs, ay);
+        r_abs = sub_finite_inline(r_abs, ay);
         ++quotient_mod;
     }
     else if (half_cmp == 0 && ((quotient_mod & 1u) != 0u))
     {
-        r_abs = sub_inline(r_abs, ay);
+        r_abs = sub_finite_inline(r_abs, ay);
         ++quotient_mod;
     }
 
@@ -825,7 +831,7 @@ namespace detail::_f128_impl
     if (iptr)
         *iptr = i;
 
-    f128_s frac = sub_inline(x, i);
+    f128_s frac = sub_finite_inline(x, i);
     if (iszero(frac))
         frac = detail::_f128::signed_zero(signbit(x));
     return frac;
@@ -980,6 +986,39 @@ namespace detail::_f128_impl
         from.lo,
         toward_smaller_magnitude,
         std::numeric_limits<f128_s>::digits);
+
+#if BL_FP_BARRIER_ACTIVE
+    // Apply a subnormal nominal step through its encoding so FTZ cannot erase it.
+    constexpr std::uint64_t exponent_mask = 0x7ff0000000000000ull;
+    const std::uint64_t step_magnitude =
+        std::bit_cast<std::uint64_t>(step) & 0x7fffffffffffffffull;
+    if (step_magnitude != 0 && (step_magnitude & exponent_mask) == 0)
+    {
+        constexpr std::uint64_t sign_mask = 0x8000000000000000ull;
+        constexpr std::uint64_t magnitude_mask = 0x7fffffffffffffffull;
+        const std::uint64_t lo_bits = std::bit_cast<std::uint64_t>(from.lo);
+        bool lo_negative = (lo_bits & sign_mask) != 0;
+        std::uint64_t lo_magnitude = lo_bits & magnitude_mask;
+
+        if (upward != lo_negative)
+        {
+            lo_magnitude += step_magnitude;
+        }
+        else if (lo_magnitude >= step_magnitude)
+        {
+            lo_magnitude -= step_magnitude;
+        }
+        else
+        {
+            lo_magnitude = step_magnitude - lo_magnitude;
+            lo_negative = !upward;
+        }
+
+        const double next_lo = std::bit_cast<double>(
+            lo_magnitude | (lo_magnitude != 0 && lo_negative ? sign_mask : 0u));
+        return { from.hi, next_lo };
+    }
+#endif
 
     return renorm(
         from.hi,

@@ -59,7 +59,7 @@ def rebuild(
                     output
                     / "overview"
                     / (
-                        f"{target.platform}_{target.compiler}_{precision}"
+                        f"{target.platform}_{target.architecture}_{target.compiler}_{precision}"
                         f"{mode_suffix}_overview{layout_suffix}.svg"
                     )
                 )
@@ -99,7 +99,10 @@ def parse_args(
         "--targets",
         type=build_tables._target,
         nargs="+",
-        help="optional platform/compiler targets; defaults to all available data",
+        help=(
+            "optional platform/architecture/compiler targets; defaults to all "
+            "available data"
+        ),
     )
     parser.add_argument(
         "--consumer-mode",

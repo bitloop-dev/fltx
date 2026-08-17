@@ -1,4 +1,4 @@
-name: Test Base
+name: Native Accuracy Target
 
 on:
   workflow_call:
@@ -15,18 +15,27 @@ on:
       compiler_family:
         required: true
         type: string
+      target_arch:
+        required: true
+        type: string
 
 jobs:
   tests:
     name: ${{ inputs.platform_name }}
     runs-on: ${{ inputs.runner }}
+    timeout-minutes: 120
     permissions:
       contents: read
     env:
       COMPILER_FAMILY: ${{ inputs.compiler_family }}
-      VCPKG_CACHE_EPOCH: v2
+      TARGET_ARCH: ${{ inputs.target_arch }}
+      EMSCRIPTEN_VERSION: 4.0.10
+      EMSDK_CACHE_FOLDER: emsdk-cache
+      VCPKG_CACHE_EPOCH: v3
       VCPKG_BINARY_CACHE: ${{ github.workspace }}/.vcpkg-binary-cache
       VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/.vcpkg-binary-cache,readwrite
+      VCPKG_MAX_CONCURRENCY: 4
+      CONFIGURE_PRESET: ${{ inputs.configure_preset }}
 
     steps:
       - name: Check out repository
@@ -34,24 +43,12 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Fetch vcpkg registry baseline
-        shell: bash
-        run: |
-          baseline="$(python -c "import json; print(json.load(open('vcpkg-configuration.json'))['default-registry']['baseline'])")"
-          git -C vcpkg fetch --depth=1 --no-tags origin "$baseline"
-          git -C vcpkg show "$baseline:versions/baseline.json" > /dev/null
-
-      - name: Read vcpkg commit
-        id: vcpkg
-        shell: bash
-        run: echo "commit=$(git -C vcpkg rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
       - name: Set up build tools (Linux)
         if: runner.os == 'Linux'
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential clang ninja-build
+          sudo apt-get install -y autoconf automake build-essential clang libtool ninja-build pkg-config
 
       - name: Set up build tools (macOS)
         if: runner.os == 'macOS'
@@ -66,9 +63,13 @@ jobs:
         shell: pwsh
         run: choco install ninja --no-progress -y
 
-      - name: Set up MSVC
-        if: runner.os == 'Windows' && inputs.compiler_family == 'msvc'
+      - name: Set up Visual Studio environment
+        if: >-
+          runner.os == 'Windows' &&
+          (inputs.compiler_family == 'msvc' || inputs.compiler_family == 'clangcl')
         uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ inputs.target_arch }}
 
       - name: Set up MinGW
         if: runner.os == 'Windows' && inputs.compiler_family == 'mingw'
@@ -77,31 +78,66 @@ jobs:
           choco install mingw --no-progress -y
           'C:\ProgramData\mingw64\mingw64\bin' | Out-File -FilePath $env:GITHUB_PATH -Append
 
-      - name: Read compiler cache key
-        id: compiler
+      - name: Set up Emscripten
+        if: inputs.compiler_family == 'emscripten'
+        uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: ${{ env.EMSCRIPTEN_VERSION }}
+          actions-cache-folder: ${{ env.EMSDK_CACHE_FOLDER }}
+
+      - name: Verify native runner architecture
+        if: inputs.target_arch != 'wasm32'
         shell: bash
         run: |
-          if [ "$COMPILER_FAMILY" = "msvc" ]; then
-            compiler="$(cl 2>&1 | sed -n '1p' || true)"
-          elif [ "$COMPILER_FAMILY" = "clang" ] || [ "$COMPILER_FAMILY" = "appleclang" ]; then
-            compiler="$(clang++ --version | sed -n '1p')"
-          else
-            compiler="$(g++ --version | sed -n '1p')"
-          fi
+          python - <<'PY'
+          import os
+          import platform
+          expected = os.environ["TARGET_ARCH"]
+          observed = platform.machine().lower()
+          aliases = {
+              "x64": {"amd64", "x86_64"},
+              "arm64": {"arm64", "aarch64"},
+          }
+          if observed not in aliases[expected]:
+              raise SystemExit(
+                  f"runner architecture mismatch: expected {expected}, observed {observed}"
+              )
+          print(f"native runner architecture: {observed}")
+          PY
+
+      - name: Fetch vcpkg registry baseline
+        shell: bash
+        run: |
+          baseline="$(python -c "import json; print(json.load(open('vcpkg-configuration.json'))['default-registry']['baseline'])")"
+          git -C vcpkg fetch --depth=1 --no-tags origin "$baseline"
+          git -C vcpkg show "$baseline:versions/baseline.json" > /dev/null
+
+      - name: Read build identities
+        id: identity
+        shell: bash
+        run: |
+          echo "vcpkg=$(git -C vcpkg rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          case "$COMPILER_FAMILY" in
+            msvc) compiler="$(cl 2>&1 | sed -n '1p' || true)" ;;
+            clangcl) compiler="$(clang-cl --version | sed -n '1p')" ;;
+            clang|appleclang) compiler="$(clang++ --version | sed -n '1p')" ;;
+            emscripten) compiler="$(em++ --version | sed -n '1p')" ;;
+            *) compiler="$(g++ --version | sed -n '1p')" ;;
+          esac
+          test -n "$compiler"
           hash="$(COMPILER="$compiler" python -c "import hashlib, os; print(hashlib.sha256(os.environ['COMPILER'].encode()).hexdigest()[:16])")"
           echo "Compiler cache key input: $compiler"
-          echo "id=$hash" >> "$GITHUB_OUTPUT"
+          echo "compiler=$hash" >> "$GITHUB_OUTPUT"
 
       - name: Restore vcpkg binary cache
         id: vcpkg-cache
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.VCPKG_BINARY_CACHE }}
-          key: vcpkg-${{ env.VCPKG_CACHE_EPOCH }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.compiler_family }}-${{ steps.compiler.outputs.id }}-${{ steps.vcpkg.outputs.commit }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'CMakePresets.json') }}
+          key: vcpkg-${{ env.VCPKG_CACHE_EPOCH }}-${{ runner.os }}-${{ inputs.target_arch }}-${{ inputs.compiler_family }}-${{ steps.identity.outputs.compiler }}-${{ steps.identity.outputs.vcpkg }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'CMakePresets.json', 'cmake/vcpkg-ports/**', 'cmake/vcpkg-triplets/**') }}
           restore-keys: |
-            vcpkg-${{ env.VCPKG_CACHE_EPOCH }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.compiler_family }}-${{ steps.compiler.outputs.id }}-${{ steps.vcpkg.outputs.commit }}-
-            vcpkg-${{ env.VCPKG_CACHE_EPOCH }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.compiler_family }}-${{ steps.compiler.outputs.id }}-
-            vcpkg-${{ env.VCPKG_CACHE_EPOCH }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.compiler_family }}-
+            vcpkg-${{ env.VCPKG_CACHE_EPOCH }}-${{ runner.os }}-${{ inputs.target_arch }}-${{ inputs.compiler_family }}-${{ steps.identity.outputs.compiler }}-${{ steps.identity.outputs.vcpkg }}-
+            vcpkg-${{ env.VCPKG_CACHE_EPOCH }}-${{ runner.os }}-${{ inputs.target_arch }}-${{ inputs.compiler_family }}-
 
       - name: Bootstrap vcpkg (Unix)
         if: runner.os != 'Windows'
@@ -120,12 +156,55 @@ jobs:
           -DFLTX_METRICS_QDPP=ON
           -DFLTX_METRICS_TLFLOAT=ON
 
+      - name: Verify configured compiler
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          cmake_files = Path("build", os.environ["CONFIGURE_PRESET"], "CMakeFiles")
+          compiler_file = next(cmake_files.glob("*/CMakeCXXCompiler.cmake"))
+          compiler_facts = compiler_file.read_text(encoding="utf-8")
+
+          def fact(name):
+              match = re.search(rf'set\({name} "([^"]*)"\)', compiler_facts)
+              return match.group(1) if match else ""
+
+          family = os.environ["COMPILER_FAMILY"]
+          expected_ids = {
+              "msvc": "MSVC",
+              "clangcl": "Clang",
+              "mingw": "GNU",
+              "gcc": "GNU",
+              "clang": "Clang",
+              "appleclang": "AppleClang",
+              "emscripten": "Clang",
+          }
+          compiler_id = fact("CMAKE_CXX_COMPILER_ID")
+          if compiler_id != expected_ids[family]:
+              raise SystemExit(
+                  f"configured compiler mismatch: expected {expected_ids[family]}, "
+                  f"observed {compiler_id or 'unknown'}"
+              )
+          frontend = fact("CMAKE_CXX_COMPILER_FRONTEND_VARIANT")
+          if family == "clangcl" and frontend != "MSVC":
+              raise SystemExit(
+                  f"configured frontend mismatch: expected MSVC, observed {frontend or 'unknown'}"
+              )
+          print(f"configured compiler: {compiler_id}, frontend: {frontend or 'unspecified'}")
+          PY
+
       - name: Save vcpkg binary cache
         if: steps.vcpkg-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
+        continue-on-error: true
         with:
           path: ${{ env.VCPKG_BINARY_CACHE }}
           key: ${{ steps.vcpkg-cache.outputs.cache-primary-key }}
 
-      - name: Build and run test gate
-        run: cmake --build --preset ${{ inputs.configure_preset }} --target fltx_ci_checks --parallel
+      - name: Build and run accuracy gate
+        run: >-
+          cmake --build --preset ${{ inputs.configure_preset }}
+          --target fltx_ci_checks --parallel

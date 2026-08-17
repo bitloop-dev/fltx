@@ -41,7 +41,7 @@
 #  include <emmintrin.h>
 #endif
 
-#if FLTX_HAS_X86_FMA || FLTX_DETAIL_MSVC_GUARDED_X86_FMA
+#if FLTX_HAS_X86_FMA || FLTX_GUARDED_X86_FMA
 #  include <immintrin.h>
 #endif
 
@@ -164,8 +164,9 @@ namespace bl::detail::simd
         e = f64x2_add(e, f64x2_mul(a_lo, b_lo));
     }
 
-    #if (FLTX_HAS_SSE2 && (FLTX_HAS_X86_FMA || FLTX_DETAIL_MSVC_GUARDED_X86_FMA)) || FLTX_HAS_NEON
-    BL_FORCE_INLINE void f64x2_two_prod_fma(f64x2 a, f64x2 b, f64x2& p, f64x2& e) noexcept
+    #if (FLTX_HAS_SSE2 && (FLTX_HAS_X86_FMA || FLTX_GUARDED_X86_FMA)) || FLTX_HAS_NEON
+    FLTX_X86_FMA_LEAF_INLINE void f64x2_two_prod_fma(
+        f64x2 a, f64x2 b, f64x2& p, f64x2& e) noexcept
     {
         p = f64x2_mul(a, b);
 

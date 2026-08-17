@@ -221,23 +221,33 @@ namespace
         const T negative_infinity = -infinity;
         const T nan = std::numeric_limits<T>::quiet_NaN();
 
-        check_infinity("infinity + finite", T{ infinity + one }, false);
-        check_infinity("finite + -infinity", T{ one + negative_infinity }, true);
-        check_nan("infinity + -infinity", T{ infinity + negative_infinity });
-        check_nan("infinity - infinity", T{ infinity - infinity });
-        check_nan("NaN arithmetic propagation", T{ nan + one });
+        #if defined(FLTX_FAST_MATH)
+        constexpr bool relaxed_basic_arithmetic =
+            std::is_same_v<T, bl::f128> || std::is_same_v<T, bl::f256>;
+        #else
+        constexpr bool relaxed_basic_arithmetic = false;
+        #endif
 
-        check_nan("infinity * zero", T{ infinity * zero });
-        check_zero("zero * negative", T{ zero * negative_one }, true);
-        check_zero("-zero * negative", T{ negative_zero * negative_one }, false);
-        check_infinity("finite / +zero",
-            divide_without_constant_folding(one, zero), false);
-        check_infinity("finite / -zero",
-            divide_without_constant_folding(one, negative_zero), true);
-        check_nan("zero / zero",
-            divide_without_constant_folding(zero, zero));
-        check_nan("infinity / infinity",
-            divide_without_constant_folding(infinity, infinity));
+        if constexpr (!relaxed_basic_arithmetic)
+        {
+            check_infinity("infinity + finite", T{ infinity + one }, false);
+            check_infinity("finite + -infinity", T{ one + negative_infinity }, true);
+            check_nan("infinity + -infinity", T{ infinity + negative_infinity });
+            check_nan("infinity - infinity", T{ infinity - infinity });
+            check_nan("NaN arithmetic propagation", T{ nan + one });
+
+            check_nan("infinity * zero", T{ infinity * zero });
+            check_zero("zero * negative", T{ zero * negative_one }, true);
+            check_zero("-zero * negative", T{ negative_zero * negative_one }, false);
+            check_infinity("finite / +zero",
+                divide_without_constant_folding(one, zero), false);
+            check_infinity("finite / -zero",
+                divide_without_constant_folding(one, negative_zero), true);
+            check_nan("zero / zero",
+                divide_without_constant_folding(zero, zero));
+            check_nan("infinity / infinity",
+                divide_without_constant_folding(infinity, infinity));
+        }
 
         check_zero("abs(-zero)", T{ bl::abs(negative_zero) }, false);
         check_infinity("fabs(-infinity)", T{ bl::fabs(negative_infinity) }, false);

@@ -17,32 +17,37 @@ namespace bl {
 
 namespace detail::_f128 // primitives and kernels
 {
+    // Tests one binary64 limb for either sign of zero without floating-point comparisons.
     [[nodiscard]] BL_FORCE_INLINE constexpr bool limb_is_zero(double value) noexcept
     {
         return (std::bit_cast<std::uint64_t>(value) & 0x7fffffffffffffffull) == 0;
     }
 
+    // Tests whether both limbs of an f128 value are zero.
     [[nodiscard]] BL_FORCE_INLINE constexpr bool value_is_zero(const f128_s& value) noexcept
     {
         return limb_is_zero(value.hi) && limb_is_zero(value.lo);
     }
 
-    // public arithmetic special cases
+    // Constructs the canonical quiet NaN used by public f128 arithmetic.
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s quiet_nan() noexcept
     {
         return { std::bit_cast<double>(0x7ff8000000000000ull), 0.0 };
     }
 
+    // Constructs a canonical signed infinity for public f128 arithmetic.
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s signed_infinity(bool negative) noexcept
     {
         return { std::bit_cast<double>(negative ? 0xfff0000000000000ull : 0x7ff0000000000000ull), 0.0 };
     }
 
+    // Constructs a canonical signed zero for public f128 arithmetic.
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s signed_zero(bool negative) noexcept
     {
         return { std::bit_cast<double>(negative ? 0x8000000000000000ull : 0ull), 0.0 };
     }
 
+    // Resolves non-finite addition results according to the public f128 policy.
     [[nodiscard]] BL_NO_INLINE constexpr f128_s add_special(const f128_s& a, const f128_s& b) noexcept
     {
         if (detail::fp::isnan(a.hi) || detail::fp::isnan(b.hi))
@@ -60,11 +65,13 @@ namespace detail::_f128 // primitives and kernels
         return signed_infinity(signbit(a));
     }
 
+    // Resolves non-finite subtraction results according to the public f128 policy.
     [[nodiscard]] BL_NO_INLINE constexpr f128_s sub_special(const f128_s& a, const f128_s& b) noexcept
     {
         return add_special(a, f128_s{ -b.hi, -b.lo });
     }
 
+    // Resolves non-finite and signed-zero multiplication results for public f128 arithmetic.
     [[nodiscard]] BL_NO_INLINE constexpr f128_s mul_special(const f128_s& a, const f128_s& b) noexcept
     {
         if (detail::fp::isnan(a.hi) || detail::fp::isnan(b.hi))
@@ -84,6 +91,7 @@ namespace detail::_f128 // primitives and kernels
         return signed_infinity(negative);
     }
 
+    // Resolves zero, infinity, and NaN division cases for public f128 arithmetic.
     [[nodiscard]] BL_NO_INLINE constexpr f128_s div_special(const f128_s& a, const f128_s& b) noexcept
     {
         if (detail::fp::isnan(a.hi) || detail::fp::isnan(b.hi))
@@ -104,99 +112,11 @@ namespace detail::_f128 // primitives and kernels
         return signed_zero(negative);
     }
 
-    // residual helpers
-    BL_FORCE_INLINE constexpr f128_s sub_mul_scalar_exact(const f128_s& r, const f128_s& b, double q) noexcept
-    {
-        double p{}, e{};
-        two_prod_precise(b.hi, q, p, e);
-        e += b.lo * q;
+    // ----- Addition -----
 
-        double s{}, t{};
-        detail::fp::two_diff_precise(r.hi, p, s, t);
-        t += r.lo - e;
-
-        return renorm(s, t);
-    }
-
-    [[nodiscard]] BL_FORCE_INLINE constexpr double product_split_high(double value) noexcept
-    {
-        constexpr double split = 134217729.0;
-        constexpr int split_shift = 27;
-
-        const double scaled = split * value;
-        if (detail::fp::isinf(scaled))
-        {
-            return detail::fp::ldexp(
-                value - (value - detail::fp::ldexp(value, -split_shift)),
-                split_shift);
-        }
-
-        return scaled - (scaled - value);
-    }
-
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s div_compensated_inline(const f128_s& a, const f128_s& b) noexcept
-    {
-        const double q0 = a.hi / b.hi;
-        if (detail::fp::isinf_or_nan(q0)) [[unlikely]]
-            return { q0, 0.0 };
-        if (q0 == 0.0 && a.hi == 0.0 && a.lo == 0.0) [[unlikely]]
-            return signed_zero(bl::signbit(a) != bl::signbit(b));
-
-        double p0{}, e0{};
-        two_prod_precise(q0, b.hi, p0, e0);
-
-        const double q1 = (((a.hi - p0) - e0) + a.lo - (q0 * b.lo)) / b.hi;
-        const double hi = q0 + q1;
-        return { hi, (q0 - hi) + q1 };
-    }
-
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s div_compensated_inline_checked(const f128_s& a, const f128_s& b) noexcept
-    {
-        const double q0 = a.hi / b.hi;
-        if (detail::fp::isinf_or_nan(q0)) [[unlikely]]
-            return { q0, 0.0 };
-        if (q0 == 0.0 && a.hi == 0.0 && a.lo == 0.0) [[unlikely]]
-            return signed_zero(bl::signbit(a) != bl::signbit(b));
-
-        double p0{}, e0{};
-        detail::fp::two_prod_precise_checked(q0, b.hi, p0, e0);
-
-        const double q1 = (((a.hi - p0) - e0) + a.lo - (q0 * b.lo)) / b.hi;
-        const double hi = q0 + q1;
-        return { hi, (q0 - hi) + q1 };
-    }
-#endif
-
-    [[nodiscard]] BL_MSVC_NOINLINE constexpr f128_s div_f128_double_runtime(const f128_s& a, double b) noexcept
-    {
-        return div_compensated_inline(a, f128_s{ b, 0.0 });
-    }
-
-    // core arithmetic
     BL_PUSH_PRECISE;
-    BL_FORCE_INLINE constexpr void mul_expansion_inline(const f128_s& a, const f128_s& b, double& p, double& e) noexcept
-    {
-        two_prod_precise(a.hi, b.hi, p, e);
-
-        e += a.hi * b.lo + a.lo * b.hi;
-        e += a.lo * b.lo;
-    }
-
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
-    BL_FORCE_INLINE constexpr void mul_expansion_inline_checked(const f128_s& a, const f128_s& b, double& p, double& e) noexcept
-    {
-        detail::fp::two_prod_precise_checked(a.hi, b.hi, p, e);
-
-        e += a.hi * b.lo + a.lo * b.hi;
-        e += a.lo * b.lo;
-    }
-#endif
-    BL_POP_PRECISE;
-
-    // fused expressions
-    BL_PUSH_PRECISE;
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s add_inline(const f128_s& a, const f128_s& b) noexcept
+    // Adds f128 expansions without applying canonical special-value handling.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s add_finite_inline(const f128_s& a, const f128_s& b) noexcept
     {
         double s1{}, s2{};
         two_sum_precise(a.hi, b.hi, s1, s2);
@@ -211,7 +131,51 @@ namespace detail::_f128 // primitives and kernels
         return { s1, s2 };
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s sub_inline(const f128_s& a, const f128_s& b) noexcept
+    // Adds f128 values and canonicalizes a non-finite result.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s add_canonical_inline(const f128_s& a, const f128_s& b) noexcept
+    {
+        const f128_s out = add_finite_inline(a, b);
+        if (detail::fp::isinf_or_nan(out.hi)) [[unlikely]]
+            return add_special(a, b);
+        return out;
+    }
+
+    BL_POP_PRECISE;
+
+    // Adds a double to an f128 expansion without canonical special-value handling.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s add_double_finite_inline(const f128_s& a, double b) noexcept
+    {
+        double s{}, e{};
+        two_sum_precise(a.hi, b, s, e);
+#if BL_FP_BARRIER_ACTIVE
+        BL_FP_BARRIER(e);
+        e += a.lo;  BL_FP_BARRIER(e);
+#else
+        e += a.lo;
+#endif
+        return renorm(s, e);
+    }
+
+    // Adds an f128 expansion to a double through the finite scalar kernel.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s add_double_finite_inline(double a, const f128_s& b) noexcept
+    {
+        return add_double_finite_inline(b, a);
+    }
+
+    // Adds a double to f128 and canonicalizes a non-finite result.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s add_double_canonical_inline(const f128_s& a, double b) noexcept
+    {
+        const f128_s out = add_double_finite_inline(a, b);
+        if (detail::fp::isinf_or_nan(out.hi)) [[unlikely]]
+            return add_special(a, f128_s{ b, 0.0 });
+        return out;
+    }
+
+    // ----- Subtraction -----
+
+    BL_PUSH_PRECISE;
+    // Subtracts f128 expansions without applying canonical special-value handling.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s sub_finite_inline(const f128_s& a, const f128_s& b) noexcept
     {
         double s1{}, s2{};
         detail::fp::two_diff_precise(a.hi, b.hi, s1, s2);
@@ -225,42 +189,114 @@ namespace detail::_f128 // primitives and kernels
         detail::fp::quick_two_sum_precise(s1, s2, s1, s2);
         return { s1, s2 };
     }
+
+    // Subtracts f128 values and canonicalizes a non-finite result.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s sub_canonical_inline(const f128_s& a, const f128_s& b) noexcept
+    {
+        const f128_s out = sub_finite_inline(a, b);
+        if (detail::fp::isinf_or_nan(out.hi)) [[unlikely]]
+            return sub_special(a, b);
+        return out;
+    }
     BL_POP_PRECISE;
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_inline(const f128_s& a, const f128_s& b) noexcept
+    // Subtracts a double from f128 without canonical special-value handling.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s sub_double_finite_inline(const f128_s& a, double b) noexcept
+    {
+        return add_double_finite_inline(a, -b);
+    }
+
+    // Subtracts f128 from a double through the finite scalar kernel.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s sub_double_finite_inline(double a, const f128_s& b) noexcept
+    {
+        return add_double_finite_inline(-b, a);
+    }
+
+    // Subtracts a double from f128 and canonicalizes a non-finite result.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s sub_double_canonical_inline(const f128_s& a, double b) noexcept
+    {
+        const f128_s out = sub_double_finite_inline(a, b);
+        if (detail::fp::isinf_or_nan(out.hi)) [[unlikely]]
+            return sub_special(a, f128_s{ b, 0.0 });
+        return out;
+    }
+
+    // ----- Multiplication -----
+
+    BL_PUSH_PRECISE;
+    // Forms an unrenormalized f128 product with the ordinary Dekker split.
+    BL_FORCE_INLINE constexpr void mul_expansion_inline(const f128_s& a, const f128_s& b, double& p, double& e) noexcept
+    {
+        two_prod_precise(a.hi, b.hi, p, e);
+
+        e += a.hi * b.lo + a.lo * b.hi;
+        e += a.lo * b.lo;
+    }
+
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+    // Forms an unrenormalized f128 product with range-safe Dekker splitting.
+    BL_FORCE_INLINE constexpr void mul_expansion_range_safe_inline(const f128_s& a, const f128_s& b, double& p, double& e) noexcept
+    {
+        detail::fp::two_prod_precise_range_safe(a.hi, b.hi, p, e);
+
+        e += a.hi * b.lo + a.lo * b.hi;
+        e += a.lo * b.lo;
+    }
+#endif
+    BL_POP_PRECISE;
+
+    // Forms and renormalizes an f128 product with the ordinary Dekker split.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_product_inline(const f128_s& a, const f128_s& b) noexcept
     {
         double p{}, e{};
         two_prod_precise(a.hi, b.hi, p, e);
+#if BL_FP_BARRIER_ACTIVE
+        BL_FP_BARRIER(e);
+        double cross = a.hi * b.lo;  BL_FP_BARRIER(cross);
+        double term = a.lo * b.hi;   BL_FP_BARRIER(term);
+        cross += term;               BL_FP_BARRIER(cross);
+        e += cross;                  BL_FP_BARRIER(e);
+#else
         e += a.hi * b.lo + a.lo * b.hi;
+#endif
         detail::fp::quick_two_sum_precise(p, e, p, e);
         return { p, e };
     }
 
 #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_inline_checked(const f128_s& a, const f128_s& b) noexcept
+    // Forms and renormalizes an f128 product with range-safe Dekker splitting.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_product_range_safe_inline(const f128_s& a, const f128_s& b) noexcept
     {
         double p{}, e{};
-        detail::fp::two_prod_precise_checked(a.hi, b.hi, p, e);
+        detail::fp::two_prod_precise_range_safe(a.hi, b.hi, p, e);
         e += a.hi * b.lo + a.lo * b.hi;
         detail::fp::quick_two_sum_precise(p, e, p, e);
         return { p, e };
     }
 #endif
 
+    // Squares an f128 expansion with the ordinary Dekker split.
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s sqr_inline(const f128_s& a) noexcept
     {
         double p{}, e{};
         two_prod_precise(a.hi, a.hi, p, e);
+#if BL_FP_BARRIER_ACTIVE
+        BL_FP_BARRIER(e);
+        double doubled_hi = a.hi + a.hi;  BL_FP_BARRIER(doubled_hi);
+        double cross = doubled_hi * a.lo;  BL_FP_BARRIER(cross);
+        e += cross;                         BL_FP_BARRIER(e);
+        double tail = a.lo * a.lo;          BL_FP_BARRIER(tail);
+        e += tail;                          BL_FP_BARRIER(e);
+#else
         e += (a.hi + a.hi) * a.lo;
         e += a.lo * a.lo;
+#endif
         detail::fp::quick_two_sum_precise(p, e, p, e);
         return { p, e };
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s finish_mul_checked_inline(
-        const f128_s& a,
-        const f128_s& b,
-        const f128_s& out) noexcept
+    // Converts a formed product into the canonical public multiplication result.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s finish_mul_canonical_inline(const f128_s& a, const f128_s& b, const f128_s& out) noexcept
     {
         if (detail::fp::isinf_or_nan(out.hi)) [[unlikely]]
             return mul_special(a, b);
@@ -269,16 +305,8 @@ namespace detail::_f128 // primitives and kernels
         return out;
     }
 
-    // Multiplication layers:
-    //
-    // - mul_inline is the small arithmetic kernel. Its Dekker path assumes the
-    //   leading limbs are within the normal splitter range.
-    // - mul_checked_fallback handles the complete range and public special-value
-    //   semantics. It is constexpr-capable but stays out of runtime hot paths.
-    // - mul_checked_inline is the thin public-operation dispatcher.
-    [[nodiscard]] BL_NO_INLINE constexpr f128_s mul_checked_fallback(
-        const f128_s& a,
-        const f128_s& b) noexcept
+    // Handles the complete multiplication range and canonical public special values.
+    [[nodiscard]] BL_NO_INLINE constexpr f128_s mul_canonical_fallback(const f128_s& a, const f128_s& b) noexcept
     {
         if (detail::fp::isinf_or_nan(a.hi) || detail::fp::isinf_or_nan(b.hi) ||
             value_is_zero(a) || value_is_zero(b)) [[unlikely]]
@@ -286,15 +314,14 @@ namespace detail::_f128 // primitives and kernels
 
         #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
         if (detail::fp::dekker_product_needs_scaling(a.hi, b.hi)) [[unlikely]]
-            return finish_mul_checked_inline(a, b, mul_inline_checked(a, b));
+            return finish_mul_canonical_inline(a, b, mul_product_range_safe_inline(a, b));
         #endif
 
-        return finish_mul_checked_inline(a, b, mul_inline(a, b));
+        return finish_mul_canonical_inline(a, b, mul_product_inline(a, b));
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr bool mul_fast_path_is_safe(
-        double a,
-        double b) noexcept
+    // Tests whether ordinary Dekker multiplication is safe for two leading limbs.
+    [[nodiscard]] BL_FORCE_INLINE constexpr bool mul_product_fast_path_is_range_safe(double a, double b) noexcept
     {
         constexpr std::uint64_t sign_mask = std::uint64_t{ 1 } << 63;
         constexpr std::uint64_t minimum = UINT64_C(0x0370000000000000); // 2^-968
@@ -314,36 +341,49 @@ namespace detail::_f128 // primitives and kernels
             (product_exponent_sum <= 3068u);
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_checked_inline(
-        const f128_s& a,
-        const f128_s& b) noexcept
+    // Multiplies f128 values through the hot product path or the canonical fallback.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_canonical_inline(const f128_s& a, const f128_s& b) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            mul_checked_fallback(a, b),
-            mul_fast_path_is_safe(a.hi, b.hi)
-                ? mul_inline(a, b)
-                : mul_checked_fallback(a, b)
+            mul_canonical_fallback(a, b),
+            mul_product_fast_path_is_range_safe(a.hi, b.hi)
+                ? mul_product_inline(a, b)
+                : mul_canonical_fallback(a, b)
         );
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_dekker_checked_inline(const f128_s& a, const f128_s& b) noexcept
+    // Multiplies finite f128 values while retaining Dekker range protection.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_finite_inline(const f128_s& a, const f128_s& b) noexcept
     {
         #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
-        return finish_mul_checked_inline(a, b, mul_inline_checked(a, b));
+        return detail::fp::dekker_product_needs_scaling(a.hi, b.hi)
+            ? mul_product_range_safe_inline(a, b)
+            : mul_product_inline(a, b);
         #else
-        return mul_checked_inline(a, b);
+        return mul_product_inline(a, b);
         #endif
     }
 
+    // Multiplies f128 values with range-safe Dekker formation and canonical finalization.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_dekker_range_safe_canonical_inline(const f128_s& a, const f128_s& b) noexcept
+    {
+        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        return finish_mul_canonical_inline(a, b, mul_product_range_safe_inline(a, b));
+        #else
+        return mul_canonical_inline(a, b);
+        #endif
+    }
+
+    // Multiplies f128 values while retaining additional cross-product error terms.
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_accurate_inline(const f128_s& a, const f128_s& b) noexcept
     {
         if (detail::fp::isinf_or_nan(a.hi) || detail::fp::isinf_or_nan(b.hi)) [[unlikely]]
-            return mul_checked_inline(a, b);
+            return mul_canonical_inline(a, b);
 
         double p0{}, q0{};
         two_prod_precise(a.hi, b.hi, p0, q0);
         if (detail::fp::isinf_or_nan(p0)) [[unlikely]]
-            return mul_checked_inline(a, b);
+            return mul_canonical_inline(a, b);
 
         double p1{}, q1{};
         double p2{}, q2{};
@@ -359,56 +399,23 @@ namespace detail::_f128 // primitives and kernels
         return renorm(p0, p012 + tail);
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s sqr_dekker_checked_inline(const f128_s& a) noexcept
+    // Squares f128 with range-safe Dekker formation and canonical finalization.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s sqr_dekker_range_safe_canonical_inline(const f128_s& a) noexcept
     {
         #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
         double p{}, e{};
-        detail::fp::two_prod_precise_checked(a.hi, a.hi, p, e);
+        detail::fp::two_prod_precise_range_safe(a.hi, a.hi, p, e);
         e += (a.hi + a.hi) * a.lo;
         e += a.lo * a.lo;
         detail::fp::quick_two_sum_precise(p, e, p, e);
-        return finish_mul_checked_inline(a, a, f128_s{ p, e });
+        return finish_mul_canonical_inline(a, a, f128_s{ p, e });
         #else
         return sqr_inline(a);
         #endif
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s div_inline(const f128_s& a, const f128_s& b) noexcept
-    {
-        return div_compensated_inline(a, b);
-    }
-
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s div_inline_checked(const f128_s& a, const f128_s& b) noexcept
-    {
-        return div_compensated_inline_checked(a, b);
-    }
-#endif
-
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s add_double_inline(const f128_s& a, double b) noexcept
-    {
-        double s{}, e{};
-        two_sum_precise(a.hi, b, s, e);
-        e += a.lo;
-        return renorm(s, e);
-    }
-
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s add_double_inline(double a, const f128_s& b) noexcept
-    {
-        return add_double_inline(b, a);
-    }
-
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s sub_double_inline(const f128_s& a, double b) noexcept
-    {
-        return add_double_inline(a, -b);
-    }
-
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s sub_double_inline(double a, const f128_s& b) noexcept
-    {
-        return add_double_inline(-b, a);
-    }
-
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_double_inline(const f128_s& a, double b) noexcept
+    // Forms an f128-by-double product with the ordinary Dekker split.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_double_product_inline(const f128_s& a, double b) noexcept
     {
         double p{}, e{};
         two_prod_precise(a.hi, b, p, e);
@@ -418,24 +425,26 @@ namespace detail::_f128 // primitives and kernels
     }
 
 #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_double_inline_checked(const f128_s& a, double b) noexcept
+    // Forms an f128-by-double product with range-safe Dekker splitting.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_double_product_range_safe_inline(const f128_s& a, double b) noexcept
     {
         double p{}, e{};
-        detail::fp::two_prod_precise_checked(a.hi, b, p, e);
+        detail::fp::two_prod_precise_range_safe(a.hi, b, p, e);
 
         e += a.lo * b;
         return renorm(p, e);
     }
 #endif
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_double_checked_inline(const f128_s& a, double b) noexcept
+    // Multiplies f128 by a double with range protection and canonical special handling.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_double_canonical_inline(const f128_s& a, double b) noexcept
     {
         #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
         const f128_s out = detail::fp::dekker_product_needs_scaling(a.hi, b)
-            ? mul_double_inline_checked(a, b)
-            : mul_double_inline(a, b);
+            ? mul_double_product_range_safe_inline(a, b)
+            : mul_double_product_inline(a, b);
         #else
-        const f128_s out = mul_double_inline(a, b);
+        const f128_s out = mul_double_product_inline(a, b);
         #endif
 
         if (detail::fp::isinf_or_nan(out.hi)) [[unlikely]]
@@ -445,17 +454,156 @@ namespace detail::_f128 // primitives and kernels
         return out;
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_double_inline(double a, const f128_s& b) noexcept
+    // Multiplies finite f128 by a double while retaining Dekker range protection.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_double_finite_inline(
+        const f128_s& a,
+        double b) noexcept
     {
-        return mul_double_inline(b, a);
+        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        return detail::fp::dekker_product_needs_scaling(a.hi, b)
+            ? mul_double_product_range_safe_inline(a, b)
+            : mul_double_product_inline(a, b);
+        #else
+        return mul_double_product_inline(a, b);
+        #endif
     }
 
+    // Multiplies a double by f128 through the ordinary scalar product kernel.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_double_product_inline(double a, const f128_s& b) noexcept
+    {
+        return mul_double_product_inline(b, a);
+    }
+
+    // Scales both f128 limbs by an exactly representable power of two.
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_pwr2_inline(const f128_s& a, double b) noexcept
     {
         return { a.hi * b, a.lo * b };
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s div_double_inline(const f128_s& a, double b) noexcept
+    // ----- Division -----
+
+    // clang-cl /fp:fast can reassociate the quotient compensation back to
+    // binary64 precision. Keep the exception function-local so other kernels
+    // and every other compiler retain their normal fast-math code generation.
+
+    // Computes an exact f128 residual after subtracting one quotient product.
+    BL_FORCE_INLINE constexpr f128_s div_residual_exact_inline(const f128_s& r, const f128_s& b, double q) noexcept
+    {
+        double p{}, e{};
+        two_prod_precise(b.hi, q, p, e);
+        e += b.lo * q;
+
+        double s{}, t{};
+        detail::fp::two_diff_precise(r.hi, p, s, t);
+        t += r.lo - e;
+
+        return renorm(s, t);
+    }
+
+#if BL_FP_BARRIER_ACTIVE
+    // Applies the compensated quotient correction with explicit evaluation barriers.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s div_correction_inline(
+        const f128_s& a,
+        const f128_s& b,
+        double q0,
+        double p0,
+        double e0) noexcept
+    {
+        double residual = a.hi - p0;  BL_FP_BARRIER(residual);
+        residual -= e0;               BL_FP_BARRIER(residual);
+        residual += a.lo;             BL_FP_BARRIER(residual);
+        residual -= q0 * b.lo;        BL_FP_BARRIER(residual);
+
+        double q1 = residual / b.hi;  BL_FP_BARRIER(q1);
+        double hi = q0 + q1;          BL_FP_BARRIER(hi);
+        double lo = q0 - hi;          BL_FP_BARRIER(lo);
+        lo += q1;                     BL_FP_BARRIER(lo);
+
+        return { hi, lo };
+    }
+#endif
+
+    // Divides f128 after the caller has handled exceptional denominator cases.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s div_prechecked_inline(const f128_s& a, const f128_s& b) noexcept
+    {
+#if defined(_MSC_VER) && defined(__clang__) && defined(FLTX_FAST_MATH)
+#pragma clang fp reassociate(off)
+#endif
+        const double q0 = a.hi / b.hi;
+        if (detail::fp::isinf_or_nan(q0)) [[unlikely]]
+            return { q0, 0.0 };
+        if (q0 == 0.0 && a.hi == 0.0 && a.lo == 0.0) [[unlikely]]
+            return signed_zero(bl::signbit(a) != bl::signbit(b));
+
+        double p0{}, e0{};
+        two_prod_precise(q0, b.hi, p0, e0);
+
+#if BL_FP_BARRIER_ACTIVE
+        return div_correction_inline(a, b, q0, p0, e0);
+#else
+        const double q1 = (((a.hi - p0) - e0) + a.lo - (q0 * b.lo)) / b.hi;
+        const double hi = q0 + q1;
+        return { hi, (q0 - hi) + q1 };
+#endif
+    }
+
+    // Divides finite f128 values without canonical special-value handling.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s div_finite_inline(const f128_s& a, const f128_s& b) noexcept
+    {
+#if defined(_MSC_VER) && defined(__clang__) && defined(FLTX_FAST_MATH)
+#pragma clang fp reassociate(off)
+#endif
+        const double q0 = a.hi / b.hi;
+
+        double p0{}, e0{};
+        two_prod_precise(q0, b.hi, p0, e0);
+
+#if BL_FP_BARRIER_ACTIVE
+        return div_correction_inline(a, b, q0, p0, e0);
+#else
+        const double q1 = (((a.hi - p0) - e0) + a.lo - (q0 * b.lo)) / b.hi;
+        const double hi = q0 + q1;
+        return { hi, (q0 - hi) + q1 };
+#endif
+    }
+
+#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+    // Divides prechecked f128 values with a range-safe Dekker residual product.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s div_prechecked_range_safe_inline(const f128_s& a, const f128_s& b) noexcept
+    {
+#if defined(_MSC_VER) && defined(__clang__) && defined(FLTX_FAST_MATH)
+#pragma clang fp reassociate(off)
+#endif
+        const double q0 = a.hi / b.hi;
+        if (detail::fp::isinf_or_nan(q0)) [[unlikely]]
+            return { q0, 0.0 };
+        if (q0 == 0.0 && a.hi == 0.0 && a.lo == 0.0) [[unlikely]]
+            return signed_zero(bl::signbit(a) != bl::signbit(b));
+
+        double p0{}, e0{};
+        detail::fp::two_prod_precise_range_safe(q0, b.hi, p0, e0);
+
+#if BL_FP_BARRIER_ACTIVE
+        return div_correction_inline(a, b, q0, p0, e0);
+#else
+        const double q1 = (((a.hi - p0) - e0) + a.lo - (q0 * b.lo)) / b.hi;
+        const double hi = q0 + q1;
+        return { hi, (q0 - hi) + q1 };
+#endif
+    }
+#endif
+
+    // Divides f128 values after applying the public exceptional-denominator policy.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s div_canonical_inline(const f128_s& a, const f128_s& b) noexcept
+    {
+        if (detail::fp::iszero_or_inf_or_nan(b.hi)) [[unlikely]]
+            return div_special(a, b);
+
+        return div_prechecked_inline(a, b);
+    }
+
+    // Divides f128 by a double after exceptional denominator cases are handled.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s div_double_prechecked_inline(const f128_s& a, double b) noexcept
     {
         if (bl::detail::is_constant_evaluated())
         {
@@ -489,15 +637,74 @@ namespace detail::_f128 // primitives and kernels
             }
         }
 
-        return div_compensated_inline(a, f128_s{ b, 0.0 });
+        return div_prechecked_inline(a, f128_s{ b, 0.0 });
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s div_double_inline(double a, const f128_s& b) noexcept
+    // Divides a double by f128 through the prechecked full-value kernel.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s div_double_prechecked_inline(double a, const f128_s& b) noexcept
     {
-        return div_compensated_inline(f128_s{ a, 0.0 }, b);
+        return div_prechecked_inline(f128_s{ a, 0.0 }, b);
     }
+
+    // Divides f128 by a double with canonical exceptional-denominator handling.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s div_double_canonical_inline(
+        const f128_s& a,
+        double b) noexcept
+    {
+        if (detail::fp::iszero_or_inf_or_nan(b)) [[unlikely]]
+            return div_special(a, f128_s{ b, 0.0 });
+
+        return div_double_prechecked_inline(a, b);
+    }
+
+    // Divides finite f128 by a finite double without canonical special handling.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s div_double_finite_inline(
+        const f128_s& a,
+        double b) noexcept
+    {
+        return div_finite_inline(a, f128_s{ b, 0.0 });
+    }
+
+    // Supporting product split, extracts the high splitter component while avoiding intermediate overflow.
+    [[nodiscard]] BL_FORCE_INLINE constexpr double product_split_high(double value) noexcept
+    {
+#if defined(_MSC_VER) && defined(__clang__) && defined(FLTX_FAST_MATH)
+#pragma clang fp reassociate(off)
+#endif
+        constexpr double split = 134217729.0;
+        constexpr int split_shift = 27;
+
+#if BL_FP_BARRIER_ACTIVE
+        double scaled = split * value;  BL_FP_BARRIER(scaled);
+        if (detail::fp::isinf(scaled))
+        {
+            double shifted = detail::fp::ldexp(value, -split_shift);  BL_FP_BARRIER(shifted);
+            double delta = value - shifted;                           BL_FP_BARRIER(delta);
+            double high = value - delta;                              BL_FP_BARRIER(high);
+            high = detail::fp::ldexp(high, split_shift);              BL_FP_BARRIER(high);
+            return high;
+        }
+
+        double delta = scaled - value;  BL_FP_BARRIER(delta);
+        double high = scaled - delta;   BL_FP_BARRIER(high);
+        return high;
+#else
+        const double scaled = split * value;
+        if (detail::fp::isinf(scaled))
+        {
+            return detail::fp::ldexp(
+                value - (value - detail::fp::ldexp(value, -split_shift)),
+                split_shift);
+        }
+
+        return scaled - (scaled - value);
+#endif
+    }
+
+    // ----- Fused expressions -----
 
     BL_PUSH_PRECISE;
+    // Computes (a * b + c) while retaining the full product expansion.
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_add_inline(const f128_s& a, const f128_s& b, const f128_s& c) noexcept
     {
         double p{}, e{};
@@ -509,6 +716,7 @@ namespace detail::_f128 // primitives and kernels
         return renorm(s, t);
     }
 
+    // Computes (a * b + c) when a is a double.
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_add_double_lhs_inline(double a, const f128_s& b, const f128_s& c) noexcept
     {
         double p{}, e{};
@@ -521,6 +729,7 @@ namespace detail::_f128 // primitives and kernels
         return renorm(s, t);
     }
 
+    // Computes (a * b + c) when c is a double.
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_add_double_rhs_inline(const f128_s& a, const f128_s& b, double c) noexcept
     {
         double p{}, e{};
@@ -533,10 +742,11 @@ namespace detail::_f128 // primitives and kernels
     }
 
 #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
-    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_add_inline_checked(const f128_s& a, const f128_s& b, const f128_s& c) noexcept
+    // Computes (a * b + c) with range-safe Dekker product formation.
+    [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_add_range_safe_inline(const f128_s& a, const f128_s& b, const f128_s& c) noexcept
     {
         double p{}, e{};
-        mul_expansion_inline_checked(a, b, p, e);
+        mul_expansion_range_safe_inline(a, b, p, e);
 
         double s{}, t{};
         two_sum_precise(p, c.hi, s, t);
@@ -545,6 +755,7 @@ namespace detail::_f128 // primitives and kernels
     }
 #endif
 
+    // Computes (a * b - c) while retaining the full product expansion.
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s mul_sub_inline(const f128_s& a, const f128_s& b, const f128_s& c) noexcept
     {
         double p{}, e{};
@@ -556,6 +767,7 @@ namespace detail::_f128 // primitives and kernels
         return renorm(s, t);
     }
 
+    // Computes (c - a * b) while retaining the full product expansion.
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s sub_mul_inline(const f128_s& c, const f128_s& a, const f128_s& b) noexcept
     {
         double p{}, e{};
@@ -567,6 +779,7 @@ namespace detail::_f128 // primitives and kernels
         return renorm(s, t);
     }
 
+    // Computes (a0 * b + c0) and (a1 * b + c1) together so the shared-b products can use SIMD.
     BL_FORCE_INLINE constexpr void mul_add_pair_same_rhs_inline(
         const f128_s& a0,
         const f128_s& a1,
@@ -612,6 +825,7 @@ namespace detail::_f128 // primitives and kernels
         out1 = renorm(s1, t1);
     }
 
+    // Computes (a * b + c * d) together so the independent products can use SIMD.
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s sum_products_inline(const f128_s& a, const f128_s& b, const f128_s& c, const f128_s& d) noexcept
     {
         double p0{}, e0{};
@@ -645,6 +859,7 @@ namespace detail::_f128 // primitives and kernels
         return renorm(s, t);
     }
 
+    // Computes (a * b - c * d) together so the independent products can use SIMD.
     [[nodiscard]] BL_FORCE_INLINE constexpr f128_s diff_products_inline(const f128_s& a, const f128_s& b, const f128_s& c, const f128_s& d) noexcept
     {
         double p0{}, e0{};

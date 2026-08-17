@@ -206,10 +206,8 @@ namespace fltx::tests::accuracy
                 if (negative)
                     anchor = -anchor;
 
-                const Float below = std::nextafter(
-                    anchor, -std::numeric_limits<Float>::infinity());
-                const Float above = std::nextafter(
-                    anchor, std::numeric_limits<Float>::infinity());
+                const Float below = native_fp::next_down(anchor);
+                const Float above = native_fp::next_up(anchor);
                 if (!(below < anchor && anchor < above))
                     throw std::logic_error("native argument-reduction neighborhood collapsed");
 
@@ -241,13 +239,15 @@ namespace fltx::tests::accuracy
                 if ((rng.next() & 1u) != 0)
                     anchor = -anchor;
 
-                const Float direction = (rng.next() & 1u) != 0
-                    ? std::numeric_limits<Float>::infinity()
-                    : -std::numeric_limits<Float>::infinity();
+                const bool upward = (rng.next() & 1u) != 0;
                 const int steps = 1 + static_cast<int>(rng.next() % 16u);
                 Float value = anchor;
                 for (int step = 0; step < steps; ++step)
-                    value = std::nextafter(value, direction);
+                {
+                    value = upward
+                        ? native_fp::next_up(value)
+                        : native_fp::next_down(value);
+                }
 
                 out.values.push_back(make_exact_sample(
                     static_cast<double>(value),
@@ -539,7 +539,7 @@ namespace fltx::tests::accuracy
                     const real integral = mpfr::trunc(x);
                     real fractional = x == 0 ? x : x - integral;
                     if (fractional == 0 && x < 0)
-                        fractional = real{ -0.0 };
+                        fractional = mpfr::signed_zero(true);
                     return std::pair{ fractional, integral };
                 });
             run.unary_exact("floating_point_utilities", "ldexp",

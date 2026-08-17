@@ -36,6 +36,7 @@ Accuracy:
 - Accuracy validated against [boost::multiprecision::mpfr_float_backend](https://www.boost.org/doc/libs/latest/libs/multiprecision/doc/html/boost_multiprecision/tut/floats/mpfr_float.html)
 - **Infinity** / **NaN** correctness
 - Runtime, genuine `constexpr`, and fast-math paths are accuracy-gated independently; exact cross-path bits are not promised
+- Consumer fast-math treats finite inputs as a precondition for runtime f128/f256 `+`, `-`, `*`, and `/`; strict builds, genuine constant evaluation, and other math APIs retain their special-value contracts
 
 Performance:
 
@@ -45,6 +46,13 @@ Performance:
 - Hardware acceleration where supported, including x86/x64 SSE2 with FMA when available, AArch64 NEON, and WebAssembly SIMD128 via Emscripten
 - Suitable for lightweight native builds, WebAssembly / Emscripten
 - Optional runtime-to-compile-time dispatch helper for template-specialized kernels
+
+MinGW/GCC consumers that need extended precision down into binary64's
+subnormal range should compile with `-ffast-math` but link with
+`-ffast-math -mno-daz-ftz`. Bare link-time `-ffast-math` adds GCC's
+`crtfastmath.o`, globally enabling FTZ/DAZ and discarding low expansion limbs.
+The MinGW consumer-fast-math validation profile uses the gradual-underflow
+form.
 
 MSVC C++20 builds require MSVC 19.36 or newer, and GCC C++20 builds require GCC
 12 or newer. To preserve compile time and object size in both optimized and
@@ -578,10 +586,10 @@ cd fltx
 ./vcpkg/bootstrap-vcpkg.sh
 
 # 6. Configure; this installs vcpkg dependencies like Catch2, GMP, and MPFR
-cmake --preset macos-release
+cmake --preset macos-arm64-appleclang-release
 
 # 7. Build
-cmake --build build/macos-release --parallel
+cmake --build --preset macos-arm64-appleclang-release --parallel
 ```
 
 For an already-cloned repo:
@@ -591,8 +599,8 @@ cd ~/Documents/fltx
 git pull
 git submodule update --init --recursive
 ./vcpkg/bootstrap-vcpkg.sh
-cmake --preset macos-release
-cmake --build build/macos-release --parallel
+cmake --preset macos-arm64-appleclang-release
+cmake --build --preset macos-arm64-appleclang-release --parallel
 ```
 
 </details>
@@ -611,8 +619,8 @@ cd fltx
 
 ./vcpkg/bootstrap-vcpkg.sh
 
-cmake --preset native-release
-cmake --build build/native-release --parallel
+cmake --preset linux-x64-gcc-release
+cmake --build --preset linux-x64-gcc-release --parallel
 ```
 
 Other distributions should use equivalent packages for a C++20 compiler, CMake, Ninja, pkg-config, and the autotools used by the GMP/MPFR vcpkg ports.
@@ -624,10 +632,14 @@ Other distributions should use equivalent packages for a C++20 compiler, CMake, 
 Test executables are registered with CTest. After building, you can run the registered test cases from the command line:
 
 ```bash
-ctest --preset native-release
+ctest --preset linux-x64-gcc-release
 ```
 
-Use the matching preset for other configured build trees, such as `macos-release`, `mingw-release`, or `wasm32-release`.
+Use the matching explicit platform/architecture/compiler preset on other
+hosts, such as `macos-arm64-appleclang-release`,
+`windows-x64-mingw-release`, or `wasm32-emscripten-release`. CLion and other
+CMake-aware IDEs can import these Ninja presets directly; `vs2026` and `xcode`
+remain available when native IDE project generation is wanted.
 
 For a multi-config Visual Studio build, include the configuration:
 
@@ -641,7 +653,7 @@ constexpr suites, normal and fixed-constexpr accuracy in both strict and
 consumer-fast-math modes, and Python harness tests:
 
 ```powershell
-cmake --build --preset msvc-release-codex --target fltx_ci_checks
+cmake --build --preset windows-x64-msvc-release --target fltx_ci_checks
 ```
 
 See [validation/README.md](validation/README.md) for focused runner commands, full

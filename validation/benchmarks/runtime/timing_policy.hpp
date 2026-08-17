@@ -4,10 +4,12 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <string_view>
 #include <utility>
 
 namespace fltx::tests::benchmark::timing_policy
 {
+    inline constexpr std::string_view identity = "adaptive-v2";
     inline constexpr double fast_threshold_ns = 20.0;
     inline constexpr double slow_threshold_ns = 10'000.0;
     inline constexpr double fast_trial_target_ns = 15'000'000.0;
@@ -28,6 +30,15 @@ namespace fltx::tests::benchmark::timing_policy
         double elapsed_ns;
         std::size_t calls;
     };
+
+    template<class Measure>
+    void for_each_measurement_primary_first(
+        std::size_t measurement_count,
+        Measure&& measure)
+    {
+        for (std::size_t index = 0; index < measurement_count; ++index)
+            measure(index);
+    }
 
     [[nodiscard]] inline trial_policy select(double ns_per_iteration) noexcept
     {

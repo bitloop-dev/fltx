@@ -1,0 +1,154 @@
+{
+  "accuracy_parallel": true,
+  "accuracy_samples": 4096,
+  "architecture": "x86_64",
+  "benchmark_corpus_policy": "adaptive-v1",
+  "benchmark_fast_minimum_trial_ms": 15,
+  "benchmark_fast_threshold_ns": 20,
+  "benchmark_fast_trials": 7,
+  "benchmark_maximum_row_ms": 5000,
+  "benchmark_minimum_trial_ms": 8,
+  "benchmark_ordinary_trials": 3,
+  "benchmark_policy": "adaptive-v2",
+  "benchmark_samples": {
+    "f128": 8192,
+    "f256": 4096
+  },
+  "benchmark_slow_threshold_ns": 10000,
+  "benchmark_trials": 7,
+  "compiler": "ClangCL",
+  "configuration": {
+    "build": {
+      "architecture": "x86_64",
+      "compiler-id": "Clang",
+      "compiler-version": "22.1.8",
+      "config": "Release",
+      "flags-hash": "47db04c453478949a87df17aee6c905f188a5d962d12b76bf2ba37d99f614ec7",
+      "frontend-variant": "MSVC",
+      "optimized": "1",
+      "processor": "AMD64",
+      "source-fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
+      "system": "Windows"
+    },
+    "consumer": {
+      "arm64": "0",
+      "fast-math": "on",
+      "fma": "AUTO",
+      "has-x86-fma": "0",
+      "simd": "on",
+      "simulated-consteval": "off",
+      "tu-x86-fma": "0",
+      "x86": "1"
+    },
+    "harness": {
+      "qdpp": "off",
+      "tlfloat": "on"
+    },
+    "library": {
+      "arm64": "0",
+      "fast-math": "off",
+      "fast-math-request": "AUTO",
+      "fma": "AUTO",
+      "runtime-fma": "available",
+      "simd": "on",
+      "tu-x86-fma": "0",
+      "x86": "1"
+    },
+    "library_strategy": {
+      "baseline-arm64": "0",
+      "compiled-x86-backend": "0",
+      "f256-simd": "1",
+      "msvc-guarded": "0",
+      "neon": "0",
+      "runtime-check": "1",
+      "runtime-path": "1",
+      "scalar-x86": "0",
+      "sse2": "1",
+      "trig-simd": "1",
+      "wasm-simd": "0"
+    }
+  },
+  "consumer_mode": "fastmath",
+  "created_utc": "2026-08-15T15:59:35.615758+00:00",
+  "executables": {
+    "accuracy": {
+      "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-clangcl-release\\validation\\fltx_accuracy_fastmath.exe",
+      "sha256": "10a63056d8021ca117fcea276fdd5aa23ffd765928873a5fe6256d81b2d5869c",
+      "wasm-sha256": "not-present"
+    },
+    "benchmark": {
+      "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-clangcl-release\\validation\\fltx_benchmark_fastmath.exe",
+      "sha256": "a69ebe797d14061d8dded6a9994d10e2777e2cdc3a0d00add1a3366d97c45bf2",
+      "wasm-sha256": "not-present"
+    }
+  },
+  "host": {
+    "machine": "AMD64",
+    "node": "not-used",
+    "os": "Windows",
+    "os-release": "11",
+    "processor": "AMD64 Family 26 Model 68 Stepping 0, AuthenticAMD",
+    "python": "CPython 3.13.14"
+  },
+  "implementations": {
+    "f128": [
+      {
+        "id": "fltx",
+        "label": "fltx bl::f128",
+        "short_label": "fltx"
+      }
+    ],
+    "f256": [
+      {
+        "id": "fltx",
+        "label": "fltx bl::f256",
+        "short_label": "fltx"
+      }
+    ]
+  },
+  "outputs": {
+    "ClangCL_f128_fastmath.csv": "26139729d519f8d98dd45e2569b7446fad166eb6eb56562b1729736afad88c3c",
+    "ClangCL_f256_fastmath.csv": "40779e682047aff6f944758a8cf5357830465f91b70af947d84ab20e31e52fcf",
+    "detail/ClangCL_f128_fastmath_accuracy.csv": "d0217c3ae65cc4aeb76e18f876ddcf5c22b84c0658c9852a0fc5894b65b87022",
+    "detail/ClangCL_f128_fastmath_benchmark.csv": "43a9066ea3d01e97aa1a7da2abe8a8a4b799b0b6d553c63d0da628829c90204c",
+    "detail/ClangCL_f256_fastmath_accuracy.csv": "13e8874f5983ae2ce05aea6a8e67af07b254e4709c6b8a080022c96590632575",
+    "detail/ClangCL_f256_fastmath_benchmark.csv": "6cbf7b69af0f0ccb27622889714e8210c4504814af3074ed38f54005fba62f8f"
+  },
+  "phases": {
+    "f128.accuracy": {
+      "output": "ClangCL_f128_fastmath_accuracy.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "f128.benchmark": {
+      "output": "ClangCL_f128_fastmath_benchmark.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "f256.accuracy": {
+      "output": "ClangCL_f256_fastmath_accuracy.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "f256.benchmark": {
+      "output": "ClangCL_f256_fastmath_benchmark.csv",
+      "return_code": 0,
+      "status": "passed"
+    }
+  },
+  "phases_requested": [
+    "accuracy",
+    "benchmark"
+  ],
+  "platform": "windows",
+  "precisions": [
+    "f128",
+    "f256"
+  ],
+  "run_id": "081f2f75d252445da1de5098f50b7f37",
+  "sample_mode": "standard",
+  "schema_version": "6",
+  "source_fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
+  "source_revision": "b38d8f2a0c9da2eeae373bce48a1aa42bf88fcdc-dirty-7cd523deac97",
+  "status": "complete"
+}

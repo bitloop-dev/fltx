@@ -55,11 +55,11 @@ namespace fltx::tests::implementations
     inline constexpr identity fltx_f256{
         "fltx", "fltx", "fltx bl::f256", "fltx"
     };
-    inline constexpr identity fltx_f32{
-        "fltx", "fltx", "fltx bl::f32", "fltx"
+    inline constexpr identity native_f32{
+        "native", "float", "native float", "bl:: native overloads"
     };
-    inline constexpr identity fltx_f64{
-        "fltx", "fltx", "fltx bl::f64", "fltx"
+    inline constexpr identity native_f64{
+        "native", "double", "native double", "bl:: native overloads"
     };
     inline constexpr identity qdpp_f128{
         "qdpp", "ddreal", "qdpp dd_real", "qdpp", FLTX_METRICS_HAS_QDPP != 0
@@ -86,9 +86,9 @@ namespace fltx::tests::implementations
         std::is_same_v<Float, bl::f128> ? "f128" : "f256";
 
     template<class Float>
-    inline constexpr identity fltx_identity =
-        std::is_same_v<Float, float> ? fltx_f32 :
-        std::is_same_v<Float, double> ? fltx_f64 :
+    inline constexpr identity primary_identity =
+        std::is_same_v<Float, float> ? native_f32 :
+        std::is_same_v<Float, double> ? native_f64 :
         std::is_same_v<Float, bl::f128> ? fltx_f128 : fltx_f256;
 
     template<class Float>
@@ -175,8 +175,8 @@ namespace fltx::tests::implementations
 
         [[nodiscard]] static const mpfr::real& absolute_resolution()
         {
-            static const mpfr::real value{
-                std::numeric_limits<float>::denorm_min()};
+            static const mpfr::real value =
+                mpfr::absolute_resolution<float>();
             return value;
         }
 
@@ -187,17 +187,17 @@ namespace fltx::tests::implementations
 
         [[nodiscard]] static mpfr::real to_real(float value)
         {
-            return mpfr::real{ value };
+            return mpfr::native_float_to_real(value);
         }
 
         [[nodiscard]] static bool is_finite(float value)
         {
-            return std::isfinite(value);
+            return native_fp::is_finite(value);
         }
 
         [[nodiscard]] static bool sign_bit(float value)
         {
-            return std::signbit(value);
+            return native_fp::sign_bit(value);
         }
     };
 
@@ -209,8 +209,8 @@ namespace fltx::tests::implementations
 
         [[nodiscard]] static const mpfr::real& absolute_resolution()
         {
-            static const mpfr::real value{
-                std::numeric_limits<double>::denorm_min()};
+            static const mpfr::real value =
+                mpfr::absolute_resolution<double>();
             return value;
         }
 
@@ -221,17 +221,17 @@ namespace fltx::tests::implementations
 
         [[nodiscard]] static mpfr::real to_real(double value)
         {
-            return mpfr::real{ value };
+            return mpfr::native_float_to_real(value);
         }
 
         [[nodiscard]] static bool is_finite(double value)
         {
-            return std::isfinite(value);
+            return native_fp::is_finite(value);
         }
 
         [[nodiscard]] static bool sign_bit(double value)
         {
-            return std::signbit(value);
+            return native_fp::sign_bit(value);
         }
     };
 
@@ -243,8 +243,8 @@ namespace fltx::tests::implementations
 
         [[nodiscard]] static const mpfr::real& absolute_resolution()
         {
-            static const mpfr::real value{
-                std::numeric_limits<double>::denorm_min()};
+            static const mpfr::real value =
+                mpfr::absolute_resolution<double>();
             return value;
         }
 
@@ -277,8 +277,8 @@ namespace fltx::tests::implementations
 
         [[nodiscard]] static const mpfr::real& absolute_resolution()
         {
-            static const mpfr::real value{
-                std::numeric_limits<double>::denorm_min()};
+            static const mpfr::real value =
+                mpfr::absolute_resolution<double>();
             return value;
         }
 
@@ -310,17 +310,17 @@ namespace fltx::tests::implementations
 
         [[nodiscard]] static const mpfr::real& absolute_resolution()
         {
-            static const mpfr::real value{
-                std::numeric_limits<double>::denorm_min()};
+            static const mpfr::real value =
+                mpfr::absolute_resolution<double>();
             return value;
         }
 
         [[nodiscard]] static cppdd from_sample(const sample& value)
         {
-            if (!std::isfinite(value.limb[0]))
+            if (!native_fp::is_finite(value.limb[0]))
                 return cppdd{ value.limb[0] };
             if (value.limb[0] == 0.0 && value.limb[1] == 0.0)
-                return cppdd{ std::signbit(value.limb[0]) ? "-0" : "0" };
+                return cppdd{ native_fp::sign_bit(value.limb[0]) ? "-0" : "0" };
             return cppdd{ value.limb[0] } + cppdd{ value.limb[1] };
         }
 
@@ -330,7 +330,7 @@ namespace fltx::tests::implementations
             const mpfr::real out =
                 mpfr::real{ parts.first } + mpfr::real{ parts.second };
             using boost::multiprecision::signbit;
-            return out == 0 && signbit(value) ? mpfr::real{ -0.0 } : out;
+            return out == 0 && signbit(value) ? mpfr::signed_zero(true) : out;
         }
 
         [[nodiscard]] static bool is_finite(const cppdd& value)
@@ -363,12 +363,12 @@ namespace fltx::tests::implementations
 
         [[nodiscard]] static mpfr64 from_sample(const sample& value)
         {
-            if (!std::isfinite(value.limb[0]))
+            if (!native_fp::is_finite(value.limb[0]))
                 return mpfr64{ value.limb[0] };
             if (value.limb[0] == 0.0 && value.limb[1] == 0.0 &&
                 value.limb[2] == 0.0 && value.limb[3] == 0.0)
             {
-                return mpfr64{ std::signbit(value.limb[0]) ? "-0" : "0" };
+                return mpfr64{ native_fp::sign_bit(value.limb[0]) ? "-0" : "0" };
             }
             return mpfr64{ value.limb[0] } + mpfr64{ value.limb[1] } +
                    mpfr64{ value.limb[2] } + mpfr64{ value.limb[3] };
@@ -400,14 +400,14 @@ namespace fltx::tests::implementations
 
         [[nodiscard]] static const mpfr::real& absolute_resolution()
         {
-            static const mpfr::real value{
-                std::numeric_limits<double>::denorm_min()};
+            static const mpfr::real value =
+                mpfr::absolute_resolution<double>();
             return value;
         }
 
         [[nodiscard]] static dd_real from_sample(const sample& value)
         {
-            if (!std::isfinite(value.limb[0]))
+            if (!native_fp::is_finite(value.limb[0]))
                 return dd_real{ value.limb[0] };
             return dd_real{ value.limb[0] } + dd_real{ value.limb[1] };
         }
@@ -416,19 +416,20 @@ namespace fltx::tests::implementations
         {
             const mpfr::real out =
                 mpfr::real{ value.x[0] } + mpfr::real{ value.x[1] };
-            return out == 0 && std::signbit(value.x[0])
-                ? mpfr::real{ -0.0 }
+            return out == 0 && native_fp::sign_bit(value.x[0])
+                ? mpfr::signed_zero(true)
                 : out;
         }
 
         [[nodiscard]] static bool is_finite(const dd_real& value)
         {
-            return std::isfinite(value.x[0]) && std::isfinite(value.x[1]);
+            return native_fp::is_finite(value.x[0]) &&
+                   native_fp::is_finite(value.x[1]);
         }
 
         [[nodiscard]] static bool sign_bit(const dd_real& value)
         {
-            return std::signbit(value.x[0]);
+            return native_fp::sign_bit(value.x[0]);
         }
     };
 
@@ -439,14 +440,14 @@ namespace fltx::tests::implementations
 
         [[nodiscard]] static const mpfr::real& absolute_resolution()
         {
-            static const mpfr::real value{
-                std::numeric_limits<double>::denorm_min()};
+            static const mpfr::real value =
+                mpfr::absolute_resolution<double>();
             return value;
         }
 
         [[nodiscard]] static qd_real from_sample(const sample& value)
         {
-            if (!std::isfinite(value.limb[0]))
+            if (!native_fp::is_finite(value.limb[0]))
                 return qd_real{ value.limb[0] };
             return qd_real{ value.limb[0] } + qd_real{ value.limb[1] } +
                    qd_real{ value.limb[2] } + qd_real{ value.limb[3] };
@@ -457,20 +458,22 @@ namespace fltx::tests::implementations
             const mpfr::real out =
                 mpfr::real{ value.x[0] } + mpfr::real{ value.x[1] } +
                 mpfr::real{ value.x[2] } + mpfr::real{ value.x[3] };
-            return out == 0 && std::signbit(value.x[0])
-                ? mpfr::real{ -0.0 }
+            return out == 0 && native_fp::sign_bit(value.x[0])
+                ? mpfr::signed_zero(true)
                 : out;
         }
 
         [[nodiscard]] static bool is_finite(const qd_real& value)
         {
-            return std::isfinite(value.x[0]) && std::isfinite(value.x[1]) &&
-                   std::isfinite(value.x[2]) && std::isfinite(value.x[3]);
+            return native_fp::is_finite(value.x[0]) &&
+                   native_fp::is_finite(value.x[1]) &&
+                   native_fp::is_finite(value.x[2]) &&
+                   native_fp::is_finite(value.x[3]);
         }
 
         [[nodiscard]] static bool sign_bit(const qd_real& value)
         {
-            return std::signbit(value.x[0]);
+            return native_fp::sign_bit(value.x[0]);
         }
     };
 #endif

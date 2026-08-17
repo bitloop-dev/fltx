@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cmath>
 #include <cstddef>
 #include <limits>
@@ -108,7 +109,7 @@ namespace fltx::tests::domains
         return interval("moderate", low, high, count, seed);
     }
 
-    [[nodiscard]] inline binary_domain arithmetic_general(
+    [[nodiscard]] inline std::vector<binary_domain> arithmetic(
         arithmetic_operation operation,
         std::size_t count,
         int precision_bits,
@@ -122,11 +123,43 @@ namespace fltx::tests::domains
         // operation-appropriate structured operand relationship. Keeping a
         // complete block even in smoke mode is the coverage contract.
         const std::size_t sample_count = std::max<std::size_t>(count, 20);
-        binary_domain out{ "general", seed, {} };
-        out.values.reserve(sample_count);
+        binary_domain general{ "general", seed, {} };
+        binary_domain subnormal{ "subnormal", seed, {} };
+        general.values.reserve(sample_count);
+        subnormal.values.reserve(sample_count / 20 + 1);
         random_bits rng(seed ^ static_cast<std::uint64_t>(operation));
         const bool additive = operation == arithmetic_operation::add ||
             operation == arithmetic_operation::subtract;
+
+        const std::size_t limb_count = precision_bits <= 106 ? 2 : 4;
+        const auto has_subnormal_limb = [&](const sample& value) {
+            for (std::size_t limb = 0; limb < limb_count; ++limb)
+            {
+                const auto magnitude = native_fp::magnitude_bits(
+                    value.limb[limb]);
+                if (magnitude != 0 &&
+                    magnitude <= native_fp::binary_format<double>::fraction_mask)
+                {
+                    return true;
+                }
+            }
+            return false;
+        };
+        const auto near_underflow = [](const sample& value) {
+            const auto magnitude = native_fp::magnitude_bits(value.limb[0]);
+            const auto encoded_exponent =
+                (magnitude & native_fp::binary_format<double>::exponent_mask) >> 52;
+            return encoded_exponent != 0 && encoded_exponent <= 23;
+        };
+        const auto append = [&](binary_sample value, bool force_subnormal = false) {
+            const bool underflow_sensitive = force_subnormal ||
+                has_subnormal_limb(value.lhs) ||
+                has_subnormal_limb(value.rhs) ||
+                (additive &&
+                 (near_underflow(value.lhs) || near_underflow(value.rhs)));
+            (underflow_sensitive ? subnormal.values : general.values)
+                .push_back(std::move(value));
+        };
 
         const auto random_exponent = [&](int low, int high) {
             return low + static_cast<int>(
@@ -140,7 +173,7 @@ namespace fltx::tests::domains
                 std::move(label));
         };
         const auto append_random_pair = [&](int low, int high, const char* stratum) {
-            out.values.push_back({
+            append({
                 log_sample(low, high, std::string{stratum} + " lhs"),
                 log_sample(low, high, std::string{stratum} + " rhs"),
                 false
@@ -172,7 +205,7 @@ namespace fltx::tests::domains
                     : lhs_exponent;
                 const double lhs_sign = (rng.next() & 1u) != 0 ? 1.0 : -1.0;
                 const double rhs_sign = (rng.next() & 1u) != 0 ? 1.0 : -1.0;
-                out.values.push_back({
+                append({
                     make_sample(
                         lhs_sign * std::ldexp(
                             rng.between(0.5, 0.74), lhs_exponent),
@@ -195,7 +228,7 @@ namespace fltx::tests::domains
                 const int rhs_exponent = random_exponent(-1073, -1022);
                 const double lhs_sign = (rng.next() & 1u) != 0 ? 1.0 : -1.0;
                 const double rhs_sign = (rng.next() & 1u) != 0 ? 1.0 : -1.0;
-                out.values.push_back({
+                append({
                     make_exact_sample(
                         lhs_sign * std::ldexp(rng.between(0.5, 1.0), lhs_exponent),
                         "subnormal lhs"),
@@ -203,7 +236,7 @@ namespace fltx::tests::domains
                         rhs_sign * std::ldexp(rng.between(0.5, 1.0), rhs_exponent),
                         "subnormal rhs"),
                     false
-                });
+                }, true);
             }
             else if (slot == 2)
             {
@@ -212,7 +245,7 @@ namespace fltx::tests::domains
                 if (operation == arithmetic_operation::multiply)
                 {
                     rhs = make_sample(1.0 / lhs.limb[0], "balanced-product rhs");
-                    out.values.push_back({std::move(lhs), std::move(rhs), false});
+                    append({std::move(lhs), std::move(rhs), false});
                     continue;
                 }
 
@@ -235,7 +268,7 @@ namespace fltx::tests::domains
                 rhs.label = operation == arithmetic_operation::divide
                     ? "near-equal divisor"
                     : "cancellation rhs";
-                out.values.push_back({
+                append({
                     std::move(lhs),
                     std::move(rhs),
                     operation == arithmetic_operation::add ||
@@ -254,7 +287,28 @@ namespace fltx::tests::domains
                 append_random_pair(-80, 80, "representative");
             }
         }
-        return out;
+        if (!additive)
+        {
+            for (std::uint64_t index = 1; index <= 4; ++index)
+            {
+                const double low_limb = std::bit_cast<double>(
+                    index * UINT64_C(0x40000));
+                sample tiny{
+                    {0x1p-1000, low_limb, 0.0, 0.0},
+                    "subnormal-limb operand"
+                };
+                append({
+                    std::move(tiny),
+                    make_exact_sample(
+                        operation == arithmetic_operation::multiply
+                            ? 0x1p+900
+                            : 0x1p-900,
+                        "scaling operand"),
+                    false
+                }, true);
+            }
+        }
+        return {std::move(general), std::move(subnormal)};
     }
 
     [[nodiscard]] inline std::size_t binary_size(const domain& input) noexcept

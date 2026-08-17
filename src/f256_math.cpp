@@ -14,11 +14,39 @@ namespace bl::detail::_f256_runtime
     // roots
     BL_NO_INLINE f256_s sqrt(const f256_s& a)
     {
+#if BL_FP_BARRIER_ACTIVE
+        if (detail::_f256::has_subnormal_limb(a)) [[unlikely]]
+        {
+            constexpr int input_scale = 512;
+            return detail::_f256::scale_terms_guarded(
+                detail::_f256_impl::sqrt(
+                    detail::_f256::scale_terms_guarded(a, input_scale)),
+                -(input_scale / 2));
+        }
+#endif
         return detail::_f256_impl::sqrt(a);
     }
 
     BL_NO_INLINE f256_s hypot(const f256_s& x, const f256_s& y)
     {
+#if BL_FP_BARRIER_ACTIVE
+        const double largest_head = detail::fp::absd(x.x0) > detail::fp::absd(y.x0)
+            ? detail::fp::absd(x.x0)
+            : detail::fp::absd(y.x0);
+        const bool needs_scale = detail::_f256::has_subnormal_limb(x) ||
+            detail::_f256::has_subnormal_limb(y) ||
+            (largest_head != 0.0 && largest_head < 0x1p-400);
+        if (needs_scale && detail::fp::absd(x.x0) < 0x1p500 &&
+            detail::fp::absd(y.x0) < 0x1p500) [[unlikely]]
+        {
+            constexpr int input_scale = 512;
+            return detail::_f256::scale_terms_guarded(
+                detail::_f256_impl::hypot(
+                    detail::_f256::scale_terms_guarded(x, input_scale),
+                    detail::_f256::scale_terms_guarded(y, input_scale)),
+                -input_scale);
+        }
+#endif
         return detail::_f256_impl::hypot(x, y);
     }
 
@@ -62,6 +90,14 @@ namespace bl::detail::_f256_runtime
     // fractional decomposition
     BL_NO_INLINE f256_s modf(const f256_s& x, f256_s* iptr) noexcept
     {
+#if BL_FP_BARRIER_ACTIVE
+        if (!detail::fp::isinf_or_nan(x.x0) && detail::fp::absd(x.x0) < 1.0)
+        {
+            if (iptr)
+                *iptr = detail::_f256::signed_zero(bl::signbit(x));
+            return x;
+        }
+#endif
         return detail::_f256_impl::modf(x, iptr);
     }
 

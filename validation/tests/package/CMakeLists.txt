@@ -3,6 +3,14 @@ project(fltx_package_consumers LANGUAGES CXX)
 
 find_package(fltx CONFIG REQUIRED)
 
+get_target_property(_FLTX_PACKAGE_DEFINITIONS fltx::fltx INTERFACE_COMPILE_DEFINITIONS)
+set(_FLTX_PACKAGE_FMA_AUTO ON)
+foreach(_FLTX_EXPLICIT_FMA_MODE IN ITEMS FLTX_HEADER_FMA_OFF=1 FLTX_HEADER_FMA_ASSUME=1)
+    if(_FLTX_EXPLICIT_FMA_MODE IN_LIST _FLTX_PACKAGE_DEFINITIONS)
+        set(_FLTX_PACKAGE_FMA_AUTO OFF)
+    endif()
+endforeach()
+
 function(add_fltx_consumer target)
     add_executable(${target} consumer.cpp)
     target_link_libraries(${target} PRIVATE fltx::fltx)
@@ -19,7 +27,9 @@ endfunction()
 
 add_fltx_consumer(fltx_package_strict)
 add_fltx_consumer(fltx_package_fastmath)
-add_fltx_consumer(fltx_package_no_fma)
+if(_FLTX_PACKAGE_FMA_AUTO)
+    add_fltx_consumer(fltx_package_no_fma)
+endif()
 
 target_compile_definitions(fltx_package_strict PRIVATE FLTX_TESTS_EXPECT_STRICT=1)
 target_compile_definitions(fltx_package_fastmath PRIVATE FLTX_TESTS_EXPECT_FAST_MATH=1)
@@ -28,20 +38,25 @@ if(MSVC)
     target_compile_options(fltx_package_fastmath PRIVATE /fp:fast)
 else()
     target_compile_options(fltx_package_fastmath PRIVATE -ffast-math)
+    target_link_options(fltx_package_fastmath PRIVATE -ffast-math)
 endif()
 
-# Exercise AUTO as a translation unit that cannot use local x86 FMA and whose
-# test-only CPU probe reports that runtime FMA is unavailable.
-target_compile_definitions(fltx_package_no_fma PRIVATE
-    FLTX_TESTS_EXPECT_NO_LOCAL_FMA=1
-    FLTX_TEST_RUNTIME_X86_FMA_AVAILABLE=0
-    FLTX_TU_HAS_X86_FMA=0
-    FLTX_HAS_X86_FMA=0
-)
+if(_FLTX_PACKAGE_FMA_AUTO)
+    # Exercise AUTO as a translation unit that cannot use local x86 FMA and
+    # whose test-only CPU probe reports that runtime FMA is unavailable.
+    target_compile_definitions(fltx_package_no_fma PRIVATE
+        FLTX_TESTS_EXPECT_NO_LOCAL_FMA=1
+        FLTX_TEST_RUNTIME_X86_FMA_AVAILABLE=0
+        FLTX_TU_HAS_X86_FMA=0
+        FLTX_HAS_X86_FMA=0
+    )
+endif()
 
 include(CTest)
 if(BUILD_TESTING)
     add_test(NAME fltx.package.strict COMMAND fltx_package_strict)
     add_test(NAME fltx.package.fastmath COMMAND fltx_package_fastmath)
-    add_test(NAME fltx.package.no_fma COMMAND fltx_package_no_fma)
+    if(_FLTX_PACKAGE_FMA_AUTO)
+        add_test(NAME fltx.package.no_fma COMMAND fltx_package_no_fma)
+    endif()
 endif()

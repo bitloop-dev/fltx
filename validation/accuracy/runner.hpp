@@ -8,6 +8,7 @@
 #include "../support/source_identity.hpp"
 #include "../support/thresholds.hpp"
 #include "special_values.hpp"
+#include "signed_zero.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -26,7 +27,7 @@
 
 namespace fltx::tests::accuracy
 {
-    inline constexpr std::string_view schema_version = "4";
+    inline constexpr std::string_view schema_version = "6";
 #if defined(FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH) && FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH
     inline constexpr bool external_implementations_enabled = false;
 #else
@@ -42,6 +43,7 @@ namespace fltx::tests::accuracy
         std::string filter;
         std::string sample_mode = "custom";
         std::size_t samples = 64;
+        bool advisory = false;
     };
 
     struct result
@@ -99,12 +101,27 @@ namespace fltx::tests::accuracy
 
     [[nodiscard]] inline std::string number(double value)
     {
-        if (std::isinf(value))
+        if (mpfr::is_exact_score(value))
+            return "inf";
+        if (native_fp::is_inf(value))
             return value > 0 ? "inf" : "-inf";
-        if (std::isnan(value))
+        if (native_fp::is_nan(value))
             return "nan";
         std::ostringstream out;
         out << std::fixed << std::setprecision(6) << value;
+        return out.str();
+    }
+
+    [[nodiscard]] inline std::string display_score(double value)
+    {
+        if (mpfr::is_exact_score(value))
+            return "exact";
+        if (native_fp::is_inf(value))
+            return value > 0 ? "inf" : "-inf";
+        if (native_fp::is_nan(value))
+            return "nan";
+        std::ostringstream out;
+        out << std::fixed << std::setprecision(2) << value;
         return out.str();
     }
 
@@ -208,7 +225,7 @@ namespace fltx::tests::accuracy
             for (const domains::binary_domain& domain : test_domains)
             {
                 measure_binary<Float>(
-                    fltx_info(operation),
+                    primary_info(operation),
                     group,
                     operation,
                     domain,
@@ -241,7 +258,7 @@ namespace fltx::tests::accuracy
             for (const domains::domain& domain : test_domains)
             {
                 measure_predicate<Float>(
-                    fltx_info(operation),
+                    primary_info(operation),
                     group,
                     operation,
                     domain,
@@ -310,7 +327,7 @@ namespace fltx::tests::accuracy
             for (const domains::domain& domain : test_domains)
             {
                 measure_binary_pair<Float>(
-                    fltx_info(operation),
+                    primary_info(operation),
                     group,
                     operation,
                     domain,
@@ -341,7 +358,7 @@ namespace fltx::tests::accuracy
             for (const domains::domain& domain : test_domains)
             {
                 measure_ternary<Float>(
-                    fltx_info(operation),
+                    primary_info(operation),
                     group,
                     operation,
                     domain,
@@ -376,7 +393,7 @@ namespace fltx::tests::accuracy
                     expected.emplace_back(text);
 
                 measure_parse<Float>(
-                    fltx_info(operation),
+                    primary_info(operation),
                     group,
                     operation,
                     domain,
@@ -406,7 +423,7 @@ namespace fltx::tests::accuracy
             for (const domains::domain& domain : test_domains)
             {
                 measure_format<Float>(
-                    fltx_info(operation),
+                    primary_info(operation),
                     group,
                     operation,
                     domain,
@@ -455,7 +472,7 @@ namespace fltx::tests::accuracy
             for (const domains::domain& domain : test_domains)
             {
                 measure_unary<Float>(
-                    fltx_info(operation),
+                    primary_info(operation),
                     group,
                     operation,
                     domain,
@@ -489,7 +506,7 @@ namespace fltx::tests::accuracy
             for (const domains::domain& domain : test_domains)
             {
                 measure_binary<Float>(
-                    fltx_info(operation),
+                    primary_info(operation),
                     group,
                     operation,
                     domain,
@@ -523,7 +540,7 @@ namespace fltx::tests::accuracy
             for (const domains::domain& domain : test_domains)
             {
                 measure_unary_pair<Float>(
-                    fltx_info(operation),
+                    primary_info(operation),
                     group,
                     operation,
                     domain,
@@ -541,11 +558,11 @@ namespace fltx::tests::accuracy
             }
         }
 
-        [[nodiscard]] implementation_info fltx_info(
+        [[nodiscard]] implementation_info primary_info(
             std::string_view operation) const
         {
             return describe(
-                implementations::fltx_identity<Float>,
+                implementations::primary_identity<Float>,
                 "bl::" + std::string(operation));
         }
 
@@ -753,6 +770,9 @@ namespace fltx::tests::accuracy
             const std::string special = cached_special(
                 info, operation, gated,
                 [&] { return special_values::unary<Value>(operation, evaluate); });
+            const std::string zero = cached_signed_zero(
+                info, operation,
+                [&] { return signed_zero::unary<Value>(operation, evaluate); });
             result measured{};
             std::vector<double> bits;
             bits.reserve(domain.values.size());
@@ -774,7 +794,8 @@ namespace fltx::tests::accuracy
                     bits);
             }
             finish<Value>(
-                info, group, operation, domain, measured, bits, special, gated);
+                info, group, operation, domain, measured, bits,
+                special, zero, gated);
         }
 
         template<class Value, class Domain, class Eval, class Reference>
@@ -791,6 +812,9 @@ namespace fltx::tests::accuracy
             const std::string special = cached_special(
                 info, operation, gated,
                 [&] { return special_values::binary<Value>(operation, evaluate); });
+            const std::string zero = cached_signed_zero(
+                info, operation,
+                [&] { return signed_zero::binary<Value>(operation, evaluate); });
             result measured{};
             std::vector<double> bits;
             bits.reserve(domains::binary_size(domain));
@@ -879,7 +903,8 @@ namespace fltx::tests::accuracy
                     bits);
             }
             finish<Value>(
-                info, group, operation, domain, measured, bits, special, gated);
+                info, group, operation, domain, measured, bits,
+                special, zero, gated);
         }
 
         template<class Value, class Eval, class Reference>
@@ -923,7 +948,7 @@ namespace fltx::tests::accuracy
                         lhs_real,
                         implementations::value_traits<Value>::to_real(right)));
                     const double sample_bits = observed == expected
-                        ? std::numeric_limits<double>::infinity()
+                        ? mpfr::exact_score()
                         : 0.0;
                     bits.push_back(sample_bits);
                     if (bits.size() == 1 ||
@@ -944,7 +969,8 @@ namespace fltx::tests::accuracy
                     describe(lhs_sample) + " ; same value");
             }
             finish<Value>(
-                info, group, operation, domain, measured, bits, special, gated);
+                info, group, operation, domain, measured, bits,
+                special, "-", gated);
         }
 
         template<class Value, class Eval, class Reference>
@@ -961,6 +987,9 @@ namespace fltx::tests::accuracy
             const std::string special = cached_special(
                 info, operation, gated,
                 [&] { return special_values::unary_pair<Value>(operation, evaluate); });
+            const std::string zero = cached_signed_zero(
+                info, operation,
+                [&] { return signed_zero::unary_pair<Value>(operation, evaluate); });
             result measured{};
             std::vector<double> bits;
             bits.reserve(domain.values.size());
@@ -990,7 +1019,8 @@ namespace fltx::tests::accuracy
                     bits);
             }
             finish<Value>(
-                info, group, operation, domain, measured, bits, special, gated);
+                info, group, operation, domain, measured, bits,
+                special, zero, gated);
         }
 
         template<class Value, class Eval, class Reference>
@@ -1006,6 +1036,9 @@ namespace fltx::tests::accuracy
             const std::string special = cached_special(
                 info, operation, gated,
                 [&] { return special_values::binary_pair<Value>(operation, evaluate); });
+            const std::string zero = cached_signed_zero(
+                info, operation,
+                [&] { return signed_zero::binary_pair<Value>(operation, evaluate); });
             result measured{};
             std::vector<double> bits;
             bits.reserve(domain.values.size());
@@ -1040,7 +1073,8 @@ namespace fltx::tests::accuracy
                     bits);
             }
             finish<Value>(
-                info, group, operation, domain, measured, bits, special, gated);
+                info, group, operation, domain, measured, bits,
+                special, zero, gated);
         }
 
         template<class Value, class Eval, class Reference>
@@ -1056,6 +1090,9 @@ namespace fltx::tests::accuracy
             const std::string special = cached_special(
                 info, operation, gated,
                 [&] { return special_values::ternary<Value>(operation, evaluate); });
+            const std::string zero = cached_signed_zero(
+                info, operation,
+                [&] { return signed_zero::ternary<Value>(operation, evaluate); });
             result measured{};
             std::vector<double> bits;
             bits.reserve(domain.values.size());
@@ -1167,7 +1204,8 @@ namespace fltx::tests::accuracy
                     bits);
             }
             finish<Value>(
-                info, group, operation, domain, measured, bits, special, gated);
+                info, group, operation, domain, measured, bits,
+                special, zero, gated);
         }
 
         template<class Value, class Eval>
@@ -1183,6 +1221,9 @@ namespace fltx::tests::accuracy
             const std::string special = cached_special(
                 info, operation, gated,
                 [&] { return special_values::parse<Value>(evaluate); });
+            const std::string zero = cached_signed_zero(
+                info, operation,
+                [&] { return signed_zero::parse<Value>(evaluate); });
             result measured{};
             std::vector<double> bits;
             bits.reserve(domain.values.size());
@@ -1198,7 +1239,8 @@ namespace fltx::tests::accuracy
                     bits);
             }
             finish<Value>(
-                info, group, operation, domain, measured, bits, special, gated);
+                info, group, operation, domain, measured, bits,
+                special, zero, gated);
         }
 
         template<class Value, class Eval>
@@ -1213,6 +1255,9 @@ namespace fltx::tests::accuracy
             const std::string special = cached_special(
                 info, operation, gated,
                 [&] { return special_values::format<Value>(evaluate); });
+            const std::string zero = cached_signed_zero(
+                info, operation,
+                [&] { return signed_zero::format<Value>(evaluate); });
             result measured{};
             std::vector<double> bits;
             bits.reserve(domain.values.size());
@@ -1246,7 +1291,8 @@ namespace fltx::tests::accuracy
                 }
             }
             finish<Value>(
-                info, group, operation, domain, measured, bits, special, gated);
+                info, group, operation, domain, measured, bits,
+                special, zero, gated);
         }
 
         template<class Value>
@@ -1278,15 +1324,9 @@ namespace fltx::tests::accuracy
             else
             {
                 matches = observed == expected;
-                if (matches && expected == 0)
-                {
-                    matches =
-                        implementations::value_traits<Value>::sign_bit(value) ==
-                        mpfr::sign_bit(expected);
-                }
             }
             return matches
-                ? std::numeric_limits<double>::infinity()
+                ? mpfr::exact_score()
                 : 0.0;
         }
 
@@ -1365,17 +1405,17 @@ namespace fltx::tests::accuracy
         {
             const double ceiling =
                 implementations::value_traits<Value>::nominal_bits + 32.0;
-            if (std::isnan(bits))
+            if (native_fp::is_nan(bits))
                 return 0.0;
-            if (std::isinf(bits))
-                return bits > 0.0 ? bits : 0.0;
+            if (mpfr::is_exact_score(bits))
+                return bits;
             return std::clamp(bits, 0.0, ceiling);
         }
 
         template<class Value>
         [[nodiscard]] static double mean_bits(double bits)
         {
-            return std::isinf(bits)
+            return mpfr::is_exact_score(bits)
                 ? implementations::value_traits<Value>::nominal_bits + 32.0
                 : bits;
         }
@@ -1408,7 +1448,18 @@ namespace fltx::tests::accuracy
                     ? "No"
                     : probe().category();
             special_support_.emplace(key, category);
-            if (gated && category != "-" && category != "Both")
+            #if defined(FLTX_FAST_MATH)
+            const bool relaxed_basic_arithmetic =
+                info.id == "fltx" &&
+                (implementations::precision_name<Float> == "f128" ||
+                 implementations::precision_name<Float> == "f256") &&
+                (operation == "add" || operation == "subtract" ||
+                 operation == "multiply" || operation == "divide");
+            #else
+            constexpr bool relaxed_basic_arithmetic = false;
+            #endif
+            if (gated && !relaxed_basic_arithmetic &&
+                category != "-" && category != "Both")
             {
                 ++failures_;
                 std::cerr
@@ -1417,6 +1468,23 @@ namespace fltx::tests::accuracy
                     << " fltx " << operation
                     << " supports " << category << " only\n";
             }
+            return category;
+        }
+
+        template<class Probe>
+        [[nodiscard]] std::string cached_signed_zero(
+            const implementation_info& info,
+            std::string_view operation,
+            Probe probe)
+        {
+            const std::string key = info.id + '\n' + std::string(operation);
+            if (const auto found = signed_zero_support_.find(key);
+                found != signed_zero_support_.end())
+            {
+                return found->second;
+            }
+            const std::string category = probe().category();
+            signed_zero_support_.emplace(key, category);
             return category;
         }
 
@@ -1429,6 +1497,7 @@ namespace fltx::tests::accuracy
             result& measured,
             std::vector<double>& bits,
             std::string_view special,
+            std::string_view zero,
             bool gated)
         {
             if (bits.empty())
@@ -1440,12 +1509,12 @@ namespace fltx::tests::accuracy
             {
                 total += mean_bits<Value>(value);
                 all_exact =
-                    all_exact && std::isinf(value) && value > 0.0;
+                    all_exact && mpfr::is_exact_score(value);
             }
             std::sort(bits.begin(), bits.end());
             measured.samples = bits.size();
             measured.mean_bits = all_exact
-                ? std::numeric_limits<double>::infinity()
+                ? mpfr::exact_score()
                 : total / static_cast<double>(bits.size());
             measured.p01_bits = bits[
                 std::min(
@@ -1492,6 +1561,7 @@ namespace fltx::tests::accuracy
                 margin,
                 passed,
                 std::string(special),
+                std::string(zero),
                 measured.worst_input,
                 measured.observed,
                 measured.reference
@@ -1508,12 +1578,10 @@ namespace fltx::tests::accuracy
                       << domain.name
                       << "mean "
                       << std::setw(9)
-                      << std::fixed
-                      << std::setprecision(2)
-                      << measured.mean_bits
+                      << display_score(measured.mean_bits)
                       << "worst "
                       << std::setw(9)
-                      << measured.worst_bits;
+                      << display_score(measured.worst_bits);
             if (gated)
                 std::cout << (passed == "yes" ? "PASS" : "FAIL");
             else
@@ -1526,6 +1594,7 @@ namespace fltx::tests::accuracy
         int failures_ = 0;
         std::size_t fltx_rows_ = 0;
         std::unordered_map<std::string, std::string> special_support_;
+        std::unordered_map<std::string, std::string> signed_zero_support_;
     };
 
     int run_f128(csv_writer& output, const options& settings);

@@ -129,21 +129,67 @@ OPERATION_ORDER = {
     for group, operations in _OPERATIONS_BY_GROUP.items()
 }
 
+PLATFORM_LABELS = {
+    "windows": "Windows",
+    "wasm32": "WebAssembly",
+    "linux": "Linux",
+    "macos": "macOS",
+}
+ARCHITECTURE_LABELS = {
+    "x86_64": "x64",
+    "arm64": "ARM64",
+    "wasm32": "wasm32",
+}
+COMPILER_LABEL_LINES = {
+    "msvc": ("MSVC",),
+    "clangcl": ("Clang", "clang-cl"),
+    "mingw": ("GCC", "MinGW-w64"),
+    "gcc": ("GCC",),
+    "clang": ("Clang",),
+    "appleclang": ("Apple Clang",),
+    "emscripten": ("Clang", "Emscripten"),
+}
+
+
+def platform_label(value: str) -> str:
+    return PLATFORM_LABELS.get(
+        value.casefold(), value[:1].upper() + value[1:],
+    )
+
+
+def architecture_label(value: str) -> str:
+    return ARCHITECTURE_LABELS.get(value.casefold(), value)
+
+
+def compiler_label_lines(value: str) -> tuple[str, ...]:
+    key = "".join(
+        character for character in value.casefold() if character.isalnum()
+    )
+    return COMPILER_LABEL_LINES.get(key, (value,))
+
+
+def compiler_label(value: str) -> str:
+    lines = compiler_label_lines(value)
+    return lines[0] if len(lines) == 1 else f"{lines[0]} ({lines[1]})"
+
 
 @dataclass(frozen=True)
 class Target:
     platform: str
+    architecture: str
     compiler: str
 
     @property
     def label(self) -> str:
-        platform = {
-            "windows": "Windows",
-            "wasm32": "WebAssembly",
-            "linux": "Linux",
-            "macos": "macOS",
-        }.get(self.platform.lower(), self.platform)
-        return f"{platform} / {self.compiler}"
+        return (
+            f"{platform_label(self.platform)} / "
+            f"{architecture_label(self.architecture)} / "
+            f"{compiler_label(self.compiler)}"
+        )
+
+    @property
+    def identity(self) -> str:
+        return f"{self.platform}/{self.architecture}/{self.compiler}"
 
 
 @dataclass
@@ -159,12 +205,15 @@ class Dataset:
 
 def _target(value: str) -> Target:
     parts = value.replace("\\", "/").split("/")
-    if len(parts) != 2 or not all(parts):
-        raise argparse.ArgumentTypeError("target must be PLATFORM/COMPILER")
+    if len(parts) != 3 or not all(parts):
+        raise argparse.ArgumentTypeError(
+            "target must be PLATFORM/ARCHITECTURE/COMPILER"
+        )
     try:
         return Target(
             _safe_component(parts[0], "platform"),
-            _safe_component(parts[1], "compiler"),
+            _safe_component(parts[1], "architecture"),
+            _safe_component(parts[2], "compiler"),
         )
     except MetricsError as error:
         raise argparse.ArgumentTypeError(str(error)) from error
@@ -207,7 +256,7 @@ def _metadata(path: Path, target: Target) -> dict[str, object]:
         raise MetricsError(f"cannot read {path}: {error}") from error
     required = {
         "schema_version", "run_id", "source_revision", "source_fingerprint",
-        "platform", "compiler", "precisions", "implementations", "status",
+        "platform", "architecture", "compiler", "precisions", "implementations", "status",
         "configuration",
     }
     if not isinstance(value, dict) or not required.issubset(value):
@@ -216,6 +265,7 @@ def _metadata(path: Path, target: Target) -> dict[str, object]:
         value["schema_version"] != SCHEMA_VERSION
         or value["status"] != "complete"
         or value["platform"] != target.platform
+        or value["architecture"] != target.architecture
         or value["compiler"] != target.compiler
         or set(value["precisions"]) != set(PRECISIONS)
     ):
@@ -240,7 +290,7 @@ def load(
     runs: dict[Target, str] = {}
 
     for target in targets:
-        detail = input_root / target.platform / "detail"
+        detail = input_root / target.platform / target.architecture / "detail"
         metadata_path = detail / (
             f"{run_metadata_stem(target.compiler, consumer_mode)}.json"
         )
@@ -262,7 +312,9 @@ def load(
 
         for precision in PRECISIONS:
             stem = metrics_stem(target.compiler, precision, consumer_mode)
-            canonical_path = input_root / target.platform / f"{stem}.csv"
+            canonical_path = (
+                input_root / target.platform / target.architecture / f"{stem}.csv"
+            )
             accuracy_path = detail / f"{stem}_accuracy.csv"
             benchmark_path = detail / f"{stem}_benchmark.csv"
             canonical_rows = _read(canonical_path, CANONICAL_FIELDS)
@@ -516,9 +568,9 @@ def build(
         "consumer_mode": consumer_mode,
         "source_revision": next(iter(dataset.revisions)),
         "source_fingerprint": next(iter(dataset.fingerprints)),
-        "targets": [f"{target.platform}/{target.compiler}" for target in targets],
+        "targets": [target.identity for target in targets],
         "run_ids": {
-            f"{target.platform}/{target.compiler}": dataset.runs[target]
+            target.identity: dataset.runs[target]
             for target in targets
         },
         "outputs": [path.name],

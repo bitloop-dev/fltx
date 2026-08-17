@@ -54,8 +54,115 @@ namespace detail::_f256 // primitives and kernels
             return neg ? -inf : inf;
         }
 
+#if BL_FP_BARRIER_ACTIVE
+        static constexpr std::uint64_t scaled_significand_limb_bits(
+            std::uint64_t coefficient,
+            int exponent) noexcept
+        {
+            if (coefficient == 0)
+                return 0;
+
+            constexpr std::uint64_t hidden_bit = 0x0010000000000000ull;
+            constexpr std::uint64_t fraction_mask = 0x000fffffffffffffull;
+            constexpr std::uint64_t exponent_mask = 0x7ff0000000000000ull;
+
+            const int leading_bit = detail::fp::highest_bit_index(coefficient);
+            const std::uint64_t significand = coefficient << (52 - leading_bit);
+            const int unbiased_exponent = leading_bit + exponent;
+
+            if (unbiased_exponent > 1023)
+                return exponent_mask;
+            if (unbiased_exponent >= -1022)
+            {
+                const std::uint64_t exponent_bits =
+                    static_cast<std::uint64_t>(unbiased_exponent + 1023) << 52;
+                return exponent_bits | (significand & fraction_mask);
+            }
+
+            const int shift = -1022 - unbiased_exponent;
+            if (shift >= 64)
+                return 0;
+
+            const std::uint64_t truncated = significand >> shift;
+            const std::uint64_t remainder_mask =
+                (std::uint64_t{ 1 } << shift) - 1;
+            const std::uint64_t remainder = significand & remainder_mask;
+            const std::uint64_t halfway = std::uint64_t{ 1 } << (shift - 1);
+            const bool round_up = remainder > halfway ||
+                (remainder == halfway && (truncated & 1u) != 0);
+            const std::uint64_t rounded = truncated + static_cast<std::uint64_t>(round_up);
+            return rounded >= hidden_bit ? hidden_bit : rounded;
+        }
+
+        // Extracts each limb from the exact signed remainder, avoiding the
+        // floating-point error-free transforms that fast-math can reassociate.
+        static constexpr value_type pack_guarded_significand(
+            const detail::exact_decimal::biguint& q,
+            int e2,
+            bool neg) noexcept
+        {
+            constexpr std::uint64_t sign_mask = 0x8000000000000000ull;
+            constexpr std::uint64_t limb_unit = std::uint64_t{ 1 } << 53;
+            constexpr std::uint64_t halfway = std::uint64_t{ 1 } << 52;
+
+            const int bits = q.bit_length();
+            if (bits <= 0)
+                return zero(neg);
+
+            const int unit_exponent = e2 - (bits - 1);
+            detail::exact_decimal::signed_biguint remainder{ q, neg };
+            std::uint64_t limb_bits[4]{};
+            for (int i = 0; i < 4 && !remainder.mag.is_zero(); ++i)
+            {
+                const int remainder_bits = remainder.mag.bit_length();
+                const int highest_exponent = unit_exponent + remainder_bits - 1;
+                const int shift = highest_exponent >= -1022
+                    ? (remainder_bits > 53 ? remainder_bits - 53 : 0)
+                    : (-1074 > unit_exponent ? -1074 - unit_exponent : 0);
+
+                detail::exact_decimal::biguint rounded =
+                    detail::exact_decimal::shr_bits_copy(remainder.mag, shift);
+                if (shift > 0)
+                {
+                    const bool round_bit = remainder.mag.get_bit(shift - 1);
+                    const bool sticky = shift > 1 &&
+                        detail::exact_decimal::any_low_bits_set(remainder.mag, shift - 1);
+                    if (round_bit && (sticky || rounded.is_odd()))
+                        rounded.add_small(1);
+                }
+
+                const std::uint64_t coefficient = rounded.get_bits(0, 54);
+                if (coefficient == 0)
+                    break;
+
+                std::uint64_t bits = coefficient == limb_unit
+                    ? scaled_significand_limb_bits(halfway, unit_exponent + shift + 1)
+                    : scaled_significand_limb_bits(coefficient, unit_exponent + shift);
+                if (remainder.neg)
+                    bits |= sign_mask;
+                limb_bits[i] = bits;
+
+                if (i != 3)
+                {
+                    detail::exact_decimal::biguint term{ coefficient };
+                    term.shl_bits(shift);
+                    detail::exact_decimal::add_signed(remainder, term, !remainder.neg);
+                }
+            }
+            return {
+                std::bit_cast<double>(limb_bits[0]),
+                std::bit_cast<double>(limb_bits[1]),
+                std::bit_cast<double>(limb_bits[2]),
+                std::bit_cast<double>(limb_bits[3])
+            };
+        }
+#endif
+
         static constexpr value_type pack_from_significand(const detail::exact_decimal::biguint& q, int e2, bool neg) noexcept
         {
+#if BL_FP_BARRIER_ACTIVE
+            return pack_guarded_significand(q, e2, neg);
+#else
             if (q.bit_length() > significand_bits)
             {
                 const std::uint64_t c4 = q.get_bits(0, 53);
@@ -90,6 +197,7 @@ namespace detail::_f256 // primitives and kernels
             if (neg)
                 out = -out;
             return out;
+#endif
         }
     };
 
@@ -161,11 +269,16 @@ namespace detail::_f256 // primitives and kernels
         static constexpr value_type max_finite() noexcept { return std::numeric_limits<value_type>::max(); }
         static constexpr bool needs_nominal_refinement(const value_type& value) noexcept
         {
+#if BL_FP_BARRIER_ACTIVE
+            (void)value;
+            return false;
+#else
             constexpr int guard_underflow_exponent =
                 min_binary_exponent + conversion_significand_bits - 1;
             return iszero(value) ||
                 detail::fp::absd(value.x0) <
                     detail::fp::positive_power_of_two(guard_underflow_exponent);
+#endif
         }
         static constexpr detail::fltx_char_result to_chars_general(char* first, char* last, const value_type& x, int precision, bool strip_trailing_zeros)
         {

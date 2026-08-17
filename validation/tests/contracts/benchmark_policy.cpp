@@ -1,16 +1,68 @@
+#include "../../benchmarks/runtime/integer_observer.hpp"
 #include "../../benchmarks/runtime/timing_policy.hpp"
 #include "../../benchmarks/runtime/samples.hpp"
+#include "../../support/native_fp.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <bit>
 #include <cstddef>
+#include <cstdint>
+#include <vector>
 
 namespace policy = fltx::tests::benchmark::timing_policy;
 namespace samples = fltx::tests::benchmark::samples;
 
+TEST_CASE("validation observes native floating encodings without classification intrinsics",
+          "[contracts][benchmark-policy]")
+{
+    namespace native_fp = fltx::tests::native_fp;
+
+    const double negative_zero = native_fp::signed_zero<double>(true);
+    const double infinity = native_fp::positive_infinity<double>();
+    const double nan = native_fp::quiet_nan<double>();
+
+    CHECK(native_fp::sign_bit(negative_zero));
+    CHECK(native_fp::is_inf(infinity));
+    CHECK_FALSE(native_fp::is_finite(infinity));
+    CHECK(native_fp::is_nan(nan));
+    CHECK(native_fp::is_finite(native_fp::denorm_min<double>()));
+}
+
+TEST_CASE("benchmark observation accumulates floating representations as integers",
+          "[contracts][benchmark-policy]")
+{
+    fltx::tests::benchmark::integer_observer observer;
+    observer.add({1.0, -0.0, 2.0, -3.0});
+    observer.add({-1.0, 0.0, -2.0, 3.0});
+
+    const auto lane0 = std::bit_cast<std::uint64_t>(1.0) +
+                       std::bit_cast<std::uint64_t>(-1.0);
+    const auto lane1 = std::bit_cast<std::uint64_t>(-0.0) +
+                       std::bit_cast<std::uint64_t>(0.0);
+    const auto lane2 = std::bit_cast<std::uint64_t>(2.0) +
+                       std::bit_cast<std::uint64_t>(-2.0);
+    const auto lane3 = std::bit_cast<std::uint64_t>(-3.0) +
+                       std::bit_cast<std::uint64_t>(3.0);
+    CHECK(observer.value() ==
+          (lane0 ^ std::rotl(lane1, 13) ^ std::rotl(lane2, 29) ^
+           std::rotl(lane3, 47)));
+}
+
+TEST_CASE("benchmark measurements run primary first",
+          "[contracts][benchmark-policy]")
+{
+    std::vector<std::size_t> order;
+    policy::for_each_measurement_primary_first(
+        4,
+        [&](std::size_t index) { order.push_back(index); });
+    CHECK(order == std::vector<std::size_t>{0, 1, 2, 3});
+}
+
 TEST_CASE("standard benchmark timing tiers are adaptive",
           "[contracts][benchmark-policy]")
 {
+    CHECK(policy::identity == "adaptive-v2");
     const auto fast = policy::select(1.0);
     CHECK(fast.trials == 7);
     CHECK(fast.target_trial_ns == 15'000'000.0);
@@ -62,7 +114,7 @@ TEST_CASE("standard benchmark calibration runs once per row",
     CHECK(calls == 1);
 }
 
-TEST_CASE("standard benchmark corpora match operation cost",
+TEST_CASE("adaptive benchmark corpora match operation cost",
           "[contracts][benchmark-policy]")
 {
     CHECK(samples::count_for("add", 8192, "standard") == 81920);
@@ -70,6 +122,12 @@ TEST_CASE("standard benchmark corpora match operation cost",
     CHECK(samples::count_for("sin", 8192, "standard") == 2048);
     CHECK(samples::count_for("erf", 8192, "standard") == 256);
     CHECK(samples::count_for("tgamma", 4096, "standard") == 128);
+
+    CHECK(samples::count_for("add", 4096, "small") == 40960);
+    CHECK(samples::count_for("sqrt", 2048, "small") == 20480);
+    CHECK(samples::count_for("sin", 4096, "small") == 1024);
+    CHECK(samples::count_for("erf", 4096, "small") == 128);
+    CHECK(samples::count_for("tgamma", 2048, "small") == 64);
 
     CHECK(samples::count_for("add", 12, "smoke") == 12);
     CHECK(samples::count_for("sin", 12, "smoke") == 3);

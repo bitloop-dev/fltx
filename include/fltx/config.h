@@ -169,6 +169,43 @@ static_assert(std::numeric_limits<double>::is_iec559 &&
   #endif
 #endif
 
+// Preserve explicit floating-point evaluation boundaries when a compiler's
+// fast-math transformations would otherwise reassociate across them. Other
+// platforms can provide a different implementation with the same semantics.
+#if defined(__EMSCRIPTEN__) && defined(__clang__) && defined(__wasm32__) && \
+    (defined(FLTX_FAST_MATH) || \
+     defined(FLTX_DETAIL_COMPILED_RUNTIME_FP_BARRIERS))
+#define BL_FP_BARRIER_ACTIVE 1
+#define BL_FP_BARRIER_RUNTIME(value) __asm__ __volatile__("" : "+r"(value))
+#elif defined(__MINGW32__) && defined(__GNUC__) && !defined(__clang__) && \
+    defined(__SSE2__) && \
+    (defined(FLTX_FAST_MATH) || \
+     defined(FLTX_DETAIL_COMPILED_RUNTIME_FP_BARRIERS))
+#define BL_FP_BARRIER_ACTIVE 1
+#define BL_FP_BARRIER_RUNTIME(value) __asm__ __volatile__("" : "+x"(value))
+#else
+#define BL_FP_BARRIER_ACTIVE 0
+#define BL_FP_BARRIER_RUNTIME(value) ((void)0)
+#endif
+
+#if BL_FP_BARRIER_ACTIVE
+#define BL_FP_BARRIER(value)                       \
+    do                                             \
+    {                                              \
+        BL_IF_CONSTEVAL_WARNING_PUSH               \
+        BL_IF_CONSTEVAL                            \
+        {                                          \
+        }                                          \
+        else                                       \
+        {                                          \
+            BL_FP_BARRIER_RUNTIME(value);   \
+        }                                          \
+        BL_IF_CONSTEVAL_WARNING_POP                \
+    } while (false)
+#else
+#define BL_FP_BARRIER(value) ((void)0)
+#endif
+
 // Inlining policy:
 //
 // - Tiny leaf helpers are force-inlined when the call overhead is a poor tradeoff.
@@ -287,8 +324,9 @@ static_assert(std::numeric_limits<double>::is_iec559 &&
 #error FLTX_HEADER_FMA_ASSUME requires a target with baseline or explicitly enabled hardware FMA.
 #endif
 
-#if FLTX_HEADER_FMA_ASSUME && FLTX_X86_TARGET && !defined(_MSC_VER) && !FLTX_TU_HAS_X86_FMA
-#error FLTX_HEADER_FMA_ASSUME requires GNU/Clang translation units to be compiled with FMA enabled, for example -mfma.
+#if FLTX_HEADER_FMA_ASSUME && FLTX_X86_TARGET && \
+    (!defined(_MSC_VER) || defined(__clang__)) && !FLTX_TU_HAS_X86_FMA
+#error FLTX_HEADER_FMA_ASSUME requires GNU/Clang translation units to be compiled with FMA enabled, for example -mfma or /clang:-mfma.
 #endif
 
 #if !defined(FLTX_HAS_X86_FMA)
@@ -299,46 +337,80 @@ static_assert(std::numeric_limits<double>::is_iec559 &&
   #endif
 #endif
 
-#if !defined(FLTX_DETAIL_MSVC_GUARDED_X86_FMA)
-  #if FLTX_HEADER_FMA_AUTO && FLTX_X86_TARGET && defined(_MSC_VER) && !FLTX_HAS_X86_FMA
-  #define FLTX_DETAIL_MSVC_GUARDED_X86_FMA 1
+#if !defined(FLTX_MSVC_GUARDED_X86_FMA)
+  #if FLTX_HEADER_FMA_AUTO && FLTX_X86_TARGET && defined(_MSC_VER) && \
+      !defined(__clang__) && !FLTX_HAS_X86_FMA
+  #define FLTX_MSVC_GUARDED_X86_FMA 1
   #else
-  #define FLTX_DETAIL_MSVC_GUARDED_X86_FMA 0
+  #define FLTX_MSVC_GUARDED_X86_FMA 0
   #endif
 #endif
 
-#if !defined(FLTX_DETAIL_X86_FMA_RUNTIME_CHECK)
-  #if FLTX_DETAIL_MSVC_GUARDED_X86_FMA || \
+#if !defined(FLTX_CLANGCL_TARGETED_X86_FMA)
+  #if FLTX_HEADER_FMA_AUTO && FLTX_X86_TARGET && defined(_MSC_VER) && \
+      defined(__clang__) && !FLTX_HAS_X86_FMA
+    #if !__has_attribute(target)
+      #error fltx requires Clang target attributes for baseline-safe AUTO FMA dispatch under clang-cl.
+    #endif
+    #define FLTX_CLANGCL_TARGETED_X86_FMA 1
+  #else
+    #define FLTX_CLANGCL_TARGETED_X86_FMA 0
+  #endif
+#endif
+
+#if !defined(FLTX_GUARDED_X86_FMA)
+  #if FLTX_MSVC_GUARDED_X86_FMA || FLTX_CLANGCL_TARGETED_X86_FMA
+    #define FLTX_GUARDED_X86_FMA 1
+  #else
+    #define FLTX_GUARDED_X86_FMA 0
+  #endif
+#endif
+
+#if FLTX_CLANGCL_TARGETED_X86_FMA
+  #define FLTX_X86_FMA_LEAF_INLINE inline __attribute__((target("fma")))
+  #if __has_attribute(flatten)
+    #define FLTX_X86_FMA_KERNEL_INLINE \
+        inline __attribute__((target("fma"), flatten))
+  #else
+    #define FLTX_X86_FMA_KERNEL_INLINE inline __attribute__((target("fma")))
+  #endif
+#else
+  #define FLTX_X86_FMA_LEAF_INLINE BL_FORCE_INLINE
+  #define FLTX_X86_FMA_KERNEL_INLINE BL_FORCE_INLINE
+#endif
+
+#if !defined(FLTX_X86_FMA_RUNTIME_CHECK)
+  #if FLTX_GUARDED_X86_FMA || \
       (FLTX_HEADER_FMA_AUTO && FLTX_X86_TARGET && \
        FLTX_HAS_COMPILED_X86_FMA_BACKEND && !FLTX_TU_HAS_X86_FMA)
-  #define FLTX_DETAIL_X86_FMA_RUNTIME_CHECK 1
+  #define FLTX_X86_FMA_RUNTIME_CHECK 1
   #else
-  #define FLTX_DETAIL_X86_FMA_RUNTIME_CHECK 0
+  #define FLTX_X86_FMA_RUNTIME_CHECK 0
   #endif
 #endif
 
-#if !defined(FLTX_DETAIL_USE_SCALAR_X86_FMA)
+#if !defined(FLTX_USE_SCALAR_X86_FMA)
   #if FLTX_HAS_X86_FMA
-  #define FLTX_DETAIL_USE_SCALAR_X86_FMA 1
+  #define FLTX_USE_SCALAR_X86_FMA 1
   #else
-  #define FLTX_DETAIL_USE_SCALAR_X86_FMA 0
+  #define FLTX_USE_SCALAR_X86_FMA 0
   #endif
 #endif
 
-#if !defined(FLTX_DETAIL_USE_BASELINE_ARM64_FMA)
+#if !defined(FLTX_USE_BASELINE_ARM64_FMA)
   #if !FLTX_HEADER_FMA_OFF && FLTX_ARM64_TARGET
-  #define FLTX_DETAIL_USE_BASELINE_ARM64_FMA 1
+  #define FLTX_USE_BASELINE_ARM64_FMA 1
   #else
-  #define FLTX_DETAIL_USE_BASELINE_ARM64_FMA 0
+  #define FLTX_USE_BASELINE_ARM64_FMA 0
   #endif
 #endif
 
-#if !defined(FLTX_DETAIL_HAS_RUNTIME_FMA_PATH)
-  #if FLTX_DETAIL_USE_SCALAR_X86_FMA || FLTX_DETAIL_MSVC_GUARDED_X86_FMA || \
-      FLTX_DETAIL_USE_BASELINE_ARM64_FMA
-  #define FLTX_DETAIL_HAS_RUNTIME_FMA_PATH 1
+#if !defined(FLTX_HAS_RUNTIME_FMA_PATH)
+  #if FLTX_USE_SCALAR_X86_FMA || FLTX_GUARDED_X86_FMA || \
+      FLTX_USE_BASELINE_ARM64_FMA
+  #define FLTX_HAS_RUNTIME_FMA_PATH 1
   #else
-  #define FLTX_DETAIL_HAS_RUNTIME_FMA_PATH 0
+  #define FLTX_HAS_RUNTIME_FMA_PATH 0
   #endif
 #endif
 
@@ -436,8 +508,8 @@ namespace bl
     #define BL_CONSTEXPR_RUNTIME_DISPATCH(CONSTEVAL_EXPR, RUNTIME_EXPR) \
         do                                                              \
         {                                                               \
-            BL_IF_CONSTEVAL_WARNING_PUSH                         \
-            BL_IF_CONSTEVAL                                      \
+            BL_IF_CONSTEVAL_WARNING_PUSH                                \
+            BL_IF_CONSTEVAL                                             \
             {                                                           \
                 return (CONSTEVAL_EXPR);                                \
             }                                                           \
@@ -445,14 +517,14 @@ namespace bl
             {                                                           \
                 return (CONSTEVAL_EXPR);                                \
             }                                                           \
-            BL_IF_CONSTEVAL_WARNING_POP                          \
+            BL_IF_CONSTEVAL_WARNING_POP                                 \
         } while (false)
   #else
     #define BL_CONSTEXPR_RUNTIME_DISPATCH(CONSTEVAL_EXPR, RUNTIME_EXPR) \
         do                                                              \
         {                                                               \
-            BL_IF_CONSTEVAL_WARNING_PUSH                         \
-            BL_IF_CONSTEVAL                                      \
+            BL_IF_CONSTEVAL_WARNING_PUSH                                \
+            BL_IF_CONSTEVAL                                             \
             {                                                           \
                 return (CONSTEVAL_EXPR);                                \
             }                                                           \
@@ -460,7 +532,7 @@ namespace bl
             {                                                           \
                 return (RUNTIME_EXPR);                                  \
             }                                                           \
-            BL_IF_CONSTEVAL_WARNING_POP                          \
+            BL_IF_CONSTEVAL_WARNING_POP                                 \
         } while (false)
   #endif
 #endif

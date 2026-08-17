@@ -121,16 +121,16 @@ namespace fltx::tests::implementations
 
         [[nodiscard]] static tlfloat::Quad from_sample(const sample& value)
         {
-            if (!std::isfinite(value.limb[0]))
+            if (!native_fp::is_finite(value.limb[0]))
             {
-                if (std::isnan(value.limb[0]))
+                if (native_fp::is_nan(value.limb[0]))
                     return tlfloat::Quad{"nan"};
                 return tlfloat::Quad{
-                    std::signbit(value.limb[0]) ? "-inf" : "inf"};
+                    native_fp::sign_bit(value.limb[0]) ? "-inf" : "inf"};
             }
             if (value.limb[0] == 0.0 && value.limb[1] == 0.0)
             {
-                return tlfloat::Quad{std::signbit(value.limb[0]) ? "-0" : "0"};
+                return tlfloat::Quad{native_fp::sign_bit(value.limb[0]) ? "-0" : "0"};
             }
             return tlfloat::Quad{value.limb[0]} + tlfloat::Quad{value.limb[1]};
         }
@@ -165,17 +165,17 @@ namespace fltx::tests::implementations
 
         [[nodiscard]] static tlfloat::Octuple from_sample(const sample& value)
         {
-            if (!std::isfinite(value.limb[0]))
+            if (!native_fp::is_finite(value.limb[0]))
             {
-                if (std::isnan(value.limb[0]))
+                if (native_fp::is_nan(value.limb[0]))
                     return tlfloat::Octuple{"nan"};
                 return tlfloat::Octuple{
-                    std::signbit(value.limb[0]) ? "-inf" : "inf"};
+                    native_fp::sign_bit(value.limb[0]) ? "-inf" : "inf"};
             }
             if (value.limb[0] == 0.0 && value.limb[1] == 0.0 && value.limb[2] == 0.0 &&
                 value.limb[3] == 0.0)
             {
-                return tlfloat::Octuple{std::signbit(value.limb[0]) ? "-0" : "0"};
+                return tlfloat::Octuple{native_fp::sign_bit(value.limb[0]) ? "-0" : "0"};
             }
             return tlfloat::Octuple{value.limb[0]} + tlfloat::Octuple{value.limb[1]} +
                    tlfloat::Octuple{value.limb[2]} + tlfloat::Octuple{value.limb[3]};

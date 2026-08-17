@@ -19,7 +19,7 @@ class Implementation:
 
 def _accuracy_rows(*, paired_arithmetic: bool) -> frozenset[AccuracyRow]:
     arithmetic = {
-        operation: ("general",)
+        operation: ("general", "subnormal")
         for operation in ("add", "subtract", "multiply", "divide")
     } if paired_arithmetic else {
         "add": (
@@ -350,10 +350,10 @@ assert len(benchmark_manifest("f128", **_ALL)["cppdd"]) == 75
 assert len(benchmark_manifest("f256", **_ALL)["mpfr64"]) == 75
 assert len(benchmark_manifest("f128", **_ALL)["tlfloat"]) == 71
 assert len(benchmark_manifest("f256", **_ALL)["tlfloat"]) == 71
-assert len(accuracy_manifest("f128", **_ALL)["fltx"]) == 123
-assert len(accuracy_manifest("f128", **_ALL)["qdpp"]) == 87
-assert len(accuracy_manifest("f256", **_ALL)["qdpp"]) == 91
-assert len(accuracy_manifest("f128", **_ALL)["cppdd"]) == 114
-assert len(accuracy_manifest("f256", **_ALL)["mpfr64"]) == 114
-assert len(accuracy_manifest("f128", **_ALL)["tlfloat"]) == 107
-assert len(accuracy_manifest("f256", **_ALL)["tlfloat"]) == 107
+assert len(accuracy_manifest("f128", **_ALL)["fltx"]) == 127
+assert len(accuracy_manifest("f128", **_ALL)["qdpp"]) == 91
+assert len(accuracy_manifest("f256", **_ALL)["qdpp"]) == 95
+assert len(accuracy_manifest("f128", **_ALL)["cppdd"]) == 118
+assert len(accuracy_manifest("f256", **_ALL)["mpfr64"]) == 118
+assert len(accuracy_manifest("f128", **_ALL)["tlfloat"]) == 111
+assert len(accuracy_manifest("f256", **_ALL)["tlfloat"]) == 111
