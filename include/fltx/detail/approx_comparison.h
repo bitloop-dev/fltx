@@ -13,15 +13,13 @@
 namespace bl::detail
 {
     template<class Float>
-    [[nodiscard]] BL_FORCE_INLINE constexpr bool almost_equal_impl(
+    [[nodiscard]] BL_FORCE_INLINE constexpr bool approx_eq_impl(
         const Float& value,
         const Float& expected,
-        const Float& relative_tolerance,
-        const Float& absolute_tolerance) noexcept
+        const Float& relative_tolerance) noexcept
     {
         const Float zero{ 0.0 };
-        if (isnan(relative_tolerance) || isnan(absolute_tolerance) ||
-            relative_tolerance < zero || absolute_tolerance < zero) [[unlikely]]
+        if (isnan(relative_tolerance) || relative_tolerance < zero) [[unlikely]]
         {
             return false;
         }
@@ -41,28 +39,19 @@ namespace bl::detail
         const Float two{ 2.0 };
 
         // Opposite-sign values need an overflow-safe sum of magnitudes. Work
-        // relative to the larger magnitude, and test the absolute limit with
-        // subtraction, so no intermediate can exceed the finite range.
+        // relative to the larger magnitude so no intermediate can exceed the
+        // finite range.
         if ((value < zero) != (expected < zero))
         {
             const Float smaller = magnitude_value < magnitude_expected
                 ? magnitude_value
                 : magnitude_expected;
-            const bool within_absolute =
-                isinf(absolute_tolerance) ||
-                (absolute_tolerance >= scale &&
-                 smaller <= absolute_tolerance - scale);
-            const bool within_relative =
-                relative_tolerance >= two ||
+            return relative_tolerance >= two ||
                 (relative_tolerance >= one &&
                  smaller <= (relative_tolerance - one) * scale);
-            return within_absolute || within_relative;
         }
 
         const Float difference = abs(value - expected);
-        if (difference <= absolute_tolerance)
-            return true;
-
         // Same-sign finite values differ by at most `scale`. Tolerances below
         // one cannot overflow when scaled; tolerances of one or more already
         // cover the complete same-sign interval.

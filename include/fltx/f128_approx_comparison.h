@@ -17,19 +17,19 @@
 
 namespace bl
 {
+    inline constexpr f128_s f128_parity_tolerance{ 0x1p-80, 0.0 };
+
     template<class Value, class Expected>
     requires (fltx_f128<Value> && fltx_f128<Expected>)
-    [[nodiscard]] BL_FORCE_INLINE constexpr bool almost_equal(
+    [[nodiscard]] BL_FORCE_INLINE constexpr bool approx_eq(
         const Value& value,
         const Expected& expected,
-        const f128_s& relative_tolerance = f128_s{ 0x1p-74, 0.0 },
-        const f128_s& absolute_tolerance = f128_s{ 0.0, 0.0 }) noexcept
+        const f128_s& relative_tolerance = f128_parity_tolerance) noexcept
     {
-        return detail::almost_equal_impl(
+        return detail::approx_eq_impl(
             static_cast<const f128_s&>(value),
             static_cast<const f128_s&>(expected),
-            relative_tolerance,
-            absolute_tolerance);
+            relative_tolerance);
     }
 }
 

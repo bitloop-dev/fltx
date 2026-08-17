@@ -17,19 +17,21 @@
 
 namespace bl
 {
+    inline constexpr f256_s f256_parity_tolerance{
+        0x1p-188, 0.0, 0.0, 0.0
+    };
+
     template<class Value, class Expected>
     requires (fltx_f256<Value> && fltx_f256<Expected>)
-    [[nodiscard]] BL_FORCE_INLINE constexpr bool almost_equal(
+    [[nodiscard]] BL_FORCE_INLINE constexpr bool approx_eq(
         const Value& value,
         const Expected& expected,
-        const f256_s& relative_tolerance = f256_s{ 0x1p-169, 0.0, 0.0, 0.0 },
-        const f256_s& absolute_tolerance = f256_s{ 0.0, 0.0, 0.0, 0.0 }) noexcept
+        const f256_s& relative_tolerance = f256_parity_tolerance) noexcept
     {
-        return detail::almost_equal_impl(
+        return detail::approx_eq_impl(
             static_cast<const f256_s&>(value),
             static_cast<const f256_s&>(expected),
-            relative_tolerance,
-            absolute_tolerance);
+            relative_tolerance);
     }
 }
 
