@@ -17,6 +17,7 @@ changing behaviour.
 | `validation/accuracy/` | Deterministic MPFR-backed numerical domains and runner registration |
 | `validation/benchmarks/` | Runtime, compile-time, and linked-size measurement |
 | `validation/support/` | Validation-only domains, oracles, comparison adapters, and shared runner support |
+| `validation/_internal/` | Preset resolution, host-toolchain setup, and local CI-check orchestration |
 | `validation/metrics/` | Metrics orchestration, provenance, publication, and report generation |
 | `examples/` | First-party usage examples and API consumers |
 
@@ -154,6 +155,19 @@ CMake target construction is split across `cmake/validation/`:
 - `fltxValidationCommon.cmake` owns shared target preparation and build
   identity.
 
+The local CI-check entry points are intentionally separate from metrics
+collection:
+
+```text
+run_preset_checks.py ------------------+-> _internal/check_pipeline.py
+run_all_supported_checks.py -----------+   -> configure the selected preset
+                                           -> build fltx_ci_checks
+```
+
+Shared preset inheritance, host-matrix selection, and Visual Studio developer
+environment setup live in `validation/_internal/preset_support.py` so checks
+and metrics use one toolchain-resolution path.
+
 Read `validation/README.md` for current commands and runner semantics. Read
 `validation/COVERAGE.md` before adding coverage so new work extends the
 existing owner rather than creating a parallel test lane.
@@ -205,6 +219,10 @@ For metrics work, start at `run_preset_metrics.py` or `rebuild_tables.py`, then
 enter `_internal` only at the stage being changed. Renderer-only work should
 reuse compatible data; collection/publishing work must preserve source
 identity, manifests, provenance, and transactional publication.
+
+For a local CI reproduction, start at `run_preset_checks.py`; use
+`run_all_supported_checks.py` only when every required host toolchain is
+available.
 
 ## Maintenance rule
 

@@ -2812,7 +2812,7 @@ class PresetPipelineTests(unittest.TestCase):
     def test_supported_presets_reject_an_unknown_host(self) -> None:
         with self.assertRaisesRegex(
             preset_pipeline.PipelineError,
-            "unsupported metrics host Plan9/mips64",
+            "unsupported validation host Plan9/mips64",
         ):
             supported_preset_pipeline.supported_presets("Plan9", "mips64")
 

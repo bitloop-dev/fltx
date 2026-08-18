@@ -4,62 +4,25 @@
 from __future__ import annotations
 
 import argparse
-import platform
 import sys
 from pathlib import Path
 
+VALIDATION_INTERNAL = Path(__file__).resolve().parents[2] / "_internal"
+sys.path.insert(0, str(VALIDATION_INTERNAL))
+
 import preset_pipeline
-
-
-WASM_PRESET = "wasm32-emscripten-release"
-SUPPORTED_PRESETS = {
-    ("Windows", "x86_64"): (
-        "windows-x64-msvc-release",
-        "windows-x64-clangcl-release",
-        "windows-x64-mingw-release",
-        WASM_PRESET,
-    ),
-    ("Windows", "arm64"): (
-        "windows-arm64-msvc-release",
-        "windows-arm64-clangcl-release",
-    ),
-    ("Linux", "x86_64"): (
-        "linux-x64-gcc-release",
-        "linux-x64-clang-release",
-    ),
-    ("Linux", "arm64"): (
-        "linux-arm64-gcc-release",
-        "linux-arm64-clang-release",
-    ),
-    ("Darwin", "x86_64"): (
-        "macos-x64-appleclang-release",
-    ),
-    ("Darwin", "arm64"): (
-        "macos-arm64-appleclang-release",
-    ),
-}
-_ARCHITECTURE_ALIASES = {
-    "amd64": "x86_64",
-    "x64": "x86_64",
-    "x86_64": "x86_64",
-    "aarch64": "arm64",
-    "arm64": "arm64",
-}
+from preset_support import (
+    SUPPORTED_PRESETS,
+    WASM_PRESET,
+    supported_presets as _supported_presets,
+)
 
 
 def supported_presets(
     host_system: str | None = None,
     host_machine: str | None = None,
 ) -> tuple[str, ...]:
-    system = host_system or platform.system()
-    machine = host_machine or platform.machine()
-    architecture = _ARCHITECTURE_ALIASES.get(machine.casefold(), machine.casefold())
-    presets = SUPPORTED_PRESETS.get((system, architecture))
-    if presets is None:
-        raise preset_pipeline.PipelineError(
-            f"unsupported metrics host {system}/{machine}"
-        )
-    return presets
+    return _supported_presets(host_system, host_machine)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:

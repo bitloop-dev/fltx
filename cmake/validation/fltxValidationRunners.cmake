@@ -264,6 +264,7 @@ if(BUILD_TESTING)
                 --run-id "ctest-smoke"
                 --source-revision "ctest"
                 --sample-mode "smoke"
+                ${ARGN}
         )
         set_tests_properties("${test_name}.${precision}.smoke" PROPERTIES
             LABELS "${labels}"
@@ -271,6 +272,11 @@ if(BUILD_TESTING)
     endfunction()
 
     foreach(precision f32 f64 f128 f256)
+        set(FLTX_SIMULATED_FASTMATH_SMOKE_POLICY)
+        if(precision STREQUAL "f32" OR precision STREQUAL "f64")
+            set(FLTX_SIMULATED_FASTMATH_SMOKE_POLICY --advisory)
+        endif()
+
         fltx_tests_add_accuracy_smoke(
             fltx_accuracy
             fltx.accuracy
@@ -298,6 +304,7 @@ if(BUILD_TESTING)
             constexpr_accuracy_fastmath
             "${precision}"
             "fltx;constexpr;accuracy;fastmath;smoke"
+            ${FLTX_SIMULATED_FASTMATH_SMOKE_POLICY}
         )
     endforeach()
 

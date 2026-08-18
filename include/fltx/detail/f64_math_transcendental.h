@@ -485,6 +485,26 @@ namespace detail::_f64_impl
         return ax * sqrt(1.0 + r * r);
     }
 
+    [[nodiscard]] BL_FORCE_INLINE constexpr double exp_log_product(
+        double exponent,
+        double logarithm) noexcept
+    {
+        // Preserve the low product term: rounding y * log(x) before exp can
+        // otherwise consume the final few bits of the constexpr pow result.
+        double product{};
+        double product_error{};
+        detail::fp::two_prod_precise_dekker_range_safe(
+            exponent,
+            logarithm,
+            product,
+            product_error);
+
+        const double leading = exp(product);
+        if (!isfinite(leading) || leading == 0.0 || product_error == 0.0)
+            return leading;
+        return leading + leading * expm1(product_error);
+    }
+
     // pow
     [[nodiscard]] BL_FORCE_INLINE constexpr double pow(double x, double y) noexcept
     {
@@ -531,11 +551,11 @@ namespace detail::_f64_impl
             if (!y_is_int)
                 return std::numeric_limits<double>::quiet_NaN();
 
-            const double magnitude = exp(y * log(-x));
+            const double magnitude = exp_log_product(y, log(-x));
             return y_is_odd ? -magnitude : magnitude;
         }
 
-        return exp(y * log(x));
+        return exp_log_product(y, log(x));
     }
 
     // hyperbolic

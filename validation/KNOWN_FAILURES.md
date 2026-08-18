@@ -11,6 +11,12 @@ the contract, genuine-constexpr, dependency, in-tree package smoke, header,
 standard, and tooling checks. A same-fingerprint result for this expanded
 badge gate has not yet been recorded, so this file makes no passing-platform
 claim. The standalone installed-package fixture remains a separate target.
+Runtime f32/f64 threshold findings are retained as advisory platform-libm
+baseline evidence. Native fixed-simulation consumer-fast-math findings are also
+advisory because runtime code generation does not reproduce genuine compiler
+constant evaluation. Genuine strict native numerical constant evaluation,
+native special-value assertions in both consumer profiles, strict native fixed-
+simulation, and every f128/f256 threshold remain gating.
 
 The isolated public-header probes emit `undefined-inline` warnings under
 MinGW and Emscripten for declarations used by some single-header probes. They

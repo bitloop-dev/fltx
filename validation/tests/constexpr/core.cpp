@@ -121,6 +121,54 @@ namespace
     }
 
     template<class T>
+    consteval bool native_log_pow_atan2_special_values_are_constant_evaluated()
+    {
+        constexpr T one{ 1.0 };
+        constexpr T infinity = std::numeric_limits<T>::infinity();
+        constexpr T negative_infinity = -infinity;
+        constexpr T nan = std::numeric_limits<T>::quiet_NaN();
+
+        const T log1p_positive_infinity = bl::log1p(infinity);
+        const T atan2_positive_infinity = bl::atan2(infinity, one);
+        const T atan2_negative_infinity = bl::atan2(negative_infinity, one);
+        const T atan2_finite_positive_infinity = bl::atan2(one, infinity);
+        const T atan2_finite_negative_infinity = bl::atan2(one, negative_infinity);
+        const T atan2_both_positive_infinity = bl::atan2(infinity, infinity);
+        const T atan2_mixed_infinity = bl::atan2(infinity, negative_infinity);
+
+        return bl::isinf(log1p_positive_infinity) &&
+               !bl::signbit(log1p_positive_infinity) &&
+               bl::isnan(bl::log1p(negative_infinity)) &&
+               bl::isnan(bl::log1p(nan)) &&
+               bl::isinf(bl::pow(infinity, one)) &&
+               !bl::signbit(bl::pow(infinity, one)) &&
+               bl::isinf(bl::pow(negative_infinity, one)) &&
+               bl::signbit(bl::pow(negative_infinity, one)) &&
+               bl::pow(one, infinity) == one &&
+               bl::pow(one, negative_infinity) == one &&
+               bl::isinf(bl::pow(infinity, infinity)) &&
+               bl::iszero(bl::pow(infinity, negative_infinity)) &&
+               bl::isnan(bl::pow(nan, one)) &&
+               bl::pow(one, nan) == one &&
+               bl::isnan(bl::pow(nan, nan)) &&
+               atan2_positive_infinity > T{ 1.5 } &&
+               atan2_positive_infinity < T{ 1.6 } &&
+               atan2_negative_infinity < T{ -1.5 } &&
+               atan2_negative_infinity > T{ -1.6 } &&
+               bl::iszero(atan2_finite_positive_infinity) &&
+               !bl::signbit(atan2_finite_positive_infinity) &&
+               atan2_finite_negative_infinity > T{ 3.1 } &&
+               atan2_finite_negative_infinity < T{ 3.2 } &&
+               atan2_both_positive_infinity > T{ 0.7 } &&
+               atan2_both_positive_infinity < T{ 0.8 } &&
+               atan2_mixed_infinity > T{ 2.3 } &&
+               atan2_mixed_infinity < T{ 2.4 } &&
+               bl::isnan(bl::atan2(nan, one)) &&
+               bl::isnan(bl::atan2(one, nan)) &&
+               bl::isnan(bl::atan2(nan, nan));
+    }
+
+    template<class T>
     consteval bool arithmetic_special_values_are_constant_evaluated()
     {
         constexpr T zero{ 0.0 };
@@ -264,6 +312,8 @@ namespace
     static_assert(core_is_constant_evaluated<bl::f256>());
     static_assert(native_minmax_special_values_are_constant_evaluated<bl::f32>());
     static_assert(native_minmax_special_values_are_constant_evaluated<bl::f64>());
+    static_assert(native_log_pow_atan2_special_values_are_constant_evaluated<bl::f32>());
+    static_assert(native_log_pow_atan2_special_values_are_constant_evaluated<bl::f64>());
     static_assert(arithmetic_special_values_are_constant_evaluated<bl::f128>());
     static_assert(arithmetic_special_values_are_constant_evaluated<bl::f256>());
     static_assert(exact_math_is_constant_evaluated<bl::f128>());
@@ -302,6 +352,8 @@ TEST_CASE("genuine constant evaluation covers representative heavy paths", "[con
     STATIC_CHECK(core_is_constant_evaluated<bl::f256>());
     STATIC_CHECK(native_minmax_special_values_are_constant_evaluated<bl::f32>());
     STATIC_CHECK(native_minmax_special_values_are_constant_evaluated<bl::f64>());
+    STATIC_CHECK(native_log_pow_atan2_special_values_are_constant_evaluated<bl::f32>());
+    STATIC_CHECK(native_log_pow_atan2_special_values_are_constant_evaluated<bl::f64>());
     STATIC_CHECK(arithmetic_special_values_are_constant_evaluated<bl::f128>());
     STATIC_CHECK(arithmetic_special_values_are_constant_evaluated<bl::f256>());
     STATIC_CHECK(exact_math_is_constant_evaluated<bl::f128>());

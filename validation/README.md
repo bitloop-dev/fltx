@@ -23,13 +23,16 @@ Strict consumers and genuine constant evaluation retain the checked semantics.
 - `fltx_contract_tests` checks public behaviour, I/O, random facilities,
   expression fusion, dispatch, and named numerical edge cases.
 - `fltx_constexpr_tests` checks genuine compiler constant evaluation, including
-  the 58-case-per-type MPFR corpus. Overload and return-type matrices belong to
-  the contract suite.
+  the 58-case-per-type MPFR corpus for all four types in the strict consumer.
+  The fast-math target retains that corpus for f128/f256; native numerical
+  gates use the strict consumer because fast-math also relaxes the compiler's
+  constant evaluator. Exact native special-value assertions still compile in
+  both profiles. Overload and return-type matrices belong to the contract suite.
 - `fltx_accuracy` compares deterministic, named domains with an independent
   MPFR-backed oracle and writes one CSV row as soon as that domain finishes.
 - `fltx_constexpr_accuracy` reuses the complete accuracy runner while forcing
   the library's constexpr algorithms at runtime, so they receive the same
-  domains and threshold gates as the normal runtime algorithms.
+  domains and threshold reporting as the normal runtime algorithms.
 - `fltx_benchmark` measures performance only. A full run uses broad,
   operation-specific corpora (81,920 base f128 samples and 40,960 base f256
   samples), calibrates fixed batches to at least 25 ms, and reports the median
@@ -70,6 +73,39 @@ C++23.
 injected-no-FMA consumers through `find_package`. Its dedicated install and
 nested-build directories are recreated for every invocation, so stale
 installed headers or CMake state cannot make the fixture pass.
+
+## Preset check pipeline
+
+Run the complete pull-request and branch check target from one CMake build
+preset with:
+
+```powershell
+python .\validation\run_preset_checks.py `
+    --preset windows-x64-msvc-release
+```
+
+The command always configures the selected preset and then builds
+`fltx_ci_checks`. It has no reduced scope: success means that preset completed
+the same contracts, genuine constexpr checks, dependency and package checks,
+Python tooling tests, and complete accuracy policy used by CI. Runtime f32/f64
+threshold findings remain visible as advisory platform-libm baseline evidence.
+The native fixed-simulation consumer-fast-math lane is also advisory because
+runtime fast-math code generation cannot faithfully model genuine compiler
+constant evaluation. Genuine strict f32/f64 numerical evaluation and strict
+fixed-simulation remain gating; exact native special-value assertions compile
+in both consumer profiles, and all f128/f256 lanes remain gating.
+
+To run that target for every release preset supported by the current host OS
+and architecture, use:
+
+```powershell
+python .\validation\run_all_supported_checks.py
+```
+
+Every selected preset is required. The command runs them in host-matrix order
+and stops at the first failure. It shares CMake preset resolution and automatic
+Visual Studio developer-environment setup with the metrics pipeline, while
+remaining independent of metrics evidence and report generation.
 
 ## Preset metrics pipeline
 
@@ -372,7 +408,14 @@ hash, and consumer mode.
 
 ## CI policy
 
-The pull-request and branch badge command is:
+The recommended local pull-request and branch check command is:
+
+```powershell
+python .\validation\run_preset_checks.py `
+    --preset windows-x64-msvc-release
+```
+
+The underlying CMake command used by GitHub Actions is:
 
 ```powershell
 cmake --build --preset windows-x64-msvc-release --target fltx_ci_checks
@@ -382,11 +425,20 @@ It builds isolated public-header and C++ standard probes, both comparison
 library smoke targets, and the in-tree package consumer. It then runs contract,
 genuine constexpr, dependency, package, Python tooling, and the complete
 65,536-sample accuracy corpus for all four types through normal and
-fixed-constexpr runners in both strict and consumer-fast-math modes. The Linux GCC/Clang, Windows
-MSVC/MinGW, macOS AppleClang, and WebAssembly Emscripten workflows all invoke
-this same target. Any currently reproducible
-failure remains recorded in [KNOWN_FAILURES.md](KNOWN_FAILURES.md); CI does not
-weaken a threshold or suppress a contract to manufacture a green result.
+fixed-constexpr runners in both strict and consumer-fast-math modes. Runtime
+f32/f64 numerical threshold misses are advisory because those paths deliberately
+delegate to the platform libm; crashes, incomplete output, and runner faults
+still fail. Native fixed-simulation under consumer fast-math is likewise
+advisory: it executes constexpr algorithms as optimized runtime code and cannot
+faithfully reproduce the compiler's constant evaluator. The genuine f32/f64
+constexpr numerical corpus gates the strict consumer, while exact native
+special-value assertions gate both consumer profiles. Strict native fixed-
+simulation remains gating, and every f128/f256 threshold remains gating.
+The Linux GCC/Clang, Windows MSVC/MinGW, macOS AppleClang, and WebAssembly
+Emscripten workflows all invoke this same target. Any currently reproducible
+gating failure remains recorded in
+[KNOWN_FAILURES.md](KNOWN_FAILURES.md); gating thresholds are not reduced to
+manufacture a green result.
 
 Authoritative installed-package variants, compile and binary-size telemetry,
 performance, and canonical metrics publication remain outside that pull-request target.

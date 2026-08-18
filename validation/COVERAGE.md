@@ -63,9 +63,16 @@ double-only test values. CTest owns the deterministic smoke runs;
 `fltx_ci_checks` runs the complete corpus for all four types through both the
 normal and fixed-simulation runners, and `fltx_native_accuracy_full` retains a
 standalone complete f32/f64 orchestration target. Detailed output remains under
-the build tree. The native orchestration target records threshold misses as
-advisory policy evidence; direct CTest accuracy runs remain gating. Native
-accuracy is never published in the f128/f256 summary tables.
+the build tree. Native runtime f32/f64 threshold misses are advisory platform-
+libm baseline evidence in both the orchestration target and `fltx_ci_checks`;
+runner integrity still gates. Native fixed-simulation under consumer fast-math
+is also advisory because optimized runtime execution cannot faithfully model
+the compiler's constant evaluator; its direct CTest smoke checks mirror that
+policy. Genuine f32/f64 numerical constant evaluation gates the strict
+consumer, exact native special-value assertions compile in both consumer
+profiles, the strict native fixed-simulation remains gating, and all f128/f256
+thresholds remain gating. Native accuracy is never published in the f128/f256
+summary tables.
 
 | Public family | C | CE | CA | O | A | B |
 |---|---|---|---|---|---|---|

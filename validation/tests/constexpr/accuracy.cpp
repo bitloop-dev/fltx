@@ -122,7 +122,7 @@ namespace
     template<class Float>
     [[nodiscard]] constexpr Float fp(double value)
     {
-        return Float{ value };
+        return static_cast<Float>(value);
     }
 
     template<class Float>
@@ -138,6 +138,14 @@ namespace
         double denominator)
     {
         return fp<Float>(whole) + q<Float>(numerator, denominator);
+    }
+
+    template<class Float>
+    [[nodiscard]] constexpr int large_sqrt_exponent() noexcept
+    {
+        if constexpr (std::is_same_v<Float, float>)
+            return 80;
+        return 180;
     }
 
     template<class Float>
@@ -219,7 +227,9 @@ namespace
                 bl::ldexp(mixed<Float>(1.0, 1.0, 3.0), -80)),
             make_case<Float>("sqrt two", unary_op::sqrt, fp<Float>(2.0)),
             make_case<Float>("sqrt large scaled", unary_op::sqrt,
-                bl::ldexp(mixed<Float>(1.0, 1.0, 5.0), 180)),
+                bl::ldexp(
+                    mixed<Float>(1.0, 1.0, 5.0),
+                    large_sqrt_exponent<Float>())),
             make_case<Float>("exp negative", unary_op::exp, q<Float>(-5.0, 4.0)),
             make_case<Float>("exp positive", unary_op::exp, q<Float>(3.0, 2.0)),
             make_case<Float>("expm1 moderate negative", unary_op::expm1, q<Float>(-1.0, 2.0)),
@@ -337,6 +347,22 @@ namespace
 
     template<class Float>
     struct corpus_traits;
+
+    template<>
+    struct corpus_traits<float>
+    {
+        using public_type = bl::f32;
+        static constexpr thresholds::precision precision = thresholds::precision::f32;
+        static constexpr std::string_view label = "f32";
+    };
+
+    template<>
+    struct corpus_traits<double>
+    {
+        using public_type = bl::f64;
+        static constexpr thresholds::precision precision = thresholds::precision::f64;
+        static constexpr std::string_view label = "f64";
+    };
 
     template<>
     struct corpus_traits<bl::f128_s>
@@ -551,6 +577,25 @@ TEST_CASE("genuine constexpr f128 corpus meets MPFR accuracy gates",
 {
     check_corpus<bl::f128_s>();
 }
+
+// Consumer fast-math also relaxes compiler constant evaluation. Its complete
+// native numerical corpus remains advisory in the fixed-simulation runner;
+// core.cpp still hard-gates exact native constexpr special-value contracts in
+// both consumer profiles.
+#if !defined(FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH) || \
+    !FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH
+TEST_CASE("genuine constexpr f32 corpus meets MPFR accuracy gates",
+          "[constexpr][accuracy][corpus][f32]")
+{
+    check_corpus<bl::f32>();
+}
+
+TEST_CASE("genuine constexpr f64 corpus meets MPFR accuracy gates",
+          "[constexpr][accuracy][corpus][f64]")
+{
+    check_corpus<bl::f64>();
+}
+#endif
 
 TEST_CASE("genuine constexpr f256 corpus meets MPFR accuracy gates",
           "[constexpr][accuracy][corpus][f256]")

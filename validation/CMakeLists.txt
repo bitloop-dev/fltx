@@ -32,6 +32,21 @@ if(BUILD_TESTING)
     )
     set(FLTX_CI_RELEASE_ACCURACY_COMMANDS)
     foreach(precision f32 f64 f128 f256)
+        # Runtime f32/f64 deliberately delegate to the platform libm and use
+        # it as their behavioural baseline. Preserve numerical findings in
+        # the release CSV without failing CI for the platform's own accuracy.
+        # A runtime executable compiled with consumer fast-math is likewise
+        # not a faithful model of genuine compiler constant evaluation, so
+        # that native fixed-simulation lane remains evidence rather than a
+        # gate. Runner faults still fail under --advisory. Genuine constexpr
+        # tests, strict fixed-simulation, and every f128/f256 route still gate.
+        set(FLTX_CI_RUNTIME_ACCURACY_POLICY)
+        set(FLTX_CI_SIMULATED_FASTMATH_ACCURACY_POLICY)
+        if(precision STREQUAL "f32" OR precision STREQUAL "f64")
+            set(FLTX_CI_RUNTIME_ACCURACY_POLICY --advisory)
+            set(FLTX_CI_SIMULATED_FASTMATH_ACCURACY_POLICY --advisory)
+        endif()
+
         list(APPEND FLTX_CI_RELEASE_ACCURACY_COMMANDS
             COMMAND fltx_accuracy
                 --precision "${precision}"
@@ -39,6 +54,7 @@ if(BUILD_TESTING)
                 --run-id ci-release
                 --source-revision ci
                 --sample-mode full
+                ${FLTX_CI_RUNTIME_ACCURACY_POLICY}
             COMMAND fltx_constexpr_accuracy
                 --precision "${precision}"
                 --output "${FLTX_CI_RELEASE_ACCURACY_DIR}/constexpr_accuracy_${precision}.csv"
@@ -51,12 +67,14 @@ if(BUILD_TESTING)
                 --run-id ci-release
                 --source-revision ci
                 --sample-mode full
+                ${FLTX_CI_RUNTIME_ACCURACY_POLICY}
             COMMAND fltx_constexpr_accuracy_fastmath
                 --precision "${precision}"
                 --output "${FLTX_CI_RELEASE_ACCURACY_DIR}/constexpr_accuracy_${precision}_fastmath.csv"
                 --run-id ci-release
                 --source-revision ci
                 --sample-mode full
+                ${FLTX_CI_SIMULATED_FASTMATH_ACCURACY_POLICY}
         )
     endforeach()
 
@@ -71,7 +89,7 @@ if(BUILD_TESTING)
             --test-dir "${CMAKE_BINARY_DIR}"
             --build-config "$<CONFIG>"
             --output-on-failure
-            -L "contracts|constexpr|metrics|package"
+            -L "contracts|constexpr|metrics|package|tooling"
             -LE "accuracy|benchmark"
         ${FLTX_CI_RELEASE_ACCURACY_COMMANDS}
         DEPENDS
@@ -84,6 +102,13 @@ if(BUILD_TESTING)
         COMMENT "Running fltx contracts and release-grade accuracy corpus"
         VERBATIM
     )
+
+    add_test(
+        NAME fltx.checks.tools
+        COMMAND "${Python3_EXECUTABLE}"
+            "${PROJECT_SOURCE_DIR}/validation/_internal/test_checks.py"
+    )
+    set_tests_properties(fltx.checks.tools PROPERTIES LABELS "fltx;tooling")
 endif()
 
 add_subdirectory(benchmarks)
