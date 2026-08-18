@@ -318,8 +318,8 @@ namespace fltx::tests::accuracy
             tlfloat_impl<Float>("TLFloat operator/", [](auto x, auto y) { return x / y; }));
         run.ternary(
             "floating_point_utilities", "fma",
-            {domains::moderate(n), domains::near_equal_cancellation(n),
-             domains::wide_exponent(n, false, -300, 300)},
+            {domains::moderate_ternary(n), domains::fma_cancellation(n),
+             domains::wide_exponent_ternary(n, false, -300, 300)},
             [](auto x, auto y, auto z) { return bl::fma(x, y, z); },
             [](const real& x, const real& y, const real& z) { return mpfr::fma(x, y, z); },
             boost_impl<Float>("boost::multiprecision::fma",

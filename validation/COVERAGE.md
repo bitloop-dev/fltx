@@ -60,12 +60,13 @@ The f32/f64 accuracy runner owns the same applicable numerical set. Its
 exponent, subnormal, cancellation and argument-reduction samples are generated
 at the native type's range so float inputs do not overflow or collapse to
 double-only test values. CTest owns the deterministic smoke runs;
-`fltx_ci_checks` runs the complete corpus for all four types through both the
-normal and fixed-simulation runners, and `fltx_native_accuracy_full` retains a
-standalone complete f32/f64 orchestration target. Detailed output remains under
-the build tree. Native runtime f32/f64 threshold misses are advisory platform-
-libm baseline evidence in both the orchestration target and `fltx_ci_checks`;
-runner integrity still gates. Runtime and fixed-simulation accuracy under
+`fltx_ci_checks` runs the 4,096-sample standard corpus for all four types through
+both the normal and fixed-simulation runners. Explicit full and release metrics
+workflows retain the 65,536-sample corpus, and `fltx_native_accuracy_full`
+retains a standalone complete f32/f64 orchestration target. Detailed output
+remains under the build tree. Native runtime f32/f64 threshold misses are
+advisory platform-libm baseline evidence in both the orchestration target and
+`fltx_ci_checks`; runner integrity still gates. Runtime and fixed-simulation accuracy under
 consumer fast-math are advisory for every precision because reassociation can
 invalidate expansion arithmetic and optimized runtime execution cannot
 faithfully model the compiler's constant evaluator. Their direct CTest smoke

@@ -133,6 +133,43 @@ TEST_CASE("cancellation corpus preserves values below a binary64 ulp",
     CHECK(low_limb_values > 40);
 }
 
+TEST_CASE("ternary accuracy domains are prefix-stable",
+          "[contracts][support]")
+{
+    const auto check_prefix = [](const auto& small, const auto& large)
+    {
+        REQUIRE(small.values.size() < large.values.size());
+        for (std::size_t i = 0; i < small.values.size(); ++i)
+        {
+            CHECK(small.values[i].x.limb == large.values[i].x.limb);
+            CHECK(small.values[i].y.limb == large.values[i].y.limb);
+            CHECK(small.values[i].z.limb == large.values[i].z.limb);
+        }
+    };
+
+    check_prefix(
+        fltx::tests::domains::moderate_ternary(8),
+        fltx::tests::domains::moderate_ternary(16));
+    check_prefix(
+        fltx::tests::domains::wide_exponent_ternary(8),
+        fltx::tests::domains::wide_exponent_ternary(16));
+
+    const auto cancellation = fltx::tests::domains::fma_cancellation(8);
+    check_prefix(
+        cancellation,
+        fltx::tests::domains::fma_cancellation(16));
+
+    CHECK(cancellation.values.front().x.limb == std::array<double, 4>{
+        0x1.000000000069dp+0, 0x1.aff8095000000p-54, 0.0, 0.0
+    });
+    CHECK(cancellation.values.front().y.limb == std::array<double, 4>{
+        0x1.0000000000001p+0,
+        0x1.0000000000001p-55,
+        -0x1.0000000000001p-109,
+        0x1.0000000000001p-163
+    });
+}
+
 TEST_CASE("f128 fma handles an overflowing leading product",
           "[contracts][edge-case][fma]")
 {

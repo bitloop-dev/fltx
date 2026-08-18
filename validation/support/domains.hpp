@@ -39,6 +39,51 @@ namespace fltx::tests::domains
         std::vector<binary_sample> values;
     };
 
+    struct ternary_sample
+    {
+        sample x;
+        sample y;
+        sample z;
+    };
+
+    struct ternary_domain
+    {
+        std::string name;
+        std::uint64_t seed = default_seed;
+        std::vector<ternary_sample> values;
+    };
+
+    inline constexpr std::uint64_t ternary_y_seed_mask =
+        0x9e3779b97f4a7c15ull;
+    inline constexpr std::uint64_t ternary_z_seed_mask =
+        0xd1b54a32d192ed03ull;
+
+    [[nodiscard]] inline ternary_domain zip_ternary(
+        domain x,
+        domain y,
+        domain z)
+    {
+        if (x.name != y.name || x.name != z.name)
+            throw std::invalid_argument("ternary domains must have matching names");
+        if (x.values.size() != y.values.size() ||
+            x.values.size() != z.values.size())
+        {
+            throw std::invalid_argument("ternary domains must have matching sizes");
+        }
+
+        ternary_domain out{ std::move(x.name), x.seed, {} };
+        out.values.reserve(x.values.size());
+        for (std::size_t i = 0; i < x.values.size(); ++i)
+        {
+            out.values.push_back({
+                std::move(x.values[i]),
+                std::move(y.values[i]),
+                std::move(z.values[i])
+            });
+        }
+        return out;
+    }
+
     enum class arithmetic_operation
     {
         add,
@@ -107,6 +152,18 @@ namespace fltx::tests::domains
         std::uint64_t seed = default_seed ^ 0x02u)
     {
         return interval("moderate", low, high, count, seed);
+    }
+
+    [[nodiscard]] inline ternary_domain moderate_ternary(
+        std::size_t count,
+        double low = -8.0,
+        double high = 8.0,
+        std::uint64_t seed = default_seed ^ 0x02u)
+    {
+        return zip_ternary(
+            moderate(count, low, high, seed),
+            moderate(count, low, high, seed ^ ternary_y_seed_mask),
+            moderate(count, low, high, seed ^ ternary_z_seed_mask));
     }
 
     [[nodiscard]] inline std::vector<binary_domain> arithmetic(
@@ -384,6 +441,24 @@ namespace fltx::tests::domains
         return out;
     }
 
+    [[nodiscard]] inline ternary_domain wide_exponent_ternary(
+        std::size_t count,
+        bool positive = false,
+        int min_exponent = -900,
+        int max_exponent = 900,
+        std::uint64_t seed = default_seed ^ 0x03u)
+    {
+        return zip_ternary(
+            wide_exponent(
+                count, positive, min_exponent, max_exponent, seed),
+            wide_exponent(
+                count, positive, min_exponent, max_exponent,
+                seed ^ ternary_y_seed_mask),
+            wide_exponent(
+                count, positive, min_exponent, max_exponent,
+                seed ^ ternary_z_seed_mask));
+    }
+
     [[nodiscard]] inline domain extreme_finite(
         std::size_t count,
         bool positive = false,
@@ -455,6 +530,42 @@ namespace fltx::tests::domains
         return out;
     }
     BL_POP_PRECISE;
+
+    [[nodiscard]] inline ternary_domain fma_cancellation(
+        std::size_t count,
+        std::uint64_t seed = default_seed ^ 0x06u)
+    {
+        ternary_domain out{ "cancellation", seed, {} };
+        out.values.reserve(count + 3);
+
+        // This count-independent regression witness was first exposed by a
+        // 32,768-sample f256 fixed-constexpr run. Keep it explicit so smaller
+        // profiles cannot lose it through corpus-size-dependent operand pairing.
+        out.values.push_back({
+            {
+                { 0x1.000000000069dp+0, 0x1.aff8095000000p-54, 0.0, 0.0 },
+                "fma cancellation regression multiplicand"
+            },
+            {
+                {
+                    0x1.0000000000001p+0,
+                    0x1.0000000000001p-55,
+                    -0x1.0000000000001p-109,
+                    0x1.0000000000001p-163
+                },
+                "fma cancellation regression multiplier"
+            },
+            make_exact_sample(0.0, "replaced by native product cancellation")
+        });
+
+        ternary_domain generated = zip_ternary(
+            near_equal_cancellation(count, seed),
+            near_equal_cancellation(count, seed ^ ternary_y_seed_mask),
+            near_equal_cancellation(count, seed ^ ternary_z_seed_mask));
+        for (ternary_sample& value : generated.values)
+            out.values.push_back(std::move(value));
+        return out;
+    }
 
     [[nodiscard]] inline domain near_zero_cancellation(
         std::size_t count,

@@ -149,6 +149,19 @@ namespace fltx::tests::accuracy
         }
 
         template<class Float>
+        [[nodiscard]] domains::ternary_domain fma_cancellation(
+            std::size_t n,
+            std::uint64_t seed = default_seed ^ 0x45u)
+        {
+            return domains::zip_ternary(
+                near_equal_cancellation<Float>(n, seed),
+                near_equal_cancellation<Float>(
+                    n, seed ^ domains::ternary_y_seed_mask),
+                near_equal_cancellation<Float>(
+                    n, seed ^ domains::ternary_z_seed_mask));
+        }
+
+        template<class Float>
         [[nodiscard]] domain near_zero_cancellation(
             std::size_t n,
             std::uint64_t seed = default_seed ^ 0x46u)
@@ -385,9 +398,9 @@ namespace fltx::tests::accuracy
                 [](auto x, auto y) { return x / y; },
                 [](const real& x, const real& y) { return x / y; });
             run.ternary("floating_point_utilities", "fma",
-                { domains::moderate(n),
-                  near_equal_cancellation<Float>(n),
-                  domains::wide_exponent(
+                { domains::moderate_ternary(n),
+                  fma_cancellation<Float>(n),
+                  domains::wide_exponent_ternary(
                       n, false, -product_limit, product_limit) },
                 [](auto x, auto y, auto z) { return bl::fma(x, y, z); },
                 [](const real& x, const real& y, const real& z) {

@@ -531,7 +531,9 @@ namespace detail::_f256_impl
         return f256_s{ std::fma(x.x0, y.x0, z.x0), 0.0, 0.0, 0.0 };
 
     const double leading_product = x.x0 * y.x0;
-    if (leading_product != 0.0 && leading_product == -z.x0) [[unlikely]]
+    if (leading_product != 0.0
+        && detail::fp::absd(leading_product + z.x0)
+            <= detail::fp::absd(leading_product) * 0x1p-48) [[unlikely]]
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
             detail::_f256::mul_add_exact_inline(x, y, z),

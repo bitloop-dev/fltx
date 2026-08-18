@@ -5,9 +5,9 @@ internal metrics runner never publishes canonical CSVs from a failing run.
 
 ## Current validation status
 
-`fltx_ci_checks` runs the 65,536-sample accuracy corpus for f32, f64, f128,
-and f256 through both the normal and fixed-constexpr runners, in addition to
-the contract, genuine-constexpr, dependency, in-tree package smoke, header,
+`fltx_ci_checks` runs the 4,096-sample standard accuracy corpus for f32, f64,
+f128, and f256 through both the normal and fixed-constexpr runners, in addition
+to the contract, genuine-constexpr, dependency, in-tree package smoke, header,
 standard, and tooling checks. A same-fingerprint result for this expanded
 badge gate has not yet been recorded, so this file makes no passing-platform
 claim. The standalone installed-package fixture remains a separate target.

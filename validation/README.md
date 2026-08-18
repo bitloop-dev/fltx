@@ -92,7 +92,7 @@ python .\validation\run_preset_checks.py `
 The command always configures the selected preset and then builds
 `fltx_ci_checks`. Success means that preset completed the same strict contracts,
 genuine constexpr checks, package checks, first-party Python tooling tests, and
-complete FLTX-only accuracy policy used by CI. The complete
+standard FLTX-only accuracy policy used by CI. The complete
 consumer-fast-math contract executable is built but remains a manually runnable
 diagnostic suite: real fast-math permits reassociation, signed-zero loss, and
 subnormal flushing, so those semantic assertions are not badge gates. Runtime
@@ -443,11 +443,13 @@ cmake --build --preset windows-x64-msvc-release --target fltx_ci_checks
 It builds isolated public-header and C++ standard probes, both contract
 executables, the in-tree package consumer, and FLTX-only accuracy runners. It
 runs the strict contract suite, genuine constexpr checks, package and
-first-party Python tooling checks, and the complete 65,536-sample accuracy
-corpus for all four types through normal and fixed-constexpr runners in both
-strict and consumer-fast-math modes. cppdd, qdpp, TLFloat, their comparison
-rows, and their dependency smoke checks remain owned by the metrics targets and
-cannot fail this gate. The complete consumer-fast-math contract suite stays
+first-party Python tooling checks, and the 4,096-sample standard accuracy corpus
+for all four types through normal and fixed-constexpr runners in both strict and
+consumer-fast-math modes. The deterministic domain anchors and explicit ternary
+operand tuples run in every profile; full and release metrics workflows retain
+the 65,536-sample corpus for deeper evidence. cppdd, qdpp, TLFloat, their
+comparison rows, and their dependency smoke checks remain owned by the metrics
+targets and cannot fail this gate. The complete consumer-fast-math contract suite stays
 available as diagnostic evidence but is not a badge gate because the compiler
 profile explicitly relaxes the semantics asserted by that suite. Runtime
 f32/f64 numerical threshold misses are advisory because those paths deliberately

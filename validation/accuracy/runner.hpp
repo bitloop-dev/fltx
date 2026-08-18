@@ -357,7 +357,7 @@ namespace fltx::tests::accuracy
         void ternary(
             std::string_view group,
             std::string_view operation,
-            std::vector<domains::domain> test_domains,
+            std::vector<domains::ternary_domain> test_domains,
             Eval evaluate,
             Reference reference,
             Specs... comparisons)
@@ -365,7 +365,7 @@ namespace fltx::tests::accuracy
             if (!selected(operation))
                 return;
 
-            for (const domains::domain& domain : test_domains)
+            for (const domains::ternary_domain& domain : test_domains)
             {
                 measure_ternary<Float>(
                     primary_info(operation),
@@ -706,7 +706,7 @@ namespace fltx::tests::accuracy
         void measure_ternary_spec(
             std::string_view group,
             std::string_view operation,
-            const domains::domain& domain,
+            const domains::ternary_domain& domain,
             const Spec& spec,
             Reference reference)
         {
@@ -1116,7 +1116,7 @@ namespace fltx::tests::accuracy
             const implementation_info& info,
             std::string_view group,
             std::string_view operation,
-            const domains::domain& domain,
+            const domains::ternary_domain& domain,
             Eval evaluate,
             Reference reference,
             bool gated)
@@ -1132,15 +1132,14 @@ namespace fltx::tests::accuracy
             bits.reserve(domain.values.size());
             for (std::size_t i = 0; i < domain.values.size(); ++i)
             {
-                const sample& x_sample = domain.values[i];
-                const sample& y_sample =
-                    domain.values[(i * 5 + 1) % domain.values.size()];
+                const domains::ternary_sample& input = domain.values[i];
+                const sample& x_sample = input.x;
+                const sample& y_sample = input.y;
                 Value x =
                     implementations::value_traits<Value>::from_sample(x_sample);
                 Value y =
                     implementations::value_traits<Value>::from_sample(y_sample);
-                sample z_sample =
-                    domain.values[(i * 7 + 2) % domain.values.size()];
+                sample z_sample = input.z;
                 Value z =
                     implementations::value_traits<Value>::from_sample(z_sample);
                 require_finite(x, operation, domain.name);
