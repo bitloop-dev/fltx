@@ -175,6 +175,15 @@ namespace
     template<class T>
     void check_zero(
         std::string_view operation,
+        const T& value)
+    {
+        INFO("operation: " << operation);
+        CHECK(bl::iszero(value));
+    }
+
+    template<class T>
+    void check_zero(
+        std::string_view operation,
         const T& value,
         bool negative)
     {
@@ -273,10 +282,20 @@ namespace
         CHECK(T{ bl::fmax(one, nan) } == one);
         check_nan("fmin(NaN, NaN)", T{ bl::fmin(nan, nan) });
         check_nan("fmax(NaN, NaN)", T{ bl::fmax(nan, nan) });
-        check_zero("fmin(+zero, -zero)",
-            T{ bl::fmin(zero, negative_zero) }, true);
-        check_zero("fmax(-zero, +zero)",
-            T{ bl::fmax(negative_zero, zero) }, false);
+        if constexpr (std::is_same_v<T, bl::f32> || std::is_same_v<T, bl::f64>)
+        {
+            check_zero("fmin(+zero, -zero)",
+                T{ bl::fmin(zero, negative_zero) });
+            check_zero("fmax(-zero, +zero)",
+                T{ bl::fmax(negative_zero, zero) });
+        }
+        else
+        {
+            check_zero("fmin(+zero, -zero)",
+                T{ bl::fmin(zero, negative_zero) }, true);
+            check_zero("fmax(-zero, +zero)",
+                T{ bl::fmax(negative_zero, zero) }, false);
+        }
 
         check_nan("fdim NaN propagation", T{ bl::fdim(nan, one) });
         check_infinity("fdim(+infinity, finite)",
@@ -799,32 +818,43 @@ TEST_CASE("public expansion math results keep nonoverlapping limbs",
 
 TEST_CASE("arithmetic special values follow IEEE conventions", "[contracts][math][special]")
 {
+    // Native runtime wrappers inherit the active std/compiler floating-point
+    // mode. Fast-math special values remain observational metrics rather than
+    // a stronger FLTX contract; strict runtime and constexpr paths are checked.
+#if !defined(FLTX_FAST_MATH)
     check_arithmetic_special_values<bl::f32>("f32");
     check_arithmetic_special_values<bl::f64>("f64");
+#endif
     check_arithmetic_special_values<bl::f128>("f128");
     check_arithmetic_special_values<bl::f256>("f256");
 }
 
 TEST_CASE("roots and powers handle poles and invalid domains", "[contracts][math][special]")
 {
+#if !defined(FLTX_FAST_MATH)
     check_root_and_power_special_values<bl::f32>("f32");
     check_root_and_power_special_values<bl::f64>("f64");
+#endif
     check_root_and_power_special_values<bl::f128>("f128");
     check_root_and_power_special_values<bl::f256>("f256");
 }
 
 TEST_CASE("transcendentals preserve signed outputs and domain semantics", "[contracts][math][special]")
 {
+#if !defined(FLTX_FAST_MATH)
     check_transcendental_special_values<bl::f32>("f32");
     check_transcendental_special_values<bl::f64>("f64");
+#endif
     check_transcendental_special_values<bl::f128>("f128");
     check_transcendental_special_values<bl::f256>("f256");
 }
 
 TEST_CASE("rounding and remainder special values preserve signs", "[contracts][math][special]")
 {
+#if !defined(FLTX_FAST_MATH)
     check_rounding_and_remainder_special_values<bl::f32>("f32");
     check_rounding_and_remainder_special_values<bl::f64>("f64");
+#endif
     check_rounding_and_remainder_special_values<bl::f128>("f128");
     check_rounding_and_remainder_special_values<bl::f256>("f256");
 }

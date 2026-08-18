@@ -100,6 +100,27 @@ namespace
     }
 
     template<class T>
+    consteval bool native_minmax_special_values_are_constant_evaluated()
+    {
+        constexpr T zero{ 0.0 };
+        constexpr T negative_zero{ -0.0 };
+        constexpr T one{ 1.0 };
+        constexpr T nan = std::numeric_limits<T>::quiet_NaN();
+
+        const T minimum_zero = bl::fmin(zero, negative_zero);
+        const T maximum_zero = bl::fmax(negative_zero, zero);
+
+        return bl::fmin(nan, one) == one &&
+               bl::fmin(one, nan) == one &&
+               bl::fmax(nan, one) == one &&
+               bl::fmax(one, nan) == one &&
+               bl::isnan(bl::fmin(nan, nan)) &&
+               bl::isnan(bl::fmax(nan, nan)) &&
+               bl::iszero(minimum_zero) && bl::signbit(minimum_zero) &&
+               bl::iszero(maximum_zero) && !bl::signbit(maximum_zero);
+    }
+
+    template<class T>
     consteval bool arithmetic_special_values_are_constant_evaluated()
     {
         constexpr T zero{ 0.0 };
@@ -241,6 +262,8 @@ namespace
     static_assert(within_bits(qd_sincos.c, qd_cos_expected, 178));
     static_assert(core_is_constant_evaluated<bl::f128>());
     static_assert(core_is_constant_evaluated<bl::f256>());
+    static_assert(native_minmax_special_values_are_constant_evaluated<bl::f32>());
+    static_assert(native_minmax_special_values_are_constant_evaluated<bl::f64>());
     static_assert(arithmetic_special_values_are_constant_evaluated<bl::f128>());
     static_assert(arithmetic_special_values_are_constant_evaluated<bl::f256>());
     static_assert(exact_math_is_constant_evaluated<bl::f128>());
@@ -277,6 +300,8 @@ TEST_CASE("genuine constant evaluation covers representative heavy paths", "[con
 
     STATIC_CHECK(core_is_constant_evaluated<bl::f128>());
     STATIC_CHECK(core_is_constant_evaluated<bl::f256>());
+    STATIC_CHECK(native_minmax_special_values_are_constant_evaluated<bl::f32>());
+    STATIC_CHECK(native_minmax_special_values_are_constant_evaluated<bl::f64>());
     STATIC_CHECK(arithmetic_special_values_are_constant_evaluated<bl::f128>());
     STATIC_CHECK(arithmetic_special_values_are_constant_evaluated<bl::f256>());
     STATIC_CHECK(exact_math_is_constant_evaluated<bl::f128>());

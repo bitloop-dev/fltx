@@ -53,22 +53,6 @@ namespace bl::detail::charconv
         return { p, std::errc{} };
     }
 
-    template<class Traits>
-    [[nodiscard]] BL_FORCE_INLINE std::from_chars_result native_from_chars(
-        const char* first,
-        const char* last,
-        typename Traits::value_type& value,
-        std::chars_format fmt) noexcept
-    {
-        const auto result = std::from_chars(first, last, value, fmt);
-        if (result.ec == std::errc::invalid_argument &&
-            signed_special_token_length(first, last) != 0) [[unlikely]]
-        {
-            return parse_special_from_chars<Traits>(first, last, value);
-        }
-        return result;
-    }
-
     [[nodiscard]] BL_FORCE_INLINE constexpr bool has_exponent_marker(const char* first, const char* last) noexcept
     {
         for (const char* p = first; p != last; ++p)
@@ -209,6 +193,29 @@ namespace bl::detail::charconv
 
         value = parsed;
         return { end, std::errc{} };
+    }
+
+    template<class Traits>
+    [[nodiscard]] BL_FORCE_INLINE std::from_chars_result native_from_chars(
+        const char* first,
+        const char* last,
+        typename Traits::value_type& value,
+        std::chars_format fmt) noexcept
+    {
+        if constexpr (requires { std::from_chars(first, last, value, fmt); })
+        {
+            const auto result = std::from_chars(first, last, value, fmt);
+            if (result.ec == std::errc::invalid_argument &&
+                signed_special_token_length(first, last) != 0) [[unlikely]]
+            {
+                return parse_special_from_chars<Traits>(first, last, value);
+            }
+            return result;
+        }
+        else
+        {
+            return from_chars_impl<Traits>(first, last, value, fmt);
+        }
     }
 
 } // namespace bl::detail::charconv

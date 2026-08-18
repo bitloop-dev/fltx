@@ -18,9 +18,17 @@
       }
     },
     {
+      "name": "_windows-ninja-release",
+      "hidden": true,
+      "inherits": "_ninja-release",
+      "cacheVariables": {
+        "VCPKG_OVERLAY_PORTS": "${sourceDir}/cmake/vcpkg-ports"
+      }
+    },
+    {
       "name": "windows-x64-msvc-release",
       "displayName": "Windows x64 / MSVC / Release",
-      "inherits": "_ninja-release",
+      "inherits": "_windows-ninja-release",
       "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"},
       "binaryDir": "${sourceDir}/build/windows-x64-msvc-release",
       "cacheVariables": {
@@ -33,7 +41,7 @@
     {
       "name": "windows-x64-clangcl-release",
       "displayName": "Windows x64 / clang-cl / Release",
-      "inherits": "_ninja-release",
+      "inherits": "_windows-ninja-release",
       "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"},
       "binaryDir": "${sourceDir}/build/windows-x64-clangcl-release",
       "environment": {
@@ -52,7 +60,7 @@
     {
       "name": "windows-x64-mingw-release",
       "displayName": "Windows x64 / MinGW / Release",
-      "inherits": "_ninja-release",
+      "inherits": "_windows-ninja-release",
       "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"},
       "binaryDir": "${sourceDir}/build/windows-x64-mingw-release",
       "cacheVariables": {
@@ -66,7 +74,7 @@
     {
       "name": "windows-arm64-msvc-release",
       "displayName": "Windows ARM64 / MSVC / Release",
-      "inherits": "_ninja-release",
+      "inherits": "_windows-ninja-release",
       "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"},
       "binaryDir": "${sourceDir}/build/windows-arm64-msvc-release",
       "cacheVariables": {
@@ -79,7 +87,7 @@
     {
       "name": "windows-arm64-clangcl-release",
       "displayName": "Windows ARM64 / clang-cl / Release",
-      "inherits": "_ninja-release",
+      "inherits": "_windows-ninja-release",
       "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"},
       "binaryDir": "${sourceDir}/build/windows-arm64-clangcl-release",
       "environment": {
