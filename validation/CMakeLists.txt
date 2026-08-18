@@ -78,10 +78,14 @@ if(BUILD_TESTING)
         )
     endforeach()
 
-    # Badge workflows build this target. Contracts and tooling run through
-    # CTest, while accuracy uses the complete release corpus for every type and
-    # both runtime/constexpr-algorithm libraries. Performance telemetry and
-    # canonical metrics publication remain separate release-evidence tasks.
+    # Badge workflows build this target. Strict contracts, genuine constexpr
+    # checks, and tooling run through CTest, while accuracy uses the complete
+    # release corpus for every type and both runtime/constexpr-algorithm
+    # libraries. The consumer-fast-math contract executable is still compiled
+    # by fltx_compile_contract, but its full semantic suite is diagnostic: real
+    # fast-math permits reassociation, signed-zero loss, and subnormal flushing.
+    # Performance telemetry and canonical metrics publication remain separate
+    # release-evidence tasks.
     add_custom_target(fltx_ci_checks
         COMMAND "${CMAKE_COMMAND}" -E make_directory
             "${FLTX_CI_RELEASE_ACCURACY_DIR}"
@@ -90,7 +94,7 @@ if(BUILD_TESTING)
             --build-config "$<CONFIG>"
             --output-on-failure
             -L "contracts|constexpr|metrics|package|tooling"
-            -LE "accuracy|benchmark"
+            -LE "accuracy|benchmark|contracts-fastmath"
         ${FLTX_CI_RELEASE_ACCURACY_COMMANDS}
         DEPENDS
             fltx_compile_contract

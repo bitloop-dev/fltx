@@ -11,7 +11,8 @@
   #define FLTX_VALIDATION_PRECISE_FUNCTION \
       inline __attribute__((noinline, optnone))
 #elif defined(__GNUC__) && defined(FLTX_FAST_MATH)
-  #define FLTX_VALIDATION_SPECIAL_VALUE_FUNCTION inline
+  #define FLTX_VALIDATION_SPECIAL_VALUE_FUNCTION \
+      inline __attribute__((noinline, optimize("no-fast-math")))
   #define FLTX_VALIDATION_PRECISE_FUNCTION \
       inline __attribute__((noinline, optimize("no-fast-math")))
 #elif defined(_MSC_VER)
@@ -120,14 +121,16 @@ namespace fltx::tests::native_fp
     }
 
     template<class Float>
-    [[nodiscard]] constexpr Float signed_zero(bool negative) noexcept
+    [[nodiscard]] FLTX_VALIDATION_SPECIAL_VALUE_FUNCTION constexpr Float
+    signed_zero(bool negative) noexcept
     {
         return std::bit_cast<Float>(
             negative ? binary_format<Float>::sign_mask : bits_type<Float>{0});
     }
 
     template<class Float>
-    [[nodiscard]] constexpr Float denorm_min() noexcept
+    [[nodiscard]] FLTX_VALIDATION_SPECIAL_VALUE_FUNCTION constexpr Float
+    denorm_min() noexcept
     {
         return std::bit_cast<Float>(binary_format<Float>::denorm_min);
     }

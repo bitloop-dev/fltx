@@ -18,6 +18,19 @@ constant evaluation. Genuine strict native numerical constant evaluation,
 native special-value assertions in both consumer profiles, strict native fixed-
 simulation, and every f128/f256 threshold remain gating.
 
+The complete consumer-fast-math contract executable is compiled on every
+configured target but is not a badge gate. GCC, Clang, AppleClang, MinGW, and
+Emscripten legitimately produce different findings when their fast-math modes
+discard signed zero, flush subnormals, assume finite inputs, or reassociate the
+error-free transforms used by expansion arithmetic. Run that executable
+directly when collecting diagnostic fast-math contract evidence.
+
+Windows ARM64 presets disable the vendored TLFloat and qdpp comparisons because
+their MSVC-compatible paths currently require x64-only integer or FMA
+intrinsics. Windows x64 clang-cl also disables qdpp's baseline-unsafe FMA path.
+These are explicit dependency support limits; FLTX's own ARM64 and clang-cl
+validation remains enabled.
+
 The isolated public-header probes emit `undefined-inline` warnings under
 MinGW and Emscripten for declarations used by some single-header probes. They
 are warning-level header-hygiene debt, not hidden test failures.

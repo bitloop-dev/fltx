@@ -71,8 +71,11 @@ the compiler's constant evaluator; its direct CTest smoke checks mirror that
 policy. Genuine f32/f64 numerical constant evaluation gates the strict
 consumer, exact native special-value assertions compile in both consumer
 profiles, the strict native fixed-simulation remains gating, and all f128/f256
-thresholds remain gating. Native accuracy is never published in the f128/f256
-summary tables.
+accuracy thresholds remain gating. The full consumer-fast-math contract
+executable is compiled and remains directly runnable, but its semantic suite is
+diagnostic rather than gating because that compiler profile permits
+reassociation, signed-zero loss, and subnormal flushing. Native accuracy is
+never published in the f128/f256 summary tables.
 
 | Public family | C | CE | CA | O | A | B |
 |---|---|---|---|---|---|---|

@@ -204,17 +204,44 @@ namespace bl::detail::charconv
     {
         if constexpr (requires { std::from_chars(first, last, value, fmt); })
         {
-            const auto result = std::from_chars(first, last, value, fmt);
+            typename Traits::value_type parsed = value;
+            auto result = std::from_chars(first, last, parsed, fmt);
             if (result.ec == std::errc::invalid_argument &&
                 signed_special_token_length(first, last) != 0) [[unlikely]]
             {
-                return parse_special_from_chars<Traits>(first, last, value);
+                result = parse_special_from_chars<Traits>(first, last, parsed);
             }
+
+            // Some floating from_chars implementations report success and
+            // store infinity for a finite token outside the native range.
+            // Preserve the standard-shaped error and transactional output
+            // contract at the bl::from_chars boundary.
+            if (result.ec == std::errc{} &&
+                signed_special_token_length(first, last) == 0 &&
+                Traits::isinf(parsed)) [[unlikely]]
+            {
+                return { result.ptr, std::errc::result_out_of_range };
+            }
+
+            if (result.ec == std::errc{})
+                value = parsed;
             return result;
         }
         else
         {
-            return from_chars_impl<Traits>(first, last, value, fmt);
+            typename Traits::value_type parsed = value;
+            const auto result = from_chars_impl<Traits>(
+                first, last, parsed, fmt);
+            if (result.ec == std::errc{} &&
+                signed_special_token_length(first, last) == 0 &&
+                Traits::isinf(parsed)) [[unlikely]]
+            {
+                return { result.ptr, std::errc::result_out_of_range };
+            }
+
+            if (result.ec == std::errc{})
+                value = parsed;
+            return result;
         }
     }
 

@@ -697,9 +697,20 @@ TEST_CASE("charconv-shaped helpers expose buffers, errors, and complete parsing"
     CHECK(overflow.ec == std::errc::value_too_large);
     CHECK(overflow.ptr == too_small.data() + too_small.size());
 
-    const auto out_of_range = bl::try_parse<bl::f32>("1e10000");
+    constexpr std::string_view oversized_native = "1e10000";
+    const auto out_of_range = bl::try_parse<bl::f32>(oversized_native);
     CHECK_FALSE(out_of_range);
     CHECK(out_of_range.ec == std::errc::result_out_of_range);
+
+    bl::f32 unchanged_native = 7.0f;
+    const auto native_range_result = bl::from_chars(
+        oversized_native.data(),
+        oversized_native.data() + oversized_native.size(),
+        unchanged_native);
+    CHECK(native_range_result.ptr ==
+          oversized_native.data() + oversized_native.size());
+    CHECK(native_range_result.ec == std::errc::result_out_of_range);
+    CHECK(unchanged_native == 7.0f);
 
     CHECK(bl::parse<bl::f64>("0x1.8p+1") == 3.0);
     CHECK(bl::parse<bl::f128>("+1.25") == bl::f128{ 1.25 });

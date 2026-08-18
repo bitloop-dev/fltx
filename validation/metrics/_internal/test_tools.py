@@ -3109,7 +3109,7 @@ class PresetPipelineTests(unittest.TestCase):
         )
         self.assertEqual(
             Path(metrics_command[metrics_command.index("--output-root") + 1]),
-            root
+            root.resolve()
             / "validation"
             / "metrics"
             / "_unversioned"
@@ -3676,11 +3676,12 @@ class PresetPipelineTests(unittest.TestCase):
     def test_preset_output_paths_separate_workflow_evidence_and_reports(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
+            resolved_root = root.resolve()
             self.assertEqual(
                 preset_pipeline.metrics_paths(root, "standard"),
                 preset_pipeline.MetricsPaths(
                     data=(
-                        root
+                        resolved_root
                         / "validation"
                         / "metrics"
                         / "_unversioned"
@@ -3688,7 +3689,7 @@ class PresetPipelineTests(unittest.TestCase):
                         / "data"
                     ),
                     generated=(
-                        root
+                        resolved_root
                         / "validation"
                         / "metrics"
                         / "_unversioned"
@@ -3701,7 +3702,7 @@ class PresetPipelineTests(unittest.TestCase):
                 preset_pipeline.metrics_paths(root, "quick"),
                 preset_pipeline.MetricsPaths(
                     data=(
-                        root
+                        resolved_root
                         / "validation"
                         / "metrics"
                         / "_unversioned"
@@ -3709,7 +3710,7 @@ class PresetPipelineTests(unittest.TestCase):
                         / "data"
                     ),
                     generated=(
-                        root
+                        resolved_root
                         / "validation"
                         / "metrics"
                         / "_unversioned"
@@ -3722,7 +3723,7 @@ class PresetPipelineTests(unittest.TestCase):
                 preset_pipeline.metrics_paths(root, "full"),
                 preset_pipeline.MetricsPaths(
                     data=(
-                        root
+                        resolved_root
                         / "validation"
                         / "metrics"
                         / "_unversioned"
@@ -3730,7 +3731,7 @@ class PresetPipelineTests(unittest.TestCase):
                         / "data"
                     ),
                     generated=(
-                        root
+                        resolved_root
                         / "validation"
                         / "metrics"
                         / "_unversioned"
@@ -3742,8 +3743,10 @@ class PresetPipelineTests(unittest.TestCase):
             self.assertEqual(
                 preset_pipeline.metrics_paths(root, "release"),
                 preset_pipeline.MetricsPaths(
-                    data=root / "validation" / "metrics" / "data",
-                    generated=root / "validation" / "metrics" / "generated",
+                    data=resolved_root / "validation" / "metrics" / "data",
+                    generated=(
+                        resolved_root / "validation" / "metrics" / "generated"
+                    ),
                 ),
             )
 
@@ -3751,11 +3754,12 @@ class PresetPipelineTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             custom = root / "staging"
+            resolved_custom = custom.resolve()
             self.assertEqual(
                 preset_pipeline.metrics_paths(root, "quick", custom),
                 preset_pipeline.MetricsPaths(
-                    data=custom / "data",
-                    generated=custom / "generated",
+                    data=resolved_custom / "data",
+                    generated=resolved_custom / "generated",
                 ),
             )
             with self.assertRaisesRegex(

@@ -81,7 +81,9 @@
         "CMAKE_C_COMPILER": "cl.exe",
         "CMAKE_CXX_COMPILER": "cl.exe",
         "VCPKG_TARGET_TRIPLET": "arm64-windows",
-        "FLTX_VALIDATION_EXPECTED_ARCHITECTURE": "arm64"
+        "FLTX_VALIDATION_EXPECTED_ARCHITECTURE": "arm64",
+        "FLTX_METRICS_QDPP": "OFF",
+        "FLTX_METRICS_TLFLOAT": "OFF"
       }
     },
     {
@@ -100,7 +102,8 @@
         "CMAKE_AR": "llvm-lib.exe",
         "VCPKG_TARGET_TRIPLET": "arm64-windows",
         "FLTX_VALIDATION_EXPECTED_ARCHITECTURE": "arm64",
-        "FLTX_METRICS_QDPP": "OFF"
+        "FLTX_METRICS_QDPP": "OFF",
+        "FLTX_METRICS_TLFLOAT": "OFF"
       }
     },
     {

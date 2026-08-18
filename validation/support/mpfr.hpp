@@ -36,7 +36,8 @@ namespace fltx::tests::mpfr
     }
 
     template<class Float>
-    [[nodiscard]] real native_float_to_real(Float value)
+    [[nodiscard]] FLTX_VALIDATION_PRECISE_FUNCTION real
+    native_float_to_real(const Float& value)
     {
         static_assert(
             std::is_same_v<Float, float> || std::is_same_v<Float, double>);
