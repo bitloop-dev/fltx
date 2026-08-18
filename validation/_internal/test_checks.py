@@ -51,7 +51,12 @@ class CheckPipelineTests(unittest.TestCase):
             run.call_args_list,
             [
                 mock.call(
-                    ["cmake", "--preset", "native-configure"],
+                    [
+                        "cmake",
+                        "--preset",
+                        "native-configure",
+                        "-DFLTX_METRICS_EXTERNAL_COMPARISONS=OFF",
+                    ],
                     resolved_root,
                     selected.environment,
                 ),

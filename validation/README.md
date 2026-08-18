@@ -71,7 +71,9 @@ symbol.
 
 `fltx_compile_contract` builds every public header in isolation and compiles
 the representative constexpr/runtime surface explicitly as both C++20 and
-C++23.
+C++23. Comparison-library smoke executables are owned separately by
+`fltx_metrics_compile_contract`; they are metrics integration checks, not FLTX
+compile contracts.
 `fltx_package_tests` installs fltx and builds strict, fast-math, and
 injected-no-FMA consumers through `find_package`. Its dedicated install and
 nested-build directories are recreated for every invocation, so stale
@@ -89,18 +91,25 @@ python .\validation\run_preset_checks.py `
 
 The command always configures the selected preset and then builds
 `fltx_ci_checks`. Success means that preset completed the same strict contracts,
-genuine constexpr checks, supported dependency and package checks, Python
-tooling tests, and complete accuracy policy used by CI. The complete
+genuine constexpr checks, package checks, first-party Python tooling tests, and
+complete FLTX-only accuracy policy used by CI. The complete
 consumer-fast-math contract executable is built but remains a manually runnable
 diagnostic suite: real fast-math permits reassociation, signed-zero loss, and
 subnormal flushing, so those semantic assertions are not badge gates. Runtime
 f32/f64 threshold findings remain visible as advisory platform-libm baseline
 evidence. The native fixed-simulation consumer-fast-math lane is also advisory
 because runtime fast-math code generation cannot faithfully model genuine
-compiler constant evaluation. Genuine strict f32/f64 numerical evaluation and
-strict fixed-simulation remain gating; exact native special-value assertions
-compile in both consumer profiles, and all f128/f256 accuracy lanes remain
-gating.
+compiler constant evaluation. All consumer-fast-math accuracy lanes are
+advisory for the same reason: reassociation can invalidate expansion arithmetic
+without changing the strict library contract. Genuine strict f32/f64 numerical
+evaluation and strict fixed-simulation remain gating; exact native special-value
+assertions compile in both consumer profiles, and strict f128/f256 accuracy
+remains gating.
+The artificial fixed-simulation fast-math runner records `-` for its accuracy
+special-value column: clang may emit a trap merely for constructing its
+deliberate NaN/infinity probes under fast-math. Real runtime fast-math and every
+strict lane retain those probes, while the genuine constexpr corpus remains the
+authority for constant-evaluation special values.
 
 To run that target for every release preset supported by the current host OS
 and architecture, use:
@@ -294,9 +303,9 @@ The Windows clang-cl presets explicitly disable qdpp because it treats every
 `_MSC_VER` frontend as having baseline-safe x86 FMA intrinsics; clang-cl
 correctly rejects those intrinsics when the translation unit does not target
 FMA. Both Windows ARM64 presets also disable qdpp because those x86 intrinsics
-are unavailable on the target. The GitHub workflow leaves these dependency
-choices to the selected preset, keeping unsupported vendored code out of the
-build without modifying it.
+are unavailable on the target. Metrics builds leave these dependency choices
+to the selected preset. Required GitHub checks use the FLTX-only accuracy runner
+and do not build these comparison integrations.
 Consumer-fast-math runners contain FLTX rows only and do not parse qdpp headers,
 because qdpp deliberately rejects aggressive fast-math. The qdpp smoke target
 also compiles and executes representative `dd_real` and `qd_real` operations.
@@ -431,24 +440,30 @@ The underlying CMake command used by GitHub Actions is:
 cmake --build --preset windows-x64-msvc-release --target fltx_ci_checks
 ```
 
-It builds isolated public-header and C++ standard probes, every comparison
-library smoke target supported by the selected preset, both contract
-executables, and the in-tree package consumer. It runs the strict contract
-suite, genuine constexpr checks, enabled dependency checks, package and Python
-tooling checks, and the complete 65,536-sample accuracy corpus for all four
-types through normal and fixed-constexpr runners in both strict and
-consumer-fast-math modes. The complete consumer-fast-math contract suite stays
+It builds isolated public-header and C++ standard probes, both contract
+executables, the in-tree package consumer, and FLTX-only accuracy runners. It
+runs the strict contract suite, genuine constexpr checks, package and
+first-party Python tooling checks, and the complete 65,536-sample accuracy
+corpus for all four types through normal and fixed-constexpr runners in both
+strict and consumer-fast-math modes. cppdd, qdpp, TLFloat, their comparison
+rows, and their dependency smoke checks remain owned by the metrics targets and
+cannot fail this gate. The complete consumer-fast-math contract suite stays
 available as diagnostic evidence but is not a badge gate because the compiler
 profile explicitly relaxes the semantics asserted by that suite. Runtime
 f32/f64 numerical threshold misses are advisory because those paths deliberately
 delegate to the platform libm; crashes, incomplete output, and runner faults
-still fail. Native fixed-simulation under consumer fast-math is likewise
-advisory: it executes constexpr algorithms as optimized runtime code and cannot
-faithfully reproduce the compiler's constant evaluator. The genuine f32/f64
-constexpr numerical corpus gates the strict consumer. Exact native special-
-value assertions are compiled in both consumer profiles, strict native fixed-
-simulation remains gating, and every f128/f256 accuracy threshold remains
-gating.
+still fail. Both runtime and fixed-simulation accuracy under consumer fast-math
+are advisory for every precision: the compiler may legally reassociate the
+error-free transformations underlying expansion arithmetic, and optimized
+runtime code cannot faithfully reproduce the compiler's constant evaluator.
+The fixed-simulation fast-math runner omits deliberate NaN/infinity accuracy
+probes (reported as `-`) because clang can compile those probe constructions to
+a trap under fast-math; this does not affect real runtime or strict
+special-value coverage.
+The genuine f32/f64 constexpr numerical corpus gates the strict consumer. Exact
+native special-value assertions are compiled in both consumer profiles, strict
+native fixed-simulation remains gating, and strict f128/f256 accuracy
+thresholds remain gating.
 The Linux GCC/Clang, Windows MSVC/MinGW, macOS AppleClang, and WebAssembly
 Emscripten workflows all invoke this same target. Any currently reproducible
 gating failure remains recorded in

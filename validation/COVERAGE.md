@@ -65,17 +65,23 @@ normal and fixed-simulation runners, and `fltx_native_accuracy_full` retains a
 standalone complete f32/f64 orchestration target. Detailed output remains under
 the build tree. Native runtime f32/f64 threshold misses are advisory platform-
 libm baseline evidence in both the orchestration target and `fltx_ci_checks`;
-runner integrity still gates. Native fixed-simulation under consumer fast-math
-is also advisory because optimized runtime execution cannot faithfully model
-the compiler's constant evaluator; its direct CTest smoke checks mirror that
-policy. Genuine f32/f64 numerical constant evaluation gates the strict
-consumer, exact native special-value assertions compile in both consumer
-profiles, the strict native fixed-simulation remains gating, and all f128/f256
-accuracy thresholds remain gating. The full consumer-fast-math contract
+runner integrity still gates. Runtime and fixed-simulation accuracy under
+consumer fast-math are advisory for every precision because reassociation can
+invalidate expansion arithmetic and optimized runtime execution cannot
+faithfully model the compiler's constant evaluator. Their direct CTest smoke
+checks mirror that policy. Genuine f32/f64 numerical constant evaluation gates
+the strict consumer, exact native special-value assertions compile in both
+consumer profiles, the strict native fixed-simulation remains gating, and
+strict f128/f256 accuracy thresholds remain gating. The full consumer-fast-math contract
 executable is compiled and remains directly runnable, but its semantic suite is
 diagnostic rather than gating because that compiler profile permits
 reassociation, signed-zero loss, and subnormal flushing. Native accuracy is
 never published in the f128/f256 summary tables.
+The fixed-simulation consumer-fast-math accuracy runner reports `-` for its
+special-value field because clang may lower the deliberate NaN/infinity probe
+construction to a trap in that artificial mode. Real runtime fast-math, all
+strict accuracy lanes, and the genuine constexpr corpus retain special-value
+ownership.
 
 | Public family | C | CE | CA | O | A | B |
 |---|---|---|---|---|---|---|

@@ -338,7 +338,12 @@ def run_pipeline(
         prepare_file_api_query(selection.binary_dir)
         try:
             _run(
-                ["cmake", "--preset", selection.configure_name],
+                [
+                    "cmake",
+                    "--preset",
+                    selection.configure_name,
+                    "-DFLTX_METRICS_EXTERNAL_COMPARISONS=ON",
+                ],
                 root,
                 cmake_environment,
             )

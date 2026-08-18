@@ -18,6 +18,7 @@ function(fltx_tests_add_accuracy_runner
 endfunction()
 
 fltx_tests_add_accuracy_runner(fltx_accuracy fltx::fltx 0 OFF)
+fltx_tests_add_accuracy_runner(fltx_ci_accuracy fltx::fltx 0 OFF)
 fltx_tests_add_accuracy_runner(
     fltx_constexpr_accuracy
     fltx_constexpr_accuracy_lib
@@ -34,12 +35,14 @@ fltx_tests_add_accuracy_runner(
 
 set(FLTX_ACCURACY_TARGETS
     fltx_accuracy
+    fltx_ci_accuracy
     fltx_constexpr_accuracy
     fltx_accuracy_fastmath
     fltx_constexpr_accuracy_fastmath
 )
 set(FLTX_RUNTIME_ACCURACY_TARGETS
     fltx_accuracy
+    fltx_ci_accuracy
     fltx_accuracy_fastmath
 )
 set(FLTX_CONSTEXPR_ACCURACY_TARGETS
@@ -57,19 +60,36 @@ foreach(target IN LISTS FLTX_ACCURACY_TARGETS)
     )
 endforeach()
 
-foreach(target IN LISTS FLTX_RUNTIME_ACCURACY_TARGETS)
-    if(FLTX_METRICS_TLFLOAT)
-        target_link_libraries(${target} PRIVATE fltx::test_tlfloat)
-        target_compile_definitions(${target} PRIVATE FLTX_METRICS_HAS_TLFLOAT=1)
-    else()
-        target_compile_definitions(${target} PRIVATE FLTX_METRICS_HAS_TLFLOAT=0)
-    endif()
+if(FLTX_METRICS_EXTERNAL_COMPARISONS)
+    target_compile_definitions(fltx_accuracy PRIVATE
+        FLTX_TESTS_ENABLE_EXTERNAL_COMPARISONS=1
+    )
+else()
+    target_compile_definitions(fltx_accuracy PRIVATE
+        FLTX_TESTS_ENABLE_EXTERNAL_COMPARISONS=0
+    )
+endif()
+foreach(target
+    fltx_ci_accuracy
+    fltx_constexpr_accuracy
+    fltx_accuracy_fastmath
+    fltx_constexpr_accuracy_fastmath)
+    target_compile_definitions(${target} PRIVATE
+        FLTX_TESTS_ENABLE_EXTERNAL_COMPARISONS=0
+    )
 endforeach()
 
-# Comparison-library rows are publication metadata, not constexpr validation.
-# Keep the fixed runner focused on FLTX while retaining the same MPFR oracle,
-# domains, special-value contracts, and thresholds.
-foreach(target IN LISTS FLTX_CONSTEXPR_ACCURACY_TARGETS)
+if(FLTX_METRICS_EXTERNAL_COMPARISONS AND FLTX_METRICS_TLFLOAT)
+    target_link_libraries(fltx_accuracy PRIVATE fltx::test_tlfloat)
+    target_compile_definitions(fltx_accuracy PRIVATE FLTX_METRICS_HAS_TLFLOAT=1)
+else()
+    target_compile_definitions(fltx_accuracy PRIVATE FLTX_METRICS_HAS_TLFLOAT=0)
+endif()
+foreach(target
+    fltx_ci_accuracy
+    fltx_accuracy_fastmath
+    fltx_constexpr_accuracy
+    fltx_constexpr_accuracy_fastmath)
     target_compile_definitions(${target} PRIVATE FLTX_METRICS_HAS_TLFLOAT=0)
 endforeach()
 
@@ -91,7 +111,8 @@ function(fltx_tests_add_benchmark_runner target consumer_fast_math)
         "${FLTX_TESTS_MPFR_LIBRARY}"
         "${FLTX_TESTS_GMP_LIBRARY}"
     )
-    if(FLTX_METRICS_TLFLOAT)
+    if(FLTX_METRICS_EXTERNAL_COMPARISONS AND
+       FLTX_METRICS_TLFLOAT AND NOT consumer_fast_math)
         target_link_libraries(${target} PRIVATE fltx::test_tlfloat)
         target_compile_definitions(${target} PRIVATE FLTX_METRICS_HAS_TLFLOAT=1)
     else()
@@ -101,6 +122,19 @@ endfunction()
 
 fltx_tests_add_benchmark_runner(fltx_benchmark OFF)
 fltx_tests_add_benchmark_runner(fltx_benchmark_fastmath ON)
+
+if(FLTX_METRICS_EXTERNAL_COMPARISONS)
+    target_compile_definitions(fltx_benchmark PRIVATE
+        FLTX_TESTS_ENABLE_EXTERNAL_COMPARISONS=1
+    )
+else()
+    target_compile_definitions(fltx_benchmark PRIVATE
+        FLTX_TESTS_ENABLE_EXTERNAL_COMPARISONS=0
+    )
+endif()
+target_compile_definitions(fltx_benchmark_fastmath PRIVATE
+    FLTX_TESTS_ENABLE_EXTERNAL_COMPARISONS=0
+)
 
 set(FLTX_BENCHMARK_TARGETS fltx_benchmark fltx_benchmark_fastmath)
 
@@ -124,7 +158,7 @@ if(FLTX_METRICS_QDPP_INCLUDE_DIR STREQUAL "")
 endif()
 
 set(FLTX_METRICS_QDPP_CONTRACT_TARGET)
-if(FLTX_METRICS_QDPP)
+if(FLTX_METRICS_EXTERNAL_COMPARISONS AND FLTX_METRICS_QDPP)
     if(EXISTS "${FLTX_METRICS_QDPP_INCLUDE_DIR}/qd/dd.h" AND
        EXISTS "${FLTX_METRICS_QDPP_INCLUDE_DIR}/qd/qd_real.h")
         foreach(target fltx_accuracy fltx_benchmark)
@@ -143,7 +177,7 @@ if(FLTX_METRICS_QDPP)
         foreach(target fltx_accuracy_fastmath fltx_benchmark_fastmath)
             target_compile_definitions(${target} PRIVATE
                 FLTX_METRICS_HAS_QDPP=0
-                FLTX_METRICS_QDPP_ENABLED=1
+                FLTX_METRICS_QDPP_ENABLED=0
             )
         endforeach()
 
@@ -180,9 +214,15 @@ else()
             FLTX_METRICS_QDPP_ENABLED=0
         )
     endforeach()
-    message(STATUS
-        "fltx metrics: qdpp explicitly disabled; Boost comparisons remain enabled."
-    )
+    if(FLTX_METRICS_EXTERNAL_COMPARISONS)
+        message(STATUS
+            "fltx metrics: qdpp explicitly disabled; Boost comparisons remain enabled."
+        )
+    else()
+        message(STATUS
+            "fltx metrics: external comparisons disabled for this build."
+        )
+    endif()
 endif()
 foreach(target IN LISTS FLTX_CONSTEXPR_ACCURACY_TARGETS)
     target_compile_definitions(${target} PRIVATE
@@ -190,6 +230,10 @@ foreach(target IN LISTS FLTX_CONSTEXPR_ACCURACY_TARGETS)
         FLTX_METRICS_QDPP_ENABLED=0
     )
 endforeach()
+target_compile_definitions(fltx_ci_accuracy PRIVATE
+    FLTX_METRICS_HAS_QDPP=0
+    FLTX_METRICS_QDPP_ENABLED=0
+)
 
 # Recompute this header on every metrics build. The Python helper only touches
 # it when the source identity changes, so normal incremental builds stay cheap

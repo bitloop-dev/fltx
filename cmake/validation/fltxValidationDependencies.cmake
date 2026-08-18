@@ -5,13 +5,18 @@ find_library(FLTX_TESTS_MPFR_LIBRARY NAMES mpfr REQUIRED)
 find_path(FLTX_TESTS_GMP_INCLUDE_DIR NAMES gmp.h REQUIRED)
 find_library(FLTX_TESTS_GMP_LIBRARY NAMES gmp REQUIRED)
 
+option(FLTX_METRICS_EXTERNAL_COMPARISONS
+    "Build external implementations used only by metrics comparisons."
+    ON
+)
+
 option(FLTX_METRICS_TLFLOAT
     "Build the vendored TLFloat dependency for metrics comparisons."
     ON
 )
 
 set(FLTX_METRICS_TLFLOAT_CONTRACT_TARGET)
-if(FLTX_METRICS_TLFLOAT)
+if(FLTX_METRICS_EXTERNAL_COMPARISONS AND FLTX_METRICS_TLFLOAT)
     set(FLTX_METRICS_TLFLOAT_SOURCE_DIR
         "${FLTX_VALIDATION_SOURCE_DIR}/extern/tlfloat"
     )

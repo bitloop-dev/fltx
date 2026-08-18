@@ -3146,14 +3146,16 @@ class PresetPipelineTests(unittest.TestCase):
             ["strict", "strict", "strict", "fastmath", "fastmath", "fastmath"],
         )
         self.assertEqual(len(outputs), 16)
-        self.assertTrue(all(
-            root
+        generated_root = (
+            root.resolve()
             / "validation"
             / "metrics"
             / "_unversioned"
             / "standard"
             / "generated"
-            in path.parents
+        )
+        self.assertTrue(all(
+            generated_root in path.parents
             for path in outputs
         ))
 
@@ -3527,7 +3529,12 @@ class PresetPipelineTests(unittest.TestCase):
             parent_environment=selection.environment,
         )
         run.assert_called_once_with(
-            ["cmake", "--preset", selection.configure_name],
+            [
+                "cmake",
+                "--preset",
+                selection.configure_name,
+                "-DFLTX_METRICS_EXTERNAL_COMPARISONS=ON",
+            ],
             root.resolve(),
             initialized,
         )
@@ -3613,7 +3620,12 @@ class PresetPipelineTests(unittest.TestCase):
         self.assertIn("requires a MinGW compiler and Ninja", message)
         self.assertIn("vcpkg triplet", message)
         run.assert_called_once_with(
-            ["cmake", "--preset", "mingw-release"],
+            [
+                "cmake",
+                "--preset",
+                "mingw-release",
+                "-DFLTX_METRICS_EXTERNAL_COMPARISONS=ON",
+            ],
             root.resolve(),
             None,
         )

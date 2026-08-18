@@ -552,8 +552,14 @@ namespace
     }
 }
 
+#if defined(FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH) && \
+    FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH
+TEST_CASE("MPFR observation preserves native values by representation",
+          "[constexpr][oracle][!mayfail]")
+#else
 TEST_CASE("MPFR observation preserves native values by representation",
           "[constexpr][oracle]")
+#endif
 {
     namespace native_fp = fltx::tests::native_fp;
     using boost::multiprecision::ldexp;

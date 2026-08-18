@@ -22,9 +22,19 @@ add_custom_target(fltx_compile_contract
         fltx_constexpr_tests
         fltx_constexpr_tests_fastmath
         fltx_package_smoke
-        ${FLTX_METRICS_TLFLOAT_CONTRACT_TARGET}
-        ${FLTX_METRICS_QDPP_CONTRACT_TARGET}
 )
+
+add_custom_target(fltx_metrics_compile_contract)
+if(FLTX_METRICS_TLFLOAT_CONTRACT_TARGET)
+    add_dependencies(fltx_metrics_compile_contract
+        ${FLTX_METRICS_TLFLOAT_CONTRACT_TARGET}
+    )
+endif()
+if(FLTX_METRICS_QDPP_CONTRACT_TARGET)
+    add_dependencies(fltx_metrics_compile_contract
+        ${FLTX_METRICS_QDPP_CONTRACT_TARGET}
+    )
+endif()
 
 if(BUILD_TESTING)
     set(FLTX_CI_RELEASE_ACCURACY_DIR
@@ -35,20 +45,18 @@ if(BUILD_TESTING)
         # Runtime f32/f64 deliberately delegate to the platform libm and use
         # it as their behavioural baseline. Preserve numerical findings in
         # the release CSV without failing CI for the platform's own accuracy.
-        # A runtime executable compiled with consumer fast-math is likewise
-        # not a faithful model of genuine compiler constant evaluation, so
-        # that native fixed-simulation lane remains evidence rather than a
-        # gate. Runner faults still fail under --advisory. Genuine constexpr
-        # tests, strict fixed-simulation, and every f128/f256 route still gate.
+        # Consumer fast-math permits reassociation, signed-zero loss, and
+        # subnormal flushing, so both optimized runtime lanes remain evidence
+        # rather than gates for every precision. Runner faults still fail under
+        # --advisory. Genuine constexpr tests and strict f128/f256 accuracy keep
+        # gating their documented contracts.
         set(FLTX_CI_RUNTIME_ACCURACY_POLICY)
-        set(FLTX_CI_SIMULATED_FASTMATH_ACCURACY_POLICY)
         if(precision STREQUAL "f32" OR precision STREQUAL "f64")
             set(FLTX_CI_RUNTIME_ACCURACY_POLICY --advisory)
-            set(FLTX_CI_SIMULATED_FASTMATH_ACCURACY_POLICY --advisory)
         endif()
 
         list(APPEND FLTX_CI_RELEASE_ACCURACY_COMMANDS
-            COMMAND fltx_accuracy
+            COMMAND fltx_ci_accuracy
                 --precision "${precision}"
                 --output "${FLTX_CI_RELEASE_ACCURACY_DIR}/accuracy_${precision}.csv"
                 --run-id ci-release
@@ -67,21 +75,23 @@ if(BUILD_TESTING)
                 --run-id ci-release
                 --source-revision ci
                 --sample-mode full
-                ${FLTX_CI_RUNTIME_ACCURACY_POLICY}
+                --advisory
             COMMAND fltx_constexpr_accuracy_fastmath
                 --precision "${precision}"
                 --output "${FLTX_CI_RELEASE_ACCURACY_DIR}/constexpr_accuracy_${precision}_fastmath.csv"
                 --run-id ci-release
                 --source-revision ci
                 --sample-mode full
-                ${FLTX_CI_SIMULATED_FASTMATH_ACCURACY_POLICY}
+                --advisory
         )
     endforeach()
 
     # Badge workflows build this target. Strict contracts, genuine constexpr
     # checks, and tooling run through CTest, while accuracy uses the complete
     # release corpus for every type and both runtime/constexpr-algorithm
-    # libraries. The consumer-fast-math contract executable is still compiled
+    # libraries. The strict CI runner contains FLTX rows only; external
+    # comparison rows and dependency smoke checks belong to metrics targets.
+    # The consumer-fast-math contract executable is still compiled
     # by fltx_compile_contract, but its full semantic suite is diagnostic: real
     # fast-math permits reassociation, signed-zero loss, and subnormal flushing.
     # Performance telemetry and canonical metrics publication remain separate
@@ -93,12 +103,12 @@ if(BUILD_TESTING)
             --test-dir "${CMAKE_BINARY_DIR}"
             --build-config "$<CONFIG>"
             --output-on-failure
-            -L "contracts|constexpr|metrics|package|tooling"
+            -L "contracts|constexpr|package|tooling"
             -LE "accuracy|benchmark|contracts-fastmath"
         ${FLTX_CI_RELEASE_ACCURACY_COMMANDS}
         DEPENDS
             fltx_compile_contract
-            fltx_accuracy
+            fltx_ci_accuracy
             fltx_constexpr_accuracy
             fltx_accuracy_fastmath
             fltx_constexpr_accuracy_fastmath

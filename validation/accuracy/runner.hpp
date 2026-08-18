@@ -28,10 +28,20 @@
 namespace fltx::tests::accuracy
 {
     inline constexpr std::string_view schema_version = "6";
-#if defined(FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH) && FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH
+#if !defined(FLTX_TESTS_ENABLE_EXTERNAL_COMPARISONS) || \
+    !FLTX_TESTS_ENABLE_EXTERNAL_COMPARISONS || \
+    (defined(FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH) && \
+     FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH)
     inline constexpr bool external_implementations_enabled = false;
 #else
     inline constexpr bool external_implementations_enabled = true;
+#endif
+#if defined(FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH) && \
+    FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH && \
+    FLTX_ACCURACY_EXPECTS_SIMULATED_CONSTEVAL
+    inline constexpr bool special_value_probes_enabled = false;
+#else
+    inline constexpr bool special_value_probes_enabled = true;
 #endif
 
     struct options
@@ -575,17 +585,20 @@ namespace fltx::tests::accuracy
             Reference reference,
             bool require_exact)
         {
-            if (spec.info.enabled)
+            if constexpr (external_implementations_enabled)
             {
-                measure_unary<typename Spec::value_type>(
-                    spec.info,
-                    group,
-                    operation,
-                    domain,
-                    spec.evaluate,
-                    reference,
-                    require_exact,
-                    false);
+                if (spec.info.enabled)
+                {
+                    measure_unary<typename Spec::value_type>(
+                        spec.info,
+                        group,
+                        operation,
+                        domain,
+                        spec.evaluate,
+                        reference,
+                        require_exact,
+                        false);
+                }
             }
         }
 
@@ -598,17 +611,20 @@ namespace fltx::tests::accuracy
             Reference reference,
             bool require_exact)
         {
-            if (spec.info.enabled)
+            if constexpr (external_implementations_enabled)
             {
-                measure_binary<typename Spec::value_type>(
-                    spec.info,
-                    group,
-                    operation,
-                    domain,
-                    spec.evaluate,
-                    reference,
-                    require_exact,
-                    false);
+                if (spec.info.enabled)
+                {
+                    measure_binary<typename Spec::value_type>(
+                        spec.info,
+                        group,
+                        operation,
+                        domain,
+                        spec.evaluate,
+                        reference,
+                        require_exact,
+                        false);
+                }
             }
         }
 
@@ -620,16 +636,19 @@ namespace fltx::tests::accuracy
             const Spec& spec,
             Reference reference)
         {
-            if (spec.info.enabled)
+            if constexpr (external_implementations_enabled)
             {
-                measure_predicate<typename Spec::value_type>(
-                    spec.info,
-                    group,
-                    operation,
-                    domain,
-                    spec.evaluate,
-                    reference,
-                    false);
+                if (spec.info.enabled)
+                {
+                    measure_predicate<typename Spec::value_type>(
+                        spec.info,
+                        group,
+                        operation,
+                        domain,
+                        spec.evaluate,
+                        reference,
+                        false);
+                }
             }
         }
 
@@ -642,17 +661,20 @@ namespace fltx::tests::accuracy
             Reference reference,
             bool require_exact)
         {
-            if (spec.info.enabled)
+            if constexpr (external_implementations_enabled)
             {
-                measure_unary_pair<typename Spec::value_type>(
-                    spec.info,
-                    group,
-                    operation,
-                    domain,
-                    spec.evaluate,
-                    reference,
-                    require_exact,
-                    false);
+                if (spec.info.enabled)
+                {
+                    measure_unary_pair<typename Spec::value_type>(
+                        spec.info,
+                        group,
+                        operation,
+                        domain,
+                        spec.evaluate,
+                        reference,
+                        require_exact,
+                        false);
+                }
             }
         }
 
@@ -664,16 +686,19 @@ namespace fltx::tests::accuracy
             const Spec& spec,
             Reference reference)
         {
-            if (spec.info.enabled)
+            if constexpr (external_implementations_enabled)
             {
-                measure_binary_pair<typename Spec::value_type>(
-                    spec.info,
-                    group,
-                    operation,
-                    domain,
-                    spec.evaluate,
-                    reference,
-                    false);
+                if (spec.info.enabled)
+                {
+                    measure_binary_pair<typename Spec::value_type>(
+                        spec.info,
+                        group,
+                        operation,
+                        domain,
+                        spec.evaluate,
+                        reference,
+                        false);
+                }
             }
         }
 
@@ -685,16 +710,19 @@ namespace fltx::tests::accuracy
             const Spec& spec,
             Reference reference)
         {
-            if (spec.info.enabled)
+            if constexpr (external_implementations_enabled)
             {
-                measure_ternary<typename Spec::value_type>(
-                    spec.info,
-                    group,
-                    operation,
-                    domain,
-                    spec.evaluate,
-                    reference,
-                    false);
+                if (spec.info.enabled)
+                {
+                    measure_ternary<typename Spec::value_type>(
+                        spec.info,
+                        group,
+                        operation,
+                        domain,
+                        spec.evaluate,
+                        reference,
+                        false);
+                }
             }
         }
 
@@ -706,16 +734,19 @@ namespace fltx::tests::accuracy
             const Spec& spec,
             const std::vector<mpfr::real>& expected)
         {
-            if (spec.info.enabled)
+            if constexpr (external_implementations_enabled)
             {
-                measure_parse<typename Spec::value_type>(
-                    spec.info,
-                    group,
-                    operation,
-                    domain,
-                    spec.evaluate,
-                    expected,
-                    false);
+                if (spec.info.enabled)
+                {
+                    measure_parse<typename Spec::value_type>(
+                        spec.info,
+                        group,
+                        operation,
+                        domain,
+                        spec.evaluate,
+                        expected,
+                        false);
+                }
             }
         }
 
@@ -726,15 +757,18 @@ namespace fltx::tests::accuracy
             const domains::domain& domain,
             const Spec& spec)
         {
-            if (spec.info.enabled)
+            if constexpr (external_implementations_enabled)
             {
-                measure_format<typename Spec::value_type>(
-                    spec.info,
-                    group,
-                    operation,
-                    domain,
-                    spec.evaluate,
-                    false);
+                if (spec.info.enabled)
+                {
+                    measure_format<typename Spec::value_type>(
+                        spec.info,
+                        group,
+                        operation,
+                        domain,
+                        spec.evaluate,
+                        false);
+                }
             }
         }
 
@@ -1422,6 +1456,20 @@ namespace fltx::tests::accuracy
 
         template<class Probe>
         [[nodiscard]] std::string cached_special(
+            const implementation_info& info,
+            std::string_view operation,
+            bool gated,
+            Probe probe)
+        {
+            if constexpr (special_value_probes_enabled)
+                return cached_special_enabled(
+                    info, operation, gated, std::move(probe));
+            else
+                return "-";
+        }
+
+        template<class Probe>
+        [[nodiscard]] std::string cached_special_enabled(
             const implementation_info& info,
             std::string_view operation,
             bool gated,

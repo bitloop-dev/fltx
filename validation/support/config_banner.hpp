@@ -136,7 +136,10 @@ namespace fltx::tests::support
         }
         std::fprintf(stderr, "[harness] qdpp=%s tlfloat=%s\n", FLTX_METRICS_QDPP_ENABLED ? "on" : "off",
                      FLTX_METRICS_HAS_TLFLOAT ? "on" : "off");
-#if defined(FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH) && FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH
+#if !defined(FLTX_TESTS_ENABLE_EXTERNAL_COMPARISONS) || \
+    !FLTX_TESTS_ENABLE_EXTERNAL_COMPARISONS || \
+    (defined(FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH) && \
+     FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH)
         std::fprintf(stderr, "[implementations] f128=fltx f256=fltx\n");
 #else
         std::fprintf(stderr,

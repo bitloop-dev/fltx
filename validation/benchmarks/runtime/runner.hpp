@@ -31,7 +31,10 @@
 namespace fltx::tests::benchmark
 {
     inline constexpr std::string_view schema_version = "6";
-#if defined(FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH) && FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH
+#if !defined(FLTX_TESTS_ENABLE_EXTERNAL_COMPARISONS) || \
+    !FLTX_TESTS_ENABLE_EXTERNAL_COMPARISONS || \
+    (defined(FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH) && \
+     FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH)
     inline constexpr bool external_implementations_enabled = false;
 #else
     inline constexpr bool external_implementations_enabled = true;

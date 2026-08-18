@@ -60,7 +60,12 @@ def run_checks(root: Path, preset: str) -> None:
 
     try:
         _run(
-            ["cmake", "--preset", selection.configure_name],
+            [
+                "cmake",
+                "--preset",
+                selection.configure_name,
+                "-DFLTX_METRICS_EXTERNAL_COMPARISONS=OFF",
+            ],
             root,
             environment,
         )

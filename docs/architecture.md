@@ -156,7 +156,8 @@ CMake target construction is split across `cmake/validation/`:
   identity.
 
 The local CI-check entry points are intentionally separate from metrics
-collection:
+collection. Their accuracy runner emits and gates FLTX rows only; comparison
+implementations and dependency smoke checks stay on metrics-owned targets:
 
 ```text
 run_preset_checks.py ------------------+-> _internal/check_pipeline.py

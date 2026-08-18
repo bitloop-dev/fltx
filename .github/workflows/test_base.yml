@@ -153,6 +153,7 @@ jobs:
         run: >-
           cmake --preset ${{ inputs.configure_preset }}
           -DVCPKG_MANIFEST_NO_DEFAULT_FEATURES=ON
+          -DFLTX_METRICS_EXTERNAL_COMPARISONS=OFF
 
       - name: Verify configured compiler
         shell: bash
