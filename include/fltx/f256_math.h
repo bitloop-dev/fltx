@@ -10,8 +10,12 @@
 #ifndef F256_MATH_INCLUDED
 #define F256_MATH_INCLUDED
 
+#include "fltx/f128.h"
+#include "fltx/f256.h"
 #include "fltx/detail/f256_math_basic.h"
 #include "fltx/detail/f256_math_transcendental.h"
+#include "fltx/detail/math_promotion.h"
+#include "fltx/traits.h"
 
 namespace bl {
 
@@ -48,12 +52,12 @@ namespace bl {
 // rounding and decimals
 [[nodiscard]] BL_FORCE_INLINE constexpr f256 floor(const f256_s& a)
 {
-    return detail::_f256_impl::floor(a);
+    return detail::_f256::floor_limbwise(a);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f256 ceil(const f256_s& a)
 {
-    return detail::_f256_impl::ceil(a);
+    return detail::_f256::ceil_limbwise(a);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f256 trunc(const f256_s& a)
@@ -64,71 +68,74 @@ namespace bl {
 [[nodiscard]] BL_FORCE_INLINE constexpr f256 round(const f256_s& a)
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f256_impl::round(a),
-        detail::_f256_runtime::round(a)
+        detail::_f256_impl::round_nearest_away_from_zero(a),
+        detail::_f256_runtime::round_nearest_away_from_zero(a)
     );
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f256 round_to_decimals(f256_s v, int prec)
+[[nodiscard]] BL_FORCE_INLINE constexpr f256 roundeven(const f256_s& x)
+{
+    return detail::_f256_impl::round_nearest_even(x);
+}
+
+[[nodiscard]] BL_FORCE_INLINE constexpr f256 round_decimals(f256_s v, int precision)
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f256_impl::round_to_decimals(v, prec),
-        detail::_f256_runtime::round_to_decimals(v, prec)
+        detail::_f256_impl::round_decimals(v, precision),
+        detail::_f256_runtime::round_decimals(v, precision)
     );
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr f256 nearbyint(const f256_s& a)
+[[nodiscard]] BL_FORCE_INLINE constexpr f256 round_significant(
+    f256_s v,
+    int precision)
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f256_impl::nearbyint(a),
-        detail::_f256_runtime::nearbyint(a)
-    );
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr f256 rint(const f256_s& x)
-{
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f256_impl::rint(x),
-        detail::_f256_runtime::rint(x)
+        detail::_f256_impl::round_significant(v, precision),
+        detail::_f256_runtime::round_significant(v, precision)
     );
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr long lround(const f256_s& x)
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f256_impl::lround(x),
-        detail::_f256_runtime::lround(x)
+        detail::_f256_impl::lround_nearest_away_from_zero(x),
+        detail::_f256_runtime::lround_nearest_away_from_zero(x)
     );
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr long long llround(const f256_s& x)
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f256_impl::llround(x),
-        detail::_f256_runtime::llround(x)
-    );
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr long lrint(const f256_s& x)
-{
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f256_impl::lrint(x),
-        detail::_f256_runtime::lrint(x)
-    );
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr long long llrint(const f256_s& x)
-{
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f256_impl::llrint(x),
-        detail::_f256_runtime::llrint(x)
+        detail::_f256_impl::llround_nearest_away_from_zero(x),
+        detail::_f256_runtime::llround_nearest_away_from_zero(x)
     );
 }
 
 // arithmetic and comparisons
 [[nodiscard]] BL_FORCE_INLINE constexpr f256 fma(const f256_s& x, const f256_s& y, const f256_s& z)
 {
+#if defined(__EMSCRIPTEN__) && defined(__clang__) && defined(__wasm32__) && \
+    defined(FLTX_FAST_MATH)
+    BL_CONSTEXPR_RUNTIME_DISPATCH(
+        detail::_f256_impl::fma(x, y, z),
+        detail::_f256_runtime::fma(x, y, z)
+    );
+#elif FLTX_GUARDED_X86_FMA
+    BL_CONSTEXPR_RUNTIME_DISPATCH(
+        detail::_f256_impl::fma(x, y, z),
+        detail::_f256_runtime::fma(x, y, z)
+    );
+#elif FLTX_HAS_COMPILED_X86_FMA_BACKEND && !FLTX_TU_HAS_X86_FMA
+    BL_CONSTEXPR_RUNTIME_DISPATCH(
+        detail::_f256_impl::fma(x, y, z),
+        detail::fp::runtime_hardware_fma_enabled()
+            ? detail::_f256_runtime::fma_x86(x, y, z)
+            : detail::_f256_impl::fma(x, y, z)
+    );
+#else
     return detail::_f256_impl::fma(x, y, z);
+#endif
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f256 fmin(const f256_s& a, const f256_s& b)
@@ -163,8 +170,8 @@ namespace bl {
 [[nodiscard]] BL_FORCE_INLINE constexpr f256 remainder(const f256_s& x, const f256_s& y)
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f256_impl::remainder(x, y),
-        detail::_f256_runtime::remainder(x, y)
+        detail::_f256_impl::remquo(x, y, nullptr),
+        detail::_f256_runtime::remquo(x, y, nullptr)
     );
 }
 
@@ -208,12 +215,12 @@ namespace bl {
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f256 scalbn(const f256_s& x, int e) noexcept
 {
-    return detail::_f256_impl::scalbn(x, e);
+    return detail::_f256_impl::ldexp(x, e);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f256 scalbln(const f256_s& x, long e) noexcept
 {
-    return detail::_f256_impl::scalbln(x, e);
+    return detail::_f256_impl::ldexp(x, static_cast<int>(e));
 }
 
 // adjacent values
@@ -224,18 +231,24 @@ namespace bl {
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f256 nexttoward(const f256_s& from, long double to) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f256_impl::nexttoward(from, to),
-        detail::_f256_runtime::nexttoward(from, to)
-    );
+    const double high = static_cast<double>(to);
+    if (detail::fp::isinf_or_nan(high))
+        return detail::_f256_impl::nextafter(from, f256_s{ high, 0.0, 0.0, 0.0 });
+    if (high == 0.0 && to != 0.0L)
+    {
+        const double target = to < 0.0L
+            ? -std::numeric_limits<double>::denorm_min()
+            : std::numeric_limits<double>::denorm_min();
+        return detail::_f256_impl::nextafter(from, f256_s{ target, 0.0, 0.0, 0.0 });
+    }
+
+    const double low = static_cast<double>(to - static_cast<long double>(high));
+    return detail::_f256_impl::nextafter(from, f256_s{ high, low, 0.0, 0.0 });
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr f256 nexttoward(const f256_s& from, const f256_s& to) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f256_impl::nexttoward(from, to),
-        detail::_f256_runtime::nexttoward(from, to)
-    );
+    return detail::_f256_impl::nextafter(from, to);
 }
 
 // exp / log
@@ -300,15 +313,6 @@ namespace bl {
     );
 }
 
-// pow
-[[nodiscard]] BL_FORCE_INLINE constexpr f256 pow10_256(int k)
-{
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f256_impl::pow10_256(k),
-        detail::_f256_runtime::pow10_256(k)
-    );
-}
-
 [[nodiscard]] BL_FORCE_INLINE constexpr f256 pow(const f256_s& x, const f256_s& y)
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
@@ -317,12 +321,56 @@ namespace bl {
     );
 }
 
+template<detail::fp::non_bool_integral Exp>
+[[nodiscard]] BL_MSVC_NOINLINE constexpr f256 ipow(const f256_s& x, Exp y)
+{
+    if constexpr (std::signed_integral<std::remove_cvref_t<Exp>>)
+    {
+        BL_CONSTEXPR_RUNTIME_DISPATCH(
+            f256{ detail::_f256::ipow_integer(x, y) },
+            f256{ detail::_f256_runtime::ipow_signed(x, static_cast<std::intmax_t>(y)) }
+        );
+    }
+    else
+    {
+        BL_CONSTEXPR_RUNTIME_DISPATCH(
+            f256{ detail::_f256::ipow_integer(x, y) },
+            f256{ detail::_f256_runtime::ipow_unsigned(x, static_cast<std::uintmax_t>(y)) }
+        );
+    }
+}
+
+template<detail::fp::non_bool_integral Exp>
+[[nodiscard]] BL_FORCE_INLINE constexpr f256 pow(const f256_s& x, Exp y)
+{
+    return bl::ipow(x, y);
+}
+
 [[nodiscard]] BL_FORCE_INLINE constexpr f256 pow(const f256_s& x, double y)
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
         detail::_f256_impl::pow(x, y),
         detail::_f256_runtime::pow(x, y)
     );
+}
+
+[[nodiscard]] BL_FORCE_INLINE constexpr f256 pow(const f256_s& x, const f128_s& y)
+{
+    f256_s promoted{};
+    promoted = y;
+    return bl::pow(x, promoted);
+}
+
+[[nodiscard]] BL_FORCE_INLINE constexpr f256 pow(const f256_s&, long double) = delete;
+
+template<class Base, class Exp>
+requires (detail::math::f256_promoted_math_args<Base, Exp> &&
+    !(fltx_f256<Base> && detail::fp::non_bool_integral<Exp>))
+[[nodiscard]] BL_FORCE_INLINE constexpr auto pow(Base x, Exp y)
+{
+    using P = detail::math::promoted_t<Base, Exp>;
+    using E = detail::math::promoted_pow_exponent_t<P, Exp>;
+    return bl::pow(detail::math::promoted_cast<P>(x), detail::math::promoted_cast<E>(y));
 }
 
 // trig
@@ -397,11 +445,6 @@ template<class Vec>
     f256_s s_out{};
     f256_s c_out{};
     const bool ok = bl::sincos(x, s_out, c_out);
-    if (!ok)
-    {
-        s_out = bl::sin(x);
-        c_out = bl::cos(x);
-    }
     detail::fp::assign_sincos_vector(out, s_out, c_out);
     return ok;
 }
@@ -414,11 +457,6 @@ template<class Value> requires (std::same_as<std::remove_cvref_t<Value>, f256> |
     Result s_out{};
     Result c_out{};
     const bool ok = bl::sincos(x, s_out, c_out);
-    if (!ok)
-    {
-        s_out = bl::sin(x);
-        c_out = bl::cos(x);
-    }
     return detail::fp::make_sincos_result(s_out, c_out, ok);
 }
 
@@ -503,6 +541,175 @@ template<class Value> requires (std::same_as<std::remove_cvref_t<Value>, f256> |
         detail::_f256_impl::tgamma(x),
         detail::_f256_runtime::tgamma(x)
     );
+}
+
+// type promotions
+#define FLTX_F256_PROMOTED_UNARY(NAME) \
+    template<class T> \
+    requires detail::math::f256_promoted_math_args<T> \
+    [[nodiscard]] BL_FORCE_INLINE constexpr auto NAME(T x) \
+    { \
+        using P = detail::math::promoted_t<T>; \
+        return bl::NAME(detail::math::promoted_cast<P>(x)); \
+    }
+
+#define FLTX_F256_PROMOTED_BINARY(NAME) \
+    template<class T, class U> \
+    requires detail::math::f256_promoted_math_args<T, U> \
+    [[nodiscard]] BL_FORCE_INLINE constexpr auto NAME(T x, U y) \
+    { \
+        using P = detail::math::promoted_t<T, U>; \
+        return bl::NAME(detail::math::promoted_cast<P>(x), detail::math::promoted_cast<P>(y)); \
+    }
+
+#define FLTX_F256_PROMOTED_TERNARY(NAME) \
+    template<class T, class U, class V> \
+    requires detail::math::f256_promoted_math_args<T, U, V> \
+    [[nodiscard]] BL_FORCE_INLINE constexpr auto NAME(T x, U y, V z) \
+    { \
+        using P = detail::math::promoted_t<T, U, V>; \
+        return bl::NAME(detail::math::promoted_cast<P>(x), detail::math::promoted_cast<P>(y), detail::math::promoted_cast<P>(z)); \
+    }
+
+FLTX_F256_PROMOTED_UNARY(abs)
+FLTX_F256_PROMOTED_UNARY(fabs)
+FLTX_F256_PROMOTED_UNARY(signbit)
+FLTX_F256_PROMOTED_UNARY(isnan)
+FLTX_F256_PROMOTED_UNARY(isinf)
+FLTX_F256_PROMOTED_UNARY(isfinite)
+FLTX_F256_PROMOTED_UNARY(iszero)
+FLTX_F256_PROMOTED_UNARY(fpclassify)
+FLTX_F256_PROMOTED_UNARY(isnormal)
+
+FLTX_F256_PROMOTED_UNARY(floor)
+FLTX_F256_PROMOTED_UNARY(ceil)
+FLTX_F256_PROMOTED_UNARY(trunc)
+FLTX_F256_PROMOTED_UNARY(round)
+FLTX_F256_PROMOTED_UNARY(roundeven)
+FLTX_F256_PROMOTED_UNARY(lround)
+FLTX_F256_PROMOTED_UNARY(llround)
+
+FLTX_F256_PROMOTED_BINARY(fmod)
+FLTX_F256_PROMOTED_BINARY(remainder)
+FLTX_F256_PROMOTED_TERNARY(fma)
+FLTX_F256_PROMOTED_BINARY(fmin)
+FLTX_F256_PROMOTED_BINARY(fmax)
+FLTX_F256_PROMOTED_BINARY(fdim)
+FLTX_F256_PROMOTED_BINARY(copysign)
+
+FLTX_F256_PROMOTED_UNARY(ilogb)
+FLTX_F256_PROMOTED_UNARY(logb)
+FLTX_F256_PROMOTED_BINARY(nextafter)
+
+FLTX_F256_PROMOTED_UNARY(exp)
+FLTX_F256_PROMOTED_UNARY(exp2)
+FLTX_F256_PROMOTED_UNARY(expm1)
+FLTX_F256_PROMOTED_UNARY(log)
+FLTX_F256_PROMOTED_UNARY(log2)
+FLTX_F256_PROMOTED_UNARY(log10)
+FLTX_F256_PROMOTED_UNARY(log1p)
+FLTX_F256_PROMOTED_UNARY(sqrt)
+FLTX_F256_PROMOTED_UNARY(cbrt)
+FLTX_F256_PROMOTED_BINARY(hypot)
+
+FLTX_F256_PROMOTED_UNARY(sin)
+FLTX_F256_PROMOTED_UNARY(cos)
+FLTX_F256_PROMOTED_UNARY(tan)
+FLTX_F256_PROMOTED_UNARY(atan)
+FLTX_F256_PROMOTED_BINARY(atan2)
+FLTX_F256_PROMOTED_UNARY(asin)
+FLTX_F256_PROMOTED_UNARY(acos)
+
+FLTX_F256_PROMOTED_UNARY(sinh)
+FLTX_F256_PROMOTED_UNARY(cosh)
+FLTX_F256_PROMOTED_UNARY(tanh)
+FLTX_F256_PROMOTED_UNARY(asinh)
+FLTX_F256_PROMOTED_UNARY(acosh)
+FLTX_F256_PROMOTED_UNARY(atanh)
+
+FLTX_F256_PROMOTED_UNARY(erf)
+FLTX_F256_PROMOTED_UNARY(erfc)
+FLTX_F256_PROMOTED_UNARY(lgamma)
+FLTX_F256_PROMOTED_UNARY(tgamma)
+
+FLTX_F256_PROMOTED_BINARY(isunordered)
+FLTX_F256_PROMOTED_BINARY(isgreater)
+FLTX_F256_PROMOTED_BINARY(isgreaterequal)
+FLTX_F256_PROMOTED_BINARY(isless)
+FLTX_F256_PROMOTED_BINARY(islessequal)
+FLTX_F256_PROMOTED_BINARY(islessgreater)
+
+#undef FLTX_F256_PROMOTED_TERNARY
+#undef FLTX_F256_PROMOTED_BINARY
+#undef FLTX_F256_PROMOTED_UNARY
+
+template<class T, class U>
+requires detail::math::f256_promoted_math_args<T, U>
+[[nodiscard]] BL_FORCE_INLINE constexpr auto remquo(T x, U y, int* quo)
+{
+    using P = detail::math::promoted_t<T, U>;
+    return bl::remquo(detail::math::promoted_cast<P>(x), detail::math::promoted_cast<P>(y), quo);
+}
+
+template<class T>
+requires detail::math::f256_promoted_math_args<T>
+[[nodiscard]] BL_FORCE_INLINE constexpr auto ldexp(T x, int exp)
+{
+    using P = detail::math::promoted_t<T>;
+    return bl::ldexp(detail::math::promoted_cast<P>(x), exp);
+}
+
+template<class T>
+requires detail::math::f256_promoted_math_args<T>
+[[nodiscard]] BL_FORCE_INLINE constexpr auto scalbn(T x, int exp)
+{
+    using P = detail::math::promoted_t<T>;
+    return bl::scalbn(detail::math::promoted_cast<P>(x), exp);
+}
+
+template<class T>
+requires detail::math::f256_promoted_math_args<T>
+[[nodiscard]] BL_FORCE_INLINE constexpr auto scalbln(T x, long exp)
+{
+    using P = detail::math::promoted_t<T>;
+    return bl::scalbln(detail::math::promoted_cast<P>(x), exp);
+}
+
+template<class T>
+requires detail::math::f256_promoted_math_args<T>
+[[nodiscard]] BL_FORCE_INLINE constexpr auto frexp(T x, int* exp)
+{
+    using P = detail::math::promoted_t<T>;
+    return bl::frexp(detail::math::promoted_cast<P>(x), exp);
+}
+
+template<class T>
+requires detail::math::f256_promoted_math_args<T>
+[[nodiscard]] BL_FORCE_INLINE constexpr auto modf(T x, detail::math::promoted_t<T>* iptr)
+{
+    using P = detail::math::promoted_t<T>;
+    return bl::modf(detail::math::promoted_cast<P>(x), iptr);
+}
+
+template<class From, class To>
+requires detail::math::f256_nexttoward_args<From, To>
+[[nodiscard]] BL_FORCE_INLINE constexpr auto nexttoward(From from, To to)
+{
+    using P = detail::math::promoted_t<From>;
+    const P promoted_from = detail::math::promoted_cast<P>(from);
+
+    if constexpr (std::same_as<detail::math::clean_t<To>, long double>)
+        return bl::nexttoward(promoted_from, to);
+    else
+        return bl::nexttoward(promoted_from, detail::math::promoted_cast<P>(to));
+}
+
+template<class T>
+requires detail::math::f256_promoted_math_args<T>
+[[nodiscard]] BL_FORCE_INLINE constexpr bool sincos(T x, detail::math::promoted_t<T>& s_out, detail::math::promoted_t<T>& c_out)
+{
+    using P = detail::math::promoted_t<T>;
+    return bl::sincos(detail::math::promoted_cast<P>(x), s_out, c_out);
 }
 
 } // namespace bl

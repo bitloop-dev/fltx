@@ -219,6 +219,68 @@ namespace detail::random
         return value;
     }
 
+    template<class RealType>
+    inline constexpr bool extended_limb_canonical_v =
+        std::same_as<std::remove_cv_t<RealType>, f128_s> ||
+        std::same_as<std::remove_cv_t<RealType>, f128> ||
+        std::same_as<std::remove_cv_t<RealType>, f256_s> ||
+        std::same_as<std::remove_cv_t<RealType>, f256>;
+
+    template<uniform_random_bit_generator URBG>
+    [[nodiscard]] BL_FORCE_INLINE constexpr std::uint64_t canonical_limb_bits(URBG& g) noexcept
+    {
+        using result_type = typename URBG::result_type;
+
+        constexpr int limb_bits = std::numeric_limits<double>::digits;
+        constexpr result_type inclusive_range = URBG::max() - URBG::min();
+        constexpr int result_digits = std::numeric_limits<result_type>::digits;
+
+        if constexpr (result_digits >= limb_bits && is_all_low_bits_set(inclusive_range))
+        {
+            constexpr result_type mask = word_mask<result_type>(limb_bits);
+            const result_type sample = static_cast<result_type>(g() - URBG::min());
+            return static_cast<std::uint64_t>((sample >> (result_digits - limb_bits)) & mask);
+        }
+        else
+        {
+            return uniform_bits<std::uint64_t>(g, limb_bits);
+        }
+    }
+
+    template<class RealType, uniform_random_bit_generator URBG>
+    [[nodiscard]] BL_FORCE_INLINE constexpr RealType generate_canonical_from_double_limbs(URBG& g) noexcept
+    {
+        using real_type = std::remove_cv_t<RealType>;
+        static_assert(extended_limb_canonical_v<real_type>);
+
+        constexpr int limb_bits = std::numeric_limits<double>::digits;
+        const double x0 = detail::fp::ldexp_limb(static_cast<double>(canonical_limb_bits(g)), -limb_bits);
+        const double x1 = detail::fp::ldexp_limb(static_cast<double>(canonical_limb_bits(g)), -2 * limb_bits);
+
+        if constexpr (std::same_as<real_type, f128_s>)
+        {
+            return f128_s{ x0, x1 };
+        }
+        else if constexpr (std::same_as<real_type, f128>)
+        {
+            return f128{ x0, x1 };
+        }
+        else
+        {
+            const double x2 = detail::fp::ldexp_limb(static_cast<double>(canonical_limb_bits(g)), -3 * limb_bits);
+            const double x3 = detail::fp::ldexp_limb(static_cast<double>(canonical_limb_bits(g)), -4 * limb_bits);
+
+            if constexpr (std::same_as<real_type, f256_s>)
+            {
+                return f256_s{ x0, x1, x2, x3 };
+            }
+            else
+            {
+                return f256{ x0, x1, x2, x3 };
+            }
+        }
+    }
+
     template<class UInt, uniform_random_bit_generator URBG>
     [[nodiscard]] BL_FORCE_INLINE constexpr UInt uniform_unsigned(URBG& g, UInt inclusive_max) noexcept
     {
@@ -825,6 +887,12 @@ namespace detail::random
             (requested_bits + static_cast<std::size_t>(bits_per_call) - 1) /
                 static_cast<std::size_t>(bits_per_call);
 
+        if constexpr (detail::random::extended_limb_canonical_v<RealType> &&
+            requested_bits == static_cast<std::size_t>(traits::digits))
+        {
+            return detail::random::generate_canonical_from_double_limbs<RealType>(g);
+        }
+
         const RealType range =
             detail::random::real_from_uint<RealType>(URBG::max()) -
             detail::random::real_from_uint<RealType>(URBG::min()) +
@@ -920,6 +988,12 @@ namespace detail::random
         [[nodiscard]] BL_FORCE_INLINE constexpr result_type operator()(URBG& g, const param_type& _params) noexcept
         {
             const result_type u = bl::generate_canonical<result_type, std::numeric_limits<result_type>::digits>(g);
+            if (_params.a() == detail::random::real_zero<result_type>() &&
+                _params.b() == detail::random::real_one<result_type>())
+            {
+                return u;
+            }
+
             return _params.a() + (_params.b() - _params.a()) * u;
         }
 
@@ -1081,6 +1155,58 @@ namespace detail::random
         param_type params;
     };
 
+namespace detail::random
+{
+    template<class RealType, uniform_random_bit_generator URBG>
+        requires extended_limb_canonical_v<RealType>
+    [[nodiscard]] BL_FORCE_INLINE constexpr RealType extended_standard_normal(URBG& g) noexcept
+    {
+        // Leva's ratio-of-uniforms method (ACM TOMS 18(4), 1992,
+        // doi:10.1145/138351.138364). The double-precision quadratic is only
+        // a conservative sieve: guard bands route boundary cases to the
+        // decisive acceptance test in the target extended precision.
+        constexpr double inner_guard = 0.27596;
+        constexpr double outer_guard = 0.27847;
+
+        uniform_real_distribution<RealType> unit;
+
+        for (;;)
+        {
+            const RealType u = unit(g);
+            if (u == real_zero<RealType>())
+                continue;
+
+            const RealType v{
+                RealType{ 1.7156 } * (unit(g) - RealType{ 0.5 })
+            };
+
+            const double u_approx = static_cast<double>(u);
+            const double v_approx = static_cast<double>(v);
+            const double x = u_approx - 0.449871;
+            const double abs_v = v_approx < 0.0 ? -v_approx : v_approx;
+            const double y = abs_v + 0.386595;
+            const double q = x * x + y * (0.19600 * y - 0.25472 * x);
+
+            if (q < inner_guard)
+                return RealType{ v / u };
+            if (q > outer_guard)
+                continue;
+
+            const RealType lhs{ v * v };
+            const RealType u_squared{ u * u };
+            const RealType rhs{
+                RealType{ -4.0 } * real_log(u) * u_squared
+            };
+            if (lhs <= rhs)
+                return RealType{ v / u };
+        }
+
+        // MSVC's C++20 constexpr evaluator requires an explicit return even
+        // though the loop above has no reachable fallthrough.
+        return {};
+    }
+}
+
     template<detail::random::supported_real RealType = double>
     class normal_distribution
     {
@@ -1152,34 +1278,46 @@ namespace detail::random
         template<uniform_random_bit_generator URBG>
         [[nodiscard]] BL_FORCE_INLINE constexpr result_type operator()(URBG& g, const param_type& _params) noexcept
         {
-            if (has_saved)
+            if constexpr (detail::random::extended_limb_canonical_v<result_type>)
             {
-                has_saved = false;
-                return _params.mean() + _params.stddev() * saved_standard;
+                const result_type standard =
+                    detail::random::extended_standard_normal<result_type>(g);
+                return result_type{
+                    _params.mean() + _params.stddev() * standard
+                };
             }
-
-            uniform_real_distribution<result_type> unit(
-                -detail::random::real_one<result_type>(),
-                detail::random::real_one<result_type>());
-
-            result_type x{};
-            result_type y{};
-            result_type radius_squared{};
-            do
+            else
             {
-                x = unit(g);
-                y = unit(g);
-                radius_squared = x * x + y * y;
-            }
-            while (radius_squared <= detail::random::real_zero<result_type>() ||
-                   radius_squared >= detail::random::real_one<result_type>());
+                if (has_saved)
+                {
+                    has_saved = false;
+                    return _params.mean() + _params.stddev() * saved_standard;
+                }
 
-            const result_type multiplier_argument =
-                (result_type{ -2.0 } * detail::random::real_log(radius_squared)) / radius_squared;
-            const result_type multiplier = detail::random::real_sqrt<result_type>(multiplier_argument);
-            saved_standard = y * multiplier;
-            has_saved = true;
-            return _params.mean() + _params.stddev() * (x * multiplier);
+                uniform_real_distribution<result_type> unit(
+                    -detail::random::real_one<result_type>(),
+                    detail::random::real_one<result_type>());
+
+                result_type x{};
+                result_type y{};
+                result_type radius_squared{};
+                do
+                {
+                    x = unit(g);
+                    y = unit(g);
+                    radius_squared = x * x + y * y;
+                }
+                while (radius_squared <= detail::random::real_zero<result_type>() ||
+                       radius_squared >= detail::random::real_one<result_type>());
+
+                const result_type multiplier_argument =
+                    (result_type{ -2.0 } * detail::random::real_log(radius_squared)) / radius_squared;
+                const result_type multiplier =
+                    detail::random::real_sqrt<result_type>(multiplier_argument);
+                saved_standard = y * multiplier;
+                has_saved = true;
+                return _params.mean() + _params.stddev() * (x * multiplier);
+            }
         }
 
         [[nodiscard]] BL_FORCE_INLINE constexpr result_type mean() const noexcept { return params.mean(); }
@@ -1202,9 +1340,16 @@ namespace detail::random
             const normal_distribution& lhs,
             const normal_distribution& rhs) noexcept
         {
-            return lhs.params == rhs.params &&
-                   lhs.has_saved == rhs.has_saved &&
-                   (!lhs.has_saved || lhs.saved_standard == rhs.saved_standard);
+            if constexpr (detail::random::extended_limb_canonical_v<result_type>)
+            {
+                return lhs.params == rhs.params;
+            }
+            else
+            {
+                return lhs.params == rhs.params &&
+                       lhs.has_saved == rhs.has_saved &&
+                       (!lhs.has_saved || lhs.saved_standard == rhs.saved_standard);
+            }
         }
 
         [[nodiscard]] BL_FORCE_INLINE friend constexpr bool operator!=(
@@ -1244,8 +1389,16 @@ namespace detail::random
                 return is;
 
             distribution.params = param_type{ mean, stddev };
-            distribution.has_saved = loaded_has_saved;
-            distribution.saved_standard = loaded_saved;
+            if constexpr (detail::random::extended_limb_canonical_v<result_type>)
+            {
+                distribution.has_saved = false;
+                distribution.saved_standard = result_type{};
+            }
+            else
+            {
+                distribution.has_saved = loaded_has_saved;
+                distribution.saved_standard = loaded_saved;
+            }
             return is;
         }
 
@@ -1405,6 +1558,141 @@ namespace detail::random
             value = distribution(engine);
 
         return values;
+    }
+
+namespace detail::random
+{
+    struct infer_real_type {};
+
+    template<class T>
+    using clean_t = std::remove_cvref_t<T>;
+
+    template<class RealType, class Arg>
+    concept real_distribution_arg_for =
+        supported_real<RealType> &&
+        bl::fltx_arithmetic<clean_t<Arg>> &&
+        requires(Arg value)
+        {
+            static_cast<RealType>(value);
+        };
+
+    template<class A, class B>
+    concept inferred_real_distribution_args =
+        bl::fltx_arithmetic<clean_t<A>> &&
+        bl::fltx_arithmetic<clean_t<B>> &&
+        supported_real<bl::common_float_type_t<A, B>>;
+
+    template<class RealType, class A, class B>
+    concept real_distribution_args =
+        (std::same_as<RealType, infer_real_type> && inferred_real_distribution_args<A, B>) ||
+        (real_distribution_arg_for<RealType, A> && real_distribution_arg_for<RealType, B>);
+
+    template<class RealType, class A, class B>
+    struct real_distribution_result
+    {
+        using type = RealType;
+    };
+
+    template<class A, class B>
+    struct real_distribution_result<infer_real_type, A, B>
+    {
+        using type = bl::common_float_type_t<A, B>;
+    };
+
+    template<class RealType, class A, class B>
+    using real_distribution_result_t = typename real_distribution_result<RealType, A, B>::type;
+}
+
+    template<
+        std::size_t Count,
+        class RealType = detail::random::infer_real_type,
+        class A,
+        class B,
+        uniform_random_bit_generator Engine>
+        requires detail::random::real_distribution_args<RealType, A, B>
+    [[nodiscard]] BL_FORCE_INLINE constexpr auto uniform_real_array(A a, B b, Engine engine)
+    {
+        using result_type = detail::random::real_distribution_result_t<RealType, A, B>;
+        return bl::random_array<Count>(
+            engine,
+            bl::uniform_real_distribution<result_type>{
+                static_cast<result_type>(a),
+                static_cast<result_type>(b) });
+    }
+
+    template<
+        std::size_t Count,
+        class RealType = detail::random::infer_real_type,
+        class A,
+        class B>
+        requires detail::random::real_distribution_args<RealType, A, B>
+    [[nodiscard]] BL_FORCE_INLINE constexpr auto uniform_real_array(A a, B b, std::uint64_t seed = 0)
+    {
+        return bl::uniform_real_array<Count, RealType>(a, b, bl::mt19937_64{ seed });
+    }
+
+    template<
+        std::size_t Count,
+        detail::random::supported_real RealType,
+        uniform_random_bit_generator Engine>
+    [[nodiscard]] BL_FORCE_INLINE constexpr auto uniform_real_array(Engine engine)
+    {
+        return bl::uniform_real_array<Count, RealType>(
+            detail::random::real_zero<RealType>(),
+            detail::random::real_one<RealType>(),
+            engine);
+    }
+
+    template<std::size_t Count, detail::random::supported_real RealType>
+    [[nodiscard]] BL_FORCE_INLINE constexpr auto uniform_real_array(std::uint64_t seed = 0)
+    {
+        return bl::uniform_real_array<Count, RealType>(bl::mt19937_64{ seed });
+    }
+
+    template<
+        std::size_t Count,
+        class RealType = detail::random::infer_real_type,
+        class Mean,
+        class Stddev,
+        uniform_random_bit_generator Engine>
+        requires detail::random::real_distribution_args<RealType, Mean, Stddev>
+    [[nodiscard]] BL_FORCE_INLINE constexpr auto normal_array(Mean mean, Stddev stddev, Engine engine)
+    {
+        using result_type = detail::random::real_distribution_result_t<RealType, Mean, Stddev>;
+        return bl::random_array<Count>(
+            engine,
+            bl::normal_distribution<result_type>{
+                static_cast<result_type>(mean),
+                static_cast<result_type>(stddev) });
+    }
+
+    template<
+        std::size_t Count,
+        class RealType = detail::random::infer_real_type,
+        class Mean,
+        class Stddev>
+        requires detail::random::real_distribution_args<RealType, Mean, Stddev>
+    [[nodiscard]] BL_FORCE_INLINE constexpr auto normal_array(Mean mean, Stddev stddev, std::uint64_t seed = 0)
+    {
+        return bl::normal_array<Count, RealType>(mean, stddev, bl::mt19937_64{ seed });
+    }
+
+    template<
+        std::size_t Count,
+        detail::random::supported_real RealType,
+        uniform_random_bit_generator Engine>
+    [[nodiscard]] BL_FORCE_INLINE constexpr auto normal_array(Engine engine)
+    {
+        return bl::normal_array<Count, RealType>(
+            detail::random::real_zero<RealType>(),
+            detail::random::real_one<RealType>(),
+            engine);
+    }
+
+    template<std::size_t Count, detail::random::supported_real RealType>
+    [[nodiscard]] BL_FORCE_INLINE constexpr auto normal_array(std::uint64_t seed = 0)
+    {
+        return bl::normal_array<Count, RealType>(bl::mt19937_64{ seed });
     }
 
     class random_device

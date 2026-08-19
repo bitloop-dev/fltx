@@ -13,7 +13,7 @@ namespace bl::detail::_f256_runtime
 {
     BL_NO_INLINE f256_s mul_add_horner_step(const f256_s& a, const f256_s& b, const f256_s& c) noexcept
     {
-        return detail::_f256::mul_add_horner_step_inline(a, b, c);
+        return detail::_f256::mul_add_inline(a, b, c);
     }
 
     BL_NO_INLINE f256_s horner_forward(const f256_s* coeffs, std::size_t count, const f256_s& x) noexcept
@@ -70,22 +70,22 @@ namespace bl::detail::_f256_runtime
         if (count == 0)
             return {};
 
-        const f256_s t = detail::_f256::sub_inline(
-            detail::_f256::mul_double_inline(x, 2.0),
+        const f256_s t = detail::_f256::sub_finite_inline(
+            detail::_f256::mul_double_product_inline(x, 2.0),
             f256_s{ shift });
         f256_s b1{ 0.0 };
         f256_s b2{ 0.0 };
 
         for (std::size_t i = count - 1; i >= 1; --i)
         {
-            const f256_s b0 = detail::_f256::add_inline(
-                detail::_f256::mul_double_sub_inline(detail::_f256::mul_inline(t, b1), 2.0, b2),
+            const f256_s b0 = detail::_f256::add_finite_inline(
+                detail::_f256::mul_double_sub_pow2_inline(detail::_f256::mul_product_inline(t, b1), 2.0, b2),
                 coeffs[i]);
             b2 = b1;
             b1 = b0;
         }
 
-        return detail::_f256::add_inline(detail::_f256::mul_sub_inline(t, b1, b2), coeffs[0]);
+        return detail::_f256::add_finite_inline(detail::_f256::mul_sub_inline(t, b1, b2), coeffs[0]);
     }
 
     BL_NO_INLINE f256_s log1p_series_reduced(const f256_s& x) noexcept
@@ -98,28 +98,51 @@ namespace bl::detail::_f256_runtime
 
         for (int k = 3; k <= 257; k += 2)
         {
-            term = detail::_f256::mul_inline(term, z2);
-            const f256_s add = detail::_f256::div_double_inline(term, static_cast<double>(k));
-            sum = detail::_f256::add_inline(sum, add);
+            term = detail::_f256::mul_product_inline(term, z2);
+            const f256_s add = detail::_f256::div_double_prechecked_inline(term, static_cast<double>(k));
+            sum = detail::_f256::add_finite_inline(sum, add);
 
             const f256_s asum  = detail::_f256::mag(sum);
             const f256_s scale = (asum > f256_s{ 1.0 }) ? asum : f256_s{ 1.0 };
-            if (detail::_f256::mag(add) <= detail::_f256::mul_inline(f256_s::eps(), scale))
+            if (detail::_f256::mag(add) <= detail::_f256::mul_product_inline(detail::_f256::convergence_epsilon, scale))
                 break;
         }
 
-        return detail::_f256::add_inline(sum, sum);
+        return detail::_f256::add_finite_inline(sum, sum);
     }
 
     // roots
     BL_NO_INLINE f256_s cbrt(const f256_s& x)
     {
+#if BL_FP_BARRIER_ACTIVE
+        if (detail::_f256::has_subnormal_limb(x)) [[unlikely]]
+        {
+            constexpr int input_scale = 510;
+            return detail::_f256::scale_terms_guarded(
+                detail::_f256_impl::cbrt(
+                    detail::_f256::scale_terms_guarded(x, input_scale)),
+                -(input_scale / 3));
+        }
+#endif
         return detail::_f256_impl::cbrt(x);
     }
 
     // exponential and logarithmic
     BL_NO_INLINE f256_s exp(const f256_s& x)
     {
+#if BL_FP_BARRIER_ACTIVE
+        if (x.x0 < -450.0 && !detail::fp::isinf_or_nan(x.x0)) [[unlikely]]
+        {
+            constexpr int result_scale = 512;
+            const f256_s offset = detail::_f256::scale_terms_guarded(
+                std::numbers::ln2_v<f256_s>,
+                9);
+            const f256_s adjusted = detail::_f256_runtime::add_finite(x, offset);
+            return detail::_f256::scale_terms_guarded(
+                detail::_f256_impl::exp(adjusted),
+                -result_scale);
+        }
+#endif
         return detail::_f256_impl::exp(x);
     }
 
@@ -130,43 +153,96 @@ namespace bl::detail::_f256_runtime
 
     BL_NO_INLINE f256_s log(const f256_s& a)
     {
+#if BL_FP_BARRIER_ACTIVE
+        if (detail::_f256::has_subnormal_limb(a)) [[unlikely]]
+        {
+            constexpr int input_scale = 64;
+            const f256_s scaled = detail::_f256::scale_terms_guarded(a, input_scale);
+            const f256_s correction = detail::_f256::scale_terms_guarded(
+                std::numbers::ln2_v<f256_s>,
+                6);
+            return detail::_f256_runtime::sub_finite(
+                detail::_f256_impl::log(scaled),
+                correction);
+        }
+#endif
         return detail::_f256_impl::log(a);
     }
 
     BL_NO_INLINE f256_s log2(const f256_s& a)
     {
+#if BL_FP_BARRIER_ACTIVE
+        if (detail::_f256::has_subnormal_limb(a)) [[unlikely]]
+        {
+            constexpr int input_scale = 64;
+            return detail::_f256_runtime::sub_double_finite(
+                detail::_f256_impl::log2(
+                    detail::_f256::scale_terms_guarded(a, input_scale)),
+                static_cast<double>(input_scale));
+        }
+#endif
         return detail::_f256_impl::log2(a);
     }
 
     BL_NO_INLINE f256_s log10(const f256_s& a)
     {
+#if BL_FP_BARRIER_ACTIVE
+        if (detail::_f256::has_subnormal_limb(a)) [[unlikely]]
+        {
+            constexpr int input_scale = 64;
+            const f256_s log10_two = detail::_f256_runtime::mul_finite(
+                std::numbers::ln2_v<f256_s>,
+                std::numbers::log10e_v<f256_s>);
+            const f256_s correction =
+                detail::_f256::scale_terms_guarded(log10_two, 6);
+            return detail::_f256_runtime::sub_finite(
+                detail::_f256_impl::log10(
+                    detail::_f256::scale_terms_guarded(a, input_scale)),
+                correction);
+        }
+#endif
         return detail::_f256_impl::log10(a);
     }
 
     BL_NO_INLINE f256_s expm1(const f256_s& x)
     {
+#if BL_FP_BARRIER_ACTIVE
+        const int exponent = detail::fp::frexp_exponent(x.x0);
+        if (exponent != 0 && exponent < -540) [[unlikely]]
+            return x;
+#endif
         return detail::_f256_impl::expm1(x);
     }
 
     BL_NO_INLINE f256_s log1p(const f256_s& x)
     {
+#if BL_FP_BARRIER_ACTIVE
+        const int exponent = detail::fp::frexp_exponent(x.x0);
+        if (exponent != 0 && exponent < -540) [[unlikely]]
+            return x;
+#endif
         return detail::_f256_impl::log1p(x);
     }
 
     // powers
-    BL_NO_INLINE f256_s pow10_256(int k)
-    {
-        return detail::_f256_impl::pow10_256(k);
-    }
-
-    BL_NO_INLINE f256_s pow(const f256_s& x, const f256_s& y)
+    BL_NO_INLINE f256_s BL_VECTORCALL pow(const f256_s& x, const f256_s& y)
     {
         return detail::_f256_impl::pow(x, y);
     }
 
-    BL_NO_INLINE f256_s pow(const f256_s& x, double y)
+    BL_NO_INLINE f256_s BL_VECTORCALL pow(const f256_s& x, double y)
     {
         return detail::_f256_impl::pow(x, y);
+    }
+
+    BL_NO_INLINE f256_s BL_VECTORCALL ipow_signed(const f256_s& x, std::intmax_t y)
+    {
+        return detail::_f256::ipow_integer(x, y);
+    }
+
+    BL_NO_INLINE f256_s BL_VECTORCALL ipow_unsigned(const f256_s& x, std::uintmax_t y)
+    {
+        return detail::_f256::ipow_integer(x, y);
     }
 
     // trigonometric

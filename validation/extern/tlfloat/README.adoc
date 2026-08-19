@@ -1,0 +1,423 @@
+== TLFloat - C++ template library for floating point operations
+
+Original distribution site : https://github.com/shibatch/tlfloat
+
+Doxygen-generated reference :
+https://shibatch.github.io/tlfloat-doxygen/
+
+Introduction video :
+https://youtu.be/gKjgknQRuiA
+
+Some more documataion is available at :
+https://github.com/shibatch/tlfloat/wiki
+
+=== Introduction
+
+This library implements C{pp} classes with which half, single, double,
+quadruple and octuple precision IEEE 754 floating point numbers can be
+operated.
+
+Internally, these classes are implemented as class templates on top of
+arbitrary-precision integer class templates so that the templates are
+expanded as arbitrary precision floating-point operations by just
+changing the template parameters, rather than implementing each
+floating-point operation for each precision. The arbitrary-precision
+integer class templates are also included in this library.
+
+=== Features
+
+* Truly constexpr functions
+** Compilable with C{pp}20 standard
+** Most of the functions are implemented as templates
+*** Completely inlinable functions
+*** The functions can be evaluated at compile time
+** No malloc required
+** Works without libstdc{pp}
+* IEEE 754 compliant
+** Supports subnormal numbers, NaN, infinity, and signed zero
+* Supports a wide range of precisions
+** Half, float, double, quad, and octuple precisions
+** Returns correctly rounded results for arithmetic oprations, fma and
+sqrt
+** Returns 1-ulp accuracy results for other math.h functions
+*** All functions, including trigonometric functions, return
+1ulp-accuracy results for all input range
+* Portable
+** Compatible with Linux, Windows, microcontrollers, wasm, CUDA (version
+12 or later)
+** Constexpr functions can be called from CUDA devices with
+–expt-relaxed-constexpr compiler option
+* C/C{pp}11 API with libquadmath emulation
+** Most of libquadmath functions can be used on x86_64 clang and MSVC
+** 128-bit integer types can be used on MSVC
+** C{pp}11 FP and int classes with overloaded operators are provided
+*** C{pp}11 functions in TLFloat are not constexpr
+* Moderately optimized
+** Optimized for each architecture using intrinsics, etc.
+** Library design allows compilers to fully inline operations
+** All functions are thread-safe and reentrant
+* Implements most of the math.h functions
+** Arithmetic operations, comparison, cast operations
+** fma, sqrt, hypot, cbrt, fmod, remainder, remquo
+** sin, cos, tan, sinpi, cospi, tanpi
+** asin, acos, atan, atan2
+** log, log2, log10, log1p
+** exp, exp2, exp10, expm1, pow
+** sinh, cosh, tanh, asinh, acosh, atanh
+** erf, erfc, tgamma
+** trunc, floor, ceil, round, rint
+** fabs, copysign, fmax, fmin, fdim
+** ldexp, frexp, modf, nextafter
+** isnan, isinf, finite, fpclassify, signbit
+* Implements I/O functions
+** Conversion to/from C strings
+** printf-family functions
+* Provides BigInt template classes in addition to the FP classes
+** It provides operations for integers of artibrary length (2^N bits)
+** They can be used in the similar way to the ordinary int/uint types
+** Data formats are the same as ordinary int/uint
+** These classes are internally used to implement the FP classes in
+TLFloat
+
+=== How to build
+
+[arabic]
+. Check out the source code from our GitHub repository :
+`++git clone https://github.com/shibatch/tlfloat++`
+. Make a separate directory to create an out-of-source build :
+`++cd tlfloat && mkdir build && cd build++`
+. Run cmake to configure the project :
+`++cmake .. -DCMAKE_INSTALL_PREFIX=../../install++`
+. Run make to build and install the project : `make && make install`
+
+=== Compiling hello world example
+
+Below is a simple C{pp} source code utilizing TLFloat.
+
+[source,c++]
+----
+#include <iostream>
+#include <iomanip>
+#include <tlfloat/tlmath.hpp>
+
+using namespace tlfloat;
+
+Octuple machin() {
+  return 4 * (4 * atan(1 / Octuple(5)) - atan(1 / Octuple(239)));
+}
+
+int main(int argc, char **argv) {
+  std::cout << std::setprecision(70) << machin() << std::endl;
+}
+----
+
+To compile this source code, use the following command.
+
+[source,console]
+----
+g++ -std=c++20 -I./install/include hello.cpp
+----
+
+You have to specify C{pp}20 standard. Note that you do not need to link
+any library in this example. This program computes PI in octuple
+precision and shows it.
+
+[source,console]
+----
+$ ./a.out
+3.141592653589793238462643383279502884197169399375105820974944592307816
+----
+
+=== Libquadmath emulation
+
+In gcc/g{pp} on x86_64 architecture, libquadmath provides math functions
+for quadruple precision floating point numbers. However, libquadmath is
+not available with clang or Visual Studio. By using the libquadmath
+emulation feature of TLFloat library, it is possible to use most of the
+features of libquadmath with clang and Visual Studio.
+
+Below is a simple C source code utilizing this feature.
+
+[source,c++]
+----
+#include <stdio.h>
+#include <stdlib.h>
+
+#define TLFLOAT_LIBQUADMATH_EMULATION
+#include <tlfloat/tlfloat.h>
+
+int main(int argc, char **argv) {
+  if (argc < 3) exit(-1);
+
+  __float128 q1 = strtoflt128(argv[1], NULL);
+  __float128 q2 = strtoflt128(argv[2], NULL);
+
+  char str[256];
+  quadmath_snprintf(str, sizeof(str), "%.30Qg", powq(q1, q2));
+  puts(str);
+}
+----
+
+To compile this source code, use the following command.
+
+[source,console]
+----
+clang quad.c -I./install/include -L./install/lib -ltlfloat -lm
+----
+
+Below is an example of executing this program.
+
+[source,console]
+----
+$ ./a.out 1.234 2.345
+1.63732181977903314975233575019
+----
+
+In order to use the libquadmath emulation feature, define
+TLFLOAT_LIBQUADMATH_EMULATION macro, include tlfloat/tlfloat.h instead
+of quadmath.h, and link with -ltlfloat -lm. If you need portability,
+replace __float128 with tlfloat_quad.
+
+=== C++11 API
+
+Besides the C{pp}20 API, TLFloat provides classes that can be used with
+C{pp}11 standard.
+
+Below is a simple C{pp} source code utilizing this feature.
+
+[source,c++]
+----
+#include <iostream>
+#include <tlfloat/tlfloat.h>
+
+tlfloat_octuple AGM(int N) {
+  tlfloat_octuple y = tlfloat_sqrto(2) - 1;
+  tlfloat_octuple a = y * y * 2;
+
+  for(int k=0;k<N;k++) {
+    y = 1.0 - tlfloat_powo(y, 4);
+    y = tlfloat_powo(y, 1.0/4);
+    y = (1 - y) / (1 + y);
+    a *= tlfloat_powo(1 + y, 4);
+    a -= tlfloat_ldexpo(((y + 1) * y + 1) * y, 2 * k + 3);
+  }
+
+  return 1 / a;
+}
+
+int main(int argc, char **argv) {
+  std::cout << tlfloat::to_string(AGM(3), 70) << std::endl;
+}
+----
+
+To compile this source code, use the following command.
+
+[source,console]
+----
+g++ cpp11.cpp -std=c++11 -I./install/include -L./install/lib -ltlfloat
+----
+
+Below is an example of executing this program.
+
+[source,console]
+----
+$ ./a.out
+3.141592653589793238462643383279502884197169399375105820974944592307818
+----
+
+=== Benchmark results
+
+This software package includes a benchmark tool. This can be built by
+specifying `-DBUILD_BENCH=True` cmake option. Below are some results of
+the benchmarks.
+
+CPU: AMD Ryzen 9 7950X (running at 4.5GHz)
+
+Compiler: gcc version 12.3.0 (Ubuntu 12.3.0-17ubuntu1)
+
+TLFloat Quad
+
+....
+TLFloat version      : 1.11.0
+Config               : tlfloat quad
+Measurement time     : 10 sec
+Addition             : 124.25 Mops/second
+Multiplication       : 102.486 Mops/second
+Division             : 50.7983 Mops/second
+Cast to/from double  : 168.078 Mops/second
+Compare              : 299.502 Mops/second
+FMA                  : 68.4656 Mops/second
+Square root          : 15.9095 Mops/second
+Rint                 : 191.323 Mops/second
+Sin                  : 2.13261 Mops/second
+Atan                 : 1.30394 Mops/second
+Exp                  : 1.49075 Mops/second
+Log                  : 1.58123 Mops/second
+Pow                  : 0.88467 Mops/second
+....
+
+GNU libquadmath
+
+....
+TLFloat version      : 1.11.0
+Config               : Libquadmath
+Measurement time     : 10 sec
+Addition             : 87.7199 Mops/second
+Multiplication       : 78.2958 Mops/second
+Division             : 72.6179 Mops/second
+Cast to/from double  : 63.7482 Mops/second
+Compare              : 222.788 Mops/second
+FMA                  : 1.93365 Mops/second
+Square root          : 9.50421 Mops/second
+Rint                 : 37.6146 Mops/second
+Sin                  : 1.77002 Mops/second
+Atan                 : 3.02089 Mops/second
+Exp                  : 1.78973 Mops/second
+Log                  : 1.8479 Mops/second
+Pow                  : 1.29873 Mops/second
+....
+
+=== Development plan
+
+* The following features will be added in future releases
+** Further documentation
+** Add C/C{pp}11 API for float16/bfloat16
+** Add support for conversion between string and float16/bfloat16
+** Remaining math functions in math.h
+*** Complex functions
+** More testing
+*** Add more testers for I/O functions
+** Further optimization
+
+=== License
+
+The software is distributed under the Boost Software License, Version
+1.0. See accompanying file link:./LICENSE.txt[LICENSE.txt] or copy at
+http://www.boost.org/LICENSE_1_0.txt. Contributions to this project
+from individual developers and small organizations are accepted under
+the same license. For contributions from corporate users, please refer
+to link:./CONTRIBUTING.md[CONTRIBUTING.md].
+
+==== Building a Sustainable Future for Our Open Source Projects
+
+We believe that Free and Open Source Software (FOSS) is a wonderful
+ecosystem that allows anyone to use software freely. However, to
+maintain and enhance its value over the long term, continuous
+maintenance and improvement are essential.
+
+Like many FOSS projects, we face the challenge that long-term
+sustainability is difficult to achieve through the goodwill and
+efforts of developers alone. While the outputs of open-source projects
+are incorporated into the products of many companies and their value
+is rightfully recognized, the developers who create these outputs are
+not always treated as equal partners in the business world.
+
+A license guarantees the "freedom to use," but the spirit of the FOSS
+ecosystem is based on a culture of mutual respect and contribution
+built upon that freedom. We believe that accepting the "value" of a
+project's output while unilaterally refusing dialogue with its
+creators simply because they are individuals undermines the
+sustainability of this ecosystem. Such companies should not turn a
+blind eye to the reality that someone must bear the costs to make the
+cycle sustainable.
+
+This issue is not just about corporations; it reflects a deeper
+cultural expectation within the FOSS ecosystem itself. Over time, we
+have come to take for granted that everything in open source should be
+provided for free - not only the code, but also the ongoing effort to
+maintain and improve it. However, FOSS licenses guarantee the freedom
+to use and modify software; **they do not impose an obligation on
+developers to offer perpetual, unpaid maintenance**. When this
+distinction is overlooked, maintainers can end up burdened with work
+that was never meant to be an open-ended personal commitment. Such an
+imbalance not only discourages openness, but also undermines the
+sustainability of an ecosystem that has become a vital part of modern
+society.
+
+To explain the phenomenon occurring across the entire ecosystem:
+Developers write code they find useful and release it as FOSS. It
+gains popularity, and soon large corporations incorporate it into
+their products, reaping substantial profits. Requests for new features
+and fixes flood in, yet no financial support accompanies
+them. Eventually, the maintainer realizes there is no personal or
+professional benefit in responding to these unpaid demands. The skills
+required to develop popular FOSS are often in high demand in other
+fields as well. Ultimately, the maintainer burns out and the project
+is abandoned. This is the unsustainable cycle we are tackling.
+
+Within this unsustainable cycle, adopting FOSS into products while
+fully aware of this situation is hardly beneficial for either
+companies or the society at large. To make the cycle sustainable,
+everyone must recognize the reality that someone must bear the costs,
+and these costs are equivalent to what companies would need to develop
+and maintain comparable products. This project specifically requests
+companies profiting from our deliverables to contribute to maintaining
+the project.
+
+To be clear, **this is not a request for charity**; it is a proposal
+to manage the operational risk. This is a systemic challenge
+originating not from the developers, but from within the organizations
+that consume and whose business continuity depends on FOSS. Should a
+project be abandoned due to this unresolved problem, **the primary
+victims will be you, the company** that built its product on top of an
+unmaintained foundation, not the developers who can move on to other
+opportunities.
+
+==== Our Request for Support
+
+We request ongoing financial support from organizations that
+incorporate our project's deliverables into their products or services
+and derive **annual revenue exceeding US $1 million** from those
+products and services, to help cover the costs of maintenance and the
+development of new features. While this support is not a legal
+obligation, let us be clear: the license is a grant of permission to
+use our work, not a service contract obligating us to provide
+perpetual, unpaid labor. We consider it a fundamental business
+principle that to profit from a critical dependency while contributing
+nothing to its stability is an extractive and unsustainable practice.
+
+It is also crucial to recognize what "maintenance" truly entails. In a
+living software project, it is not merely about preserving the status
+quo of the current version. It is the continuous effort that leads to
+security patches, compatibility with new environments, and the very
+features that define future versions. Therefore, to claim satisfaction
+with an older version as a reason to decline support, while
+simultaneously benefiting from the ongoing development that produces
+newer, better versions, is a logically inconsistent position.
+
+This support must not be intended to benefit any particular company,
+but must support maintaining the project as a shared infrastructure
+that **benefits all users and the broader community**. Furthermore,
+this threshold is designed so that **individual developers,
+small-scale projects, and the majority of our users are not asked to
+pay**, while seeking appropriate support from companies that derive
+significant value from our project.
+
+We understand that corporate procurement processes were not designed
+with FOSS sustainability in mind. We are committed to finding a
+practical path forward, but your partnership is essential in
+structuring a financial relationship that aligns with your standard
+corporate procedures. We simply ask for fairness: do not demand
+contractual terms from maintainers that your own legal department
+would refuse to accept. Our mutual goal is to treat this partnership
+as a conventional operational expense, removing your internal barriers
+and making sustainability a straightforward business practice.
+
+Our goal is to maintain this project stably over the long term and
+make it even more valuable for all users. In an industry where many
+projects are forced to abandon FOSS licenses, our preference is to
+continue offering this project under a true open-source
+license. However, the long-term viability of this FOSS-first approach
+depends directly on the willingness of our commercial beneficiaries to
+invest in the ecosystem they rely on. We hope our collaborative
+approach can contribute to shaping a more balanced and enduring future
+for FOSS.
+
+For details, please see our
+https://github.com/shibatch/nofreelunch?tab=coc-ov-file[Code of
+Conduct] or its https://youtu.be/wsh2yKGwK4s[introduction video]. For
+reuse of this sustainability statement, see
+link:SUSTAINABILITY.md[SUSTAINABILITY.md].
+
+Copyright https://shibatch.github.io/[Naoki Shibata] and contributors
+2024-2025.

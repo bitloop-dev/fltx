@@ -40,9 +40,23 @@
 # debug information files
 *.dwo
 
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Metrics publication scratch state
+validation/metrics/**/.staging/
+validation/metrics/**/*.lock
+validation/metrics/_unversioned/
+
 # project
 .vs
 .idea
 build/
 TestResults/
 CMakeUserPresets.json
+VSWorkspaceSettings.json
+
+# Local Codex scratch/output
+.codex/
+/RELEASE_CHECKLIST.md

@@ -1,0 +1,184 @@
+{
+  "accuracy_parallel": true,
+  "accuracy_samples": 4096,
+  "architecture": "wasm32",
+  "benchmark_corpus_policy": "adaptive-v1",
+  "benchmark_fast_minimum_trial_ms": 15,
+  "benchmark_fast_threshold_ns": 20,
+  "benchmark_fast_trials": 7,
+  "benchmark_maximum_row_ms": 5000,
+  "benchmark_minimum_trial_ms": 8,
+  "benchmark_ordinary_trials": 3,
+  "benchmark_policy": "adaptive-v2",
+  "benchmark_samples": {
+    "f128": 8192,
+    "f256": 4096
+  },
+  "benchmark_slow_threshold_ns": 10000,
+  "benchmark_trials": 7,
+  "compiler": "Emscripten",
+  "configuration": {
+    "build": {
+      "architecture": "wasm32",
+      "compiler-id": "Clang",
+      "compiler-version": "21.0.0",
+      "config": "Release",
+      "flags-hash": "da56489796c4636d9f457ea868fb77ff630a44c5ac085227cf6d448694171e39",
+      "frontend-variant": "GNU",
+      "optimized": "1",
+      "processor": "x86",
+      "source-fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
+      "system": "Emscripten"
+    },
+    "consumer": {
+      "arm64": "0",
+      "fast-math": "off",
+      "fma": "AUTO",
+      "has-x86-fma": "0",
+      "simd": "on",
+      "simulated-consteval": "off",
+      "tu-x86-fma": "0",
+      "x86": "0"
+    },
+    "harness": {
+      "qdpp": "on",
+      "tlfloat": "on"
+    },
+    "library": {
+      "arm64": "0",
+      "fast-math": "off",
+      "fast-math-request": "AUTO",
+      "fma": "AUTO",
+      "runtime-fma": "unavailable",
+      "simd": "on",
+      "tu-x86-fma": "0",
+      "x86": "0"
+    },
+    "library_strategy": {
+      "baseline-arm64": "0",
+      "compiled-x86-backend": "0",
+      "f256-simd": "1",
+      "msvc-guarded": "0",
+      "neon": "0",
+      "runtime-check": "0",
+      "runtime-path": "0",
+      "scalar-x86": "0",
+      "sse2": "0",
+      "trig-simd": "1",
+      "wasm-simd": "1"
+    }
+  },
+  "consumer_mode": "strict",
+  "created_utc": "2026-08-15T16:06:44.184257+00:00",
+  "executables": {
+    "accuracy": {
+      "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\wasm32-emscripten-release\\validation\\fltx_accuracy.js",
+      "sha256": "d32ec2162f0ace54c144d6bfc8e0f5c8809f805e8c5e138d23fe924fb99c3c51",
+      "wasm-sha256": "05641fd05498b8fbf7e07b0738660bbf107c295fb6bb3304ad595ce546a7bf4f"
+    },
+    "benchmark": {
+      "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\wasm32-emscripten-release\\validation\\fltx_benchmark.js",
+      "sha256": "9d25f5070a17a24514de58a76d4f9917bd61b72d2165d732f3e0121f74a6c81b",
+      "wasm-sha256": "d46a1abc64c0142e5cef5b10d5f7f14bd025ab3432975c00574f9114a1904bb2"
+    }
+  },
+  "host": {
+    "machine": "AMD64",
+    "node": "v22.17.1",
+    "os": "Windows",
+    "os-release": "11",
+    "processor": "AMD64 Family 26 Model 68 Stepping 0, AuthenticAMD",
+    "python": "CPython 3.13.14"
+  },
+  "implementations": {
+    "f128": [
+      {
+        "id": "fltx",
+        "label": "fltx bl::f128",
+        "short_label": "fltx"
+      },
+      {
+        "id": "qdpp",
+        "label": "qdpp dd_real",
+        "short_label": "ddreal"
+      },
+      {
+        "id": "cppdd",
+        "label": "boost::multiprecision::cpp_double_double",
+        "short_label": "cppdd"
+      },
+      {
+        "id": "tlfloat",
+        "label": "TLFloat Quad",
+        "short_label": "tlquad"
+      }
+    ],
+    "f256": [
+      {
+        "id": "fltx",
+        "label": "fltx bl::f256",
+        "short_label": "fltx"
+      },
+      {
+        "id": "qdpp",
+        "label": "qdpp qd_real",
+        "short_label": "qdreal"
+      },
+      {
+        "id": "mpfr64",
+        "label": "boost::multiprecision::mpfr_float_backend<64>",
+        "short_label": "mpfr64"
+      },
+      {
+        "id": "tlfloat",
+        "label": "TLFloat Octuple",
+        "short_label": "tloct"
+      }
+    ]
+  },
+  "outputs": {
+    "Emscripten_f128.csv": "7402cbda244543ebd2cd98080535b08b8db551efe7774a86764d3f7e0f1f1210",
+    "Emscripten_f256.csv": "8a3a93e7d8a65d9fd8eb291a76ac7451147104fe56e792b74fd8af781d872d2e",
+    "detail/Emscripten_f128_accuracy.csv": "95dd3fa6656c5b8faa4e2c8115b429a5efca7827a7dc7af1f9b67a1b053690e2",
+    "detail/Emscripten_f128_benchmark.csv": "4b344056c5be90d9354c2acea6690d6facd03c33b1c096a91adf97092102c923",
+    "detail/Emscripten_f256_accuracy.csv": "0942365526a91aaaa90acf43bac023b57d5503c89448b9fa69bc7663f40c7a4b",
+    "detail/Emscripten_f256_benchmark.csv": "b9d0442547d657a0895da6ff78eb81100520439200ccfd0c738d1d59920f346b"
+  },
+  "phases": {
+    "f128.accuracy": {
+      "output": "Emscripten_f128_accuracy.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "f128.benchmark": {
+      "output": "Emscripten_f128_benchmark.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "f256.accuracy": {
+      "output": "Emscripten_f256_accuracy.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "f256.benchmark": {
+      "output": "Emscripten_f256_benchmark.csv",
+      "return_code": 0,
+      "status": "passed"
+    }
+  },
+  "phases_requested": [
+    "accuracy",
+    "benchmark"
+  ],
+  "platform": "wasm32",
+  "precisions": [
+    "f128",
+    "f256"
+  ],
+  "run_id": "07cb9aa0af7241f981735eab48f97723",
+  "sample_mode": "standard",
+  "schema_version": "6",
+  "source_fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
+  "source_revision": "b38d8f2a0c9da2eeae373bce48a1aa42bf88fcdc-dirty-7cd523deac97",
+  "status": "complete"
+}

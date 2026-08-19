@@ -169,18 +169,6 @@ namespace detail::_f256 // primitives and kernels
     }
     BL_POP_PRECISE
 
-    BL_FORCE_INLINE constexpr f256_s canonicalize_math_result(f256_s value) noexcept
-    {
-        value.x3 = detail::fp::zero_low_fraction_bits_finite<8>(value.x3);
-        return value;
-    }
-
-    #if defined(FLTX_CONSTEXPR_PARITY)
-        #define F256_CANONICALIZE_MATH_RESULT(value) bl::detail::_f256::canonicalize_math_result(value)
-    #else
-        #define F256_CANONICALIZE_MATH_RESULT(value) (value)
-    #endif
-
     // Shewchuk-style expansion sum, expansions sorted by increasing magnitude (small -> large)
     // expansion arithmetic
     BL_FORCE_INLINE constexpr int fast_expansion_sum_zeroelim(int elen, const double* e, int flen, const double* f, double* h) noexcept

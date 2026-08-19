@@ -79,7 +79,7 @@ BL_FORCE_INLINE constexpr double log1p(double x) noexcept
     return log(1.0 + x);
 }
 
-BL_FORCE_INLINE constexpr double round_half_away_zero(double x) noexcept
+BL_FORCE_INLINE constexpr double round_nearest_away_from_zero(double x) noexcept
 {
     if (iszero_or_inf_or_nan(x))
         return x;
@@ -89,16 +89,16 @@ BL_FORCE_INLINE constexpr double round_half_away_zero(double x) noexcept
     if (ax >= integer_threshold)
         return x;
 
-    if (signbit(x))
-    {
-        const double y = -floor((-x) + 0.5);
-        return (y == 0.0) ? -0.0 : y;
-    }
+    const double integer = floor(ax);
+    const double fraction = ax - integer;
+    double y = fraction < 0.5 ? integer : integer + 1.0;
 
-    return floor(x + 0.5);
+    if (signbit(x))
+        y = -y;
+    return (y == 0.0) ? (signbit(x) ? -0.0 : 0.0) : y;
 }
 
-BL_FORCE_INLINE constexpr float round_half_away_zero(float x) noexcept
+BL_FORCE_INLINE constexpr float round_nearest_away_from_zero(float x) noexcept
 {
     if (isnan(x) || isinf(x) || x == 0.0f)
         return x;
@@ -198,7 +198,10 @@ BL_FORCE_INLINE constexpr float nextafter(float from, float to) noexcept
     return std::bit_cast<float>(bits);
 }
 
-BL_FORCE_INLINE constexpr double nearbyint_ties_even(double x) noexcept
+// Numeric rounding core. The wrapper below additionally preserves the input
+// sign when the rounded result is zero.
+BL_PUSH_PRECISE;
+BL_FORCE_INLINE constexpr double round_nearest_even_value(double x) noexcept
 {
     if (iszero_or_inf_or_nan(x))
         return x;
@@ -215,22 +218,23 @@ BL_FORCE_INLINE constexpr double nearbyint_ties_even(double x) noexcept
     return out;
 }
 
-BL_FORCE_INLINE constexpr double nearbyint(double x) noexcept
+BL_FORCE_INLINE constexpr double round_nearest_even(double x) noexcept
 {
-    const double y = nearbyint_ties_even(x);
+    const double y = round_nearest_even_value(x);
     if (y == 0.0)
         return signbit(x) ? -0.0 : 0.0;
     return y;
 }
 
-BL_FORCE_INLINE constexpr float nearbyint(float x) noexcept
+BL_FORCE_INLINE constexpr float round_nearest_even(float x) noexcept
 {
-    const double y = nearbyint_ties_even(static_cast<double>(x));
+    const double y = round_nearest_even_value(static_cast<double>(x));
     const float out = static_cast<float>(y);
     if (out == 0.0f)
         return signbit(x) ? -0.0f : 0.0f;
     return out;
 }
+BL_POP_PRECISE;
 
 template<typename SignedInt> BL_FORCE_INLINE constexpr SignedInt to_signed_integer_or_zero(float x) noexcept
 {
@@ -285,17 +289,6 @@ template<class Value> BL_FORCE_INLINE constexpr Value powi_by_squaring(Value bas
     return invert ? (Value{ 1.0 } / result) : result;
 }
 
-template<class BigUInt> BL_FORCE_INLINE constexpr BigUInt append_decimal_digits(BigUInt coeff, const char* digits, int digit_count) noexcept
-{
-    for (int i = 0; i < digit_count; ++i)
-    {
-        coeff.mul_small(10);
-        coeff.add_small(static_cast<std::uint32_t>(digits[i] - '0'));
-    }
-
-    return coeff;
-}
-
 BL_FORCE_INLINE constexpr double atan_series(double x) noexcept
 {
     const double x2 = x * x;
@@ -348,19 +341,43 @@ BL_MSVC_NOINLINE constexpr double atan2(double y, double x) noexcept
 {
     constexpr double pi   = 3.1415926535897932384626433832795028841972;
     constexpr double pi_2 = 1.5707963267948966192313216916397514420986;
+    constexpr double pi_4 = 0.7853981633974483096156608458198757210493;
 
     if (isnan(x) || isnan(y))
         return std::numeric_limits<double>::quiet_NaN();
-    if (x == 0.0)
+
+    const bool x_negative = signbit(x);
+    const bool y_negative = signbit(y);
+    if (isinf(y))
     {
-        if (y == 0.0)
-            return std::numeric_limits<double>::quiet_NaN();
-        return signbit(y) ? -pi_2 : pi_2;
+        if (isinf(x))
+        {
+            const double magnitude = x_negative ? 3.0 * pi_4 : pi_4;
+            return y_negative ? -magnitude : magnitude;
+        }
+        return y_negative ? -pi_2 : pi_2;
     }
+
+    if (isinf(x))
+    {
+        if (x_negative)
+            return y_negative ? -pi : pi;
+        return y_negative ? -0.0 : 0.0;
+    }
+
+    if (y == 0.0)
+    {
+        if (x_negative)
+            return y_negative ? -pi : pi;
+        return y;
+    }
+
+    if (x == 0.0)
+        return y_negative ? -pi_2 : pi_2;
 
     const double a = atan(y / x);
     if (x < 0.0)
-        return signbit(y) ? (a - pi) : (a + pi);
+        return y_negative ? (a - pi) : (a + pi);
     return a;
 }
 
@@ -371,7 +388,7 @@ BL_FORCE_INLINE constexpr void reduce_pi_over_2(double x, int& quadrant, double&
     constexpr double inv_pi_2 = 0x1.45f306dc9c883p-1;
     constexpr double pi_4_hi  = 0x1.921fb54442d18p-1;
 
-    const double n = nearbyint_ties_even(x * inv_pi_2);
+    const double n = round_nearest_even_value(x * inv_pi_2);
     r = (x - n * pi_2_hi) - n * pi_2_lo;
 
     const int q0 = static_cast<int>(n) & 3;
@@ -524,6 +541,44 @@ BL_FORCE_INLINE constexpr double sqrt_seed(double x) noexcept
     return ldexp(y, exp2 / 2);
 }
 
+BL_FORCE_INLINE constexpr double cbrt_seed(double x) noexcept
+{
+    if (x == 0.0 || isnan(x) || isinf(x))
+        return x;
+
+    const bool negative = x < 0.0;
+    double ax = negative ? -x : x;
+
+    int exp2 = frexp_exponent(ax);
+    double m = ldexp(ax, -exp2);
+
+    int rem = exp2 % 3;
+    if (rem < 0)
+        rem += 3;
+
+    if (rem != 0)
+    {
+        m = ldexp(m, rem);
+        exp2 -= rem;
+    }
+
+    double y = 1.0;
+    for (int i = 0; i < 8; ++i)
+        y = (2.0 * y + m / (y * y)) / 3.0;
+
+    y = ldexp(y, exp2 / 3);
+    return negative ? -y : y;
+}
+
+BL_FORCE_INLINE constexpr bool exp_scale_needs_checked_product(int n) noexcept
+{
+    return n >= 691 || n <= -671;
+}
+
+BL_FORCE_INLINE constexpr bool exp_inverse_is_negligible(double x) noexcept
+{
+    return x >= 690.0;
+}
 
 } // namespace bl::detail::fp
 

@@ -11,6 +11,7 @@
 #define F256_DETAIL_CONSTS_INCLUDED
 #include <cstdint>
 
+#include "fltx/detail/trig_reduce_consts.h"
 #include "fltx/f256_type.h"
 
 namespace bl::detail::_f256 // primitives and kernels
@@ -20,32 +21,15 @@ namespace bl::detail::_f256 // primitives and kernels
     inline constexpr f256_s sqrtpi          = { 0x1.c5bf891b4ef6bp+0, -0x1.618f13eb7ca89p-54, -0x1.b1f0071b7aae4p-110, -0x1.389b5a46bdfe8p-165 };
     inline constexpr f256_s half_log_pi     = { 0x1.250d048e7a1bdp-1,  0x1.7abf2ad8d5088p-58, -0x1.6ccf43244818ap-114,  0x1.f9303719c0176p-168 };
     inline constexpr f256_s half_log_two_pi = { 0x1.d67f1c864beb5p-1, -0x1.65b5a1b7ff5dfp-55, -0x1.b7f70c13dc1ccp-110,  0x1.3458b4ddec6a3p-164 };
+    inline constexpr f256_s exp_overflow_cutoff = { 0x1.62e42fefa39efp+9, 0x1.a9c9e3b39803fp-46, 0x1.7757a079a1934p-101, -0x1.b23e8fa413b27p-155 };
+    inline constexpr f256_s exp_zero_cutoff     = { -0x1.74910d52d3052p+9, 0x1.04e7ce353629ep-46, -0x1.541e1edbd82fap-100, -0x1.ccdd1404ead3ep-154 };
 
     // trig constants
     inline constexpr f256_s pi_2       = {  0x1.921fb54442d18p+0,  0x1.1a62633145c07p-54, -0x1.f1976b7ed8fbcp-110,  0x1.4cf98e804177dp-164 };
     inline constexpr f256_s pi_4       = {  0x1.921fb54442d18p-1,  0x1.1a62633145c07p-55, -0x1.f1976b7ed8fbcp-111,  0x1.4cf98e804177dp-165 };
     inline constexpr f256_s invpi2     = {  0x1.45f306dc9c883p-1, -0x1.6b01ec5417056p-55, -0x1.6447e493ad4cep-109,  0x1.e21c820ff28b2p-163 };
     inline constexpr f256_s pi_3_4     = {  0x1.2d97c7f3321d2p+1,  0x1.a79394c9e8a0ap-54,  0x1.456737b06ea1ap-108, -0x1.83226a8fe7731p-162 };
-
-    // argument reduction tables
-    inline constexpr std::uint32_t two_over_pi_fixed_words[] = {
-        0xcaf27f1du, 0x9f3a1f35u, 0x6b1e5ef8u, 0xc33d26efu,
-        0x98327dbbu, 0x32c2de4fu, 0x3f7e33e8u, 0xa5ff0705u,
-        0x5719053eu, 0xddaf44d1u, 0x8b961ca6u, 0x8359c476u,
-        0xdce8092au, 0x19c367cdu, 0x8c6b47c4u, 0x60e27bc0u,
-        0xca73a8c9u, 0x06061556u, 0x4d732731u, 0x8dffd880u,
-        0x14a06840u, 0x6599855fu, 0x5ee61b08u, 0xa9e39161u,
-        0x9af4361du, 0xf0cfbc20u, 0xfc7b6babu, 0x56033046u,
-        0x1f8d5d08u, 0x6bfb5fb1u, 0x8a5292eau, 0x3d0739f7u,
-        0xebe5f17bu, 0x7527bac7u, 0x9e5fea2du, 0x4f463f66u,
-        0x27cb09b7u, 0x6d367ecfu, 0x5a0a6d1fu, 0xef2f118bu,
-        0xde05980fu, 0x1ff897ffu, 0xbdf9283bu, 0x9c845f8bu,
-        0x835339f4u, 0x3991d639u, 0xb45f7e41u, 0xe99c7026u,
-        0x2ebb4484u, 0xe88235f5u, 0xb129a73eu, 0xfe1deb1cu,
-        0x09d1921cu, 0x06492eeau, 0x424dd2e0u, 0xb7246e3au,
-        0xdebbc561u, 0xfe5163abu, 0x3c439041u, 0xdb629599u,
-        0xf534ddc0u, 0xfc2757d1u, 0x4e441529u, 0xa2f9836eu
-    };
+    inline constexpr double pi_2_tail_4 = 0x1.31d89cd9128a5p-218;
 
     // exponential coefficients
     inline constexpr f256_s exp_inv_fact[] = {
@@ -165,6 +149,74 @@ namespace bl::detail::_f256 // primitives and kernels
         { 0x1.efa1bee615a27p+0,  0x1.dc7f486a4b6b0p-54,  0x1.f6dd5d229ff69p-108, -0x1.b90d81c2130d1p-164 },
         { 0x1.f50765b6e4540p+0,  0x1.9d3e12dd8a18bp-54, -0x1.4019bffc80ef3p-110,  0x1.2ba29b8908965p-164 },
         { 0x1.fa7c1819e90d8p+0,  0x1.74853f3a5931ep-55,  0x1.dc060c36f7651p-112, -0x1.2cfc37316ebd2p-166 }
+    };
+
+    inline constexpr f256_s ln2_table_64[] = {
+        { 0x0.0p+0, 0x0.0p+0, 0x0.0p+0, 0x0.0p+0 },
+        { 0x1.62e42fefa39efp-7, 0x1.abc9e3b39803fp-62, 0x1.7b57a079a1934p-117, -0x1.ace93a4ebe5d1p-171 },
+        { 0x1.62e42fefa39efp-6, 0x1.abc9e3b39803fp-61, 0x1.7b57a079a1934p-116, -0x1.ace93a4ebe5d1p-170 },
+        { 0x1.0a2b23f3bab73p-5, 0x1.a06bb56359018p-59, -0x1.38df91e931b46p-113, -0x1.506bbaeec3b17p-167 },
+        { 0x1.62e42fefa39efp-5, 0x1.abc9e3b39803fp-60, 0x1.7b57a079a1934p-115, -0x1.ace93a4ebe5d1p-169 },
+        { 0x1.bb9d3beb8c86bp-5, 0x1.6bc5ca07e04f0p-64, -0x1.2e93bb3fb03fcp-118, -0x1.82388e26df45ap-173 },
+        { 0x1.0a2b23f3bab73p-4, 0x1.a06bb56359018p-58, -0x1.38df91e931b46p-112, -0x1.506bbaeec3b17p-166 },
+        { 0x1.3687a9f1af2b1p-4, 0x1.3b28539e9281cp-58, -0x1.6d04d4e564a7dp-112, 0x1.222cfb3ec65bap-166 },
+        { 0x1.62e42fefa39efp-4, 0x1.abc9e3b39803fp-59, 0x1.7b57a079a1934p-114, -0x1.ace93a4ebe5d1p-168 },
+        { 0x1.8f40b5ed9812dp-4, 0x1.c28640541608ep-60, 0x1.55852911ab8b4p-115, 0x1.d799e6769d749p-172 },
+        { 0x1.bb9d3beb8c86bp-4, 0x1.6bc5ca07e04f0p-63, -0x1.2e93bb3fb03fcp-117, -0x1.82388e26df45ap-172 },
+        { 0x1.e7f9c1e980fa9p-4, -0x1.6794cdd21df52p-60, -0x1.eccf06b183ab2p-115, -0x1.3702c0b116fffp-170 },
+        { 0x1.0a2b23f3bab73p-3, 0x1.a06bb56359018p-57, -0x1.38df91e931b46p-111, -0x1.506bbaeec3b17p-165 },
+        { 0x1.205966f2b4f12p-3, 0x1.6dca0480f5c1ap-57, -0x1.52f233674b2e2p-111, 0x1.e8e0a02801551p-165 },
+        { 0x1.3687a9f1af2b1p-3, 0x1.3b28539e9281cp-57, -0x1.6d04d4e564a7dp-111, 0x1.222cfb3ec65bap-165 },
+        { 0x1.4cb5ecf0a9650p-3, 0x1.0886a2bc2f41ep-57, -0x1.871776637e218p-111, 0x1.6de559562d88cp-167 },
+        { 0x1.62e42fefa39efp-3, 0x1.abc9e3b39803fp-58, 0x1.7b57a079a1934p-113, -0x1.ace93a4ebe5d1p-167 },
+        { 0x1.791272ee9dd8ep-3, 0x1.468681eed1843p-58, 0x1.130d1a813bac7p-113, -0x1.8f6f9be75485dp-168 },
+        { 0x1.8f40b5ed9812dp-3, 0x1.c28640541608ep-59, 0x1.55852911ab8b4p-114, 0x1.d799e6769d749p-171 },
+        { 0x1.a56ef8ec924ccp-3, 0x1.effef9951212cp-60, 0x1.09e03a41bf7b5p-115, 0x1.5585613ef8bbdp-174 },
+        { 0x1.bb9d3beb8c86bp-3, 0x1.6bc5ca07e04f0p-62, -0x1.2e93bb3fb03fcp-116, -0x1.82388e26df45ap-171 },
+        { 0x1.d1cb7eea86c0ap-3, -0x1.3a1c149121eb4p-60, -0x1.1c39fac0b7dd9p-114, 0x1.9a1bc6f14c4bbp-168 },
+        { 0x1.e7f9c1e980fa9p-3, -0x1.6794cdd21df52p-59, -0x1.eccf06b183ab2p-114, -0x1.3702c0b116fffp-169 },
+        { 0x1.fe2804e87b348p-3, -0x1.190dc8add57a5p-58, -0x1.5eb2095127bc6p-113, 0x1.2ee1785d9cb46p-168 },
+        { 0x1.0a2b23f3bab73p-2, 0x1.a06bb56359018p-56, -0x1.38df91e931b46p-110, -0x1.506bbaeec3b17p-164 },
+        { 0x1.1542457337d43p-2, -0x1.e3948c376279dp-58, -0x1.17a38aa0f9c50p-112, 0x1.30e9ca727b474p-166 },
+        { 0x1.205966f2b4f12p-2, 0x1.6dca0480f5c1ap-56, -0x1.52f233674b2e2p-110, 0x1.e8e0a02801551p-164 },
+        { 0x1.2b708872320e2p-2, -0x1.570da7e077bcbp-57, 0x1.4008f7b3502a2p-111, -0x1.e9e4c932709e9p-166 },
+        { 0x1.3687a9f1af2b1p-2, 0x1.3b28539e9281cp-56, -0x1.6d04d4e564a7dp-110, 0x1.222cfb3ec65bap-164 },
+        { 0x1.419ecb712c481p-2, -0x1.bc5109a53e3c7p-57, 0x1.0be3b4b71d36bp-111, 0x1.7da6519451bddp-165 },
+        { 0x1.4cb5ecf0a9650p-2, 0x1.0886a2bc2f41ep-56, -0x1.871776637e218p-110, 0x1.6de559562d88cp-166 },
+        { 0x1.57cd0e7026820p-2, -0x1.10ca35b5025e1p-56, -0x1.9420c7228ade6p-110, 0x1.f81f83e0ede57p-164 },
+        { 0x1.62e42fefa39efp-2, 0x1.abc9e3b39803fp-57, 0x1.7b57a079a1934p-112, -0x1.ace93a4ebe5d1p-166 },
+        { 0x1.6dfb516f20bbfp-2, -0x1.436be697659dfp-56, -0x1.ae3368a0a4581p-110, 0x1.316bdef7b2ec0p-164 },
+        { 0x1.791272ee9dd8ep-2, 0x1.468681eed1843p-57, 0x1.130d1a813bac7p-112, -0x1.8f6f9be75485dp-167 },
+        { 0x1.8429946e1af5ep-2, -0x1.760d9779c8dddp-56, -0x1.c8460a1ebdd1cp-110, 0x1.aae0e839dfca3p-166 },
+        { 0x1.8f40b5ed9812dp-2, 0x1.c28640541608ep-58, 0x1.55852911ab8b4p-113, 0x1.d799e6769d749p-170 },
+        { 0x1.9a57d76d152fdp-2, -0x1.a8af485c2c1dbp-56, -0x1.e258ab9cd74b7p-110, -0x1.6fedab6b0c1bap-166 },
+        { 0x1.a56ef8ec924ccp-2, 0x1.effef9951212cp-59, 0x1.09e03a41bf7b5p-114, 0x1.5585613ef8bbdp-173 },
+        { 0x1.b0861a6c0f69cp-2, -0x1.db50f93e8f5d9p-56, -0x1.fc6b4d1af0c52p-110, -0x1.22af0fc3fe006p-164 },
+        { 0x1.bb9d3beb8c86bp-2, 0x1.6bc5ca07e04f0p-61, -0x1.2e93bb3fb03fcp-115, -0x1.82388e26df45ap-170 },
+        { 0x1.c6b45d6b09a3ap-2, 0x1.f20d55df0d628p-56, 0x1.e9821166f5c13p-110, -0x1.e962b4ad38f9dp-164 },
+        { 0x1.d1cb7eea86c0ap-2, -0x1.3a1c149121eb4p-59, -0x1.1c39fac0b7dd9p-113, 0x1.9a1bc6f14c4bbp-167 },
+        { 0x1.dce2a06a03dd9p-2, 0x1.bf6ba4fcaa22ap-56, 0x1.cf6f6fe8dc477p-110, 0x1.4fe9a6698c0ccp-164 },
+        { 0x1.e7f9c1e980fa9p-2, -0x1.6794cdd21df52p-58, -0x1.eccf06b183ab2p-113, -0x1.3702c0b116fffp-168 },
+        { 0x1.f310e368fe178p-2, 0x1.8cc9f41a46e2cp-56, 0x1.b55cce6ac2cdcp-110, 0x1.126c0300a2269p-165 },
+        { 0x1.fe2804e87b348p-2, -0x1.190dc8add57a5p-57, -0x1.5eb2095127bc6p-112, 0x1.2ee1785d9cb46p-167 },
+        { 0x1.049f9333fc28cp-1, -0x1.52ebde640e2e9p-55, 0x1.9b4a2ceca9541p-110, -0x1.ebed1b474f317p-167 },
+        { 0x1.0a2b23f3bab73p-1, 0x1.a06bb56359018p-55, -0x1.38df91e931b46p-109, -0x1.506bbaeec3b17p-163 },
+        { 0x1.0fb6b4b37945bp-1, 0x1.2786925580630p-56, 0x1.81378b6e8fda6p-110, -0x1.0431485224dfap-164 },
+        { 0x1.1542457337d43p-1, -0x1.e3948c376279dp-57, -0x1.17a38aa0f9c50p-111, 0x1.30e9ca727b474p-165 },
+        { 0x1.1acdd632f662bp-1, -0x1.858d8f46716e7p-55, 0x1.6724e9f07660bp-110, -0x1.cae4ed3b5fd91p-164 },
+        { 0x1.205966f2b4f12p-1, 0x1.6dca0480f5c1ap-55, -0x1.52f233674b2e2p-109, 0x1.e8e0a02801551p-163 },
+        { 0x1.25e4f7b2737fap-1, 0x1.8486612173c69p-57, -0x1.65db6f1b46321p-111, -0x1.2331244935a51p-165 },
+        { 0x1.2b708872320e2p-1, -0x1.570da7e077bcbp-56, 0x1.4008f7b3502a2p-110, -0x1.e9e4c932709e9p-165 },
+        { 0x1.30fc1931f09cap-1, -0x1.b82f4028d4ae5p-55, 0x1.32ffa6f4436d4p-110, 0x1.4f6791e454680p-165 },
+        { 0x1.3687a9f1af2b1p-1, 0x1.3b28539e9281cp-55, -0x1.6d04d4e564a7dp-109, 0x1.222cfb3ec65bap-163 },
+        { 0x1.3c133ab16db99p-1, 0x1.73ff3b2fcd8e1p-58, 0x1.8ed057629f390p-114, -0x1.effdbf710c573p-168 },
+        { 0x1.419ecb712c481p-1, -0x1.bc5109a53e3c7p-56, 0x1.0be3b4b71d36bp-110, 0x1.7da6519451bddp-164 },
+        { 0x1.472a5c30ead69p-1, -0x1.ead0f10b37ee3p-55, 0x1.fdb4c7f020f3cp-111, -0x1.cb6701c0977ddp-165 },
+        { 0x1.4cb5ecf0a9650p-1, 0x1.0886a2bc2f41ep-55, -0x1.871776637e218p-109, 0x1.6de559562d88cp-165 },
+        { 0x1.52417db067f38p-1, -0x1.08725f1a63879p-61, 0x1.31f09e7dc00a5p-116, 0x1.cc6d1b3ca3d22p-171 },
+        { 0x1.57cd0e7026820p-1, -0x1.10ca35b5025e1p-55, -0x1.9420c7228ade6p-109, 0x1.f81f83e0ede57p-163 },
+        { 0x1.5d589f2fe5107p-1, 0x1.e28d5e1264d1fp-55, 0x1.956a41f7bb0cfp-111, -0x1.cc6b2acb06c74p-166 },
+        { 0x1.62e42fefa39efp-1, 0x1.abc9e3b39803fp-56, 0x1.7b57a079a1934p-111, -0x1.ace93a4ebe5d1p-165 }
     };
 
     // logarithm coefficients
@@ -688,20 +740,28 @@ namespace bl::detail::_f256 // primitives and kernels
         { -0x1.508f0136e4c55p-174, -0x1.610f5fbe0553fp-229, -0x1.3c032cb2c6f71p-285, -0x1.398ab14eef776p-340 },
         {  0x1.5325472cd461ep-178, -0x1.be070aa9e6708p-232, -0x1.9424187dd7358p-286,  0x1.a01887d174e65p-340 },
         {  0x1.5936fbf9ec655p-186,  0x1.36b1efd62ae1fp-243, -0x1.5197195d42727p-297,  0x1.396f96fdbf03dp-352 },
-        { -0x1.d3257cb381cb2p-187, -0x1.a9acc2bacdf6ap-241,  0x1.3204cc65fcf88p-298, -0x1.540bd126cad21p-352 },
-        {  0x1.df5871880e591p-192, -0x1.e091979f28c8ap-246,  0x1.acea2fc38ae40p-301,  0x1.0ee226696b3aep-355 },
-        {  0x1.3c421b3b2b2dfp-196, -0x1.a2c79eef97c8bp-252, -0x1.4da91e762e58ap-308,  0x1.f465abcf26a83p-363 },
-        { -0x1.d527b931bde63p-200, -0x1.a90490031a12ep-254, -0x1.3a30d8ce0d4c0p-308, -0x1.5aa90a6cd2fa6p-362 },
+        { -0x1.d3257cb34616ap-187,  0x1.69f87e0063ce0p-242,  0x1.829dd92b4d289p-296, -0x1.1a0c886619382p-351 },
+        {  0x1.df58714fa55b3p-192, -0x1.c258b621fc0c1p-246,  0x1.c2778f959ff13p-302, -0x1.c9a360d4739ddp-358 },
+        {  0x1.3c41788d4b89fp-196,  0x1.fe5ff8b0acdd8p-251, -0x1.ad0b82a24bb68p-305,  0x1.4c8df23011e5ap-359 },
+        { -0x1.d4337c4e54866p-200, -0x1.aaae5133945ccp-255,  0x1.5dd200b7a686ep-309,  0x1.828455e459147p-373 },
+        {  0x1.ee7eb9d18f479p-207, -0x1.41d87f455af28p-262,  0x1.b5c316fa1fc08p-317, -0x1.f760d37bd3965p-374 },
+        {  0x1.e879c6d2bfa6ap-209, -0x1.4a625ac06de17p-264,  0x1.9d929e08f756bp-320,  0x1.95af78f8584c8p-374 },
+        { -0x1.455bbf47f4c0fp-213, -0x1.bebc39f1706adp-270,  0x1.0963d0a4c5a8fp-324,  0x1.7731f7b24ea20p-379 },
+        { -0x1.c347eefc38e3dp-219, -0x1.69a1b8cbae680p-277,  0x1.d14524b7e96d8p-331, -0x1.fcd74bef77dedp-386 },
     };
 
     // table metadata
-    inline constexpr int two_over_pi_fixed_bits         = 2048;
     inline constexpr auto f256_trig_coeff_count_pi4     = sizeof(f256_sin_coeffs_pi4) / sizeof(f256_sin_coeffs_pi4[0]);
-    inline constexpr auto f256_trig_small_coeff_count   = 13;
-    inline constexpr auto f256_trig_small_coeff_offset  = f256_trig_coeff_count_pi4 - f256_trig_small_coeff_count;
+    inline constexpr auto f256_trig_small_coeff_offset  = 11;
+    inline constexpr auto f256_trig_small_coeff_count   = f256_trig_coeff_count_pi4 - f256_trig_small_coeff_offset;
     inline constexpr auto f256_atan_tiny_coeff_count    = sizeof(f256_atan_tiny_coeffs) / sizeof(f256_atan_tiny_coeffs[0]);
     inline constexpr auto f256_atan_reduced_coeff_count = sizeof(f256_atan_reduced_coeffs) / sizeof(f256_atan_reduced_coeffs[0]);
-    inline constexpr auto f256_erf_cheb_coeff_count     = 52;
+    inline constexpr auto f256_erf_cheb_coeff_count     = sizeof(f256_erf_cheb_0_1) / sizeof(f256_erf_cheb_0_1[0]);
+    inline constexpr auto f256_erfc_cheb_coeff_count    = sizeof(f256_erfc_cheb_3_4) / sizeof(f256_erfc_cheb_3_4[0]);
+
+    static_assert(f256_trig_coeff_count_pi4 == sizeof(f256_cos_coeffs_pi4) / sizeof(f256_cos_coeffs_pi4[0]));
+    static_assert(f256_erf_cheb_coeff_count == sizeof(f256_erf_cheb_1_2) / sizeof(f256_erf_cheb_1_2[0]));
+    static_assert(f256_erf_cheb_coeff_count == sizeof(f256_erf_cheb_2_3) / sizeof(f256_erf_cheb_2_3[0]));
 
 } // namespace bl::detail::_f256
 

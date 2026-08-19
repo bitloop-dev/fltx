@@ -12,33 +12,45 @@
 
 #include <charconv>
 #include <cstddef>
+#include <stdexcept>
 #include <string>
+#include <string_view>
 #include <system_error>
+#include <type_traits>
 
+#include "fltx/detail/ascii.h"
+#include "fltx/detail/native_float_io.h"
 #include "fltx/f128_string.h"
 #include "fltx/f256_string.h"
 
 namespace bl::detail::charconv
 {
-    [[nodiscard]] BL_FORCE_INLINE constexpr bool supported_format(std::chars_format fmt) noexcept
+    [[nodiscard]] BL_FORCE_INLINE constexpr bool supported_output_format(std::chars_format fmt) noexcept
     {
         return fmt == std::chars_format::general ||
                fmt == std::chars_format::fixed ||
-               fmt == std::chars_format::scientific;
+               fmt == std::chars_format::scientific ||
+               fmt == std::chars_format::hex;
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr bool is_ascii_space(char c) noexcept
+    template<class Traits>
+    [[nodiscard]] BL_FORCE_INLINE constexpr std::from_chars_result parse_special_from_chars(
+        const char* first,
+        const char* last,
+        typename Traits::value_type& value) noexcept
     {
-        return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v';
-    }
+        const char* p = first;
+        bool neg = false;
+        if (p != last && *p == '-')
+        {
+            neg = true;
+            ++p;
+        }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr bool begins_special(const char* first) noexcept
-    {
-        if (*first == '-')
-            ++first;
+        if (!detail::parse_special<Traits>(p, last, neg, value))
+            return { first, std::errc::invalid_argument };
 
-        return (ascii_lower(first[0]) == 'n' && ascii_lower(first[1]) == 'a' && ascii_lower(first[2]) == 'n') ||
-               (ascii_lower(first[0]) == 'i' && ascii_lower(first[1]) == 'n' && ascii_lower(first[2]) == 'f');
+        return { p, std::errc{} };
     }
 
     [[nodiscard]] BL_FORCE_INLINE constexpr bool has_exponent_marker(const char* first, const char* last) noexcept
@@ -90,10 +102,10 @@ namespace bl::detail::charconv
         std::chars_format fmt,
         int precision) noexcept
     {
-        if (!supported_format(fmt))
+        if (!supported_output_format(fmt))
             return { first, std::errc::invalid_argument };
 
-        if (special_text<Traits>(value) != nullptr)
+        if (special_text<Traits>(value) != nullptr) [[unlikely]]
             return emit_special<Traits>(first, last, value);
 
         detail::fltx_char_result result{};
@@ -101,6 +113,15 @@ namespace bl::detail::charconv
             result = Traits::to_chars_fixed(first, last, value, precision, false);
         else if (fmt == std::chars_format::scientific)
             result = Traits::to_chars_scientific_frac(first, last, value, precision, false);
+        else if (fmt == std::chars_format::hex)
+            result = detail::emit_hex_float_to_chars<Traits>(
+                first,
+                last,
+                value,
+                false,
+                precision,
+                precision >= 0,
+                precision < 0);
         else
             result = Traits::to_chars_general(first, last, value, precision, true);
 
@@ -116,57 +137,222 @@ namespace bl::detail::charconv
         typename Traits::value_type& value,
         std::chars_format fmt) noexcept
     {
-        if (!supported_format(fmt))
+        if (!supported_output_format(fmt))
             return { first, std::errc::invalid_argument };
 
-        if (first == last || *first == '+' || is_ascii_space(*first))
+        if (first == last || *first == '+' || ascii_space(*first))
             return { first, std::errc::invalid_argument };
-
-        const std::size_t length = static_cast<std::size_t>(last - first);
-        constexpr std::size_t stack_capacity = 1024;
-        char stack[stack_capacity + 1]{};
-        std::string dynamic;
-        char* buffer = stack;
-
-        if (length > stack_capacity)
-        {
-            dynamic.assign(first, last);
-            dynamic.push_back('\0');
-            buffer = dynamic.data();
-        }
-        else
-        {
-            copy_chars(buffer, first, length);
-            buffer[length] = '\0';
-        }
-
-        if (fmt == std::chars_format::fixed)
-        {
-            const std::size_t exponent_offset = exponent_marker_offset(buffer, length);
-            if (exponent_offset != length)
-                buffer[exponent_offset] = '\0';
-        }
 
         typename Traits::value_type parsed{};
         const char* end = nullptr;
-        if (!detail::parse_flt<Traits>(buffer, parsed, &end) || end == buffer)
+        bool parsed_ok = false;
+        if (fmt == std::chars_format::hex)
+        {
+            const std::size_t length = static_cast<std::size_t>(last - first);
+            constexpr std::size_t stack_capacity = 1024;
+            char stack[stack_capacity + 1]{};
+            std::string dynamic;
+            char* buffer = stack;
+
+            if (length > stack_capacity)
+            {
+                dynamic.assign(first, last);
+                dynamic.push_back('\0');
+                buffer = dynamic.data();
+            }
+            else
+            {
+                copy_chars(buffer, first, length);
+                buffer[length] = '\0';
+            }
+
+            parsed_ok = detail::parse_hex_float<Traits>(buffer, buffer + length, parsed, &end);
+            end = first + (end - buffer);
+        }
+        else
+        {
+            const char* parse_last = last;
+            if (fmt == std::chars_format::fixed)
+            {
+                const std::size_t length = static_cast<std::size_t>(last - first);
+                const std::size_t exponent_offset = exponent_marker_offset(first, length);
+                parse_last = first + exponent_offset;
+            }
+            parsed_ok = detail::parse_flt<Traits>(first, parse_last, parsed, &end);
+        }
+
+        if (!parsed_ok || end == first)
             return { first, std::errc::invalid_argument };
 
         if (fmt == std::chars_format::scientific &&
-            !begins_special(buffer) &&
-            !has_exponent_marker(buffer, end))
+            signed_special_token_length(first, last) == 0 &&
+            !has_exponent_marker(first, end))
         {
             return { first, std::errc::invalid_argument };
         }
 
         value = parsed;
-        return { first + (end - buffer), std::errc{} };
+        return { end, std::errc{} };
+    }
+
+    template<class Traits>
+    [[nodiscard]] BL_FORCE_INLINE std::from_chars_result native_from_chars(
+        const char* first,
+        const char* last,
+        typename Traits::value_type& value,
+        std::chars_format fmt) noexcept
+    {
+        if constexpr (requires { std::from_chars(first, last, value, fmt); })
+        {
+            typename Traits::value_type parsed = value;
+            auto result = std::from_chars(first, last, parsed, fmt);
+            if (result.ec == std::errc::invalid_argument &&
+                signed_special_token_length(first, last) != 0) [[unlikely]]
+            {
+                result = parse_special_from_chars<Traits>(first, last, parsed);
+            }
+
+            // Some floating from_chars implementations report success and
+            // store infinity for a finite token outside the native range.
+            // Preserve the standard-shaped error and transactional output
+            // contract at the bl::from_chars boundary.
+            if (result.ec == std::errc{} &&
+                signed_special_token_length(first, last) == 0 &&
+                Traits::isinf(parsed)) [[unlikely]]
+            {
+                return { result.ptr, std::errc::result_out_of_range };
+            }
+
+            if (result.ec == std::errc{})
+                value = parsed;
+            return result;
+        }
+        else
+        {
+            typename Traits::value_type parsed = value;
+            const auto result = from_chars_impl<Traits>(
+                first, last, parsed, fmt);
+            if (result.ec == std::errc{} &&
+                signed_special_token_length(first, last) == 0 &&
+                Traits::isinf(parsed)) [[unlikely]]
+            {
+                return { result.ptr, std::errc::result_out_of_range };
+            }
+
+            if (result.ec == std::errc{})
+                value = parsed;
+            return result;
+        }
     }
 
 } // namespace bl::detail::charconv
 
 namespace bl
 {
+    template<class T>
+    struct parse_result
+    {
+        T value{};
+        std::size_t consumed = 0;
+        std::errc ec{};
+
+        [[nodiscard]] constexpr explicit operator bool() const noexcept
+        {
+            return ec == std::errc{};
+        }
+    };
+
+    namespace detail::charconv
+    {
+        [[nodiscard]] BL_NO_INLINE parse_result<f128_s> parse_runtime_f128_s(
+            std::string_view text,
+            std::chars_format fmt) noexcept;
+
+        [[nodiscard]] BL_NO_INLINE parse_result<f128> parse_runtime_f128(
+            std::string_view text,
+            std::chars_format fmt) noexcept;
+
+        [[nodiscard]] BL_NO_INLINE parse_result<f256_s> parse_runtime_f256_s(
+            std::string_view text,
+            std::chars_format fmt) noexcept;
+
+        [[nodiscard]] BL_NO_INLINE parse_result<f256> parse_runtime_f256(
+            std::string_view text,
+            std::chars_format fmt) noexcept;
+    }
+
+    [[nodiscard]] inline std::to_chars_result to_chars(
+        char* first,
+        char* last,
+        f32 value) noexcept
+    {
+        return std::to_chars(first, last, value);
+    }
+
+    [[nodiscard]] inline std::to_chars_result to_chars(
+        char* first,
+        char* last,
+        f32 value,
+        std::chars_format fmt) noexcept
+    {
+        return std::to_chars(first, last, value, fmt);
+    }
+
+    [[nodiscard]] inline std::to_chars_result to_chars(
+        char* first,
+        char* last,
+        f32 value,
+        std::chars_format fmt,
+        int precision) noexcept
+    {
+        return std::to_chars(first, last, value, fmt, precision);
+    }
+
+    [[nodiscard]] inline std::from_chars_result from_chars(
+        const char* first,
+        const char* last,
+        f32& value,
+        std::chars_format fmt = std::chars_format::general) noexcept
+    {
+        return detail::charconv::native_from_chars<detail::_native_float_io::f32_io_traits>(first, last, value, fmt);
+    }
+
+    [[nodiscard]] inline std::to_chars_result to_chars(
+        char* first,
+        char* last,
+        f64 value) noexcept
+    {
+        return std::to_chars(first, last, value);
+    }
+
+    [[nodiscard]] inline std::to_chars_result to_chars(
+        char* first,
+        char* last,
+        f64 value,
+        std::chars_format fmt) noexcept
+    {
+        return std::to_chars(first, last, value, fmt);
+    }
+
+    [[nodiscard]] inline std::to_chars_result to_chars(
+        char* first,
+        char* last,
+        f64 value,
+        std::chars_format fmt,
+        int precision) noexcept
+    {
+        return std::to_chars(first, last, value, fmt, precision);
+    }
+
+    [[nodiscard]] inline std::from_chars_result from_chars(
+        const char* first,
+        const char* last,
+        f64& value,
+        std::chars_format fmt = std::chars_format::general) noexcept
+    {
+        return detail::charconv::native_from_chars<detail::_native_float_io::f64_io_traits>(first, last, value, fmt);
+    }
+
     [[nodiscard]] constexpr std::to_chars_result to_chars(
         char* first,
         char* last,
@@ -188,6 +374,8 @@ namespace bl
     {
         const int precision = fmt == std::chars_format::general
             ? std::numeric_limits<f128_s>::max_digits10
+            : fmt == std::chars_format::hex
+            ? -1
             : 6;
         return detail::charconv::to_chars_impl<detail::_f128::f128_io_traits>(
             first,
@@ -212,7 +400,7 @@ namespace bl
             precision);
     }
 
-    [[nodiscard]] std::from_chars_result from_chars(
+    [[nodiscard]] inline std::from_chars_result from_chars(
         const char* first,
         const char* last,
         f128_s& value,
@@ -242,6 +430,8 @@ namespace bl
     {
         const int precision = fmt == std::chars_format::general
             ? std::numeric_limits<f256_s>::max_digits10
+            : fmt == std::chars_format::hex
+            ? -1
             : 6;
 
         return detail::charconv::to_chars_impl<detail::_f256::f256_io_traits>(
@@ -267,13 +457,331 @@ namespace bl
             precision);
     }
 
-    [[nodiscard]] std::from_chars_result from_chars(
+    [[nodiscard]] inline std::from_chars_result from_chars(
         const char* first,
         const char* last,
         f256_s& value,
         std::chars_format fmt = std::chars_format::general) noexcept
     {
         return detail::charconv::from_chars_impl<detail::_f256::f256_io_traits>(first, last, value, fmt);
+    }
+
+    namespace detail::charconv
+    {
+        template<class>
+        struct dependent_false : std::false_type {};
+
+        template<class T>
+        inline constexpr bool unqualified_parse_value =
+            std::is_same_v<T, std::remove_cvref_t<T>>;
+
+        template<class T>
+        struct parse_traits_for
+        {
+            static constexpr bool supported = false;
+        };
+
+        template<>
+        struct parse_traits_for<f32>
+        {
+            static constexpr bool supported = true;
+            using traits = detail::_native_float_io::f32_io_traits;
+        };
+
+        template<>
+        struct parse_traits_for<f64>
+        {
+            static constexpr bool supported = true;
+            using traits = detail::_native_float_io::f64_io_traits;
+        };
+
+        template<>
+        struct parse_traits_for<f128_s>
+        {
+            static constexpr bool supported = true;
+            using traits = detail::_f128::f128_io_traits;
+        };
+
+        template<>
+        struct parse_traits_for<f128>
+        {
+            static constexpr bool supported = true;
+            using traits = detail::_f128::f128_io_traits;
+        };
+
+        template<>
+        struct parse_traits_for<f256_s>
+        {
+            static constexpr bool supported = true;
+            using traits = detail::_f256::f256_io_traits;
+        };
+
+        template<>
+        struct parse_traits_for<f256>
+        {
+            static constexpr bool supported = true;
+            using traits = detail::_f256::f256_io_traits;
+        };
+
+        [[nodiscard]] BL_FORCE_INLINE constexpr bool has_hex_float_prefix(std::string_view text) noexcept
+        {
+            std::size_t index = 0;
+            if (!text.empty() && (text[0] == '-' || text[0] == '+'))
+                index = 1;
+
+            return text.size() >= index + 2 &&
+                   text[index] == '0' &&
+                   ascii_lower(text[index + 1]) == 'x';
+        }
+
+        [[nodiscard]] BL_FORCE_INLINE constexpr std::chars_format effective_parse_format(
+            std::string_view text,
+            std::chars_format fmt) noexcept
+        {
+            return fmt == std::chars_format::general && has_hex_float_prefix(text)
+                ? std::chars_format::hex
+                : fmt;
+        }
+
+        template<class Traits>
+        [[nodiscard]] constexpr std::from_chars_result from_chars_constexpr_range(
+            const char* first,
+            const char* last,
+            typename Traits::value_type& value,
+            std::chars_format fmt,
+            bool allow_hex_prefix = false,
+            bool allow_leading_plus = false) noexcept
+        {
+            if (!supported_output_format(fmt))
+                return { first, std::errc::invalid_argument };
+
+            if (first == last || ascii_space(*first))
+                return { first, std::errc::invalid_argument };
+
+            if (*first == '+' && !allow_leading_plus)
+                return { first, std::errc::invalid_argument };
+
+            typename Traits::value_type parsed{};
+            const char* end = nullptr;
+            bool parsed_ok = false;
+            if (fmt == std::chars_format::hex)
+            {
+                parsed_ok = detail::parse_hex_float<Traits>(
+                    first,
+                    last,
+                    parsed,
+                    &end,
+                    allow_hex_prefix,
+                    allow_leading_plus);
+            }
+            else
+            {
+                const char* parse_last = last;
+                if (fmt == std::chars_format::fixed)
+                {
+                    const std::size_t length = static_cast<std::size_t>(last - first);
+                    const std::size_t exponent_offset = exponent_marker_offset(first, length);
+                    parse_last = first + exponent_offset;
+                }
+                parsed_ok = detail::parse_flt<Traits>(first, parse_last, parsed, &end);
+            }
+
+            if (!parsed_ok || end == first)
+                return { first, std::errc::invalid_argument };
+
+            if (fmt == std::chars_format::scientific &&
+                signed_special_token_length(first, last) == 0 &&
+                !has_exponent_marker(first, end))
+            {
+                return { first, std::errc::invalid_argument };
+            }
+
+            value = parsed;
+            return { end, std::errc{} };
+        }
+
+        template<class T>
+        [[nodiscard]] constexpr parse_result<T> parse_constexpr(
+            std::string_view text,
+            std::chars_format fmt) noexcept
+        {
+            using Traits = typename parse_traits_for<T>::traits;
+            const std::chars_format effective_fmt = effective_parse_format(text, fmt);
+            const bool allow_hex_prefix = effective_fmt == std::chars_format::hex;
+
+            parse_result<T> result{};
+
+            if (text.empty())
+            {
+                result.ec = std::errc::invalid_argument;
+                return result;
+            }
+
+            const char* first = text.data();
+            const char* last = first + text.size();
+            typename Traits::value_type parsed{};
+            const auto parsed_result = from_chars_constexpr_range<Traits>(
+                first,
+                last,
+                parsed,
+                effective_fmt,
+                allow_hex_prefix,
+                true);
+
+            result.consumed = static_cast<std::size_t>(parsed_result.ptr - first);
+            result.ec = parsed_result.ec;
+            if (result.ec == std::errc{} && result.consumed != text.size())
+                result.ec = std::errc::invalid_argument;
+
+            if (result.ec == std::errc{})
+                result.value = T{ parsed };
+
+            return result;
+        }
+
+        template<class T>
+        [[nodiscard]] parse_result<T> parse_runtime(
+            std::string_view text,
+            std::chars_format fmt) noexcept
+        {
+            parse_result<T> result{};
+
+            if (text.empty())
+            {
+                result.ec = std::errc::invalid_argument;
+                return result;
+            }
+
+            const std::chars_format effective_fmt = effective_parse_format(text, fmt);
+            const bool use_flexible_hex = effective_fmt == std::chars_format::hex;
+            const bool allow_leading_plus = !text.empty() && text[0] == '+';
+
+            T parsed{};
+            std::from_chars_result parsed_result{};
+            if (use_flexible_hex || allow_leading_plus)
+            {
+                using Traits = typename parse_traits_for<T>::traits;
+                typename Traits::value_type traits_value{};
+                const auto traits_result = from_chars_constexpr_range<Traits>(
+                    text.data(),
+                    text.data() + text.size(),
+                    traits_value,
+                    effective_fmt,
+                    use_flexible_hex,
+                    allow_leading_plus);
+                parsed = T{ traits_value };
+                parsed_result = { traits_result.ptr, traits_result.ec };
+            }
+            else
+            {
+                parsed_result = bl::from_chars(text.data(), text.data() + text.size(), parsed, effective_fmt);
+            }
+            result.consumed = static_cast<std::size_t>(parsed_result.ptr - text.data());
+            result.ec = parsed_result.ec;
+            if (result.ec == std::errc{} && result.consumed != text.size())
+                result.ec = std::errc::invalid_argument;
+
+            if (result.ec == std::errc{})
+                result.value = parsed;
+
+            return result;
+        }
+
+        template<class T>
+        [[nodiscard]] parse_result<T> parse_runtime_dispatch(
+            std::string_view text,
+            std::chars_format fmt) noexcept
+        {
+            if constexpr (std::is_same_v<T, f128_s>)
+                return parse_runtime_f128_s(text, fmt);
+            else if constexpr (std::is_same_v<T, f128>)
+                return parse_runtime_f128(text, fmt);
+            else if constexpr (std::is_same_v<T, f256_s>)
+                return parse_runtime_f256_s(text, fmt);
+            else if constexpr (std::is_same_v<T, f256>)
+                return parse_runtime_f256(text, fmt);
+            else
+                return parse_runtime<T>(text, fmt);
+        }
+
+    } // namespace detail::charconv
+
+    template<class Value>
+    [[nodiscard]] constexpr parse_result<Value> try_parse(
+        std::string_view text,
+        std::chars_format fmt = std::chars_format::general) noexcept
+    {
+        static_assert(
+            detail::charconv::unqualified_parse_value<Value>,
+            "bl::parse<T> and bl::try_parse<T> expect T to be an unqualified value type, such as bl::f256."
+        );
+
+        if constexpr (!detail::charconv::parse_traits_for<Value>::supported)
+        {
+            static_assert(
+                detail::charconv::dependent_false<Value>::value,
+                "bl::parse<T> and bl::try_parse<T> support bl::f32, bl::f64, bl::f128, bl::f128_s, bl::f256, and bl::f256_s."
+            );
+        }
+        else
+        {
+            #if BL_FP_BARRIER_ACTIVE
+            if constexpr (
+                std::is_same_v<Value, f128_s> || std::is_same_v<Value, f128> ||
+                std::is_same_v<Value, f256_s> || std::is_same_v<Value, f256>)
+                return detail::charconv::parse_constexpr<Value>(text, fmt);
+            #endif
+            BL_CONSTEXPR_RUNTIME_DISPATCH(
+                detail::charconv::parse_constexpr<Value>(text, fmt),
+                detail::charconv::parse_runtime_dispatch<Value>(text, fmt)
+            );
+        }
+    }
+
+    template<class T>
+    [[nodiscard]] constexpr bool try_parse(
+        std::string_view text,
+        T& out,
+        std::chars_format fmt = std::chars_format::general) noexcept
+    {
+        using value_type = std::remove_cvref_t<T>;
+        const auto parsed = try_parse<value_type>(text, fmt);
+        if (!parsed)
+            return false;
+
+        out = parsed.value;
+        return true;
+    }
+
+    template<class Value>
+    [[nodiscard]] constexpr Value parse(
+        std::string_view text,
+        Value fallback,
+        std::chars_format fmt = std::chars_format::general) noexcept
+    {
+        const auto parsed = try_parse<Value>(text, fmt);
+        return parsed ? parsed.value : fallback;
+    }
+
+    template<class Value>
+    [[nodiscard]] constexpr Value parse(
+        std::string_view text,
+        std::chars_format fmt = std::chars_format::general)
+    {
+        const auto parsed = try_parse<Value>(text, fmt);
+        if (!parsed)
+        {
+            switch (parsed.ec)
+            {
+            case std::errc::invalid_argument:
+                throw std::invalid_argument("bl::parse invalid input");
+            case std::errc::result_out_of_range:
+                throw std::out_of_range("bl::parse input out of range");
+            default:
+                throw std::logic_error("bl::parse unexpected error code");
+            }
+        }
+        return parsed.value;
     }
 
 } // namespace bl

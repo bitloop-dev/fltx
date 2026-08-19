@@ -1,0 +1,15 @@
+{
+  "consumer_mode": "strict",
+  "outputs": [
+    "accuracy_table.svg"
+  ],
+  "run_ids": {
+    "wasm32/wasm32/Emscripten": "07cb9aa0af7241f981735eab48f97723"
+  },
+  "schema_version": "6",
+  "source_fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
+  "source_revision": "b38d8f2a0c9da2eeae373bce48a1aa42bf88fcdc-dirty-7cd523deac97",
+  "targets": [
+    "wasm32/wasm32/Emscripten"
+  ]
+}

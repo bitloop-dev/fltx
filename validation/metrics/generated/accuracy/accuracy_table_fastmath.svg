@@ -1,0 +1,1418 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="540" height="5510" viewBox="0 0 540 5510" role="img" aria-labelledby="title desc">
+<title id="title">fltx consumer fast-math accuracy consistency</title>
+<desc id="desc">FLTX MPFR-relative average and minimum tested bits accurate by target with consumer fast-math enabled.</desc>
+<rect width="540" height="5510" fill="#f5f7fb"/>
+<text x="18" y="44" fill="#111827" font-size="28.8" font-weight="700" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">fltx consumer fast-math accuracy consistency</text>
+<text x="18" y="68" fill="#4b5563" font-size="14.4" font-weight="400" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">FLTX MPFR-relative average and minimum tested bits accurate by target with consumer fast-math enabled.</text>
+<text x="18" y="88" fill="#4b5563" font-size="13.2" font-weight="400" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">✓ All FLTX domains pass · ! At least one FLTX domain failed · — Not applicable</text>
+<text x="18" y="104" fill="#4b5563" font-size="13.2" font-weight="400" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">Competitor results remain available in the per-target overview and CSV data.</text>
+<rect x="18" y="128" width="220" height="52" fill="#3b4b63" stroke="#000000" stroke-width="1"/>
+<text x="30" y="159" fill="#ffffff" font-size="15.6" font-weight="700" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">Operation</text>
+<rect x="238" y="128" width="142" height="52" fill="#3b4b63" stroke="#000000" stroke-width="1"/>
+<text x="309" y="150" fill="#ffffff" font-size="14.4" font-weight="700" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">WebAssembly / wasm32 / Clang (Emscripten)</text>
+<text x="309" y="168" fill="#e2e8f0" font-size="12" font-weight="600" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">f128</text>
+<rect x="380" y="128" width="142" height="52" fill="#3b4b63" stroke="#000000" stroke-width="1"/>
+<text x="451" y="150" fill="#ffffff" font-size="14.4" font-weight="700" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">WebAssembly / wasm32 / Clang (Emscripten)</text>
+<text x="451" y="168" fill="#e2e8f0" font-size="12" font-weight="600" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">f256</text>
+<rect x="18" y="180" width="504" height="28" fill="#dbe2ea" stroke="#000000" stroke-width="1"/>
+<text x="30" y="199" fill="#111827" font-size="14.4" font-weight="700" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">Arithmetic</text>
+<rect x="18" y="208" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="237" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">add</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; arithmetic / add
+fltx bl::f128 (bl::add): mean 120.266239506 bits; p01 106.483519 bits; worst 105.736235 bits; margin 15.736235 bits</title>
+<rect x="238" y="208" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="227" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 120.3b</text>
+<text x="309" y="244" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 105.7b</text>
+<text x="309" y="261" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; arithmetic / add
+fltx bl::f256 (bl::add): mean 227.373862582 bits; p01 215.583815 bits; worst 215.297307 bits; margin 25.297307 bits</title>
+<rect x="380" y="208" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="227" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 227.4b</text>
+<text x="451" y="244" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 215.3b</text>
+<text x="451" y="261" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="275" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="304" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">subtract</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; arithmetic / subtract
+fltx bl::f128 (bl::subtract): mean 120.053476095 bits; p01 106.530508 bits; worst 105.744857 bits; margin 15.744857 bits</title>
+<rect x="238" y="275" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="294" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 120.1b</text>
+<text x="309" y="311" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 105.7b</text>
+<text x="309" y="328" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; arithmetic / subtract
+fltx bl::f256 (bl::subtract): mean 227.447841785 bits; p01 215.602949 bits; worst 215.220788 bits; margin 25.220788 bits</title>
+<rect x="380" y="275" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="294" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 227.4b</text>
+<text x="451" y="311" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 215.2b</text>
+<text x="451" y="328" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="342" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="371" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">multiply</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; arithmetic / multiply
+fltx bl::f128 (bl::multiply): mean 108.702461473 bits; p01 105.665876 bits; worst 105.380753 bits; margin 15.380753 bits</title>
+<rect x="238" y="342" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="361" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 108.7b</text>
+<text x="309" y="378" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 105.4b</text>
+<text x="309" y="395" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; arithmetic / multiply
+fltx bl::f256 (bl::multiply): mean 220.046096951 bits; p01 215.608028 bits; worst 215.221541 bits; margin 25.221541 bits</title>
+<rect x="380" y="342" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="361" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 220.0b</text>
+<text x="451" y="378" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 215.2b</text>
+<text x="451" y="395" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="409" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="438" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">divide</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; arithmetic / divide
+fltx bl::f128 (bl::divide): mean 110.909104952 bits; p01 105.971646 bits; worst 105.124683 bits; margin 15.124683 bits</title>
+<rect x="238" y="409" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="428" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 110.9b</text>
+<text x="309" y="445" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 105.1b</text>
+<text x="309" y="462" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; arithmetic / divide
+fltx bl::f256 (bl::divide): mean 219.220520548 bits; p01 215.287455 bits; worst 214.762066 bits; margin 24.762066 bits</title>
+<rect x="380" y="409" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="428" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 219.2b</text>
+<text x="451" y="445" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 214.8b</text>
+<text x="451" y="462" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="476" width="504" height="28" fill="#dbe2ea" stroke="#000000" stroke-width="1"/>
+<text x="30" y="495" fill="#111827" font-size="14.4" font-weight="700" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">IO</text>
+<rect x="18" y="504" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="533" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">to_string</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; io / to_string
+fltx bl::f128 (bl::to_string): mean 113.981524548 bits; p01 110.936216 bits; worst 110.695372 bits; margin 20.695372 bits</title>
+<rect x="238" y="504" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="523" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 114.0b</text>
+<text x="309" y="540" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 110.7b</text>
+<text x="309" y="557" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; io / to_string
+fltx bl::f256 (bl::to_string): mean 220.440705573 bits; p01 217.235897 bits; worst 216.9758 bits; margin 26.9758 bits</title>
+<rect x="380" y="504" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="523" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 220.4b</text>
+<text x="451" y="540" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 217.0b</text>
+<text x="451" y="557" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="571" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="600" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">to_chars</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; io / to_chars
+fltx bl::f128 (bl::to_chars): mean 113.981524548 bits; p01 110.936216 bits; worst 110.695372 bits; margin 20.695372 bits</title>
+<rect x="238" y="571" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="590" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 114.0b</text>
+<text x="309" y="607" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 110.7b</text>
+<text x="309" y="624" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; io / to_chars
+fltx bl::f256 (bl::to_chars): mean 220.440705573 bits; p01 217.235897 bits; worst 216.9758 bits; margin 26.9758 bits</title>
+<rect x="380" y="571" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="590" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 220.4b</text>
+<text x="451" y="607" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 217.0b</text>
+<text x="451" y="624" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="638" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="667" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">parse</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; io / parse
+fltx bl::f128 (bl::parse): mean 109.907318229 bits; p01 106.715617 bits; worst 106.003381 bits; margin 0.003381 bits</title>
+<rect x="238" y="638" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="657" fill="#92400e" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 109.9b</text>
+<text x="309" y="674" fill="#92400e" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 106.0b</text>
+<text x="309" y="691" fill="#92400e" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; io / parse
+fltx bl::f256 (bl::parse): mean 219.729662732 bits; p01 212.275332 bits; worst 212.017147 bits; margin 0.017147 bits</title>
+<rect x="380" y="638" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="657" fill="#92400e" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 219.7b</text>
+<text x="451" y="674" fill="#92400e" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 212.0b</text>
+<text x="451" y="691" fill="#92400e" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="705" width="504" height="28" fill="#dbe2ea" stroke="#000000" stroke-width="1"/>
+<text x="30" y="724" fill="#111827" font-size="14.4" font-weight="700" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">Rounding</text>
+<rect x="18" y="733" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="762" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">floor</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; rounding / floor
+fltx bl::f128 (bl::floor): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="733" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="752" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="769" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; rounding / floor
+fltx bl::f256 (bl::floor): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="733" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="752" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="769" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="783" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="812" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">ceil</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; rounding / ceil
+fltx bl::f128 (bl::ceil): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="783" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="802" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="819" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; rounding / ceil
+fltx bl::f256 (bl::ceil): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="783" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="802" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="819" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="833" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="862" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">trunc</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; rounding / trunc
+fltx bl::f128 (bl::trunc): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="833" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="852" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="869" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; rounding / trunc
+fltx bl::f256 (bl::trunc): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="833" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="852" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="869" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="883" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="912" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">round</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; rounding / round
+fltx bl::f128 (bl::round): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="883" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="902" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="919" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; rounding / round
+fltx bl::f256 (bl::round): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="883" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="902" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="919" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="933" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="962" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">roundeven</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; rounding / roundeven
+fltx bl::f128 (bl::roundeven): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="933" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="952" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="969" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; rounding / roundeven
+fltx bl::f256 (bl::roundeven): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="933" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="952" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="969" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="983" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="1012" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">lround</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; rounding / lround
+fltx bl::f128 (bl::lround): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="983" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="1002" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="1019" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; rounding / lround
+fltx bl::f256 (bl::lround): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="983" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="1002" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="1019" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="1033" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="1062" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">llround</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; rounding / llround
+fltx bl::f128 (bl::llround): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="1033" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="1052" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="1069" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; rounding / llround
+fltx bl::f256 (bl::llround): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="1033" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="1052" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="1069" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="1083" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="1112" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">round_decimals</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; rounding / round_decimals
+fltx bl::f128 (bl::round_decimals): mean 110.177573 bits; p01 107.236356 bits; worst 107.022726 bits; margin 17.022726 bits</title>
+<rect x="238" y="1083" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="1102" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 110.2b</text>
+<text x="309" y="1119" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 107.0b</text>
+<text x="309" y="1136" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; rounding / round_decimals
+fltx bl::f256 (bl::round_decimals): mean 220.044956 bits; p01 215.606687 bits; worst 215.330917 bits; margin 25.330917 bits</title>
+<rect x="380" y="1083" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="1102" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 220.0b</text>
+<text x="451" y="1119" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 215.3b</text>
+<text x="451" y="1136" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="1150" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="1179" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">round_significant</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; rounding / round_significant
+fltx bl::f128 (bl::round_significant): mean 121.33026 bits; p01 107.34042 bits; worst 107.049597 bits; margin 17.049597 bits</title>
+<rect x="238" y="1150" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="1169" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 121.3b</text>
+<text x="309" y="1186" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 107.0b</text>
+<text x="309" y="1203" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; rounding / round_significant
+fltx bl::f256 (bl::round_significant): mean 229.647449 bits; p01 215.594292 bits; worst 215.06782 bits; margin 25.06782 bits</title>
+<rect x="380" y="1150" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="1169" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 229.6b</text>
+<text x="451" y="1186" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 215.1b</text>
+<text x="451" y="1203" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="1217" width="504" height="28" fill="#dbe2ea" stroke="#000000" stroke-width="1"/>
+<text x="30" y="1236" fill="#111827" font-size="14.4" font-weight="700" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">Remainders</text>
+<rect x="18" y="1245" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="1274" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">fmod</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; remainders / fmod
+fltx bl::f128 (bl::fmod): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="1245" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="1264" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="1281" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 3/3 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; remainders / fmod
+fltx bl::f256 (bl::fmod): mean 243.996795284 bits; p01 217.724535 bits; worst 217.724535 bits; margin 27.724535 bits</title>
+<rect x="380" y="1245" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="1264" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 244.0b</text>
+<text x="451" y="1281" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 217.7b</text>
+<text x="451" y="1298" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 3/3 domains</text>
+</g>
+<rect x="18" y="1312" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="1341" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">remainder</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; remainders / remainder
+fltx bl::f128 (bl::remainder): mean 137.991491 bits; p01 inf bits; worst 103.120938 bits; margin 13.120938 bits</title>
+<rect x="238" y="1312" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="1331" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 138.0b</text>
+<text x="309" y="1348" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 103.1b</text>
+<text x="309" y="1365" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; remainders / remainder
+fltx bl::f256 (bl::remainder): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="1312" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="1331" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="1348" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="1379" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="1408" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">remquo</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; remainders / remquo
+fltx bl::f128 (bl::remquo): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="1379" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="1398" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="1415" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; remainders / remquo
+fltx bl::f256 (bl::remquo): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="1379" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="1398" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="1415" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="1429" width="504" height="28" fill="#dbe2ea" stroke="#000000" stroke-width="1"/>
+<text x="30" y="1448" fill="#111827" font-size="14.4" font-weight="700" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">Float Utils</text>
+<rect x="18" y="1457" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="1486" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">abs</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; floating_point_utilities / abs
+fltx bl::f128 (bl::abs): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="1457" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="1476" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="1493" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; floating_point_utilities / abs
+fltx bl::f256 (bl::abs): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="1457" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="1476" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="1493" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="1507" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="1536" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">fabs</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; floating_point_utilities / fabs
+fltx bl::f128 (bl::fabs): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="1507" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="1526" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="1543" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; floating_point_utilities / fabs
+fltx bl::f256 (bl::fabs): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="1507" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="1526" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="1543" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="1557" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="1586" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">fma</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; floating_point_utilities / fma
+fltx bl::f128 (bl::fma): mean 117.187792693 bits; p01 104.040192 bits; worst 99.5802 bits; margin 9.5802 bits</title>
+<rect x="238" y="1557" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="1576" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 117.2b</text>
+<text x="309" y="1593" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 99.6b</text>
+<text x="309" y="1610" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 3/3 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; floating_point_utilities / fma
+fltx bl::f256 (bl::fma): mean 229.715460613 bits; p01 215.654212 bits; worst 215.096656 bits; margin 25.096656 bits</title>
+<rect x="380" y="1557" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="1576" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 229.7b</text>
+<text x="451" y="1593" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 215.1b</text>
+<text x="451" y="1610" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 3/3 domains</text>
+</g>
+<rect x="18" y="1624" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="1653" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">recip</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; floating_point_utilities / recip
+fltx bl::f128 (bl::recip): mean 109.025331959 bits; p01 105.925795 bits; worst 105.189487 bits; margin 15.189487 bits</title>
+<rect x="238" y="1624" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="1643" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 109.0b</text>
+<text x="309" y="1660" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 105.2b</text>
+<text x="309" y="1677" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; floating_point_utilities / recip
+fltx bl::f256 (bl::recip): mean 217.927920075 bits; p01 215.148048 bits; worst 214.625136 bits; margin 24.625136 bits</title>
+<rect x="380" y="1624" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="1643" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 217.9b</text>
+<text x="451" y="1660" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 214.6b</text>
+<text x="451" y="1677" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="1691" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="1720" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">fmin</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; floating_point_utilities / fmin
+fltx bl::f128 (bl::fmin): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="1691" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="1710" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="1727" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; floating_point_utilities / fmin
+fltx bl::f256 (bl::fmin): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="1691" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="1710" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="1727" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="1741" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="1770" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">fmax</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; floating_point_utilities / fmax
+fltx bl::f128 (bl::fmax): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="1741" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="1760" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="1777" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; floating_point_utilities / fmax
+fltx bl::f256 (bl::fmax): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="1741" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="1760" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="1777" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="1791" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="1820" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">fdim</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; floating_point_utilities / fdim
+fltx bl::f128 (bl::fdim): mean 137.996123973 bits; p01 inf bits; worst 106.227061 bits; margin 16.227061 bits</title>
+<rect x="238" y="1791" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="1810" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 138.0b</text>
+<text x="309" y="1827" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 106.2b</text>
+<text x="309" y="1844" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; floating_point_utilities / fdim
+fltx bl::f256 (bl::fdim): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="1791" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="1810" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="1827" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="1858" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="1887" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">copysign</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; floating_point_utilities / copysign
+fltx bl::f128 (bl::copysign): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="1858" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="1877" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="1894" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; floating_point_utilities / copysign
+fltx bl::f256 (bl::copysign): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="1858" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="1877" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="1894" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="1908" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="1937" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">ldexp</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; floating_point_utilities / ldexp
+fltx bl::f128 (bl::ldexp): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="1908" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="1927" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="1944" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; floating_point_utilities / ldexp
+fltx bl::f256 (bl::ldexp): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="1908" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="1927" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="1944" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="1958" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="1987" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">scalbn</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; floating_point_utilities / scalbn
+fltx bl::f128 (bl::scalbn): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="1958" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="1977" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="1994" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; floating_point_utilities / scalbn
+fltx bl::f256 (bl::scalbn): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="1958" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="1977" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="1994" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="2008" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="2037" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">scalbln</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; floating_point_utilities / scalbln
+fltx bl::f128 (bl::scalbln): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="2008" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="2027" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="2044" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; floating_point_utilities / scalbln
+fltx bl::f256 (bl::scalbln): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="2008" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="2027" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="2044" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="2058" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="2087" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">frexp</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; floating_point_utilities / frexp
+fltx bl::f128 (bl::frexp): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="2058" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="2077" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="2094" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; floating_point_utilities / frexp
+fltx bl::f256 (bl::frexp): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="2058" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="2077" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="2094" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="2108" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="2137" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">modf</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; floating_point_utilities / modf
+fltx bl::f128 (bl::modf): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="2108" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="2127" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="2144" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; floating_point_utilities / modf
+fltx bl::f256 (bl::modf): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="2108" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="2127" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="2144" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="2158" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="2187" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">ilogb</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; floating_point_utilities / ilogb
+fltx bl::f128 (bl::ilogb): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="2158" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="2177" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="2194" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; floating_point_utilities / ilogb
+fltx bl::f256 (bl::ilogb): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="2158" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="2177" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="2194" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="2208" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="2237" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">logb</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; floating_point_utilities / logb
+fltx bl::f128 (bl::logb): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="2208" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="2227" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="2244" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; floating_point_utilities / logb
+fltx bl::f256 (bl::logb): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="2208" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="2227" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="2244" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="2258" width="220" height="48" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="2287" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">nextafter</text>
+<g>
+<title>No accuracy result</title>
+<rect x="238" y="2258" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="309" y="2286" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<g>
+<title>No accuracy result</title>
+<rect x="380" y="2258" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="451" y="2286" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<rect x="18" y="2306" width="220" height="48" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="2335" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">nexttoward</text>
+<g>
+<title>No accuracy result</title>
+<rect x="238" y="2306" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="309" y="2334" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<g>
+<title>No accuracy result</title>
+<rect x="380" y="2306" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="451" y="2334" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<rect x="18" y="2354" width="504" height="28" fill="#dbe2ea" stroke="#000000" stroke-width="1"/>
+<text x="30" y="2373" fill="#111827" font-size="14.4" font-weight="700" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">Roots &amp; powers</text>
+<rect x="18" y="2382" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="2411" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">sqr</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; roots_and_powers / sqr
+fltx bl::f128 (bl::sqr): mean 108.712755765 bits; p01 105.598081 bits; worst 105.370295 bits; margin 15.370295 bits</title>
+<rect x="238" y="2382" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="2401" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 108.7b</text>
+<text x="309" y="2418" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 105.4b</text>
+<text x="309" y="2435" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; roots_and_powers / sqr
+fltx bl::f256 (bl::sqr): mean 220.120699598 bits; p01 216.278909 bits; worst 215.25119 bits; margin 25.25119 bits</title>
+<rect x="380" y="2382" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="2401" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 220.1b</text>
+<text x="451" y="2418" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 215.3b</text>
+<text x="451" y="2435" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="2449" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="2478" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">sqrt</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; roots_and_powers / sqrt
+fltx bl::f128 (bl::sqrt): mean 109.760683649 bits; p01 105.75112 bits; worst 104.669867 bits; margin 14.669867 bits</title>
+<rect x="238" y="2449" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="2468" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 109.8b</text>
+<text x="309" y="2485" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 104.7b</text>
+<text x="309" y="2502" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 4/4 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; roots_and_powers / sqrt
+fltx bl::f256 (bl::sqrt): mean 217.906343684 bits; p01 211.19589 bits; worst 209.568118 bits; margin 19.568118 bits</title>
+<rect x="380" y="2449" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="2468" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 217.9b</text>
+<text x="451" y="2485" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 209.6b</text>
+<text x="451" y="2502" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 4/4 domains</text>
+</g>
+<rect x="18" y="2516" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="2545" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">cbrt</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; roots_and_powers / cbrt
+fltx bl::f128 (bl::cbrt): mean 108.521255256 bits; p01 104.960828 bits; worst 104.098992 bits; margin 14.098992 bits</title>
+<rect x="238" y="2516" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="2535" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 108.5b</text>
+<text x="309" y="2552" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 104.1b</text>
+<text x="309" y="2569" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; roots_and_powers / cbrt
+fltx bl::f256 (bl::cbrt): mean 219.28474431 bits; p01 215.534477 bits; worst 214.867489 bits; margin 24.867489 bits</title>
+<rect x="380" y="2516" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="2535" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 219.3b</text>
+<text x="451" y="2552" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 214.9b</text>
+<text x="451" y="2569" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="2583" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="2612" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">hypot</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; roots_and_powers / hypot
+fltx bl::f128 (bl::hypot): mean 122.379786777 bits; p01 105.55647 bits; worst 104.375984 bits; margin 14.375984 bits</title>
+<rect x="238" y="2583" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="2602" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 122.4b</text>
+<text x="309" y="2619" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 104.4b</text>
+<text x="309" y="2636" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; roots_and_powers / hypot
+fltx bl::f256 (bl::hypot): mean 229.931215146 bits; p01 215.484839 bits; worst 213.870154 bits; margin 23.870154 bits</title>
+<rect x="380" y="2583" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="2602" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 229.9b</text>
+<text x="451" y="2619" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 213.9b</text>
+<text x="451" y="2636" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="2650" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="2679" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">pow</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; roots_and_powers / pow
+fltx bl::f128 (bl::pow): mean 107.1276135 bits; p01 102.267431 bits; worst 101.314349 bits; margin 21.314349 bits</title>
+<rect x="238" y="2650" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="2669" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 107.1b</text>
+<text x="309" y="2686" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 101.3b</text>
+<text x="309" y="2703" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; roots_and_powers / pow
+fltx bl::f256 (bl::pow): mean 216.837164 bits; p01 212.047897 bits; worst 211.143117 bits; margin 31.143117 bits</title>
+<rect x="380" y="2650" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="2669" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 216.8b</text>
+<text x="451" y="2686" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 211.1b</text>
+<text x="451" y="2703" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="2717" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="2746" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">ipow</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; roots_and_powers / ipow
+fltx bl::f128 (bl::ipow): mean 106.491467825 bits; p01 103.779117 bits; worst 103.190083 bits; margin 13.190083 bits</title>
+<rect x="238" y="2717" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="2736" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 106.5b</text>
+<text x="309" y="2753" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 103.2b</text>
+<text x="309" y="2770" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; roots_and_powers / ipow
+fltx bl::f256 (bl::ipow): mean 217.175762701 bits; p01 214.383216 bits; worst 213.656994 bits; margin 23.656994 bits</title>
+<rect x="380" y="2717" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="2736" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 217.2b</text>
+<text x="451" y="2753" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 213.7b</text>
+<text x="451" y="2770" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="2784" width="504" height="28" fill="#dbe2ea" stroke="#000000" stroke-width="1"/>
+<text x="30" y="2803" fill="#111827" font-size="14.4" font-weight="700" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">Exponentials</text>
+<rect x="18" y="2812" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="2841" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">exp</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; exponentials / exp
+fltx bl::f128 (bl::exp): mean 106.9987285 bits; p01 104.374273 bits; worst 103.64511 bits; margin 23.64511 bits</title>
+<rect x="238" y="2812" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="2831" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 107.0b</text>
+<text x="309" y="2848" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 103.6b</text>
+<text x="309" y="2865" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; exponentials / exp
+fltx bl::f256 (bl::exp): mean 216.4305135 bits; p01 209.786789 bits; worst 209.697661 bits; margin 29.697661 bits</title>
+<rect x="380" y="2812" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="2831" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 216.4b</text>
+<text x="451" y="2848" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 209.7b</text>
+<text x="451" y="2865" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="2879" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="2908" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">exp2</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; exponentials / exp2
+fltx bl::f128 (bl::exp2): mean 108.8963935 bits; p01 106.013023 bits; worst 105.117537 bits; margin 25.117537 bits</title>
+<rect x="238" y="2879" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="2898" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 108.9b</text>
+<text x="309" y="2915" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 105.1b</text>
+<text x="309" y="2932" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; exponentials / exp2
+fltx bl::f256 (bl::exp2): mean 218.030361 bits; p01 214.973213 bits; worst 214.202868 bits; margin 34.202868 bits</title>
+<rect x="380" y="2879" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="2898" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 218.0b</text>
+<text x="451" y="2915" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 214.2b</text>
+<text x="451" y="2932" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="2946" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="2975" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">expm1</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; exponentials / expm1
+fltx bl::f128 (bl::expm1): mean 121.61686848 bits; p01 105.111574 bits; worst 104.102752 bits; margin 24.102752 bits</title>
+<rect x="238" y="2946" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="2965" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 121.6b</text>
+<text x="309" y="2982" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 104.1b</text>
+<text x="309" y="2999" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; exponentials / expm1
+fltx bl::f256 (bl::expm1): mean 227.989217153 bits; p01 214.88315 bits; worst 213.793932 bits; margin 33.793932 bits</title>
+<rect x="380" y="2946" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="2965" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 228.0b</text>
+<text x="451" y="2982" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 213.8b</text>
+<text x="451" y="2999" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="3013" width="504" height="28" fill="#dbe2ea" stroke="#000000" stroke-width="1"/>
+<text x="30" y="3032" fill="#111827" font-size="14.4" font-weight="700" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">Logarithms</text>
+<rect x="18" y="3041" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="3070" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">log</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; logarithms / log
+fltx bl::f128 (bl::log): mean 108.40767633 bits; p01 104.625423 bits; worst 103.727726 bits; margin 23.727726 bits</title>
+<rect x="238" y="3041" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="3060" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 108.4b</text>
+<text x="309" y="3077" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 103.7b</text>
+<text x="309" y="3094" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 3/3 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; logarithms / log
+fltx bl::f256 (bl::log): mean 217.713430044 bits; p01 214.333783 bits; worst 213.252927 bits; margin 33.252927 bits</title>
+<rect x="380" y="3041" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="3060" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 217.7b</text>
+<text x="451" y="3077" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 213.3b</text>
+<text x="451" y="3094" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 3/3 domains</text>
+</g>
+<rect x="18" y="3108" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="3137" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">log2</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; logarithms / log2
+fltx bl::f128 (bl::log2): mean 108.785650924 bits; p01 104.550799 bits; worst 103.716432 bits; margin 23.716432 bits</title>
+<rect x="238" y="3108" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="3127" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 108.8b</text>
+<text x="309" y="3144" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 103.7b</text>
+<text x="309" y="3161" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 3/3 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; logarithms / log2
+fltx bl::f256 (bl::log2): mean 218.589512067 bits; p01 214.28538 bits; worst 213.192358 bits; margin 33.192358 bits</title>
+<rect x="380" y="3108" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="3127" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 218.6b</text>
+<text x="451" y="3144" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 213.2b</text>
+<text x="451" y="3161" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 3/3 domains</text>
+</g>
+<rect x="18" y="3175" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="3204" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">log10</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; logarithms / log10
+fltx bl::f128 (bl::log10): mean 107.503050022 bits; p01 104.469291 bits; worst 103.762278 bits; margin 23.762278 bits</title>
+<rect x="238" y="3175" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="3194" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 107.5b</text>
+<text x="309" y="3211" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 103.8b</text>
+<text x="309" y="3228" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 3/3 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; logarithms / log10
+fltx bl::f256 (bl::log10): mean 217.407206146 bits; p01 214.245682 bits; worst 213.257193 bits; margin 33.257193 bits</title>
+<rect x="380" y="3175" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="3194" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 217.4b</text>
+<text x="451" y="3211" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 213.3b</text>
+<text x="451" y="3228" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 3/3 domains</text>
+</g>
+<rect x="18" y="3242" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="3271" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">log1p</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; logarithms / log1p
+fltx bl::f128 (bl::log1p): mean 121.372231555 bits; p01 105.150365 bits; worst 103.619384 bits; margin 23.619384 bits</title>
+<rect x="238" y="3242" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="3261" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 121.4b</text>
+<text x="309" y="3278" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 103.6b</text>
+<text x="309" y="3295" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; logarithms / log1p
+fltx bl::f256 (bl::log1p): mean 227.627482935 bits; p01 214.787129 bits; worst 214.020088 bits; margin 34.020088 bits</title>
+<rect x="380" y="3242" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="3261" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 227.6b</text>
+<text x="451" y="3278" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 214.0b</text>
+<text x="451" y="3295" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="3309" width="504" height="28" fill="#dbe2ea" stroke="#000000" stroke-width="1"/>
+<text x="30" y="3328" fill="#111827" font-size="14.4" font-weight="700" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">Trigonometric</text>
+<rect x="18" y="3337" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="3366" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">sin</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; trigonometric / sin
+fltx bl::f128 (bl::sin): mean 110.553532277 bits; p01 98.777563 bits; worst 98.619216 bits; margin 18.619216 bits</title>
+<rect x="238" y="3337" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="3356" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 110.6b</text>
+<text x="309" y="3373" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 98.6b</text>
+<text x="309" y="3390" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 3/3 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; trigonometric / sin
+fltx bl::f256 (bl::sin): mean 222.290222968 bits; p01 208.567012 bits; worst 202.92477 bits; margin 22.92477 bits</title>
+<rect x="380" y="3337" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="3356" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 222.3b</text>
+<text x="451" y="3373" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 202.9b</text>
+<text x="451" y="3390" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 3/3 domains</text>
+</g>
+<rect x="18" y="3404" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="3433" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">cos</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; trigonometric / cos
+fltx bl::f128 (bl::cos): mean 113.520718505 bits; p01 100.266388 bits; worst 99.209588 bits; margin 19.209588 bits</title>
+<rect x="238" y="3404" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="3423" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 113.5b</text>
+<text x="309" y="3440" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 99.2b</text>
+<text x="309" y="3457" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 3/3 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; trigonometric / cos
+fltx bl::f256 (bl::cos): mean 226.780465244 bits; p01 215.246584 bits; worst 208.674366 bits; margin 28.674366 bits</title>
+<rect x="380" y="3404" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="3423" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 226.8b</text>
+<text x="451" y="3440" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 208.7b</text>
+<text x="451" y="3457" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 3/3 domains</text>
+</g>
+<rect x="18" y="3471" width="220" height="48" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="3500" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">sincos</text>
+<g>
+<title>No accuracy result</title>
+<rect x="238" y="3471" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="309" y="3499" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<g>
+<title>No accuracy result</title>
+<rect x="380" y="3471" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="451" y="3499" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<rect x="18" y="3519" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="3548" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">tan</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; trigonometric / tan
+fltx bl::f128 (bl::tan): mean 106.671100353 bits; p01 98.776698 bits; worst 98.614153 bits; margin 23.614153 bits</title>
+<rect x="238" y="3519" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="3538" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 106.7b</text>
+<text x="309" y="3555" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 98.6b</text>
+<text x="309" y="3572" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 3/3 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; trigonometric / tan
+fltx bl::f256 (bl::tan): mean 217.050653666 bits; p01 208.567009 bits; worst 202.92477 bits; margin 32.92477 bits</title>
+<rect x="380" y="3519" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="3538" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 217.1b</text>
+<text x="451" y="3555" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 202.9b</text>
+<text x="451" y="3572" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 3/3 domains</text>
+</g>
+<rect x="18" y="3586" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="3615" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">asin</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; trigonometric / asin
+fltx bl::f128 (bl::asin): mean 108.580073592 bits; p01 105.096123 bits; worst 104.081582 bits; margin 24.081582 bits</title>
+<rect x="238" y="3586" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="3605" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 108.6b</text>
+<text x="309" y="3622" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 104.1b</text>
+<text x="309" y="3639" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; trigonometric / asin
+fltx bl::f256 (bl::asin): mean 217.91775033 bits; p01 214.870821 bits; worst 214.404436 bits; margin 34.404436 bits</title>
+<rect x="380" y="3586" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="3605" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 217.9b</text>
+<text x="451" y="3622" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 214.4b</text>
+<text x="451" y="3639" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="3653" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="3682" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">acos</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; trigonometric / acos
+fltx bl::f128 (bl::acos): mean 106.470630111 bits; p01 95.825547 bits; worst 81.584963 bits; margin 1.584963 bits</title>
+<rect x="238" y="3653" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="3672" fill="#92400e" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 106.5b</text>
+<text x="309" y="3689" fill="#92400e" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 81.6b</text>
+<text x="309" y="3706" fill="#92400e" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; trigonometric / acos
+fltx bl::f256 (bl::acos): mean 216.029308016 bits; p01 205.510139 bits; worst 192.466318 bits; margin 12.466318 bits</title>
+<rect x="380" y="3653" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="3672" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 216.0b</text>
+<text x="451" y="3689" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 192.5b</text>
+<text x="451" y="3706" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="3720" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="3749" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">atan</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; trigonometric / atan
+fltx bl::f128 (bl::atan): mean 108.728555 bits; p01 105.953468 bits; worst 104.92639 bits; margin 24.92639 bits</title>
+<rect x="238" y="3720" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="3739" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 108.7b</text>
+<text x="309" y="3756" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 104.9b</text>
+<text x="309" y="3773" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; trigonometric / atan
+fltx bl::f256 (bl::atan): mean 218.142465 bits; p01 215.364973 bits; worst 214.678988 bits; margin 34.678988 bits</title>
+<rect x="380" y="3720" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="3739" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 218.1b</text>
+<text x="451" y="3756" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 214.7b</text>
+<text x="451" y="3773" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="3787" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="3816" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">atan2</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; trigonometric / atan2
+fltx bl::f128 (bl::atan2): mean 108.727143624 bits; p01 105.799026 bits; worst 104.520841 bits; margin 24.520841 bits</title>
+<rect x="238" y="3787" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="3806" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 108.7b</text>
+<text x="309" y="3823" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 104.5b</text>
+<text x="309" y="3840" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 3/3 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; trigonometric / atan2
+fltx bl::f256 (bl::atan2): mean 217.911773079 bits; p01 215.258136 bits; worst 214.277602 bits; margin 34.277602 bits</title>
+<rect x="380" y="3787" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="3806" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 217.9b</text>
+<text x="451" y="3823" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 214.3b</text>
+<text x="451" y="3840" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 3/3 domains</text>
+</g>
+<rect x="18" y="3854" width="504" height="28" fill="#dbe2ea" stroke="#000000" stroke-width="1"/>
+<text x="30" y="3873" fill="#111827" font-size="14.4" font-weight="700" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">Hyperbolic</text>
+<rect x="18" y="3882" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="3911" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">sinh</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; hyperbolic / sinh
+fltx bl::f128 (bl::sinh): mean 107.4201585 bits; p01 104.726423 bits; worst 103.568829 bits; margin 23.568829 bits</title>
+<rect x="238" y="3882" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="3901" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 107.4b</text>
+<text x="309" y="3918" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 103.6b</text>
+<text x="309" y="3935" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; hyperbolic / sinh
+fltx bl::f256 (bl::sinh): mean 217.022625 bits; p01 214.597984 bits; worst 213.844482 bits; margin 33.844482 bits</title>
+<rect x="380" y="3882" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="3901" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 217.0b</text>
+<text x="451" y="3918" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 213.8b</text>
+<text x="451" y="3935" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="3949" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="3978" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">cosh</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; hyperbolic / cosh
+fltx bl::f128 (bl::cosh): mean 107.9070545 bits; p01 105.118172 bits; worst 104.370708 bits; margin 24.370708 bits</title>
+<rect x="238" y="3949" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="3968" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 107.9b</text>
+<text x="309" y="3985" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 104.4b</text>
+<text x="309" y="4002" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; hyperbolic / cosh
+fltx bl::f256 (bl::cosh): mean 217.5106305 bits; p01 214.737937 bits; worst 214.159072 bits; margin 34.159072 bits</title>
+<rect x="380" y="3949" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="3968" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 217.5b</text>
+<text x="451" y="3985" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 214.2b</text>
+<text x="451" y="4002" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="4016" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="4045" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">tanh</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; hyperbolic / tanh
+fltx bl::f128 (bl::tanh): mean 109.217494 bits; p01 105.123457 bits; worst 103.771823 bits; margin 23.771823 bits</title>
+<rect x="238" y="4016" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="4035" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 109.2b</text>
+<text x="309" y="4052" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 103.8b</text>
+<text x="309" y="4069" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; hyperbolic / tanh
+fltx bl::f256 (bl::tanh): mean 219.128554 bits; p01 215.222392 bits; worst 214.042672 bits; margin 34.042672 bits</title>
+<rect x="380" y="4016" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="4035" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 219.1b</text>
+<text x="451" y="4052" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 214.0b</text>
+<text x="451" y="4069" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="4083" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="4112" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">asinh</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; inverse_hyperbolic / asinh
+fltx bl::f128 (bl::asinh): mean 108.081857 bits; p01 105.155677 bits; worst 103.818628 bits; margin 23.818628 bits</title>
+<rect x="238" y="4083" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="4102" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 108.1b</text>
+<text x="309" y="4119" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 103.8b</text>
+<text x="309" y="4136" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; inverse_hyperbolic / asinh
+fltx bl::f256 (bl::asinh): mean 217.1921705 bits; p01 213.881562 bits; worst 212.956798 bits; margin 32.956798 bits</title>
+<rect x="380" y="4083" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="4102" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 217.2b</text>
+<text x="451" y="4119" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 213.0b</text>
+<text x="451" y="4136" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="4150" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="4179" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">acosh</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; inverse_hyperbolic / acosh
+fltx bl::f128 (bl::acosh): mean 108.031519376 bits; p01 104.331717 bits; worst 103.672888 bits; margin 23.672888 bits</title>
+<rect x="238" y="4150" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="4169" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 108.0b</text>
+<text x="309" y="4186" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 103.7b</text>
+<text x="309" y="4203" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; inverse_hyperbolic / acosh
+fltx bl::f256 (bl::acosh): mean 217.720725959 bits; p01 214.442677 bits; worst 213.709421 bits; margin 33.709421 bits</title>
+<rect x="380" y="4150" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="4169" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 217.7b</text>
+<text x="451" y="4186" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 213.7b</text>
+<text x="451" y="4203" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="4217" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="4246" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">atanh</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; inverse_hyperbolic / atanh
+fltx bl::f128 (bl::atanh): mean 108.11583849 bits; p01 104.54201 bits; worst 103.139045 bits; margin 23.139045 bits</title>
+<rect x="238" y="4217" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="4236" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 108.1b</text>
+<text x="309" y="4253" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 103.1b</text>
+<text x="309" y="4270" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; inverse_hyperbolic / atanh
+fltx bl::f256 (bl::atanh): mean 218.285376518 bits; p01 214.164921 bits; worst 213.300563 bits; margin 33.300563 bits</title>
+<rect x="380" y="4217" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="4236" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 218.3b</text>
+<text x="451" y="4253" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 213.3b</text>
+<text x="451" y="4270" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="4284" width="504" height="28" fill="#dbe2ea" stroke="#000000" stroke-width="1"/>
+<text x="30" y="4303" fill="#111827" font-size="14.4" font-weight="700" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">Special</text>
+<rect x="18" y="4312" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="4341" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">erfc</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; special_functions / erfc
+fltx bl::f128 (bl::erfc): mean 107.1893035 bits; p01 100.123363 bits; worst 99.167646 bits; margin 19.167646 bits</title>
+<rect x="238" y="4312" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="4331" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 107.2b</text>
+<text x="309" y="4348" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 99.2b</text>
+<text x="309" y="4365" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; special_functions / erfc
+fltx bl::f256 (bl::erfc): mean 208.160201 bits; p01 191.066815 bits; worst 189.779688 bits; margin 9.779688 bits</title>
+<rect x="380" y="4312" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="4331" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 208.2b</text>
+<text x="451" y="4348" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 189.8b</text>
+<text x="451" y="4365" fill="#15803d" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="4379" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="4408" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">erf</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; special_functions / erf
+fltx bl::f128 (bl::erf): mean 110.8988915 bits; p01 104.260004 bits; worst 103.47754 bits; margin 23.47754 bits</title>
+<rect x="238" y="4379" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="4398" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 110.9b</text>
+<text x="309" y="4415" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 103.5b</text>
+<text x="309" y="4432" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; special_functions / erf
+fltx bl::f256 (bl::erf): mean 212.782396 bits; p01 196.847186 bits; worst 196.755396 bits; margin 16.755396 bits</title>
+<rect x="380" y="4379" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="4398" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 212.8b</text>
+<text x="451" y="4415" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 196.8b</text>
+<text x="451" y="4432" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 2/2 domains</text>
+</g>
+<rect x="18" y="4446" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="4475" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">tgamma</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; special_functions / tgamma
+fltx bl::f128 (bl::tgamma): mean 105.565044 bits; p01 98.349598 bits; worst 97.317514 bits; margin 17.317514 bits</title>
+<rect x="238" y="4446" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="4465" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 105.6b</text>
+<text x="309" y="4482" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 97.3b</text>
+<text x="309" y="4499" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; special_functions / tgamma
+fltx bl::f256 (bl::tgamma): mean 209.040528 bits; p01 202.582542 bits; worst 202.45702 bits; margin 22.45702 bits</title>
+<rect x="380" y="4446" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="4465" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 209.0b</text>
+<text x="451" y="4482" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 202.5b</text>
+<text x="451" y="4499" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="4513" width="220" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="4542" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">lgamma</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; special_functions / lgamma
+fltx bl::f128 (bl::lgamma): mean 107.30017 bits; p01 103.199673 bits; worst 102.168212 bits; margin 22.168212 bits</title>
+<rect x="238" y="4513" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="4532" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 107.3b</text>
+<text x="309" y="4549" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 102.2b</text>
+<text x="309" y="4566" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; special_functions / lgamma
+fltx bl::f256 (bl::lgamma): mean 211.903615 bits; p01 199.617279 bits; worst 199.225949 bits; margin 19.225949 bits</title>
+<rect x="380" y="4513" width="142" height="67" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="4532" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">avg 211.9b</text>
+<text x="451" y="4549" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">min 199.2b</text>
+<text x="451" y="4566" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="4580" width="504" height="28" fill="#dbe2ea" stroke="#000000" stroke-width="1"/>
+<text x="30" y="4599" fill="#111827" font-size="14.4" font-weight="700" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">Comparisons</text>
+<rect x="18" y="4608" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="4637" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">equal</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; comparisons / equal
+fltx bl::f128 (bl::equal): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="4608" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="4627" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="4644" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; comparisons / equal
+fltx bl::f256 (bl::equal): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="4608" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="4627" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="4644" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="4658" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="4687" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">not_equal</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; comparisons / not_equal
+fltx bl::f128 (bl::not_equal): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="4658" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="4677" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="4694" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; comparisons / not_equal
+fltx bl::f256 (bl::not_equal): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="4658" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="4677" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="4694" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="4708" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="4737" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">less</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; comparisons / less
+fltx bl::f128 (bl::less): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="4708" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="4727" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="4744" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; comparisons / less
+fltx bl::f256 (bl::less): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="4708" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="4727" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="4744" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="4758" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="4787" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">greater</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; comparisons / greater
+fltx bl::f128 (bl::greater): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="4758" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="4777" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="4794" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; comparisons / greater
+fltx bl::f256 (bl::greater): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="4758" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="4777" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="4794" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="4808" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="4837" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">less_equal</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; comparisons / less_equal
+fltx bl::f128 (bl::less_equal): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="4808" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="4827" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="4844" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; comparisons / less_equal
+fltx bl::f256 (bl::less_equal): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="4808" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="4827" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="4844" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="4858" width="220" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="4887" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">greater_equal</text>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f128; comparisons / greater_equal
+fltx bl::f128 (bl::greater_equal): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="238" y="4858" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="309" y="4877" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="309" y="4894" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<g>
+<title>WebAssembly / wasm32 / Clang (Emscripten); f256; comparisons / greater_equal
+fltx bl::f256 (bl::greater_equal): mean inf bits; p01 inf bits; worst inf bits; margin inf bits</title>
+<rect x="380" y="4858" width="142" height="50" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="451" y="4877" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">exact</text>
+<text x="451" y="4894" fill="#047857" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">✓ 1/1 domains</text>
+</g>
+<rect x="18" y="4908" width="504" height="28" fill="#dbe2ea" stroke="#000000" stroke-width="1"/>
+<text x="30" y="4927" fill="#111827" font-size="14.4" font-weight="700" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">Random</text>
+<rect x="18" y="4936" width="220" height="48" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="4965" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">uniform_real</text>
+<g>
+<title>No accuracy result</title>
+<rect x="238" y="4936" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="309" y="4964" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<g>
+<title>No accuracy result</title>
+<rect x="380" y="4936" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="451" y="4964" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<rect x="18" y="4984" width="220" height="48" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="5013" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">normal</text>
+<g>
+<title>No accuracy result</title>
+<rect x="238" y="4984" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="309" y="5012" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<g>
+<title>No accuracy result</title>
+<rect x="380" y="4984" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="451" y="5012" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<rect x="18" y="5032" width="504" height="28" fill="#dbe2ea" stroke="#000000" stroke-width="1"/>
+<text x="30" y="5051" fill="#111827" font-size="14.4" font-weight="700" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">Mixed Workloads</text>
+<rect x="18" y="5060" width="220" height="48" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="5089" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">product_sum</text>
+<g>
+<title>No accuracy result</title>
+<rect x="238" y="5060" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="309" y="5088" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<g>
+<title>No accuracy result</title>
+<rect x="380" y="5060" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="451" y="5088" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<rect x="18" y="5108" width="220" height="48" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="5137" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">chained_arithmetic</text>
+<g>
+<title>No accuracy result</title>
+<rect x="238" y="5108" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="309" y="5136" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<g>
+<title>No accuracy result</title>
+<rect x="380" y="5108" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="451" y="5136" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<rect x="18" y="5156" width="220" height="48" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="5185" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">affine_trig</text>
+<g>
+<title>No accuracy result</title>
+<rect x="238" y="5156" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="309" y="5184" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<g>
+<title>No accuracy result</title>
+<rect x="380" y="5156" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="451" y="5184" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<rect x="18" y="5204" width="220" height="48" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="5233" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">mandelbrot</text>
+<g>
+<title>No accuracy result</title>
+<rect x="238" y="5204" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="309" y="5232" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<g>
+<title>No accuracy result</title>
+<rect x="380" y="5204" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="451" y="5232" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<rect x="18" y="5252" width="220" height="48" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="5281" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">matrix_vector_4x4</text>
+<g>
+<title>No accuracy result</title>
+<rect x="238" y="5252" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="309" y="5280" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<g>
+<title>No accuracy result</title>
+<rect x="380" y="5252" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="451" y="5280" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<rect x="18" y="5300" width="220" height="48" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="5329" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">horner_polynomial</text>
+<g>
+<title>No accuracy result</title>
+<rect x="238" y="5300" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="309" y="5328" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<g>
+<title>No accuracy result</title>
+<rect x="380" y="5300" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="451" y="5328" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<rect x="18" y="5348" width="220" height="48" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="5377" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">newton_root</text>
+<g>
+<title>No accuracy result</title>
+<rect x="238" y="5348" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="309" y="5376" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<g>
+<title>No accuracy result</title>
+<rect x="380" y="5348" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="451" y="5376" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<rect x="18" y="5396" width="220" height="48" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="5425" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">log_sum_exp</text>
+<g>
+<title>No accuracy result</title>
+<rect x="238" y="5396" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="309" y="5424" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<g>
+<title>No accuracy result</title>
+<rect x="380" y="5396" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="451" y="5424" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<rect x="18" y="5444" width="220" height="48" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+<text x="30" y="5473" fill="#111827" font-size="14.4" font-weight="600" text-anchor="start" font-family="Segoe UI, Arial, sans-serif">haversine</text>
+<g>
+<title>No accuracy result</title>
+<rect x="238" y="5444" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="309" y="5472" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+<g>
+<title>No accuracy result</title>
+<rect x="380" y="5444" width="142" height="48" fill="#e5e7eb" stroke="#000000" stroke-width="1"/>
+<text x="451" y="5472" fill="#111827" font-size="13.2" font-weight="650" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif">—</text>
+</g>
+</svg>

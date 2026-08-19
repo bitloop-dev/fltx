@@ -29,57 +29,39 @@ namespace detail::_f32_impl
 
     BL_FORCE_INLINE constexpr bool iszero(float x) noexcept
     {
-        return x == 0.0f;
+        return (std::bit_cast<std::uint32_t>(x) & 0x7fffffffu) == 0;
     }
 
 } // namespace detail::_f32_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float abs(float x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::fabs(x),
-        std::abs(x)
-    );
+    return detail::_f32_impl::fabs(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float fabs(float x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::fabs(x),
-        std::fabs(x)
-    );
+    return detail::_f32_impl::fabs(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr bool signbit(float x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::signbit(x),
-        std::signbit(x)
-    );
+    return detail::_f32_impl::signbit(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr bool isnan(float x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::isnan(x),
-        std::isnan(x)
-    );
+    return detail::_f32_impl::isnan(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr bool isinf(float x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::isinf(x),
-        std::isinf(x)
-    );
+    return detail::_f32_impl::isinf(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr bool isfinite(float x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::isfinite(x),
-        std::isfinite(x)
-    );
+    return detail::_f32_impl::isfinite(x);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr bool iszero(float x) noexcept

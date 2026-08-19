@@ -12,25 +12,7 @@
 #include <type_traits>
 
 #include "fltx/detail/common_fp.h"
-#include "fltx/detail/simd.h"
-
-#if !defined(BL_F256_ENABLE_SIMD)
-#  if defined(BL_F256_ENABLE_TRIG_SIMD)
-#    define BL_F256_ENABLE_SIMD BL_F256_ENABLE_TRIG_SIMD
-#  elif BL_FLTX_HAS_SSE2 || BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD
-#    define BL_F256_ENABLE_SIMD 1
-#  else
-#    define BL_F256_ENABLE_SIMD 0
-#  endif
-#endif
-
-#if !defined(BL_F256_ENABLE_TRIG_SIMD)
-#  define BL_F256_ENABLE_TRIG_SIMD BL_F256_ENABLE_SIMD
-#endif
-
-#if BL_F256_ENABLE_SIMD && !(BL_FLTX_HAS_SSE2 || BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD)
-#  error "BL_F256_ENABLE_SIMD requires SSE2, AArch64 NEON, or wasm128 SIMD support."
-#endif
+#include "fltx/detail/f256_simd_config.h"
 
 namespace bl {
 
@@ -55,13 +37,10 @@ namespace detail::_f256 // primitives and kernels
     using detail::fp::ceil;
     using detail::fp::integer_fits_exact_double;
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s sub_mul_scalar_fast(const f256_s& r, const f256_s& b, double q) noexcept;
-    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s sub_mul_scalar_exact(const f256_s& r, const f256_s& b, double q) noexcept;
-
     BL_FORCE_INLINE constexpr bool f256_runtime_simd_enabled() noexcept
     {
-        #if BL_F256_ENABLE_SIMD && (BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD)
-        return !bl::use_constexpr_math();
+        #if FLTX_F256_ENABLE_SIMD && (FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD)
+        return !bl::detail::is_constant_evaluated();
         #else
         return false;
         #endif
@@ -69,8 +48,8 @@ namespace detail::_f256 // primitives and kernels
 
     BL_FORCE_INLINE constexpr bool f256_runtime_addsub_simd_enabled() noexcept
     {
-        #if BL_F256_ENABLE_SIMD && BL_FLTX_HAS_NEON
-        return !bl::use_constexpr_math();
+        #if FLTX_F256_ENABLE_SIMD && FLTX_HAS_NEON
+        return !bl::detail::is_constant_evaluated();
         #else
         return false;
         #endif
@@ -78,8 +57,8 @@ namespace detail::_f256 // primitives and kernels
 
     BL_FORCE_INLINE constexpr bool f256_runtime_trig_simd_enabled() noexcept
     {
-        #if BL_F256_ENABLE_TRIG_SIMD
-        return !bl::use_constexpr_math();
+        #if FLTX_F256_ENABLE_TRIG_SIMD
+        return !bl::detail::is_constant_evaluated();
         #else
         return false;
         #endif
@@ -87,12 +66,12 @@ namespace detail::_f256 // primitives and kernels
 
     BL_FORCE_INLINE constexpr bool f256_runtime_product_simd_enabled() noexcept
     {
-        #if BL_F256_ENABLE_SIMD && BL_FLTX_HAS_NEON
-        return !bl::use_constexpr_math();
-        #elif BL_F256_ENABLE_SIMD && BL_FLTX_HAS_WASM_SIMD
-        return !bl::use_constexpr_math();
-        #elif BL_F256_ENABLE_SIMD && BL_FLTX_HAS_SSE2 && (!BL_FLTX_SIMD_USE_FMA_TWO_PROD || BL_FLTX_HAS_X86_FMA)
-        return !bl::use_constexpr_math();
+        #if FLTX_F256_ENABLE_SIMD && FLTX_HAS_NEON
+        return !bl::detail::is_constant_evaluated();
+        #elif FLTX_F256_ENABLE_SIMD && FLTX_HAS_WASM_SIMD
+        return !bl::detail::is_constant_evaluated();
+        #elif FLTX_F256_ENABLE_SIMD && FLTX_HAS_SSE2 && (!FLTX_SIMD_USE_FMA_TWO_PROD || FLTX_HAS_X86_FMA)
+        return !bl::detail::is_constant_evaluated();
         #else
         return false;
         #endif
@@ -120,7 +99,7 @@ namespace detail::_f256 // primitives and kernels
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s div_dd(const f256_s& a, dd_scalar b) noexcept;
     [[nodiscard]] BL_FORCE_INLINE constexpr f256_s div_dd(dd_scalar a, const f256_s& b) noexcept;
 
-#if BL_F256_ENABLE_SIMD
+#if FLTX_F256_ENABLE_SIMD
     namespace simd = bl::detail::simd;
 #endif
 
@@ -347,7 +326,8 @@ struct f256_s
     [[nodiscard]] constexpr f256_s operator+() const { return *this; }
     [[nodiscard]] constexpr f256_s operator-() const noexcept { return f256_s{ -x0, -x1, -x2, -x3 }; }
 
-    [[nodiscard]] static constexpr f256_s eps() { return { 3.038581678643134e-64, 0.0, 0.0, 0.0 }; } // ~2^-211
+    // Spacing above 1.0 in the public nominal 212-bit model.
+    [[nodiscard]] static constexpr f256_s eps() { return { 0x1p-211, 0.0, 0.0, 0.0 }; }
 };
 
 namespace detail::_f256_expr
@@ -372,8 +352,6 @@ struct f256 : public f256_s
     constexpr f256(uint64_t u) noexcept : f256_s{} { static_cast<f256_s&>(*this) = static_cast<uint64_t>(u); }
     constexpr f256(int32_t  v) noexcept : f256((int64_t)v) {}
     constexpr f256(uint32_t u) noexcept : f256((int64_t)u) {}
-    constexpr f256(const char*);
-
     constexpr f256(f128_s f) noexcept;
     constexpr f256(const f256_s& f) noexcept : f256_s{ f.x0, f.x1, f.x2, f.x3 } {}
 

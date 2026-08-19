@@ -8,19 +8,9 @@
 
   "configurePresets": [
     {
-      "name": "native-debug",
+      "name": "_ninja-release",
+      "hidden": true,
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/native-debug",
-      "toolchainFile": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "YES"
-      }
-    },
-    {
-      "name": "native-release",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/native-release",
       "toolchainFile": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
@@ -28,163 +18,256 @@
       }
     },
     {
-      "name": "clang-debug",
-      "displayName": "Clang Debug",
-      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux"},
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/clang-debug",
-      "toolchainFile": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake",
+      "name": "_windows-ninja-release",
+      "hidden": true,
+      "inherits": "_ninja-release",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_COMPILER": "${sourceDir}/cmake/toolchains/fltx-clangxx",
-        "CMAKE_INSTALL_LIBDIR": "lib",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "YES"
+        "VCPKG_OVERLAY_PORTS": "${sourceDir}/cmake/vcpkg-ports"
       }
     },
     {
-      "name": "clang-release",
-      "displayName": "Clang Release",
-      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux"},
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/clang-release",
-      "toolchainFile": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake",
+      "name": "windows-x64-msvc-release",
+      "displayName": "Windows x64 / MSVC / Release",
+      "inherits": "_windows-ninja-release",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"},
+      "binaryDir": "${sourceDir}/build/windows-x64-msvc-release",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CXX_COMPILER": "${sourceDir}/cmake/toolchains/fltx-clangxx",
-        "CMAKE_INSTALL_LIBDIR": "lib",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "YES"
+        "CMAKE_C_COMPILER": "cl.exe",
+        "CMAKE_CXX_COMPILER": "cl.exe",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "FLTX_VALIDATION_EXPECTED_ARCHITECTURE": "x86_64"
       }
     },
     {
-      "name": "mingw-debug",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/mingw-debug",
-      "toolchainFile": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake",
+      "name": "windows-x64-clangcl-release",
+      "displayName": "Windows x64 / clang-cl / Release",
+      "inherits": "_windows-ninja-release",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"},
+      "binaryDir": "${sourceDir}/build/windows-x64-clangcl-release",
+      "environment": {
+        "PATH": "$env{PROGRAMFILES}/LLVM/bin;$penv{PATH}"
+      },
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "VCPKG_TARGET_TRIPLET": "x64-mingw-static",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "YES"
+        "CMAKE_C_COMPILER": "clang-cl.exe",
+        "CMAKE_CXX_COMPILER": "clang-cl.exe",
+        "CMAKE_LINKER": "lld-link.exe",
+        "CMAKE_AR": "llvm-lib.exe",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "FLTX_VALIDATION_EXPECTED_ARCHITECTURE": "x86_64",
+        "FLTX_METRICS_QDPP": "OFF"
       }
     },
     {
-      "name": "mingw-release",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/mingw-release",
-      "toolchainFile": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake",
+      "name": "windows-x64-mingw-release",
+      "displayName": "Windows x64 / MinGW / Release",
+      "inherits": "_windows-ninja-release",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"},
+      "binaryDir": "${sourceDir}/build/windows-x64-mingw-release",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "gcc.exe",
+        "CMAKE_CXX_COMPILER": "g++.exe",
         "VCPKG_TARGET_TRIPLET": "x64-mingw-static",
         "VCPKG_HOST_TRIPLET": "x64-mingw-static",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "YES"
+        "FLTX_VALIDATION_EXPECTED_ARCHITECTURE": "x86_64"
       }
     },
     {
-      "name": "wasm32-release",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/wasm32-release",
-      "toolchainFile": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake",
+      "name": "windows-arm64-msvc-release",
+      "displayName": "Windows ARM64 / MSVC / Release",
+      "inherits": "_windows-ninja-release",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"},
+      "binaryDir": "${sourceDir}/build/windows-arm64-msvc-release",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "YES",
+        "CMAKE_C_COMPILER": "cl.exe",
+        "CMAKE_CXX_COMPILER": "cl.exe",
+        "VCPKG_TARGET_TRIPLET": "arm64-windows",
+        "FLTX_VALIDATION_EXPECTED_ARCHITECTURE": "arm64",
+        "FLTX_METRICS_QDPP": "OFF",
+        "FLTX_METRICS_TLFLOAT": "OFF"
+      }
+    },
+    {
+      "name": "windows-arm64-clangcl-release",
+      "displayName": "Windows ARM64 / clang-cl / Release",
+      "inherits": "_windows-ninja-release",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"},
+      "binaryDir": "${sourceDir}/build/windows-arm64-clangcl-release",
+      "environment": {
+        "PATH": "$env{PROGRAMFILES}/LLVM/bin;$penv{PATH}"
+      },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang-cl.exe",
+        "CMAKE_CXX_COMPILER": "clang-cl.exe",
+        "CMAKE_LINKER": "lld-link.exe",
+        "CMAKE_AR": "llvm-lib.exe",
+        "VCPKG_TARGET_TRIPLET": "arm64-windows",
+        "FLTX_VALIDATION_EXPECTED_ARCHITECTURE": "arm64",
+        "FLTX_METRICS_QDPP": "OFF",
+        "FLTX_METRICS_TLFLOAT": "OFF"
+      }
+    },
+    {
+      "name": "linux-x64-gcc-release",
+      "displayName": "Linux x64 / GCC / Release",
+      "inherits": "_ninja-release",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux"},
+      "binaryDir": "${sourceDir}/build/linux-x64-gcc-release",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++",
+        "VCPKG_TARGET_TRIPLET": "x64-linux",
+        "FLTX_VALIDATION_EXPECTED_ARCHITECTURE": "x86_64"
+      }
+    },
+    {
+      "name": "linux-x64-clang-release",
+      "displayName": "Linux x64 / Clang / Release",
+      "inherits": "_ninja-release",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux"},
+      "binaryDir": "${sourceDir}/build/linux-x64-clang-release",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_INSTALL_LIBDIR": "lib",
+        "VCPKG_TARGET_TRIPLET": "x64-linux",
+        "FLTX_VALIDATION_EXPECTED_ARCHITECTURE": "x86_64"
+      }
+    },
+    {
+      "name": "linux-arm64-gcc-release",
+      "displayName": "Linux ARM64 / GCC / Release",
+      "inherits": "_ninja-release",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux"},
+      "binaryDir": "${sourceDir}/build/linux-arm64-gcc-release",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++",
+        "VCPKG_TARGET_TRIPLET": "arm64-linux",
+        "FLTX_VALIDATION_EXPECTED_ARCHITECTURE": "arm64"
+      }
+    },
+    {
+      "name": "linux-arm64-clang-release",
+      "displayName": "Linux ARM64 / Clang / Release",
+      "inherits": "_ninja-release",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux"},
+      "binaryDir": "${sourceDir}/build/linux-arm64-clang-release",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_INSTALL_LIBDIR": "lib",
+        "VCPKG_TARGET_TRIPLET": "arm64-linux",
+        "FLTX_VALIDATION_EXPECTED_ARCHITECTURE": "arm64"
+      }
+    },
+    {
+      "name": "macos-x64-appleclang-release",
+      "displayName": "macOS x64 / AppleClang / Release",
+      "inherits": "_ninja-release",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin"},
+      "binaryDir": "${sourceDir}/build/macos-x64-appleclang-release",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "VCPKG_TARGET_TRIPLET": "x64-osx",
+        "FLTX_VALIDATION_EXPECTED_ARCHITECTURE": "x86_64"
+      }
+    },
+    {
+      "name": "macos-arm64-appleclang-release",
+      "displayName": "macOS ARM64 / AppleClang / Release",
+      "inherits": "_ninja-release",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin"},
+      "binaryDir": "${sourceDir}/build/macos-arm64-appleclang-release",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "VCPKG_TARGET_TRIPLET": "arm64-osx",
+        "FLTX_VALIDATION_EXPECTED_ARCHITECTURE": "arm64"
+      }
+    },
+    {
+      "name": "wasm32-emscripten-release",
+      "displayName": "WebAssembly wasm32 / Emscripten / Release",
+      "inherits": "_ninja-release",
+      "binaryDir": "${sourceDir}/build/wasm32-emscripten-release",
+      "cacheVariables": {
         "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
         "VCPKG_TARGET_TRIPLET": "wasm32-emscripten",
         "VCPKG_OVERLAY_PORTS": "${sourceDir}/cmake/vcpkg-ports",
-        "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/cmake/vcpkg-triplets"
+        "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/cmake/vcpkg-triplets",
+        "FLTX_VALIDATION_EXPECTED_ARCHITECTURE": "wasm32",
+        "FLTX_METRICS_QDPP": "ON",
+        "FLTX_METRICS_QDPP_INCLUDE_DIR": "${sourceDir}/validation/extern/qdpp/include"
       }
     },
     {
       "name": "vs2026",
+      "displayName": "Visual Studio 2026 x64",
       "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"},
       "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
       "binaryDir": "${sourceDir}/build/vs2026",
       "toolchainFile": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
         "CMAKE_CONFIGURATION_TYPES": "Debug;Release;RelWithDebInfo",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "YES"
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "YES",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "FLTX_VALIDATION_EXPECTED_ARCHITECTURE": "x86_64"
       }
     },
     {
-      "name": "macos-release",
-      "displayName": "macOS Release",
-      "generator": "Unix Makefiles",
-      "binaryDir": "${sourceDir}/build/macos-release",
+      "name": "xcode",
+      "displayName": "Xcode",
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin"},
+      "generator": "Xcode",
+      "binaryDir": "${sourceDir}/build/xcode",
+      "toolchainFile": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/vcpkg/scripts/buildsystems/vcpkg.cmake",
-        "VCPKG_TARGET_TRIPLET": "arm64-osx"
+        "CMAKE_CONFIGURATION_TYPES": "Debug;Release;RelWithDebInfo"
       }
     }
   ],
 
   "buildPresets": [
-    { "name": "01. native-debug",     "configurePreset": "native-debug" },
-    { "name": "02. native-release",   "configurePreset": "native-release" },
-    { "name": "03. mingw-debug",      "configurePreset": "mingw-debug" },
-    { "name": "04. mingw-release",    "configurePreset": "mingw-release" },
-    { "name": "05. wasm32-release",   "configurePreset": "wasm32-release" },
-    { "name": "06. macos-release",    "configurePreset": "macos-release" },
-    { "name": "clang-debug",          "configurePreset": "clang-debug" },
-    { "name": "clang-release",        "configurePreset": "clang-release" }
+    {"name": "windows-x64-msvc-release", "configurePreset": "windows-x64-msvc-release"},
+    {"name": "windows-x64-clangcl-release", "configurePreset": "windows-x64-clangcl-release"},
+    {"name": "windows-x64-mingw-release", "configurePreset": "windows-x64-mingw-release"},
+    {"name": "windows-arm64-msvc-release", "configurePreset": "windows-arm64-msvc-release"},
+    {"name": "windows-arm64-clangcl-release", "configurePreset": "windows-arm64-clangcl-release"},
+    {"name": "linux-x64-gcc-release", "configurePreset": "linux-x64-gcc-release"},
+    {"name": "linux-x64-clang-release", "configurePreset": "linux-x64-clang-release"},
+    {"name": "linux-arm64-gcc-release", "configurePreset": "linux-arm64-gcc-release"},
+    {"name": "linux-arm64-clang-release", "configurePreset": "linux-arm64-clang-release"},
+    {"name": "macos-x64-appleclang-release", "configurePreset": "macos-x64-appleclang-release"},
+    {"name": "macos-arm64-appleclang-release", "configurePreset": "macos-arm64-appleclang-release"},
+    {"name": "wasm32-emscripten-release", "configurePreset": "wasm32-emscripten-release"},
+    {"name": "vs2026-debug", "configurePreset": "vs2026", "configuration": "Debug"},
+    {"name": "vs2026-release", "configurePreset": "vs2026", "configuration": "Release"},
+    {"name": "vs2026-relwithdebinfo", "configurePreset": "vs2026", "configuration": "RelWithDebInfo"},
+    {"name": "xcode-debug", "configurePreset": "xcode", "configuration": "Debug"},
+    {"name": "xcode-release", "configurePreset": "xcode", "configuration": "Release"},
+    {"name": "xcode-relwithdebinfo", "configurePreset": "xcode", "configuration": "RelWithDebInfo"}
   ],
 
   "testPresets": [
-    {
-      "name": "native-debug",
-      "configurePreset": "native-debug",
-      "output": { "outputOnFailure": true }
-    },
-    {
-      "name": "native-release",
-      "configurePreset": "native-release",
-      "output": { "outputOnFailure": true }
-    },
-    {
-      "name": "mingw-debug",
-      "configurePreset": "mingw-debug",
-      "output": { "outputOnFailure": true }
-    },
-    {
-      "name": "mingw-release",
-      "configurePreset": "mingw-release",
-      "output": { "outputOnFailure": true }
-    },
-    {
-      "name": "wasm32-release",
-      "configurePreset": "wasm32-release",
-      "output": { "outputOnFailure": true }
-    },
-    {
-      "name": "macos-release",
-      "configurePreset": "macos-release",
-      "output": { "outputOnFailure": true }
-    },
-    {
-      "name": "clang-debug",
-      "configurePreset": "clang-debug",
-      "output": { "outputOnFailure": true }
-    },
-    {
-      "name": "clang-release",
-      "configurePreset": "clang-release",
-      "output": { "outputOnFailure": true }
-    },
-    {
-      "name": "vs2026-debug",
-      "configurePreset": "vs2026",
-      "configuration": "Debug",
-      "output": { "outputOnFailure": true }
-    },
-    {
-      "name": "vs2026-release",
-      "configurePreset": "vs2026",
-      "configuration": "Release",
-      "output": { "outputOnFailure": true }
-    },
-    {
-      "name": "vs2026-relwithdebinfo",
-      "configurePreset": "vs2026",
-      "configuration": "RelWithDebInfo",
-      "output": { "outputOnFailure": true }
-    }
+    {"name": "windows-x64-msvc-release", "configurePreset": "windows-x64-msvc-release", "output": {"outputOnFailure": true}},
+    {"name": "windows-x64-clangcl-release", "configurePreset": "windows-x64-clangcl-release", "output": {"outputOnFailure": true}},
+    {"name": "windows-x64-mingw-release", "configurePreset": "windows-x64-mingw-release", "output": {"outputOnFailure": true}},
+    {"name": "windows-arm64-msvc-release", "configurePreset": "windows-arm64-msvc-release", "output": {"outputOnFailure": true}},
+    {"name": "windows-arm64-clangcl-release", "configurePreset": "windows-arm64-clangcl-release", "output": {"outputOnFailure": true}},
+    {"name": "linux-x64-gcc-release", "configurePreset": "linux-x64-gcc-release", "output": {"outputOnFailure": true}},
+    {"name": "linux-x64-clang-release", "configurePreset": "linux-x64-clang-release", "output": {"outputOnFailure": true}},
+    {"name": "linux-arm64-gcc-release", "configurePreset": "linux-arm64-gcc-release", "output": {"outputOnFailure": true}},
+    {"name": "linux-arm64-clang-release", "configurePreset": "linux-arm64-clang-release", "output": {"outputOnFailure": true}},
+    {"name": "macos-x64-appleclang-release", "configurePreset": "macos-x64-appleclang-release", "output": {"outputOnFailure": true}},
+    {"name": "macos-arm64-appleclang-release", "configurePreset": "macos-arm64-appleclang-release", "output": {"outputOnFailure": true}},
+    {"name": "wasm32-emscripten-release", "configurePreset": "wasm32-emscripten-release", "output": {"outputOnFailure": true}},
+    {"name": "vs2026-debug", "configurePreset": "vs2026", "configuration": "Debug", "output": {"outputOnFailure": true}},
+    {"name": "vs2026-release", "configurePreset": "vs2026", "configuration": "Release", "output": {"outputOnFailure": true}},
+    {"name": "vs2026-relwithdebinfo", "configurePreset": "vs2026", "configuration": "RelWithDebInfo", "output": {"outputOnFailure": true}},
+    {"name": "xcode-debug", "configurePreset": "xcode", "configuration": "Debug", "output": {"outputOnFailure": true}},
+    {"name": "xcode-release", "configurePreset": "xcode", "configuration": "Release", "output": {"outputOnFailure": true}},
+    {"name": "xcode-relwithdebinfo", "configurePreset": "xcode", "configuration": "RelWithDebInfo", "output": {"outputOnFailure": true}}
   ]
 }

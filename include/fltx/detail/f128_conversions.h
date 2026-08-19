@@ -22,18 +22,6 @@ namespace detail::_f128 // primitives and kernels
         return { s, e };
     }
 
-    BL_FORCE_INLINE constexpr f128_s canonicalize_math_result(f128_s value) noexcept
-    {
-        value.lo = detail::fp::zero_low_fraction_bits_finite<8>(value.lo);
-        return value;
-    }
-
-    #if defined(FLTX_CONSTEXPR_PARITY)
-        #define F128_CANONICALIZE_MATH_RESULT(value) bl::detail::_f128::canonicalize_math_result(value)
-    #else
-        #define F128_CANONICALIZE_MATH_RESULT(value) (value)
-    #endif
-
     BL_FORCE_INLINE constexpr f128_s uint64_to_f128(uint64_t value) noexcept
     {
         double sum{}, err{};

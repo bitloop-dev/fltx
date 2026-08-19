@@ -13,11 +13,11 @@
 #include "fltx/aliases.h"
 #include "fltx/f128_type.h"
 #include "fltx/f128_limits.h"
-#include "fltx/f128_numbers.h"
 #include "fltx/f128_conversions.h"
 #include "fltx/f128_comparison.h"
 #include "fltx/f128_classification.h"
 #include "fltx/f128_arithmetic.h"
+#include "fltx/f128_approx_comparison.h"
 
 #include "fltx/detail/interop.h"
 

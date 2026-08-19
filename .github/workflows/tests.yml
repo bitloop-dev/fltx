@@ -1,0 +1,101 @@
+name: Native Accuracy Matrix
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  accuracy:
+    name: Accuracy (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64 MSVC
+            runner: windows-2025-vs2026
+            preset: windows-x64-msvc-release
+            compiler: msvc
+            arch: x64
+          - name: Windows x64 clang-cl
+            runner: windows-2025-vs2026
+            preset: windows-x64-clangcl-release
+            compiler: clangcl
+            arch: x64
+          - name: Windows x64 MinGW
+            runner: windows-2025-vs2026
+            preset: windows-x64-mingw-release
+            compiler: mingw
+            arch: x64
+          - name: Windows ARM64 MSVC
+            runner: windows-11-vs2026-arm
+            preset: windows-arm64-msvc-release
+            compiler: msvc
+            arch: arm64
+          - name: Windows ARM64 clang-cl
+            runner: windows-11-vs2026-arm
+            preset: windows-arm64-clangcl-release
+            compiler: clangcl
+            arch: arm64
+          - name: Linux x64 GCC
+            runner: ubuntu-24.04
+            preset: linux-x64-gcc-release
+            compiler: gcc
+            arch: x64
+          - name: Linux x64 Clang
+            runner: ubuntu-24.04
+            preset: linux-x64-clang-release
+            compiler: clang
+            arch: x64
+          - name: Linux ARM64 GCC
+            runner: ubuntu-24.04-arm
+            preset: linux-arm64-gcc-release
+            compiler: gcc
+            arch: arm64
+          - name: Linux ARM64 Clang
+            runner: ubuntu-24.04-arm
+            preset: linux-arm64-clang-release
+            compiler: clang
+            arch: arm64
+          - name: macOS x64 AppleClang
+            runner: macos-15-intel
+            preset: macos-x64-appleclang-release
+            compiler: appleclang
+            arch: x64
+          - name: macOS ARM64 AppleClang
+            runner: macos-15
+            preset: macos-arm64-appleclang-release
+            compiler: appleclang
+            arch: arm64
+          - name: WebAssembly wasm32 Emscripten
+            runner: ubuntu-24.04
+            preset: wasm32-emscripten-release
+            compiler: emscripten
+            arch: wasm32
+    uses: ./.github/workflows/test_base.yml
+    with:
+      platform_name: ${{ matrix.name }}
+      runner: ${{ matrix.runner }}
+      configure_preset: ${{ matrix.preset }}
+      compiler_family: ${{ matrix.compiler }}
+      target_arch: ${{ matrix.arch }}
+
+  required-native-accuracy-matrix:
+    name: Required native accuracy matrix
+    if: always()
+    needs: accuracy
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require every native target
+        env:
+          MATRIX_RESULT: ${{ needs.accuracy.result }}
+        run: |
+          if [ "$MATRIX_RESULT" != "success" ]; then
+            echo "Native accuracy matrix result: $MATRIX_RESULT" >&2
+            exit 1
+          fi

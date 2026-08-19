@@ -28,11 +28,61 @@ namespace detail::_f32_impl
     using detail::fp::isfinite;
     using detail::fp::isinf;
     using detail::fp::isnan;
-    using detail::fp::nearbyint;
+    using detail::fp::round_nearest_even;
     using detail::fp::nextafter;
-    using detail::fp::round_half_away_zero;
+    using detail::fp::round_nearest_away_from_zero;
     using detail::fp::signbit;
     using detail::fp::to_signed_integer_or_zero;
+
+    using detail::_native_float_decimal::exact_dyadic_to_float;
+    using detail::_native_float_decimal::f32_decimal_round_traits;
+
+    inline constexpr int pow10_f32_min_exponent = -45;
+    inline constexpr int pow10_f32_max_exponent = 38;
+    inline constexpr std::uint32_t pow10_f32_bits[] =
+    {
+        0x00000001u, 0x00000007u, 0x00000047u, 0x000002cau,
+        0x00001be0u, 0x000116c2u, 0x000ae398u, 0x006ce3eeu,
+        0x02081ceau, 0x03aa2425u, 0x0554ad2eu, 0x0704ec3du,
+        0x08a6274cu, 0x0a4fb11fu, 0x0c01ceb3u, 0x0da24260u,
+        0x0f4ad2f8u, 0x10fd87b6u, 0x129e74d2u, 0x14461206u,
+        0x15f79688u, 0x179abe15u, 0x19416d9au, 0x1af1c901u,
+        0x1c971da0u, 0x1e3ce508u, 0x1fec1e4au, 0x219392efu,
+        0x233877aau, 0x24e69595u, 0x26901d7du, 0x283424dcu,
+        0x29e12e13u, 0x2b8cbcccu, 0x2d2febffu, 0x2edbe6ffu,
+        0x3089705fu, 0x322bcc77u, 0x33d6bf95u, 0x358637bdu,
+        0x3727c5acu, 0x38d1b717u, 0x3a83126fu, 0x3c23d70au,
+        0x3dcccccdu, 0x3f800000u, 0x41200000u, 0x42c80000u,
+        0x447a0000u, 0x461c4000u, 0x47c35000u, 0x49742400u,
+        0x4b189680u, 0x4cbebc20u, 0x4e6e6b28u, 0x501502f9u,
+        0x51ba43b7u, 0x5368d4a5u, 0x551184e7u, 0x56b5e621u,
+        0x58635fa9u, 0x5a0e1bcau, 0x5bb1a2bcu, 0x5d5e0b6bu,
+        0x5f0ac723u, 0x60ad78ecu, 0x6258d727u, 0x64078678u,
+        0x65a96816u, 0x6753c21cu, 0x69045951u, 0x6aa56fa6u,
+        0x6c4ecb8fu, 0x6e013f39u, 0x6fa18f08u, 0x7149f2cau,
+        0x72fc6f7cu, 0x749dc5aeu, 0x76453719u, 0x77f684dfu,
+        0x799a130cu, 0x7b4097ceu, 0x7cf0bdc2u, 0x7e967699u
+    };
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr float pow10(int exponent) noexcept
+    {
+        if (exponent > pow10_f32_max_exponent)
+            return std::numeric_limits<float>::infinity();
+        if (exponent < pow10_f32_min_exponent)
+            return 0.0f;
+
+        return std::bit_cast<float>(pow10_f32_bits[exponent - pow10_f32_min_exponent]);
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr float round_decimals(float v, int prec) noexcept
+    {
+        return detail::_f64_impl::round_decimals_native<f32_decimal_round_traits>(v, prec);
+    }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr float round_significant(float v, int figures) noexcept
+    {
+        return detail::_f64_impl::round_significant_native<f32_decimal_round_traits>(v, figures);
+    }
 
     BL_FORCE_INLINE constexpr int normalize_remquo_bits(int q) noexcept
     {
@@ -86,14 +136,34 @@ namespace detail::_f32_impl
         return static_cast<float>(m);
     }
 
+    BL_PUSH_PRECISE;
     [[nodiscard]] BL_FORCE_INLINE constexpr float modf(float x, float* iptr) noexcept
     {
+        if (isnan(x) || isinf(x) || iszero(x))
+        {
+            if (iptr)
+                *iptr = x;
+            return isinf(x) ? detail::fp::copysign(0.0f, x) : x;
+        }
+
         double integral = 0.0;
         const double fractional = bl::modf(static_cast<double>(x), &integral);
         if (iptr)
             *iptr = static_cast<float>(integral);
         return static_cast<float>(fractional);
     }
+    BL_POP_PRECISE;
+
+    BL_PUSH_PRECISE
+    [[nodiscard]] BL_FORCE_INLINE constexpr float fma(float x, float y, float z) noexcept
+    {
+        // Binary64 can represent an exact binary32 product and the following
+        // sum, so this is a correctly rounded binary32 FMA on every target.
+        return static_cast<float>(
+            static_cast<double>(x) * static_cast<double>(y) +
+            static_cast<double>(z));
+    }
+    BL_POP_PRECISE
 
 } // namespace detail::_f32_impl
 
@@ -123,58 +193,36 @@ namespace detail::_f32_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float round(float x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::round_half_away_zero(x),
-        std::round(x)
-    );
+    return detail::_f32_impl::round_nearest_away_from_zero(x);
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr float nearbyint(float x) noexcept
+[[nodiscard]] BL_FORCE_INLINE constexpr float roundeven(float x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::nearbyint(x),
-        std::nearbyint(x)
-    );
+    return detail::_f32_impl::round_nearest_even(x);
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr float rint(float x) noexcept
+[[nodiscard]] BL_FORCE_INLINE constexpr float round_decimals(float x, int precision) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::nearbyint(x),
-        std::rint(x)
-    );
+    return detail::_f32_impl::round_decimals(x, precision);
+}
+
+[[nodiscard]] BL_FORCE_INLINE constexpr float round_significant(
+    float x,
+    int precision) noexcept
+{
+    return detail::_f32_impl::round_significant(x, precision);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr long lround(float x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::to_signed_integer_or_zero<long>(detail::_f32_impl::round_half_away_zero(x)),
-        std::lround(x)
-    );
+    return detail::_f32_impl::to_signed_integer_or_zero<long>(
+        detail::_f32_impl::round_nearest_away_from_zero(x));
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr long long llround(float x) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::to_signed_integer_or_zero<long long>(detail::_f32_impl::round_half_away_zero(x)),
-        std::llround(x)
-    );
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr long lrint(float x) noexcept
-{
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::to_signed_integer_or_zero<long>(detail::_f32_impl::nearbyint(x)),
-        std::lrint(x)
-    );
-}
-
-[[nodiscard]] BL_FORCE_INLINE constexpr long long llrint(float x) noexcept
-{
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::to_signed_integer_or_zero<long long>(detail::_f32_impl::nearbyint(x)),
-        std::llrint(x)
-    );
+    return detail::_f32_impl::to_signed_integer_or_zero<long long>(
+        detail::_f32_impl::round_nearest_away_from_zero(x));
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float fmod(float x, float y) noexcept
@@ -203,10 +251,12 @@ namespace detail::_f32_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float fma(float x, float y, float z) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        static_cast<float>(bl::fma(static_cast<double>(x), static_cast<double>(y), static_cast<double>(z))),
-        std::fma(x, y, z)
-    );
+    return detail::_f32_impl::fma(x, y, z);
+}
+
+[[nodiscard]] BL_FORCE_INLINE constexpr float recip(float x) noexcept
+{
+    return 1.0f / x;
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float fmin(float a, float b) noexcept
@@ -227,10 +277,20 @@ namespace detail::_f32_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float fdim(float x, float y) noexcept
 {
+#if defined(__EMSCRIPTEN__)
+    // Emscripten's libm fdim does not reliably propagate NaNs.  The scalar
+    // definition is both cheaper than a call and preserves the C contract.
+    return (detail::fp::isnan(x) || detail::fp::isnan(y))
+        ? std::numeric_limits<float>::quiet_NaN()
+        : ((x > y) ? (x - y) : 0.0f);
+#else
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        (x > y) ? (x - y) : 0.0f,
+        (isnan(x) || isnan(y))
+            ? std::numeric_limits<float>::quiet_NaN()
+            : ((x > y) ? (x - y) : 0.0f),
         std::fdim(x, y)
     );
+#endif
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float copysign(float x, float y) noexcept
@@ -269,10 +329,7 @@ namespace detail::_f32_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float modf(float x, float* iptr) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::modf(x, iptr),
-        std::modf(x, iptr)
-    );
+    return detail::_f32_impl::modf(x, iptr);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr int ilogb(float x) noexcept

@@ -1,0 +1,72 @@
+{
+  "consumer_mode": "fastmath",
+  "layout": "compact",
+  "output": "performance_table_fastmath_compact.svg",
+  "schema_version": "6",
+  "sources": [
+    {
+      "architecture": "x86_64",
+      "compiler": "MSVC",
+      "file": "windows/x86_64/MSVC_f128_fastmath.csv",
+      "platform": "windows",
+      "precision": "f128",
+      "run_id": "38734516d65c4154a947aaeb3ae92c72"
+    },
+    {
+      "architecture": "x86_64",
+      "compiler": "ClangCL",
+      "file": "windows/x86_64/ClangCL_f128_fastmath.csv",
+      "platform": "windows",
+      "precision": "f128",
+      "run_id": "081f2f75d252445da1de5098f50b7f37"
+    },
+    {
+      "architecture": "x86_64",
+      "compiler": "MinGW",
+      "file": "windows/x86_64/MinGW_f128_fastmath.csv",
+      "platform": "windows",
+      "precision": "f128",
+      "run_id": "1f47748c24e4435f9d017479a2e54bbd"
+    },
+    {
+      "architecture": "wasm32",
+      "compiler": "Emscripten",
+      "file": "wasm32/wasm32/Emscripten_f128_fastmath.csv",
+      "platform": "wasm32",
+      "precision": "f128",
+      "run_id": "680cbf9c13134cc08ab2b5bd2bd1191c"
+    },
+    {
+      "architecture": "x86_64",
+      "compiler": "MSVC",
+      "file": "windows/x86_64/MSVC_f256_fastmath.csv",
+      "platform": "windows",
+      "precision": "f256",
+      "run_id": "38734516d65c4154a947aaeb3ae92c72"
+    },
+    {
+      "architecture": "x86_64",
+      "compiler": "ClangCL",
+      "file": "windows/x86_64/ClangCL_f256_fastmath.csv",
+      "platform": "windows",
+      "precision": "f256",
+      "run_id": "081f2f75d252445da1de5098f50b7f37"
+    },
+    {
+      "architecture": "x86_64",
+      "compiler": "MinGW",
+      "file": "windows/x86_64/MinGW_f256_fastmath.csv",
+      "platform": "windows",
+      "precision": "f256",
+      "run_id": "1f47748c24e4435f9d017479a2e54bbd"
+    },
+    {
+      "architecture": "wasm32",
+      "compiler": "Emscripten",
+      "file": "wasm32/wasm32/Emscripten_f256_fastmath.csv",
+      "platform": "wasm32",
+      "precision": "f256",
+      "run_id": "680cbf9c13134cc08ab2b5bd2bd1191c"
+    }
+  ]
+}

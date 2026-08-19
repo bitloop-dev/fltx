@@ -12,16 +12,16 @@
 #include "fltx/detail/common_fp.h"
 #include "fltx/detail/simd.h"
 
-#if !defined(BL_F128_ENABLE_SIMD)
-#  if BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD
-#    define BL_F128_ENABLE_SIMD 1
+#if !defined(FLTX_F128_ENABLE_SIMD)
+#  if FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD
+#    define FLTX_F128_ENABLE_SIMD 1
 #  else
-#    define BL_F128_ENABLE_SIMD 0
+#    define FLTX_F128_ENABLE_SIMD 0
 #  endif
 #endif
 
-#if BL_F128_ENABLE_SIMD && !(BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD)
-#  error "BL_F128_ENABLE_SIMD requires AArch64 NEON or wasm128 SIMD support."
+#if FLTX_F128_ENABLE_SIMD && !(FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD)
+#  error "FLTX_F128_ENABLE_SIMD requires AArch64 NEON or wasm128 SIMD support."
 #endif
 
 namespace bl {
@@ -49,14 +49,14 @@ namespace detail::_f128 // primitives and kernels
 
     BL_FORCE_INLINE constexpr bool f128_runtime_product_pair_simd_enabled() noexcept
     {
-        #if BL_F128_ENABLE_SIMD && !defined(FMA_AVAILABLE) && (BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD)
-        return !bl::use_constexpr_math();
+        #if FLTX_F128_ENABLE_SIMD && (FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD)
+        return !bl::detail::is_constant_evaluated();
         #else
         return false;
         #endif
     }
 
-    #if BL_F128_ENABLE_SIMD && (BL_FLTX_HAS_NEON || BL_FLTX_HAS_WASM_SIMD)
+    #if FLTX_F128_ENABLE_SIMD && (FLTX_HAS_NEON || FLTX_HAS_WASM_SIMD)
     namespace simd = bl::detail::simd;
     #endif
 
@@ -250,7 +250,8 @@ struct f128_s
     [[nodiscard]] constexpr f128_s operator+() const { return *this; }
     [[nodiscard]] constexpr f128_s operator-() const noexcept { return f128_s{ -hi, -lo }; }
 
-    [[nodiscard]] static constexpr f128_s eps() { return { 1.232595164407831e-32, 0.0 }; }
+    // Spacing above 1.0 in the public nominal 106-bit model.
+    [[nodiscard]] static constexpr f128_s eps() { return { 0x1p-105, 0.0 }; }
 };
 
 struct f128 : public f128_s
@@ -263,8 +264,6 @@ struct f128 : public f128_s
     constexpr f128(uint64_t u) noexcept : f128_s{} { static_cast<f128_s&>(*this) = static_cast<uint64_t>(u); }
     constexpr f128(int32_t  v) noexcept : f128((int64_t)v) {}
     constexpr f128(uint32_t u) noexcept : f128((int64_t)u) {}
-    constexpr f128(const char*);
-
     constexpr f128(const f128_s& f) noexcept : f128_s{ f.hi, f.lo } {}
 
     using f128_s::operator=;
