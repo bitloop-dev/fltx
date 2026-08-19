@@ -1,15 +1,13 @@
 <p align="center">
   <img src="res/logo.webp" alt="fltx logo" width="80"><br>
-  Extended-precision floating point and constexpr math for C++20<br>
+  Extended-precision floating point math library<br>
   Fast · Precise · Lightweight
 </p>
 
-[![Tests Linux](https://github.com/willmh93/fltx/actions/workflows/tests-linux.yml/badge.svg)](https://github.com/willmh93/fltx/actions/workflows/tests-linux.yml)
-[![Tests Windows](https://github.com/willmh93/fltx/actions/workflows/tests-windows.yml/badge.svg)](https://github.com/willmh93/fltx/actions/workflows/tests-windows.yml)
-[![Tests macOS](https://github.com/willmh93/fltx/actions/workflows/tests-macos.yml/badge.svg)](https://github.com/willmh93/fltx/actions/workflows/tests-macos.yml)
-[![Tests WebAssembly](https://github.com/willmh93/fltx/actions/workflows/tests-wasm32.yml/badge.svg)](https://github.com/willmh93/fltx/actions/workflows/tests-wasm32.yml)
 
-`fltx` is for projects that need more precision than `double`, without giving up fixed-size scalar types, predictable performance, `constexpr` support, or familiar C++ ergonomics.
+[![Native Accuracy Matrix](https://github.com/bitloop-dev/fltx/actions/workflows/tests.yml/badge.svg)](https://github.com/bitloop-dev/fltx/actions/workflows/tests.yml)
+
+`fltx` is a high-performance C++ library for double-double and quad-double arithmetic, with a broad std-style math library and extensive constexpr support throughout.
 
 ## Menu
 
@@ -24,7 +22,6 @@
 
 Features:
 
-- C++20 minimum language requirement
 - Fixed-size extended-precision scalar types: [`bl::f128`](include/fltx/f128.h) and [`bl::f256`](include/fltx/f256.h)
 - Library-wide **constexpr** support for math, parsing, static formatting, and conversions
 - Familiar `std::` style APIs; many calls work by swapping `std::` for `bl::`
@@ -35,30 +32,16 @@ Accuracy:
 
 - Accuracy validated against [boost::multiprecision::mpfr_float_backend](https://www.boost.org/doc/libs/latest/libs/multiprecision/doc/html/boost_multiprecision/tut/floats/mpfr_float.html)
 - **Infinity** / **NaN** correctness
-- Runtime, genuine `constexpr`, and fast-math paths are accuracy-gated independently; exact cross-path bits are not promised
-- Consumer fast-math treats finite inputs as a precondition for runtime f128/f256 `+`, `-`, `*`, and `/`; strict builds, genuine constant evaluation, and other math APIs retain their special-value contracts
+- Enable `FLTX_CONSTEXPR_PARITY` for bitwise-identical runtime and `constexpr` results (reduces performance)
 
 Performance:
 
-- Benchmarked against comparable libraries, demonstrating overall superior performance
+- Optimised for both runtime and compile-time performance
 - Compatible with fast-math builds
 - Internal [`bl::f256`](include/fltx/f256.h) expression fusion reduces intermediate rounding and temporary value materialisation for common arithmetic shapes.
 - Hardware acceleration where supported, including x86/x64 SSE2 with FMA when available, AArch64 NEON, and WebAssembly SIMD128 via Emscripten
 - Suitable for lightweight native builds, WebAssembly / Emscripten
 - Optional runtime-to-compile-time dispatch helper for template-specialized kernels
-
-MinGW/GCC consumers that need extended precision down into binary64's
-subnormal range should compile with `-ffast-math` but link with
-`-ffast-math -mno-daz-ftz`. Bare link-time `-ffast-math` adds GCC's
-`crtfastmath.o`, globally enabling FTZ/DAZ and discarding low expansion limbs.
-The MinGW consumer-fast-math validation profile uses the gradual-underflow
-form.
-
-MSVC C++20 builds require MSVC 19.36 or newer, and GCC C++20 builds require GCC
-12 or newer. To preserve compile time and object size in both optimized and
-debug builds, fltx uses their accepted `if consteval` extensions internally in
-C++20 mode. C++23 builds use the standard feature; Clang-family C++20 builds
-use `std::is_constant_evaluated()`.
 
 ## Core Types
 
@@ -66,8 +49,8 @@ use `std::is_constant_evaluated()`.
 |---|---|---|
 | [`bl::f32`](include/fltx/aliases.h) | Alias for native [`float`](https://en.cppreference.com/w/cpp/language/types) | Native [`float`](https://en.cppreference.com/w/cpp/language/types) precision |
 | [`bl::f64`](include/fltx/aliases.h) | Alias for native [`double`](https://en.cppreference.com/w/cpp/language/types) | Native [`double`](https://en.cppreference.com/w/cpp/language/types) precision |
-| [`bl::f128`](include/fltx/f128.h) | Double-double, stored as two [`double`](https://en.cppreference.com/w/cpp/language/types) limbs | Minimum 29 decimal digits across arithmetic and math functions |
-| [`bl::f256`](include/fltx/f256.h) | Quad-double, stored as four [`double`](https://en.cppreference.com/w/cpp/language/types) limbs | Minimum 59 decimal digits across arithmetic and math functions |
+| [`bl::fdd`](include/fltx/f128.h) | Double-double | Minimum 29 decimal digits across arithmetic and math functions |
+| [`bl::fqd`](include/fltx/f256.h) | Quad-double | Minimum 59 decimal digits across arithmetic and math functions |
 
 The names refer to storage size:
 
@@ -79,32 +62,6 @@ sizeof(bl::f256) == 32
 [`bl::f128`](include/fltx/f128.h) and [`bl::f256`](include/fltx/f256.h) are *not* IEEE [binary128](https://en.wikipedia.org/wiki/Quadruple-precision_floating-point_format#IEEE_754_quadruple-precision_binary_floating-point_format:_binary128) / [binary256](https://en.wikipedia.org/wiki/Octuple-precision_floating-point_format#IEEE_754_octuple-precision_binary_floating-point_format:_binary256) types.
 
 They are fixed-size expansion types: `f128` is double-double, and `f256` is quad-double. The names are intentionally short and uniform with `f32`/`f64`; they describe the precision tier, not the underlying representation.
-
-### Nominal precision policy
-
-The public floating-point model treats `f128` as a 106-bit type and `f256` as
-a 212-bit type. `std::numeric_limits`, `epsilon()`, default text precision, and
-`bl::nextafter`/`bl::nexttoward` follow that nominal model. In particular,
-`nextafter` adds or subtracts one binade-relative nominal ULP; it does not search
-for the smallest possible change to an individual storage limb.
-
-Arithmetic still uses the full nonoverlapping expansion representation and may
-retain useful information in sparse tails beyond the nominal lattice. Results
-are not rounded to 106 or 212 bits at API boundaries. Default `to_string`,
-`to_static_string`, `to_chars`, and general `std::format` output use 33 digits
-for `f128` and 65 for `f256`. Pass an explicit larger precision when sparse-tail
-detail must be preserved; the fixed-format buffer capacities are unchanged.
-
-Accuracy reports measure the two text directions independently. A `parse` row
-compares the stored expansion with the exact input decimal, while a formatting
-row has MPFR read the emitted decimal directly and deliberately bypasses the
-fltx parser. Formatting therefore can score more bits than the nominal binary
-destination can retain; matching parse/format scores are not an I/O contract.
-For values on the nominal lattice, the default decimal round trip is stable:
-the parsed value is within half a nominal ULP and emits the same default text.
-Identical limb encodings are not promised because parsing may retain a closer
-sparse tail. Explicit scientific precision 33 for `f128` and 67 for `f256`
-remains the tested component-preserving envelope for ordinary expansion tails.
 
 ## Quick Start
 
@@ -321,31 +278,12 @@ constexpr bl::f128  c = radius(1_dd, 2_dd);
 constexpr bl::f256  d = radius(1_qd, 2_qd);
 ```
 
-Exact operators, hashing, and serialization remain bit-sensitive. For numerical
-closeness, use the same-precision `bl::almost_equal` overloads:
-
-```cpp
-constexpr bl::f128 a128{1.0};
-constexpr bl::f128 b128 = a128 + bl::f128{0x1p-80};
-constexpr bool close128 = bl::almost_equal(a128, b128);
-
-constexpr bl::f256 a256{1.0};
-constexpr bl::f256 b256 = a256 + bl::f256{0x1p-180};
-constexpr bool close256 = bl::almost_equal(
-    a256, b256, bl::f256{0x1p-179});
-```
-
-The defaults are relative tolerances of `2^-74` for `f128` and `2^-169` for
-`f256`. Pass an explicit absolute tolerance for comparisons near zero. Scalar
-and mixed-precision arguments must be promoted explicitly so the chosen
-precision and tolerance are never implicit.
-
 Supported function groups:
 
 | constexpr | Category | Functions |
 |---|---|---|
 | ✅ | Arithmetic | `abs`, `fabs`, `fma` |
-| ✅ | Rounding | `floor`, `ceil`, `trunc`, `round`, `lround`, `llround`, `round_to` |
+| ✅ | Rounding | `floor`, `ceil`, `trunc`, `round`, `lround`, `llround`, `round_decimals`, `round_significant`, `roundeven` |
 | ✅ | Remainders | `fmod`, `remainder`, `remquo` |
 | ✅ | Min / max / sign | `fmin`, `fmax`, `fdim`, `copysign`, `signbit` |
 | ✅ | Roots / powers | `sqrt`, `cbrt`, `hypot`, `pow`, `ipow` |
@@ -357,8 +295,6 @@ Supported function groups:
 | ✅ | Scaling / layout | `ldexp`, `scalbn`, `scalbln`, `frexp`, `modf`, `nextafter`, `nexttoward` |
 
 For an example of the library-wide constexpr capabilities, see [`example_consteval_library_sweep.cpp`](examples/example_consteval_library_sweep.cpp).
-
-Use `bl::roundeven(x)` for nearest-integer rounding with halfway cases rounded to even. The standard-shaped `bl::round(x)`, `bl::trunc(x)`, `bl::ceil(x)`, and `bl::floor(x)` functions provide nearest-away-from-zero and the three directed rounding behaviors. Use `bl::round_decimals(x, precision)` for decimal-place rounding and `bl::round_significant(x, precision)` for significant-figure rounding. Use `bl::pow(T{ base }, n)` or `bl::ipow(T{ base }, n)` for integral powers, including powers of ten.
 
 ## IO and Literals
 
@@ -383,10 +319,6 @@ std::string    s1 = bl::to_string(pi_256);            // string with default pre
 std::string    s2 = bl::to_string(pi_256, 16, true);  // string with fixed precision
 constexpr auto s3 = bl::to_static_string(pi_256, 10); // static_string with fixed precision
 ```
-
-The default precision is the nominal round-trip precision (33 digits for
-`f128`, 65 for `f256`). Explicit precision remains available for expansion-aware
-serialization, including 67-digit `f256` output when sparse tail detail matters.
 
 ### Deserialize example:
 
@@ -586,10 +518,10 @@ cd fltx
 ./vcpkg/bootstrap-vcpkg.sh
 
 # 6. Configure; this installs vcpkg dependencies like Catch2, GMP, and MPFR
-cmake --preset macos-arm64-appleclang-release
+cmake --preset macos-release
 
 # 7. Build
-cmake --build --preset macos-arm64-appleclang-release --parallel
+cmake --build build/macos-release --parallel
 ```
 
 For an already-cloned repo:
@@ -599,8 +531,8 @@ cd ~/Documents/fltx
 git pull
 git submodule update --init --recursive
 ./vcpkg/bootstrap-vcpkg.sh
-cmake --preset macos-arm64-appleclang-release
-cmake --build --preset macos-arm64-appleclang-release --parallel
+cmake --preset macos-release
+cmake --build build/macos-release --parallel
 ```
 
 </details>
@@ -619,11 +551,11 @@ cd fltx
 
 ./vcpkg/bootstrap-vcpkg.sh
 
-cmake --preset linux-x64-gcc-release
-cmake --build --preset linux-x64-gcc-release --parallel
+cmake --preset native-release
+cmake --build build/native-release --parallel
 ```
 
-Other distributions should use equivalent packages for a C++20 compiler, CMake, Ninja, pkg-config, and the autotools used by the GMP/MPFR vcpkg ports.
+Other distributions should use equivalent packages for a C++23 compiler, CMake, Ninja, pkg-config, and the autotools used by the GMP/MPFR vcpkg ports.
 
 </details>
 
@@ -632,14 +564,10 @@ Other distributions should use equivalent packages for a C++20 compiler, CMake, 
 Test executables are registered with CTest. After building, you can run the registered test cases from the command line:
 
 ```bash
-ctest --preset linux-x64-gcc-release
+ctest --preset native-release
 ```
 
-Use the matching explicit platform/architecture/compiler preset on other
-hosts, such as `macos-arm64-appleclang-release`,
-`windows-x64-mingw-release`, or `wasm32-emscripten-release`. CLion and other
-CMake-aware IDEs can import these Ninja presets directly; `vs2026` and `xcode`
-remain available when native IDE project generation is wanted.
+Use the matching preset for other configured build trees, such as `macos-release`, `mingw-release`, or `wasm32-release`.
 
 For a multi-config Visual Studio build, include the configuration:
 
@@ -647,45 +575,63 @@ For a multi-config Visual Studio build, include the configuration:
 ctest --preset vs2026-release
 ```
 
-The compact gate used by CI builds the public-header and C++ standard
-contracts, comparison-library smokes, package smoke, contract and genuine
-constexpr suites, normal and fixed-constexpr accuracy in both strict and
-consumer-fast-math modes, and Python harness tests:
 
 ```powershell
-cmake --build --preset windows-x64-msvc-release --target fltx_ci_checks
+.\build\vs2026\tests\Release\metrics_tests.exe "[precision],[domain],[bench]"
 ```
-
-See [validation/README.md](validation/README.md) for focused runner commands, full
-accuracy/metrics publication, installed-package checks, and compile/size
-telemetry.
 
 ## Benchmarks / Metrics
 
-The normalized harness measures the same operation/input corpus for FLTX and
-each comparator, retains independent accuracy evidence and every benchmark
-trial, and publishes only complete f128/f256 runs. Comparators are:
+Tested on:
+- **Windows:** AMD Ryzen 9 5950X, Memory 32 GB LPDDR5
+- **Linux:** AMD Ryzen 9 5950X, Memory 32 GB LPDDR5
+- **MacOS:** Apple M2 Pro, Memory 16 GB LPDDR5
 
-- qdpp `dd_real` / `qd_real`;
-- Boost.Multiprecision `cpp_double_double` / `mpfr_float_backend<64>`;
-- TLFloat `Quad` / `Octuple`.
+Results:
 
-The checked-in development table currently contains Windows MSVC/MinGW and
-WebAssembly Emscripten results. Linux GCC/Clang and macOS AppleClang become
-canonical only after their final same-source runs are published. Each run's
-JSON metadata records the actual compiler, flags, source fingerprint, host,
-sample profile, comparator set, and artifact hashes.
+### **bl::f128** vs reference libraries
 
-The metrics workflow measures strict and consumer-fast-math targets
-independently. Fast-math runners use the real consumer compiler option while
-linking the same compiled fltx library, and publish separate `_fastmath` data,
-metadata, and SVG reports.
+<details>
+<summary>windows_x64_MSVC</summary>
+<img src="validation/metrics/generated/overview/windows_x86_64_MSVC_f128_overview_compact.svg" alt="fltx metrics table" width="100%">
+</details>
 
-<img src="validation/metrics/generated/performance/performance_table_compact.svg" alt="fltx normalized performance table" width="100%">
+<details>
+<summary>windows_x64_MinGW</summary>
+<img src="validation/metrics/generated/overview/windows_x86_64_MinGW_f128_overview_compact.svg" alt="fltx metrics table" width="100%">
+</details>
 
-Checked-in CSV/JSON evidence lives under [validation/metrics/data/](validation/metrics/data/), with
-reproducible SVG reports under [validation/metrics/generated/](validation/metrics/generated/). The
-complete methodology and commands are in [validation/README.md](validation/README.md).
+<details>
+<summary>windows_x64_ClangCL</summary>
+<img src="validation/metrics/generated/overview/windows_x86_64_ClangCL_f128_overview_compact.svg" alt="fltx metrics table" width="100%">
+</details>
+
+<details>
+<summary>WebAssembly_wasm32_Emscripten</summary>
+<img src="validation/metrics/generated/overview/wasm32_wasm32_Emscripten_f128_overview_compact.svg" alt="fltx metrics table" width="100%">
+</details>
+
+### **bl::f256** vs reference libraries
+
+<details>
+<summary>windows_x64_MSVC</summary>
+<img src="validation/metrics/generated/overview/windows_x86_64_MSVC_f256_overview_compact.svg" alt="fltx metrics table" width="100%">
+</details>
+
+<details>
+<summary>windows_x64_MinGW</summary>
+<img src="validation/metrics/generated/overview/windows_x86_64_MinGW_f256_overview_compact.svg" alt="fltx metrics table" width="100%">
+</details>
+
+<details>
+<summary>windows_x64_ClangCL</summary>
+<img src="validation/metrics/generated/overview/windows_x86_64_ClangCL_f256_overview_compact.svg" alt="fltx metrics table" width="100%">
+</details>
+
+<details>
+<summary>WebAssembly_wasm32_Emscripten</summary>
+<img src="validation/metrics/generated/overview/wasm32_wasm32_Emscripten_f256_overview_compact.svg" alt="fltx metrics table" width="100%">
+</details>
 
 ## f256 Expression Fusion
 
