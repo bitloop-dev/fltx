@@ -33,6 +33,15 @@ fltx_tests_add_accuracy_runner(
     ON
 )
 
+# Match genuine constant evaluation's uncontracted arithmetic in the strict
+# fixed-simulation consumer. The fast-math simulation remains diagnostic and
+# deliberately retains its consumer compiler policy.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(fltx_constexpr_accuracy PRIVATE
+        -ffp-contract=off
+    )
+endif()
+
 set(FLTX_ACCURACY_TARGETS
     fltx_accuracy
     fltx_ci_accuracy

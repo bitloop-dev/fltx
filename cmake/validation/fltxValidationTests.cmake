@@ -41,6 +41,16 @@ target_compile_definitions(fltx_constexpr_accuracy_lib PUBLIC
 fltx_configure_library_target(fltx_constexpr_accuracy_lib)
 fltx_enable_msvc_parallel_compile(fltx_constexpr_accuracy_lib)
 
+# GCC defaults to permitting contraction even in otherwise strict translation
+# units, and its STDC FP_CONTRACT pragma does not reliably protect the inline
+# error-free transforms on AArch64. Fixed simulation must retain the separate
+# rounding steps that genuine constant evaluation observes.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(fltx_constexpr_accuracy_lib PRIVATE
+        -ffp-contract=off
+    )
+endif()
+
 set(FLTX_CONSTEXPR_TEST_SOURCE_FILE_PATHS
     "${FLTX_VALIDATION_SOURCE_DIR}/support/catch_main.cpp"
     "${FLTX_VALIDATION_SOURCE_DIR}/tests/constexpr/core.cpp"

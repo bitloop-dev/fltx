@@ -79,10 +79,13 @@ namespace
         using fltx::tests::mpfr::real;
         using fltx::tests::mpfr::sign_bit;
 
+        const double negative_zero =
+            fltx::tests::native_fp::signed_zero<double>(true);
+
         if (!sign_bit(fltx::tests::mpfr::traits<bl::f128>::to_real(
-                bl::f128_s{ -0.0, 0.0 })) ||
+                bl::f128_s{ negative_zero, 0.0 })) ||
             !sign_bit(fltx::tests::mpfr::traits<bl::f256>::to_real(
-                bl::f256_s{ -0.0, 0.0, 0.0, 0.0 })))
+                bl::f256_s{ negative_zero, 0.0, 0.0, 0.0 })))
         {
             throw std::logic_error(
                 "MPFR expansion conversion did not preserve negative zero");
