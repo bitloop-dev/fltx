@@ -157,9 +157,10 @@ namespace fltx::tests::mpfr
 
         [[nodiscard]] static real to_real(const bl::f128_s& value)
         {
+            const bool hi_is_negative = native_fp::sign_bit(value.hi);
             const real out = native_float_to_real(value.hi) +
                              native_float_to_real(value.lo);
-            return out == 0 && native_fp::sign_bit(value.hi)
+            return out == 0 && hi_is_negative
                 ? signed_zero(true)
                 : out;
         }
@@ -189,11 +190,12 @@ namespace fltx::tests::mpfr
 
         [[nodiscard]] static real to_real(const bl::f256_s& value)
         {
+            const bool x0_is_negative = native_fp::sign_bit(value.x0);
             const real out = native_float_to_real(value.x0) +
                              native_float_to_real(value.x1) +
                              native_float_to_real(value.x2) +
                              native_float_to_real(value.x3);
-            return out == 0 && native_fp::sign_bit(value.x0)
+            return out == 0 && x0_is_negative
                 ? signed_zero(true)
                 : out;
         }
