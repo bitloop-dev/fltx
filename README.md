@@ -88,8 +88,9 @@ a + b       = 1.000000000000000000000000000000000000000000000000000000000000000
 atan2(a, b) = 0.463647609000806116214256231461214402028537054286120263810933089
 ```
 
-More examples:
-
+<details>
+<summary><strong>More examples</strong></summary>
+  
 | Example | Shows |
 |---|---|
 | [`example_basic.cpp`](examples/example_basic.cpp) | Basic `fdd` / `fqd` arithmetic, literals, and output. |
@@ -107,6 +108,8 @@ More examples:
 | [`example_special_values.cpp`](examples/example_special_values.cpp) | NaN, infinity, signed zero, classification, and layout helpers such as `bl::frexp` / `bl::modf`. |
 | [`example_polynomial.cpp`](examples/example_polynomial.cpp) | Polynomial evaluation with `bl::fma` and precision-sensitive cancellation. |
 | [`example_consteval_coefficients.cpp`](examples/example_consteval_coefficients.cpp) | Compile-time generation of high-precision coefficient tables. |
+
+</details>
 
 ## Installation
 
@@ -562,79 +565,126 @@ For detailed validation and metrics workflows, see [`validation/README.md`](vali
 
 ## Benchmarks and Metrics
 
-Tested on:
-- **Windows:** AMD Ryzen 9 5950X, Memory 32 GB LPDDR5
-- **Linux:** AMD Ryzen 9 5950X, Memory 32 GB LPDDR5
-- **MacOS:** Apple M2 Pro, Memory 16 GB LPDDR5
-
-
-
 > [!NOTE]
 > These results compare **fltx** against reference libraries at broadly comparable precision levels. They are not strict like-for-like comparisons: the underlying representations, exponent ranges, semantics, and implementation goals differ. These types are nevertheless included to illustrate cases where **fltx** may offer a favourable precision/performance trade-off.
 > - ***TLFloat** uses true IEEE-754 floating-point representations and supports a substantially wider exponent range than **fltx**'s double-double and quad-double types. Comparisons therefore cover only the range relevant to `bl::fdd` and `bl::fqd`.*
 > - **boost::multiprecision::mpfr_float_backend<64>** provides roughly the same nominal significand precision as **bl::fqd**, but uses **MPFR** and has a fundamentally different representation and performance model.
 > - Comparisons against **qdpp** (`dd_real` / `qd_real`) and `boost::cpp_double_double` are substantially closer to like-for-like, as they use the same underlying floating-point expansion representation.
 
+Tested on:
+- **Windows:** AMD Ryzen 9 5950X, 32 GB DDR4
+- **Linux:** AMD Ryzen 9 5950X, 32 GB DDR4
+- **macOS:** Apple M2 Pro, 16 GB unified memory
+
 #### Metrics table definitions
 
-| Metric | Definition |
-|---|---|
-| `best/worst bits accurate` | Accuracy is MPFR-relative *(TODO)* |
-| `domain` | Pass counts use **fltx** release thresholds |
-| `performance` | Nanoseconds per iteration. Speed ratio is implementation ÷ `fltx` type |
-| `Inf/NaN` | *(TODO)* |
-| `±0` | *(TODO)* |
+| Metric                     | Definition |
+| -------------------------- | ---------- |
+| `mean/worst bits accurate` | Mean and minimum MPFR-relative accuracy across finite samples; `exact` (`=`) means exact equality |
+| `domain pass`              | Named input regions whose worst sample meets the corresponding **fltx** release threshold; examples include general and moderate inputs, near-one values, cancellation, boundaries, wide exponents, extreme finite values, and argument or quadrant reduction |
+| `performance`              | Nanoseconds per iteration; relative speed is implementation speed ÷ **fltx** speed |
+| `Inf/NaN`                  | `Both`, `Inf`, `NaN`, or `No` indicates which non-finite-value probes pass; `-` means not applicable |
+| `±0`                       | `✓` means all applicable signed-zero probes preserve the required sign; `✗` means at least one fails; `-` means not applicable |
 
+<br>
 
+> [!TIP]
+> Expand a platform section, then click the table image to open the detailed, non-compact version.
 
-### **double-double** + reference libraries
+---
+
+### <u>Double-double</u>
+_Compared with reference libraries_
 
 <details>
-<summary>windows_x64_MSVC</summary>
-<img src="validation/metrics/generated/overview/windows_x86_64_MSVC_dd_overview_compact.svg" alt="fltx metrics table" width="100%">
+<summary><code>Windows · x86-64 · MSVC</code></summary>
+<br>
+<a href="https://raw.githubusercontent.com/bitloop-dev/fltx/main/validation/metrics/generated/overview/windows_x86_64_MSVC_dd_overview.svg">
+  <img src="validation/metrics/generated/overview/windows_x86_64_MSVC_dd_overview_compact.svg"
+       alt="Double-double metrics for Windows x86-64 with MSVC"
+       width="100%">
+</a>
 </details>
 
 <details>
-<summary>windows_x86_64_MinGW</summary>
-<img src="validation/metrics/generated/overview/windows_x86_64_MinGW_dd_overview_compact.svg" alt="fltx metrics table" width="100%">
+<summary><code>Windows · x86-64 · MinGW</code></summary>
+<br>
+<a href="https://raw.githubusercontent.com/bitloop-dev/fltx/main/validation/metrics/generated/overview/windows_x86_64_MinGW_dd_overview.svg">
+  <img src="validation/metrics/generated/overview/windows_x86_64_MinGW_dd_overview_compact.svg"
+       alt="Double-double metrics for Windows x86-64 with MinGW"
+       width="100%">
+</a>
 </details>
 
 <details>
-<summary>windows_x86_64_ClangCL</summary>
-<img src="validation/metrics/generated/overview/windows_x86_64_ClangCL_dd_overview_compact.svg" alt="fltx metrics table" width="100%">
+<summary><code>Windows · x86-64 · ClangCL</code></summary>
+<br>
+<a href="https://raw.githubusercontent.com/bitloop-dev/fltx/main/validation/metrics/generated/overview/windows_x86_64_ClangCL_dd_overview.svg">
+  <img src="validation/metrics/generated/overview/windows_x86_64_ClangCL_dd_overview_compact.svg"
+       alt="Double-double metrics for Windows x86-64 with ClangCL"
+       width="100%">
+</a>
 </details>
 
 <details>
-<summary>WebAssembly_wasm32_Emscripten</summary>
-<img src="validation/metrics/generated/overview/webassembly_wasm32_Emscripten_dd_overview_compact.svg" alt="fltx metrics table" width="100%">
+<summary><code>WebAssembly · wasm32 · Emscripten</code></summary>
+<br>
+<a href="https://raw.githubusercontent.com/bitloop-dev/fltx/main/validation/metrics/generated/overview/webassembly_wasm32_Emscripten_dd_overview.svg">
+  <img src="validation/metrics/generated/overview/webassembly_wasm32_Emscripten_dd_overview_compact.svg"
+       alt="Double-double metrics for WebAssembly wasm32 with Emscripten"
+       width="100%">
+</a>
 </details>
 
-### **quad-double** + reference libraries
+---
 
-<details>
-<summary>windows_x86_64_MSVC</summary>
-<img src="validation/metrics/generated/overview/windows_x86_64_MSVC_qd_overview_compact.svg" alt="fltx metrics table" width="100%">
-</details>
-
-<details>
-<summary>windows_x86_64_MinGW</summary>
-<img src="validation/metrics/generated/overview/windows_x86_64_MinGW_qd_overview_compact.svg" alt="fltx metrics table" width="100%">
-</details>
+### Quad-double
+_Compared with reference libraries_
 
 <details>
-<summary>windows_x86_64_ClangCL</summary>
-<img src="validation/metrics/generated/overview/windows_x86_64_ClangCL_qd_overview_compact.svg" alt="fltx metrics table" width="100%">
+<summary><code>Windows · x86-64 · MSVC</code></summary>
+<br>
+<a href="https://raw.githubusercontent.com/bitloop-dev/fltx/main/validation/metrics/generated/overview/windows_x86_64_MSVC_qd_overview.svg">
+  <img src="validation/metrics/generated/overview/windows_x86_64_MSVC_qd_overview_compact.svg"
+       alt="Quad-double metrics for Windows x86-64 with MSVC"
+       width="100%">
+</a>
+</details>
+<details>
+<summary><code>Windows · x86-64 · MinGW</code></summary>
+<br>
+<a href="https://raw.githubusercontent.com/bitloop-dev/fltx/main/validation/metrics/generated/overview/windows_x86_64_MinGW_qd_overview.svg">
+  <img src="validation/metrics/generated/overview/windows_x86_64_MinGW_qd_overview_compact.svg"
+       alt="Quad-double metrics for Windows x86-64 with MinGW"
+       width="100%">
+</a>
+</details>
+<details>
+<summary><code>Windows · x86-64 · ClangCL</code></summary>
+<br>
+<a href="https://raw.githubusercontent.com/bitloop-dev/fltx/main/validation/metrics/generated/overview/windows_x86_64_ClangCL_qd_overview.svg">
+  <img src="validation/metrics/generated/overview/windows_x86_64_ClangCL_qd_overview_compact.svg"
+       alt="Quad-double metrics for Windows x86-64 with ClangCL"
+       width="100%">
+</a>
+</details>
+<details>
+<summary><code>WebAssembly · wasm32 · Emscripten</code></summary>
+<br>
+<a href="https://raw.githubusercontent.com/bitloop-dev/fltx/main/validation/metrics/generated/overview/webassembly_wasm32_Emscripten_qd_overview.svg">
+  <img src="validation/metrics/generated/overview/webassembly_wasm32_Emscripten_qd_overview_compact.svg"
+       alt="Quad-double metrics for WebAssembly wasm32 with Emscripten"
+       width="100%">
+</a>
 </details>
 
-<details>
-<summary>WebAssembly_wasm32_Emscripten</summary>
-<img src="validation/metrics/generated/overview/webassembly_wasm32_Emscripten_qd_overview_compact.svg" alt="fltx metrics table" width="100%">
-</details>
+---
 
 ## Expression Fusion
 
 [`bl::fqd`](include/fltx/fqd.h) recognises a set of common arithmetic expression patterns, including sums of products, dot products with a bias term, and scaled linear combinations.
-These expressions are represented as small compile-time nodes and lowered to fused implementations. Delaying intermediate normalisation reduces rounding and avoids temporary values.
+
+These expressions are represented as small compile-time nodes and lowered to highly optimised fused implementations. Delaying intermediate normalisation reduces rounding and avoids temporary values.
 
 ## License
 
