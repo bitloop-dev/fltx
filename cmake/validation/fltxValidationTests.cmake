@@ -87,13 +87,29 @@ file(GLOB FLTX_TESTS_PUBLIC_HEADERS CONFIGURE_DEPENDS
     RELATIVE "${PROJECT_SOURCE_DIR}/include"
     "${PROJECT_SOURCE_DIR}/include/*.h"
     "${PROJECT_SOURCE_DIR}/include/fltx/*.h"
+    "${PROJECT_SOURCE_DIR}/include/fltx/util/*.h"
 )
 
 set(FLTX_TESTS_HEADER_PROBE_SOURCES)
 foreach(header IN LISTS FLTX_TESTS_PUBLIC_HEADERS)
     string(MAKE_C_IDENTIFIER "${header}" probe_name)
     set(source "${FLTX_VALIDATION_BINARY_DIR}/header_probes/${probe_name}.cpp")
-    file(GENERATE OUTPUT "${source}" CONTENT "#include <${header}>\n")
+    if(header STREQUAL "fltx/native.h" OR
+       header STREQUAL "fltx/native_math.h" OR
+       header STREQUAL "fltx/native_string.h")
+        string(CONCAT probe_content
+            "#include <${header}>\n\n"
+            "template<class T>\n"
+            "concept fltx_complete_type = requires { sizeof(T); };\n\n"
+            "static_assert(!fltx_complete_type<bl::fdd>);\n"
+            "static_assert(!fltx_complete_type<bl::fdd_s>);\n"
+            "static_assert(!fltx_complete_type<bl::fqd>);\n"
+            "static_assert(!fltx_complete_type<bl::fqd_s>);\n"
+        )
+        file(GENERATE OUTPUT "${source}" CONTENT "${probe_content}")
+    else()
+        file(GENERATE OUTPUT "${source}" CONTENT "#include <${header}>\n")
+    endif()
     list(APPEND FLTX_TESTS_HEADER_PROBE_SOURCES "${source}")
 endforeach()
 

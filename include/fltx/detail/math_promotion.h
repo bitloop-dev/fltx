@@ -1,5 +1,5 @@
 /**
- * fltx/detail/math_promotion.h - Shared <cmath>-style promotion helpers.
+ * fltx/detail/math_promotion.h - shared argument-promotion utilities for math functions.
  *
  * Copyright (c) 2026 William Hemsworth
  *
@@ -39,8 +39,8 @@ namespace bl::detail::math
         using type = T;
     };
 
-    template<> struct promoted_call_type<f128> { using type = f128_s; };
-    template<> struct promoted_call_type<f256> { using type = f256_s; };
+    template<> struct promoted_call_type<fdd> { using type = fdd_s; };
+    template<> struct promoted_call_type<fqd> { using type = fqd_s; };
 
     template<class... Args>
     using promoted_t = typename promoted_call_type<common_float_type_t<Args...>>::type;
@@ -59,23 +59,23 @@ namespace bl::detail::math
 
     template<class Exp>
     requires (!detail::fp::non_bool_integral<Exp> && fltx_precision_rank_v<Exp> <= 2)
-    struct promoted_pow_exponent_type<f128_s, Exp>
+    struct promoted_pow_exponent_type<fdd_s, Exp>
     {
         using type = f64;
     };
 
     template<class Exp>
     requires (!detail::fp::non_bool_integral<Exp> && fltx_precision_rank_v<Exp> <= 2)
-    struct promoted_pow_exponent_type<f256_s, Exp>
+    struct promoted_pow_exponent_type<fqd_s, Exp>
     {
         using type = f64;
     };
 
     template<class Exp>
-    requires fltx_f128<Exp>
-    struct promoted_pow_exponent_type<f256_s, Exp>
+    requires fltx_fdd<Exp>
+    struct promoted_pow_exponent_type<fqd_s, Exp>
     {
-        using type = f128_s;
+        using type = fdd_s;
     };
 
     template<class P, class Exp>
@@ -85,9 +85,9 @@ namespace bl::detail::math
 
     template<class... Args> concept f64_promoted_math_args =
         promoted_math_args<Args...> && ::bl::detail::traits::max_precision_rank<Args...>() == 2;
-    template<class... Args> concept f128_promoted_math_args =
+    template<class... Args> concept dd_promoted_math_args =
         promoted_math_args<Args...> && ::bl::detail::traits::max_precision_rank<Args...>() == 4;
-    template<class... Args> concept f256_promoted_math_args =
+    template<class... Args> concept qd_promoted_math_args =
         promoted_math_args<Args...> && ::bl::detail::traits::max_precision_rank<Args...>() == 5;
 
     template<class To, class From>
@@ -118,28 +118,28 @@ namespace bl::detail::math
         native_nexttoward_target<To>;
 
     template<class To>
-    concept f128_nexttoward_target =
+    concept dd_nexttoward_target =
         std::is_integral_v<clean_t<To>> ||
         native_math_float<To> ||
-        fltx_f128<To> ||
+        fltx_fdd<To> ||
         std::same_as<clean_t<To>, long double>;
 
     template<class From, class To>
-    concept f128_nexttoward_args =
+    concept dd_nexttoward_args =
         promoted_math_arg<From> &&
         fltx_precision_rank_v<From> == 4 &&
-        f128_nexttoward_target<To>;
+        dd_nexttoward_target<To>;
 
     template<class To>
-    concept f256_nexttoward_target =
+    concept qd_nexttoward_target =
         promoted_math_arg<To> ||
         std::same_as<clean_t<To>, long double>;
 
     template<class From, class To>
-    concept f256_nexttoward_args =
+    concept qd_nexttoward_args =
         promoted_math_arg<From> &&
         fltx_precision_rank_v<From> == 5 &&
-        f256_nexttoward_target<To>;
+        qd_nexttoward_target<To>;
 
 } // namespace bl::detail::math
 

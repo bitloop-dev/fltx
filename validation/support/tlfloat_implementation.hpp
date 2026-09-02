@@ -17,21 +17,21 @@
 namespace fltx::tests::implementations
 {
 #if FLTX_METRICS_HAS_TLFLOAT
-    using tl_f128 = tlfloat::Quad;
-    using tl_f256 = tlfloat::Octuple;
+    using tl_dd = tlfloat::Quad;
+    using tl_qd = tlfloat::Octuple;
 #else
-    using tl_f128 = double;
-    using tl_f256 = double;
+    using tl_dd = double;
+    using tl_qd = double;
 #endif
 
-    inline constexpr identity tlfloat_f128{"tlfloat", "tlquad", "TLFloat Quad", "TLFloat",
+    inline constexpr identity tlfloat_dd{"tlfloat", "tlquad", "TLFloat Quad", "TLFloat",
                                            FLTX_METRICS_HAS_TLFLOAT != 0};
-    inline constexpr identity tlfloat_f256{"tlfloat", "tloct", "TLFloat Octuple", "TLFloat",
+    inline constexpr identity tlfloat_qd{"tlfloat", "tloct", "TLFloat Octuple", "TLFloat",
                                            FLTX_METRICS_HAS_TLFLOAT != 0};
 
     template<class Float>
     inline constexpr identity tlfloat_identity =
-        std::is_same_v<Float, bl::f128> ? tlfloat_f128 : tlfloat_f256;
+        std::is_same_v<Float, bl::fdd> ? tlfloat_dd : tlfloat_qd;
 
 #if FLTX_METRICS_HAS_TLFLOAT
     template<std::size_t N>

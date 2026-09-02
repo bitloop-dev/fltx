@@ -537,7 +537,7 @@ namespace bl
   #endif
 #endif
 
-// Convenience macro for f128/f128_s and f256/f256_s for identical std::numeric_limits
+// Convenience macro for fdd/fdd_s and fqd/fqd_s for identical std::numeric_limits
 
 #ifndef BL_DEFINE_FLOAT_WRAPPER_NUMERIC_LIMITS
 #define BL_DEFINE_FLOAT_WRAPPER_NUMERIC_LIMITS(wrapper_type, storage_type)                                   \

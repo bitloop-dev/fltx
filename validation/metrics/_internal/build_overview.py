@@ -28,7 +28,8 @@ from run_metrics import CONSUMER_MODES, MetricsError, consumer_mode_suffix
 from manifest import IMPLEMENTATIONS
 
 
-PRECISIONS = ("f128", "f256")
+PRECISIONS = ("dd", "qd")
+PRECISION_TYPE_NAMES = {"dd": "fdd", "qd": "fqd"}
 SUPPORT = {
     "Both": "#4ade80",
     "Inf": "#fbbf24",
@@ -40,9 +41,9 @@ PRIMARY_HEADER_LABELS = {
     "ddreal": "qdpp (dd_real)",
     "qdreal": "qdpp (qd_real)",
     "cppdd": "boost (cpp_double_double)",
-    "mpfr64": "mpfr_float_backend<64>",
-    "tlquad": "TLFloat (tlquad)",
-    "tloct": "TLFloat (tloct)",
+    "mpfr64": "boost (mpfr_float_backend<64>)",
+    "tlquad": "TLFloat (Quad)",
+    "tloct": "TLFloat (Octuple)",
 }
 BODY_LIGHTNESS = (29 * 1.1) / 255
 
@@ -93,12 +94,16 @@ TABLE_GAP = 8
 COMPACT_TABLE_GAP = 3
 MONOSPACE_CHARACTER_WIDTH = 6
 COMPACT_FONT_ADVANCE_EM = 0.5
-COMPACT_FONT_SIZE_INCREMENT = 1
+COMPACT_FONT_SIZE_INCREMENT = -1
 COMPACT_EXACT_STROKE_WIDTH = 1.1
 COMPACT_EXACT_SCALE = 0.5625
 COMPACT_REFERENCE_MATCH_FONT_SIZE = 14
 COMPACT_ACCURACY_EXTRA_WIDTH = 2
+COMPACT_BENCHMARK_UNIT_GAP = 3
+COMPACT_OPERATION_TEXT_SHIFT = 2
+COMPACT_SPECIAL_WIDTH_REDUCTION = 4
 CELL_PADDING = 8
+COMPACT_CELL_PADDING = 4
 GRID_REGULAR = "#000000"
 GRID_STRONG = "#000000"
 GROUP_ROW_FILL = "#4e555f"
@@ -155,16 +160,38 @@ def _font_css(layout: str) -> str:
             "}"
         )
     faces.append(
-        "text { font-family:'Ubuntu Mono', Consolas, monospace; }"
+        "text { font-family:'Ubuntu Mono', Consolas, monospace; "
+        "text-rendering:optimizeLegibility; }"
     )
     return "<style>" + "".join(faces) + "</style>"
 
 
+def _rendered_font_size(
+    font_size: int,
+    font_size_increment: int = 0,
+    snap_to_pixels: bool = False,
+) -> float:
+    rendered_size = font_size * FONT_SCALE + font_size_increment
+    return round(rendered_size) if snap_to_pixels else rendered_size
+
+
 def _estimated_character_width(layout: str, font_size: int) -> float:
     if layout == "compact":
-        rendered_size = font_size * FONT_SCALE + COMPACT_FONT_SIZE_INCREMENT
+        rendered_size = _rendered_font_size(
+            font_size,
+            COMPACT_FONT_SIZE_INCREMENT,
+            snap_to_pixels=True,
+        )
         return rendered_size * COMPACT_FONT_ADVANCE_EM
     return MONOSPACE_CHARACTER_WIDTH * FONT_SCALE
+
+
+def _estimated_text_width(value: str, layout: str, font_size: int) -> float:
+    character_width = _estimated_character_width(layout, font_size)
+    width = len(value) * character_width
+    if layout == "compact" and value.endswith(" ns"):
+        width += COMPACT_BENCHMARK_UNIT_GAP - character_width
+    return width
 
 
 def _fmt_bits(value: str) -> str:
@@ -182,7 +209,7 @@ def _fmt_bits_compact(value: str) -> str:
     number = float(value)
     if math.isinf(number):
         return "="
-    return f"{number:.1f}"
+    return f"{number:.0f}"
 
 
 def _fmt_ns(value: str) -> str:
@@ -478,7 +505,7 @@ def _benchmark_spans(
         if text.endswith(" ns"):
             return (
                 (text[:-3], text_color),
-                (" ns", COMPACT_BENCHMARK_UNIT_TEXT),
+                ("ns", COMPACT_BENCHMARK_UNIT_TEXT),
             )
         return ((
             text,
@@ -620,8 +647,11 @@ def _text(
     weight: str = "normal",
     size: int = 11,
     font_size_increment: int = 0,
+    snap_font_size: bool = False,
 ) -> None:
-    rendered_size = size * FONT_SCALE + font_size_increment
+    rendered_size = _rendered_font_size(
+        size, font_size_increment, snap_font_size,
+    )
     parts.append(
         f'<text x="{x}" y="{y}" fill="{fill}" text-anchor="{anchor}" '
         f'font-size="{rendered_size:g}" font-weight="{weight}">'
@@ -706,15 +736,24 @@ def _text_spans(
     weight: str = "normal",
     size: int = 11,
     font_size_increment: int = 0,
+    span_dx: tuple[float, ...] = (),
+    snap_font_size: bool = False,
 ) -> None:
-    rendered_size = size * FONT_SCALE + font_size_increment
+    rendered_size = _rendered_font_size(
+        size, font_size_increment, snap_font_size,
+    )
+    rendered_spans = []
+    for index, (value, fill) in enumerate(spans):
+        dx = span_dx[index] if index < len(span_dx) else 0
+        dx_attribute = f' dx="{dx:g}"' if dx else ""
+        rendered_spans.append(
+            f'<tspan fill="{fill}"{dx_attribute}>'
+            f'{html.escape(value)}</tspan>'
+        )
     parts.append(
         f'<text x="{x}" y="{y}" text-anchor="{anchor}" '
         f'font-size="{rendered_size:g}" font-weight="{weight}">'
-        + "".join(
-            f'<tspan fill="{fill}">{html.escape(value)}</tspan>'
-            for value, fill in spans
-        )
+        + "".join(rendered_spans)
         + "</text>"
     )
 
@@ -731,10 +770,13 @@ def _text_lines(
     size: int = 9,
     line_height: int = 14,
     font_size_increment: int = 0,
+    snap_font_size: bool = False,
 ) -> None:
     if not lines:
         return
-    rendered_size = size * FONT_SCALE + font_size_increment
+    rendered_size = _rendered_font_size(
+        size, font_size_increment, snap_font_size,
+    )
     text_block_height = rendered_size + (len(lines) - 1) * line_height
     first_baseline = (
         y + (height - text_block_height) / 2 + rendered_size * 0.8
@@ -749,6 +791,7 @@ def _text_lines(
             weight=weight,
             size=size,
             font_size_increment=font_size_increment,
+            snap_font_size=snap_font_size,
         )
 
 
@@ -795,6 +838,9 @@ def _column_widths(
     layout: str = "full",
 ) -> tuple[int, ...]:
     column_specs = _column_specs(dataset.consumer_mode)
+    cell_padding = (
+        COMPACT_CELL_PADDING if layout == "compact" else CELL_PADDING
+    )
     visible = {}
     for key, lines, _ in column_specs:
         visible[key] = list(
@@ -829,17 +875,27 @@ def _column_widths(
     def required_width(lines: tuple[str, ...] | list[str]) -> int:
         return (
             math.ceil(
-                max((len(value) for value in lines), default=0)
-                * _estimated_character_width(layout, 9)
+                max(
+                    (_estimated_text_width(value, layout, 9) for value in lines),
+                    default=0,
+                )
             )
-            + CELL_PADDING
+            + cell_padding
         )
 
     widths = [
         max(
             (
-                28
-                if layout == "compact" and key in {"mean", "worst"}
+                (
+                    28 if key in {"mean", "worst"} else minimum
+                )
+                - (CELL_PADDING - COMPACT_CELL_PADDING)
+                - (
+                    COMPACT_SPECIAL_WIDTH_REDUCTION
+                    if key == "special"
+                    else 0
+                )
+                if layout == "compact"
                 else minimum
             ),
             required_width(visible[key]),
@@ -875,6 +931,9 @@ def _operation_width(
     layout: str = "full",
 ) -> int:
     font_size = 9 if layout == "compact" else 10
+    cell_padding = (
+        COMPACT_CELL_PADDING if layout == "compact" else CELL_PADDING
+    )
     longest = max(
         len("operation"),
         *(len(operation) for _, operation in operations),
@@ -883,7 +942,7 @@ def _operation_width(
         math.ceil(
             longest * _estimated_character_width(layout, font_size)
         )
-        + CELL_PADDING
+        + cell_padding
         + 4
     )
 
@@ -927,6 +986,7 @@ def render_overview(
     font_size_increment = (
         COMPACT_FONT_SIZE_INCREMENT if layout == "compact" else 0
     )
+    snap_font_size = layout == "compact"
     header_heights = (
         COMPACT_HEADER_HEIGHTS
         if layout == "compact"
@@ -937,14 +997,17 @@ def render_overview(
     add_text = partial(
         _text,
         font_size_increment=font_size_increment,
+        snap_font_size=snap_font_size,
     )
     add_text_spans = partial(
         _text_spans,
         font_size_increment=font_size_increment,
+        snap_font_size=snap_font_size,
     )
     add_text_lines = partial(
         _text_lines,
         font_size_increment=font_size_increment,
+        snap_font_size=snap_font_size,
     )
     implementations = _implementation_order(dataset, target, precision)
     keys = {
@@ -987,7 +1050,10 @@ def render_overview(
     title_mode = (
         " consumer fast-math" if dataset.consumer_mode == "fastmath" else ""
     )
-    title = f"{precision}{title_mode} metrics overview — {target.label}"
+    title = (
+        f"{PRECISION_TYPE_NAMES[precision]}{title_mode} metrics overview — "
+        f"{target.label}"
+    )
     subtitle = (
         "Accuracy excludes the subnormal domain; support is reported separately. "
         "Speed is relative to FLTX."
@@ -1078,7 +1144,7 @@ def render_overview(
         )
         _rect(parts, x, header_y, block_width, header_heights[0], header_fill)
         label = (
-            f"bl::{precision}"
+            f"fltx ({PRECISION_TYPE_NAMES[precision]})"
             if implementation == "fltx"
             else PRIMARY_HEADER_LABELS.get(
                 labels[implementation][0],
@@ -1214,7 +1280,14 @@ def render_overview(
                 OPERATION_ROW_FILLS[row_index % 2],
             )
             add_text(
-                parts, margin + 7, y + 15, operation,
+                parts,
+                margin + 7 - (
+                    COMPACT_OPERATION_TEXT_SHIFT
+                    if layout == "compact"
+                    else 0
+                ),
+                y + 15,
+                operation,
                 anchor="start", fill="#f1f2f4",
                 size=9 if layout == "compact" else 10,
             )
@@ -1294,6 +1367,11 @@ def render_overview(
                                 layout=layout,
                             ),
                             size=9,
+                            span_dx=(
+                                (0, COMPACT_BENCHMARK_UNIT_GAP)
+                                if layout == "compact"
+                                else ()
+                            ),
                         )
                     else:
                         compact_accuracy_marker = (

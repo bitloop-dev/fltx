@@ -1,0 +1,90 @@
+{
+  "accuracy_samples": 4096,
+  "architecture": "x86_64",
+  "compiler": "MinGW",
+  "configuration": {
+    "build": {
+      "architecture": "x86_64",
+      "compiler-id": "GNU",
+      "compiler-version": "13.1.0",
+      "config": "Release",
+      "flags-hash": "58af7dec3ba5f6621e8a5a7b2fb270d74cd1bcbd3a5216604c9df63e81c05960",
+      "frontend-variant": "GNU",
+      "optimized": "1",
+      "processor": "AMD64",
+      "source-fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
+      "system": "Windows"
+    },
+    "consumer": {
+      "arm64": "0",
+      "fast-math": "off",
+      "fma": "AUTO",
+      "has-x86-fma": "0",
+      "simd": "on",
+      "simulated-consteval": "off",
+      "tu-x86-fma": "0",
+      "x86": "1"
+    },
+    "harness": {
+      "qdpp": "on",
+      "tlfloat": "on"
+    },
+    "library": {
+      "arm64": "0",
+      "fast-math": "off",
+      "fast-math-request": "AUTO",
+      "fma": "AUTO",
+      "runtime-fma": "available",
+      "simd": "on",
+      "tu-x86-fma": "0",
+      "x86": "1"
+    },
+    "library_strategy": {
+      "baseline-arm64": "0",
+      "compiled-x86-backend": "1",
+      "msvc-guarded": "0",
+      "neon": "0",
+      "qd-simd": "1",
+      "runtime-check": "1",
+      "runtime-path": "0",
+      "scalar-x86": "0",
+      "sse2": "1",
+      "trig-simd": "1",
+      "wasm-simd": "0"
+    }
+  },
+  "consumer_mode": "strict",
+  "executables": {
+    "accuracy": {
+      "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-mingw-release\\validation\\fltx_accuracy.exe",
+      "sha256": "4e0de1af3d9ad3e271c51795ceca5561a4f37e485e512d81818722559688a6f1",
+      "wasm-sha256": "not-present"
+    }
+  },
+  "host": {
+    "machine": "AMD64",
+    "node": "not-used",
+    "os": "Windows",
+    "os-release": "11",
+    "processor": "AMD64 Family 26 Model 68 Stepping 0, AuthenticAMD",
+    "python": "CPython 3.13.14"
+  },
+  "outputs": {
+    "f32_accuracy.csv": "f408155c38fb787d87340e4967ed76a9a70faa9426608821b4c4c5577bc4e045",
+    "f64_accuracy.csv": "38c4280ef17bf9f18eb2027e14f566c1afb30c2a20270fe34186f6fd84c741dd"
+  },
+  "platform": "windows",
+  "policy": "native-float-libm-baseline-v1",
+  "precisions": [
+    "f32",
+    "f64"
+  ],
+  "run_id": "25fd667f3a484de9ae96b297873f733f",
+  "sample_mode": "standard",
+  "schema_version": 2,
+  "source_fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
+  "source_revision": "882890995f149618f5ad4c950bbb2cd0b8e2f976-dirty-1e2aee00bd57",
+  "status": "complete",
+  "target": "windows/x86_64/MinGW",
+  "thresholds": "advisory"
+}

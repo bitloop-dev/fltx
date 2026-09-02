@@ -10,7 +10,7 @@
 #ifndef FLTX_NUMBERS_INCLUDED
 #define FLTX_NUMBERS_INCLUDED
 
-#include "fltx/f128_numbers.h"
-#include "fltx/f256_numbers.h"
+#include "fltx/fdd_numbers.h"
+#include "fltx/fqd_numbers.h"
 
 #endif

@@ -29,7 +29,7 @@ def main() -> None:
         sizes[name] = path.stat().st_size
 
     for name, size in sizes.items():
-        precision = "f128" if "_f128_" in name else "f256"
+        precision = "dd" if "_dd_" in name else "qd"
         baseline = sizes[f"fltx_size_{precision}_baseline"]
         rows.append(
             {

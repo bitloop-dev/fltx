@@ -31,8 +31,8 @@ class CompileProbeTests(unittest.TestCase):
     def test_generated_sources_distinguish_eager_and_expression_types(self) -> None:
         eager = source_for(Probe("expression-shape", "mul_add", "eager", 2))
         expression = source_for(Probe("expression-shape", "mul_add", "expression", 2))
-        self.assertIn("bl::f256_s eager_mul_add_0", eager)
-        self.assertIn("bl::f256 expression_mul_add_0", expression)
+        self.assertIn("bl::fqd_s eager_mul_add_0", eager)
+        self.assertIn("bl::fqd expression_mul_add_0", expression)
         self.assertEqual(eager.count("return a * b + c;"), 2)
         self.assertEqual(expression.count("return a * b + c;"), 2)
 

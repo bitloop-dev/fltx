@@ -15,8 +15,8 @@
 #include <cstdint>
 #include <functional>
 
-#include "fltx/f128_type.h"
-#include "fltx/f256_type.h"
+#include "fltx/fdd_type.h"
+#include "fltx/fqd_type.h"
 
 namespace bl::detail
 {
@@ -59,7 +59,7 @@ namespace bl::detail
             return static_cast<std::size_t>(seed32);
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr std::size_t hash_f128(const f128_s& value) noexcept
+    [[nodiscard]] BL_FORCE_INLINE constexpr std::size_t hash_dd(const fdd_s& value) noexcept
     {
         std::size_t seed = hash_seed(0x4ddc2d0f5b0d3911ull, 0x5b0d3911u);
         seed = hash_mix(seed, hash_double_bits(value.hi));
@@ -67,7 +67,7 @@ namespace bl::detail
         return seed;
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr std::size_t hash_f256(const f256_s& value) noexcept
+    [[nodiscard]] BL_FORCE_INLINE constexpr std::size_t hash_qd(const fqd_s& value) noexcept
     {
         std::size_t seed = hash_seed(0x94d049bb133111ebull, 0x133111ebu);
         seed = hash_mix(seed, hash_double_bits(value.x0));
@@ -80,38 +80,38 @@ namespace bl::detail
 } // namespace bl::detail
 
 template<>
-struct std::hash<bl::f128_s>
+struct std::hash<bl::fdd_s>
 {
-    [[nodiscard]] std::size_t operator()(const bl::f128_s& value) const noexcept
+    [[nodiscard]] std::size_t operator()(const bl::fdd_s& value) const noexcept
     {
-        return bl::detail::hash_f128(value);
+        return bl::detail::hash_dd(value);
     }
 };
 
 template<>
-struct std::hash<bl::f128>
+struct std::hash<bl::fdd>
 {
-    [[nodiscard]] std::size_t operator()(const bl::f128& value) const noexcept
+    [[nodiscard]] std::size_t operator()(const bl::fdd& value) const noexcept
     {
-        return bl::detail::hash_f128(static_cast<const bl::f128_s&>(value));
+        return bl::detail::hash_dd(static_cast<const bl::fdd_s&>(value));
     }
 };
 
 template<>
-struct std::hash<bl::f256_s>
+struct std::hash<bl::fqd_s>
 {
-    [[nodiscard]] std::size_t operator()(const bl::f256_s& value) const noexcept
+    [[nodiscard]] std::size_t operator()(const bl::fqd_s& value) const noexcept
     {
-        return bl::detail::hash_f256(value);
+        return bl::detail::hash_qd(value);
     }
 };
 
 template<>
-struct std::hash<bl::f256>
+struct std::hash<bl::fqd>
 {
-    [[nodiscard]] std::size_t operator()(const bl::f256& value) const noexcept
+    [[nodiscard]] std::size_t operator()(const bl::fqd& value) const noexcept
     {
-        return bl::detail::hash_f256(static_cast<const bl::f256_s&>(value));
+        return bl::detail::hash_qd(static_cast<const bl::fqd_s&>(value));
     }
 };
 

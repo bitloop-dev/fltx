@@ -41,14 +41,14 @@ if(BUILD_TESTING)
         "${FLTX_VALIDATION_BINARY_DIR}/ci_accuracy"
     )
     set(FLTX_CI_ACCURACY_COMMANDS)
-    foreach(precision f32 f64 f128 f256)
+    foreach(precision f32 f64 dd qd)
         # Runtime f32/f64 deliberately delegate to the platform libm and use
         # it as their behavioural baseline. Preserve numerical findings in
         # the CI CSV without failing CI for the platform's own accuracy.
         # Consumer fast-math permits reassociation, signed-zero loss, and
         # subnormal flushing, so both optimized runtime lanes remain evidence
         # rather than gates for every precision. Runner faults still fail under
-        # --advisory. Genuine constexpr tests and strict f128/f256 accuracy keep
+        # --advisory. Genuine constexpr tests and strict fdd/fqd accuracy keep
         # gating their documented contracts.
         set(FLTX_CI_RUNTIME_ACCURACY_POLICY)
         if(precision STREQUAL "f32" OR precision STREQUAL "f64")

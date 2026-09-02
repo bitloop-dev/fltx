@@ -126,25 +126,25 @@ namespace
 
     using namespace bl::literals;
 
-    constexpr bl::f128 dd_literal = "1.25"_dd;
-    constexpr bl::f256 qd_literal = "1.25"_qd;
-    constexpr bl::f256 expression_value{
-        qd_literal * bl::f256{ 2.0 } + bl::f256{ 0.5 }
+    constexpr bl::fdd dd_literal = "1.25"_dd;
+    constexpr bl::fqd qd_literal = "1.25"_qd;
+    constexpr bl::fqd expression_value{
+        qd_literal * bl::fqd{ 2.0 } + bl::fqd{ 0.5 }
     };
 
-    static_assert(dd_literal == bl::f128{ 1.25 });
-    static_assert(qd_literal == bl::f256{ 1.25 });
-    static_assert(expression_value == bl::f256{ 3.0 });
-    static_assert(core_is_constant_evaluated<bl::f128>());
-    static_assert(core_is_constant_evaluated<bl::f256>());
-    static_assert(math_is_constant_evaluated<bl::f128>());
-    static_assert(math_is_constant_evaluated<bl::f256>());
+    static_assert(dd_literal == bl::fdd{ 1.25 });
+    static_assert(qd_literal == bl::fqd{ 1.25 });
+    static_assert(expression_value == bl::fqd{ 3.0 });
+    static_assert(core_is_constant_evaluated<bl::fdd>());
+    static_assert(core_is_constant_evaluated<bl::fqd>());
+    static_assert(math_is_constant_evaluated<bl::fdd>());
+    static_assert(math_is_constant_evaluated<bl::fqd>());
     static_assert(io_is_constant_evaluated<bl::f32>());
     static_assert(io_is_constant_evaluated<bl::f64>());
-    static_assert(io_is_constant_evaluated<bl::f128>());
-    static_assert(io_is_constant_evaluated<bl::f256>());
-    static_assert(random_is_constant_evaluated<bl::f128>());
-    static_assert(random_is_constant_evaluated<bl::f256>());
+    static_assert(io_is_constant_evaluated<bl::fdd>());
+    static_assert(io_is_constant_evaluated<bl::fqd>());
+    static_assert(random_is_constant_evaluated<bl::fdd>());
+    static_assert(random_is_constant_evaluated<bl::fqd>());
 
     template<class T, bool Add>
     int dispatch_probe(int value)
@@ -155,13 +155,13 @@ namespace
     }
 
     [[maybe_unused]] void instantiate_runtime_and_dispatch_contracts(
-        bl::f128 dd,
-        bl::f256 qd)
+        bl::fdd dd,
+        bl::fqd qd)
     {
         const auto table = bl_dispatch_table(dispatch_probe, 10);
         (void)bl_table_invoke(
             table,
-            bl_enum_type(bl::FloatType::F256),
+            bl_enum_type(bl::FloatType::FQD),
             true);
 
         // These calls must remain valid thin wrappers around compiled runtime

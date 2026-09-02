@@ -20,7 +20,7 @@ namespace bl::detail::exact_decimal {
 struct biguint
 {
     // Decimal parse/format/rounding paths stay well below this for canonical
-    // f128/f256 values. The limiting use is f256 Payne-Hanek reduction, whose
+    // dd/qd values. The limiting use is qd Payne-Hanek reduction, whose
     // 1888-bit 2/pi constant and 320-bit exact input accumulator use the
     // complete 2208-bit capacity.
     static constexpr int max_words = 69;

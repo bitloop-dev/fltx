@@ -11,8 +11,8 @@
   "benchmark_ordinary_trials": 3,
   "benchmark_policy": "adaptive-v2",
   "benchmark_samples": {
-    "f128": 8192,
-    "f256": 4096
+    "dd": 8192,
+    "qd": 4096
   },
   "benchmark_slow_threshold_ns": 10000,
   "benchmark_trials": 7,
@@ -27,7 +27,7 @@
       "frontend-variant": "GNU",
       "optimized": "1",
       "processor": "AMD64",
-      "source-fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
+      "source-fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
       "system": "Windows"
     },
     "consumer": {
@@ -57,9 +57,9 @@
     "library_strategy": {
       "baseline-arm64": "0",
       "compiled-x86-backend": "1",
-      "f256-simd": "1",
       "msvc-guarded": "0",
       "neon": "0",
+      "qd-simd": "1",
       "runtime-check": "1",
       "runtime-path": "0",
       "scalar-x86": "0",
@@ -69,16 +69,16 @@
     }
   },
   "consumer_mode": "strict",
-  "created_utc": "2026-08-15T16:01:23.434256+00:00",
+  "created_utc": "2026-09-02T18:25:10.643670+00:00",
   "executables": {
     "accuracy": {
       "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-mingw-release\\validation\\fltx_accuracy.exe",
-      "sha256": "584fc271904637a6892f1a93ada6148ed0970d8a0f0993548ae0f7e5c47afe70",
+      "sha256": "4e0de1af3d9ad3e271c51795ceca5561a4f37e485e512d81818722559688a6f1",
       "wasm-sha256": "not-present"
     },
     "benchmark": {
       "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-mingw-release\\validation\\fltx_benchmark.exe",
-      "sha256": "b296debd3313496263df0d50f7a4de95c30e33b3a6b5aae2acdd7d7ceb76d1d4",
+      "sha256": "a26ca6ba89590faccad7cfb5a780d4ad0e7ea572372aeb6f1b0882117292682e",
       "wasm-sha256": "not-present"
     }
   },
@@ -91,10 +91,10 @@
     "python": "CPython 3.13.14"
   },
   "implementations": {
-    "f128": [
+    "dd": [
       {
         "id": "fltx",
-        "label": "fltx bl::f128",
+        "label": "fltx bl::fdd",
         "short_label": "fltx"
       },
       {
@@ -113,10 +113,10 @@
         "short_label": "tlquad"
       }
     ],
-    "f256": [
+    "qd": [
       {
         "id": "fltx",
-        "label": "fltx bl::f256",
+        "label": "fltx bl::fqd",
         "short_label": "fltx"
       },
       {
@@ -137,31 +137,31 @@
     ]
   },
   "outputs": {
-    "MinGW_f128.csv": "c3874dca3b181914188f2fc0bfd0b3a55f45736e7a02eb66134555a7e0f8331e",
-    "MinGW_f256.csv": "00e55576c373d768a9d1209e27c1742deebb6f855ae655b9c2e322744a762599",
-    "detail/MinGW_f128_accuracy.csv": "dd3955004e210e9e164955ed72f8d853e40865a54f0894205a5a9eb70e6ecba9",
-    "detail/MinGW_f128_benchmark.csv": "55eebad487bb18de35bad582f80a4f608b65ce5c04c954adeaadfee7d6ce572f",
-    "detail/MinGW_f256_accuracy.csv": "41473b49d08d890f4878d0071a357235de2e0d682616630daac82ed2e2fc2c35",
-    "detail/MinGW_f256_benchmark.csv": "f1be3f92d51814bcde00f2abadcec4ead62a70cb49d02bd0b7a17cfc7f5009c0"
+    "MinGW_dd.csv": "50d8b86f524b9a0ea32b89e4605cb697a64356c5566c4f21d098e341038c11d0",
+    "MinGW_qd.csv": "79e51c2789cb2764e6aed45cc828efef4c8e4d283d300a9e1832f2719a8da109",
+    "detail/MinGW_dd_accuracy.csv": "bae64f0f11408efe08b61e7ef74cfce97fa5c2b973121f14256d8e1e42f2a03a",
+    "detail/MinGW_dd_benchmark.csv": "95ef4accebb6d4de6b503f7fffd61a0f98921870fc9e7c6623d6897f7a638030",
+    "detail/MinGW_qd_accuracy.csv": "71347c7bf5c8cd957bb6d6050ea3d763bac5fa4e177b89900078bc30f4a06c3d",
+    "detail/MinGW_qd_benchmark.csv": "5e72e9f4eb7399ba119e63709b18f8b2342bd5fcb66dc663311837ae29212157"
   },
   "phases": {
-    "f128.accuracy": {
-      "output": "MinGW_f128_accuracy.csv",
+    "dd.accuracy": {
+      "output": "MinGW_dd_accuracy.csv",
       "return_code": 0,
       "status": "passed"
     },
-    "f128.benchmark": {
-      "output": "MinGW_f128_benchmark.csv",
+    "dd.benchmark": {
+      "output": "MinGW_dd_benchmark.csv",
       "return_code": 0,
       "status": "passed"
     },
-    "f256.accuracy": {
-      "output": "MinGW_f256_accuracy.csv",
+    "qd.accuracy": {
+      "output": "MinGW_qd_accuracy.csv",
       "return_code": 0,
       "status": "passed"
     },
-    "f256.benchmark": {
-      "output": "MinGW_f256_benchmark.csv",
+    "qd.benchmark": {
+      "output": "MinGW_qd_benchmark.csv",
       "return_code": 0,
       "status": "passed"
     }
@@ -172,13 +172,13 @@
   ],
   "platform": "windows",
   "precisions": [
-    "f128",
-    "f256"
+    "dd",
+    "qd"
   ],
-  "run_id": "1bc36f9be0894bcfb934a2e01311a61e",
+  "run_id": "36324ea202d44d678cf3e4fe87aafe82",
   "sample_mode": "standard",
   "schema_version": "6",
-  "source_fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
-  "source_revision": "b38d8f2a0c9da2eeae373bce48a1aa42bf88fcdc-dirty-7cd523deac97",
+  "source_fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
+  "source_revision": "882890995f149618f5ad4c950bbb2cd0b8e2f976-dirty-1e2aee00bd57",
   "status": "complete"
 }

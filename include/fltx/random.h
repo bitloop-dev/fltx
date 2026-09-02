@@ -27,8 +27,8 @@
 
 #include "fltx/config.h"
 #include "fltx/math.h"
-#include "fltx/f128_io.h"
-#include "fltx/f256_io.h"
+#include "fltx/fdd_io.h"
+#include "fltx/fqd_io.h"
 
 namespace bl::detail::random
 {
@@ -60,8 +60,8 @@ namespace bl::detail::random
     };
 }
 
-#include "fltx/detail/f128_random.h"
-#include "fltx/detail/f256_random.h"
+#include "fltx/detail/fdd_random.h"
+#include "fltx/detail/fqd_random.h"
 
 namespace bl
 {
@@ -221,10 +221,10 @@ namespace detail::random
 
     template<class RealType>
     inline constexpr bool extended_limb_canonical_v =
-        std::same_as<std::remove_cv_t<RealType>, f128_s> ||
-        std::same_as<std::remove_cv_t<RealType>, f128> ||
-        std::same_as<std::remove_cv_t<RealType>, f256_s> ||
-        std::same_as<std::remove_cv_t<RealType>, f256>;
+        std::same_as<std::remove_cv_t<RealType>, fdd_s> ||
+        std::same_as<std::remove_cv_t<RealType>, fdd> ||
+        std::same_as<std::remove_cv_t<RealType>, fqd_s> ||
+        std::same_as<std::remove_cv_t<RealType>, fqd>;
 
     template<uniform_random_bit_generator URBG>
     [[nodiscard]] BL_FORCE_INLINE constexpr std::uint64_t canonical_limb_bits(URBG& g) noexcept
@@ -257,26 +257,26 @@ namespace detail::random
         const double x0 = detail::fp::ldexp_limb(static_cast<double>(canonical_limb_bits(g)), -limb_bits);
         const double x1 = detail::fp::ldexp_limb(static_cast<double>(canonical_limb_bits(g)), -2 * limb_bits);
 
-        if constexpr (std::same_as<real_type, f128_s>)
+        if constexpr (std::same_as<real_type, fdd_s>)
         {
-            return f128_s{ x0, x1 };
+            return fdd_s{ x0, x1 };
         }
-        else if constexpr (std::same_as<real_type, f128>)
+        else if constexpr (std::same_as<real_type, fdd>)
         {
-            return f128{ x0, x1 };
+            return fdd{ x0, x1 };
         }
         else
         {
             const double x2 = detail::fp::ldexp_limb(static_cast<double>(canonical_limb_bits(g)), -3 * limb_bits);
             const double x3 = detail::fp::ldexp_limb(static_cast<double>(canonical_limb_bits(g)), -4 * limb_bits);
 
-            if constexpr (std::same_as<real_type, f256_s>)
+            if constexpr (std::same_as<real_type, fqd_s>)
             {
-                return f256_s{ x0, x1, x2, x3 };
+                return fqd_s{ x0, x1, x2, x3 };
             }
             else
             {
-                return f256{ x0, x1, x2, x3 };
+                return fqd{ x0, x1, x2, x3 };
             }
         }
     }
@@ -326,38 +326,38 @@ namespace detail::random
         return is >> value;
     }
 
-    BL_FORCE_INLINE std::istream& read_value(std::istream& is, f128_s& value)
+    BL_FORCE_INLINE std::istream& read_value(std::istream& is, fdd_s& value)
     {
         double hi = 0.0;
         double lo = 0.0;
         if (is >> hi >> lo)
-            value = f128_s{ hi, lo };
+            value = fdd_s{ hi, lo };
         return is;
     }
 
-    BL_FORCE_INLINE std::istream& read_value(std::istream& is, f128& value)
+    BL_FORCE_INLINE std::istream& read_value(std::istream& is, fdd& value)
     {
-        f128_s parsed{};
+        fdd_s parsed{};
         read_value(is, parsed);
         if (is)
             value = parsed;
         return is;
     }
 
-    BL_FORCE_INLINE std::istream& read_value(std::istream& is, f256_s& value)
+    BL_FORCE_INLINE std::istream& read_value(std::istream& is, fqd_s& value)
     {
         double x0 = 0.0;
         double x1 = 0.0;
         double x2 = 0.0;
         double x3 = 0.0;
         if (is >> x0 >> x1 >> x2 >> x3)
-            value = f256_s{ x0, x1, x2, x3 };
+            value = fqd_s{ x0, x1, x2, x3 };
         return is;
     }
 
-    BL_FORCE_INLINE std::istream& read_value(std::istream& is, f256& value)
+    BL_FORCE_INLINE std::istream& read_value(std::istream& is, fqd& value)
     {
-        f256_s parsed{};
+        fqd_s parsed{};
         read_value(is, parsed);
         if (is)
             value = parsed;
@@ -393,28 +393,28 @@ namespace detail::random
         return os << value;
     }
 
-    BL_FORCE_INLINE std::ostream& write_value(std::ostream& os, const f128_s& value)
+    BL_FORCE_INLINE std::ostream& write_value(std::ostream& os, const fdd_s& value)
     {
         ostream_precision_guard guard{ os };
         os.precision(std::numeric_limits<double>::max_digits10);
         return os << value.hi << ' ' << value.lo;
     }
 
-    BL_FORCE_INLINE std::ostream& write_value(std::ostream& os, const f128& value)
+    BL_FORCE_INLINE std::ostream& write_value(std::ostream& os, const fdd& value)
     {
-        return write_value(os, static_cast<const f128_s&>(value));
+        return write_value(os, static_cast<const fdd_s&>(value));
     }
 
-    BL_FORCE_INLINE std::ostream& write_value(std::ostream& os, const f256_s& value)
+    BL_FORCE_INLINE std::ostream& write_value(std::ostream& os, const fqd_s& value)
     {
         ostream_precision_guard guard{ os };
         os.precision(std::numeric_limits<double>::max_digits10);
         return os << value.x0 << ' ' << value.x1 << ' ' << value.x2 << ' ' << value.x3;
     }
 
-    BL_FORCE_INLINE std::ostream& write_value(std::ostream& os, const f256& value)
+    BL_FORCE_INLINE std::ostream& write_value(std::ostream& os, const fqd& value)
     {
-        return write_value(os, static_cast<const f256_s&>(value));
+        return write_value(os, static_cast<const fqd_s&>(value));
     }
 }
 

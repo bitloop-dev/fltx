@@ -1,12 +1,12 @@
 set(FLTX_LIBRARY_SOURCE_FILES
     src/build_info.cpp
     src/fltx_io.cpp
-    src/f128.cpp
-    src/f128_math.cpp
-    src/f128_transcendental.cpp
-    src/f256.cpp
-    src/f256_math.cpp
-    src/f256_transcendental.cpp
+    src/fdd.cpp
+    src/fdd_math.cpp
+    src/fdd_transcendental.cpp
+    src/fqd.cpp
+    src/fqd_math.cpp
+    src/fqd_transcendental.cpp
     src/fma_x86.cpp
 )
 

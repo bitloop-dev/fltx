@@ -1,5 +1,5 @@
 /**
- * fltx/detail/f32_math_basic.h - constexpr <cmath>-style basic math helpers for f32.
+ * fltx/detail/f32_math_basic.h - constexpr basic math functions for f32.
  *
  * f32 rounding, decomposition, remainder, min/max, and adjacent-value helpers.
  *
@@ -261,18 +261,12 @@ namespace detail::_f32_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float fmin(float a, float b) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::fmin(a, b),
-        std::fmin(a, b)
-    );
+    return detail::_f32_impl::fmin(a, b);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float fmax(float a, float b) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f32_impl::fmax(a, b),
-        std::fmax(a, b)
-    );
+    return detail::_f32_impl::fmax(a, b);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr float fdim(float x, float y) noexcept

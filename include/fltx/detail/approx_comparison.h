@@ -10,8 +10,39 @@
 #ifndef FLTX_DETAIL_APPROX_COMPARISON_INCLUDED
 #define FLTX_DETAIL_APPROX_COMPARISON_INCLUDED
 
+#include <type_traits>
+
+#include "fltx/detail/common_fp.h"
+
 namespace bl::detail
 {
+    template<class Float>
+    [[nodiscard]] BL_FORCE_INLINE constexpr bool approx_isnan(const Float& value) noexcept
+    {
+        if constexpr (std::is_floating_point_v<Float>)
+            return fp::isnan(value);
+        else
+            return isnan(value);
+    }
+
+    template<class Float>
+    [[nodiscard]] BL_FORCE_INLINE constexpr bool approx_isfinite(const Float& value) noexcept
+    {
+        if constexpr (std::is_floating_point_v<Float>)
+            return fp::isfinite(value);
+        else
+            return isfinite(value);
+    }
+
+    template<class Float>
+    [[nodiscard]] BL_FORCE_INLINE constexpr Float approx_abs(const Float& value) noexcept
+    {
+        if constexpr (std::is_floating_point_v<Float>)
+            return fp::fabs(value);
+        else
+            return abs(value);
+    }
+
     template<class Float>
     [[nodiscard]] BL_FORCE_INLINE constexpr bool approx_eq_impl(
         const Float& value,
@@ -19,7 +50,8 @@ namespace bl::detail
         const Float& relative_tolerance) noexcept
     {
         const Float zero{ 0.0 };
-        if (isnan(relative_tolerance) || relative_tolerance < zero) [[unlikely]]
+        if (approx_isnan(relative_tolerance) ||
+            relative_tolerance < zero) [[unlikely]]
         {
             return false;
         }
@@ -27,11 +59,11 @@ namespace bl::detail
         if (value == expected)
             return true;
 
-        if (!isfinite(value) || !isfinite(expected)) [[unlikely]]
+        if (!approx_isfinite(value) || !approx_isfinite(expected)) [[unlikely]]
             return false;
 
-        const Float magnitude_value = abs(value);
-        const Float magnitude_expected = abs(expected);
+        const Float magnitude_value = approx_abs(value);
+        const Float magnitude_expected = approx_abs(expected);
         const Float scale = magnitude_value < magnitude_expected
             ? magnitude_expected
             : magnitude_value;
@@ -51,7 +83,7 @@ namespace bl::detail
                  smaller <= (relative_tolerance - one) * scale);
         }
 
-        const Float difference = abs(value - expected);
+        const Float difference = approx_abs(value - expected);
         // Same-sign finite values differ by at most `scale`. Tolerances below
         // one cannot overflow when scaled; tolerances of one or more already
         // cover the complete same-sign interval.

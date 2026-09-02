@@ -1,5 +1,5 @@
 /**
- * fltx/detail/f64_math_transcendental.h - constexpr <cmath>-style transcendental math helpers for f64.
+ * fltx/detail/f64_math_transcendental.h - constexpr transcendental functions for f64.
  *
  * f64 exp/log, roots, pow, trig, hyperbolic, erf, and gamma helpers.
  *
@@ -387,7 +387,10 @@ namespace detail::_f64_impl
             for (int n = 2; n <= 32; ++n)
             {
                 term *= x / static_cast<double>(n);
-                sum += term;
+                const double next = sum + term;
+                if (next == sum)
+                    break;
+                sum = next;
             }
             return sum;
         }

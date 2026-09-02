@@ -217,8 +217,8 @@ TEST_CASE("integer and real distributions are deterministic and bounded", "[cont
     bl::mt19937_64 left{ 0x1020304050607080ull };
     bl::mt19937_64 right{ 0x1020304050607080ull };
     bl::uniform_int_distribution<int> integers{ -17, 23 };
-    bl::uniform_real_distribution<bl::f128> dd{ bl::f128{ -2.0 }, bl::f128{ 3.0 } };
-    bl::uniform_real_distribution<bl::f256> qd{ bl::f256{ -2.0 }, bl::f256{ 3.0 } };
+    bl::uniform_real_distribution<bl::fdd> dd{ bl::fdd{ -2.0 }, bl::fdd{ 3.0 } };
+    bl::uniform_real_distribution<bl::fqd> qd{ bl::fqd{ -2.0 }, bl::fqd{ 3.0 } };
 
     for (int i = 0; i < 128; ++i)
     {
@@ -226,17 +226,17 @@ TEST_CASE("integer and real distributions are deterministic and bounded", "[cont
         CHECK(sample >= -17);
         CHECK(sample <= 23);
 
-        const bl::f128 a = dd(left);
-        const bl::f128 b = dd(right);
-        CHECK(a >= bl::f128{ -2.0 });
-        CHECK(a < bl::f128{ 3.0 });
+        const bl::fdd a = dd(left);
+        const bl::fdd b = dd(right);
+        CHECK(a >= bl::fdd{ -2.0 });
+        CHECK(a < bl::fdd{ 3.0 });
         CHECK(a == b);
     }
 
     bl::mt19937_64 qd_engine{ 7u };
     const auto sample = qd(qd_engine);
-    CHECK(sample >= bl::f256{ -2.0 });
-    CHECK(sample < bl::f256{ 3.0 });
+    CHECK(sample >= bl::fqd{ -2.0 });
+    CHECK(sample < bl::fqd{ 3.0 });
 
     bl::uniform_int_distribution<std::int64_t> signed_full{
         std::numeric_limits<std::int64_t>::min(),
@@ -274,29 +274,29 @@ TEST_CASE("integer and real distributions are deterministic and bounded", "[cont
 
 TEST_CASE("extended random helpers are deterministic", "[contracts][random]")
 {
-    const auto a = bl::uniform_real_array<8>(bl::f128{ -1.0 }, bl::f128{ 1.0 }, 123u);
-    const auto b = bl::uniform_real_array<8>(bl::f128{ -1.0 }, bl::f128{ 1.0 }, 123u);
+    const auto a = bl::uniform_real_array<8>(bl::fdd{ -1.0 }, bl::fdd{ 1.0 }, 123u);
+    const auto b = bl::uniform_real_array<8>(bl::fdd{ -1.0 }, bl::fdd{ 1.0 }, 123u);
     CHECK(a == b);
 
     const auto normal_a =
-        bl::normal_array<8, bl::f128>(bl::f128{ 1.0 }, bl::f128{ 0.5 }, 123u);
+        bl::normal_array<8, bl::fdd>(bl::fdd{ 1.0 }, bl::fdd{ 0.5 }, 123u);
     const auto normal_b =
-        bl::normal_array<8, bl::f128>(bl::f128{ 1.0 }, bl::f128{ 0.5 }, 123u);
+        bl::normal_array<8, bl::fdd>(bl::fdd{ 1.0 }, bl::fdd{ 0.5 }, 123u);
     CHECK(normal_a == normal_b);
 
     bl::mt19937 canonical_engine{ 1234u };
-    const bl::f256 canonical =
-        bl::generate_canonical<bl::f256, std::numeric_limits<bl::f256>::digits>(
+    const bl::fqd canonical =
+        bl::generate_canonical<bl::fqd, std::numeric_limits<bl::fqd>::digits>(
             canonical_engine);
-    CHECK(canonical >= bl::f256{ 0.0 });
-    CHECK(canonical < bl::f256{ 1.0 });
+    CHECK(canonical >= bl::fqd{ 0.0 });
+    CHECK(canonical < bl::fqd{ 1.0 });
 }
 
 TEST_CASE("all real distributions expose their distinct public operations",
           "[contracts][random][distribution]")
 {
-    check_real_distribution_surface<bl::f128>();
-    check_real_distribution_surface<bl::f256>();
+    check_real_distribution_surface<bl::fdd>();
+    check_real_distribution_surface<bl::fqd>();
 
     bl::mt19937_64 engine{ 1001u };
     CHECK(bl::exponential_distribution<float>{ 1.5f }(engine) >= 0.0f);
@@ -346,11 +346,11 @@ TEST_CASE("array helpers cover engine, seed, explicit, and default overloads",
         bl::uniform_real_array<4>(-1.0, 1.0, first_engine) ==
         bl::uniform_real_array<4>(-1.0, 1.0, second_engine));
     CHECK(
-        bl::uniform_real_array<4, bl::f128>(first_engine) ==
-        bl::uniform_real_array<4, bl::f128>(second_engine));
+        bl::uniform_real_array<4, bl::fdd>(first_engine) ==
+        bl::uniform_real_array<4, bl::fdd>(second_engine));
     CHECK(
-        bl::uniform_real_array<4, bl::f256>(17u) ==
-        bl::uniform_real_array<4, bl::f256>(17u));
+        bl::uniform_real_array<4, bl::fqd>(17u) ==
+        bl::uniform_real_array<4, bl::fqd>(17u));
 
     bl::mt19937_64 third_engine{ 24u };
     bl::mt19937_64 fourth_engine{ 24u };
@@ -358,11 +358,11 @@ TEST_CASE("array helpers cover engine, seed, explicit, and default overloads",
         bl::normal_array<4>(1.0, 0.5, third_engine) ==
         bl::normal_array<4>(1.0, 0.5, fourth_engine));
     CHECK(
-        bl::normal_array<4, bl::f128>(third_engine) ==
-        bl::normal_array<4, bl::f128>(fourth_engine));
+        bl::normal_array<4, bl::fdd>(third_engine) ==
+        bl::normal_array<4, bl::fdd>(fourth_engine));
     CHECK(
-        bl::normal_array<4, bl::f256>(29u) ==
-        bl::normal_array<4, bl::f256>(29u));
+        bl::normal_array<4, bl::fqd>(29u) ==
+        bl::normal_array<4, bl::fqd>(29u));
 
     const auto constants = bl::random_array<4>(
         bl::mt19937{ 1u },
@@ -405,25 +405,25 @@ TEST_CASE("extended normal distributions retain only their parameters",
 {
     bl::mt19937_64 engine{ 777u };
 
-    bl::normal_distribution<bl::f128> normal128{ bl::f128{ -1.0 }, bl::f128{ 0.25 } };
-    const auto fresh_normal128 = normal128;
-    static_cast<void>(normal128(engine));
-    CHECK(normal128 == fresh_normal128);
+    bl::normal_distribution<bl::fdd> normal_dd{ bl::fdd{ -1.0 }, bl::fdd{ 0.25 } };
+    const auto fresh_normal_dd = normal_dd;
+    static_cast<void>(normal_dd(engine));
+    CHECK(normal_dd == fresh_normal_dd);
 
-    bl::lognormal_distribution<bl::f128> lognormal128{ bl::f128{ 0.1 }, bl::f128{ 0.75 } };
-    const auto fresh_lognormal128 = lognormal128;
-    static_cast<void>(lognormal128(engine));
-    CHECK(lognormal128 == fresh_lognormal128);
+    bl::lognormal_distribution<bl::fdd> lognormal_dd{ bl::fdd{ 0.1 }, bl::fdd{ 0.75 } };
+    const auto fresh_lognormal_dd = lognormal_dd;
+    static_cast<void>(lognormal_dd(engine));
+    CHECK(lognormal_dd == fresh_lognormal_dd);
 
-    bl::normal_distribution<bl::f256> normal256{ bl::f256{ -1.0 }, bl::f256{ 0.25 } };
-    const auto fresh_normal256 = normal256;
-    static_cast<void>(normal256(engine));
-    CHECK(normal256 == fresh_normal256);
+    bl::normal_distribution<bl::fqd> normal_qd{ bl::fqd{ -1.0 }, bl::fqd{ 0.25 } };
+    const auto fresh_normal_qd = normal_qd;
+    static_cast<void>(normal_qd(engine));
+    CHECK(normal_qd == fresh_normal_qd);
 
-    bl::lognormal_distribution<bl::f256> lognormal256{ bl::f256{ 0.1 }, bl::f256{ 0.75 } };
-    const auto fresh_lognormal256 = lognormal256;
-    static_cast<void>(lognormal256(engine));
-    CHECK(lognormal256 == fresh_lognormal256);
+    bl::lognormal_distribution<bl::fqd> lognormal_qd{ bl::fqd{ 0.1 }, bl::fqd{ 0.75 } };
+    const auto fresh_lognormal_qd = lognormal_qd;
+    static_cast<void>(lognormal_qd(engine));
+    CHECK(lognormal_qd == fresh_lognormal_qd);
 }
 
 TEST_CASE("extended normal distributions have stable sample moments",
@@ -453,8 +453,8 @@ TEST_CASE("extended normal distributions have stable sample moments",
         CHECK(variance < 1.06);
     };
 
-    check_moments.template operator()<bl::f128>();
-    check_moments.template operator()<bl::f256>();
+    check_moments.template operator()<bl::fdd>();
+    check_moments.template operator()<bl::fqd>();
 }
 
 TEST_CASE("random device exposes the standard runtime-only shape", "[contracts][random]")

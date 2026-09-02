@@ -9,9 +9,9 @@
 #include <limits>
 #include <type_traits>
 
-static_assert(std::is_same_v<bl::common_float_type_t<bl::f128, bl::f256>, bl::f256>);
-static_assert(std::numeric_limits<bl::f128>::digits == 106);
-static_assert(std::numeric_limits<bl::f256>::digits == 212);
+static_assert(std::is_same_v<bl::common_float_type_t<bl::fdd, bl::fqd>, bl::fqd>);
+static_assert(std::numeric_limits<bl::fdd>::digits == 106);
+static_assert(std::numeric_limits<bl::fqd>::digits == 212);
 
 namespace
 {
@@ -45,16 +45,16 @@ namespace
         return static_cast<T>(a * b - unit) == expected;
     }
 
-    bool f128_multiply_special_contract()
+    bool dd_multiply_special_contract()
     {
         constexpr std::uint64_t sign_mask = UINT64_C(0x8000000000000000);
         const double positive_zero = std::bit_cast<double>(UINT64_C(0));
         const double negative_zero = std::bit_cast<double>(sign_mask);
 
-        const bl::f128_s positive =
-            bl::f128_s{positive_zero, positive_zero} * bl::f128_s{2.0, positive_zero};
-        const bl::f128_s double_negative =
-            bl::f128_s{negative_zero, positive_zero} * bl::f128_s{-2.0, positive_zero};
+        const bl::fdd_s positive =
+            bl::fdd_s{positive_zero, positive_zero} * bl::fdd_s{2.0, positive_zero};
+        const bl::fdd_s double_negative =
+            bl::fdd_s{negative_zero, positive_zero} * bl::fdd_s{-2.0, positive_zero};
 
         return std::bit_cast<std::uint64_t>(positive.hi) == UINT64_C(0) &&
                std::bit_cast<std::uint64_t>(positive.lo) == UINT64_C(0) &&
@@ -81,26 +81,26 @@ int main()
         return fail("injected runtime CPU probe did not disable FMA");
 #endif
 
-    const bl::f128 dd = bl::parse<bl::f128>("1.00000000000000000000000000000001");
-    const bl::f256 qd = bl::parse<bl::f256>(
+    const bl::fdd dd = bl::parse<bl::fdd>("1.00000000000000000000000000000001");
+    const bl::fqd qd = bl::parse<bl::fqd>(
         "1.000000000000000000000000000000000000000000000000000000000000001");
 
-    if (!(dd > bl::f128{ 1.0 }) || !(qd > bl::f256{ 1.0 }))
+    if (!(dd > bl::fdd{ 1.0 }) || !(qd > bl::fqd{ 1.0 }))
         return fail("decimal parsing lost low limbs");
-    if (bl::sqrt(bl::f128{ 4.0 }) != bl::f128{ 2.0 })
-        return fail("f128 sqrt contract");
-    if (bl::sqrt(bl::f256{ 4.0 }) != bl::f256{ 2.0 })
-        return fail("f256 sqrt contract");
-    if (!fma_cancellation_contract<bl::f128>())
-        return fail("f128 fused-cancellation contract");
-    if (!product_cancellation_contract<bl::f128>())
-        return fail("f128 product-cancellation contract");
-    if (!f128_multiply_special_contract())
-        return fail("f128 multiply signed-zero contract");
-    if (!fma_cancellation_contract<bl::f256>())
-        return fail("f256 fused-cancellation contract");
-    if (!product_cancellation_contract<bl::f256>())
-        return fail("f256 product-cancellation contract");
+    if (bl::sqrt(bl::fdd{ 4.0 }) != bl::fdd{ 2.0 })
+        return fail("fdd sqrt contract");
+    if (bl::sqrt(bl::fqd{ 4.0 }) != bl::fqd{ 2.0 })
+        return fail("fqd sqrt contract");
+    if (!fma_cancellation_contract<bl::fdd>())
+        return fail("fdd fused-cancellation contract");
+    if (!product_cancellation_contract<bl::fdd>())
+        return fail("fdd product-cancellation contract");
+    if (!dd_multiply_special_contract())
+        return fail("fdd multiply signed-zero contract");
+    if (!fma_cancellation_contract<bl::fqd>())
+        return fail("fqd fused-cancellation contract");
+    if (!product_cancellation_contract<bl::fqd>())
+        return fail("fqd product-cancellation contract");
 
     std::cout << "fltx package consumer passed\n";
     return EXIT_SUCCESS;

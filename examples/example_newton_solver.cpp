@@ -65,6 +65,6 @@ void print_result(std::string_view name)
 int main()
 {
     print_result<f64>("f64");
-    print_result<f128>("f128");
-    print_result<f256>("f256");
+    print_result<fdd>("fdd");
+    print_result<fqd>("fqd");
 }

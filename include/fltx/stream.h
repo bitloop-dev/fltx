@@ -10,7 +10,7 @@
 #ifndef FLTX_STREAM_INCLUDED
 #define FLTX_STREAM_INCLUDED
 
-#include "fltx/f128_stream.h"
-#include "fltx/f256_stream.h"
+#include "fltx/fdd_stream.h"
+#include "fltx/fqd_stream.h"
 
 #endif

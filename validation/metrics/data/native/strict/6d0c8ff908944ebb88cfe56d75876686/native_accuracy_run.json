@@ -1,0 +1,90 @@
+{
+  "accuracy_samples": 4096,
+  "architecture": "x86_64",
+  "compiler": "MSVC",
+  "configuration": {
+    "build": {
+      "architecture": "x86_64",
+      "compiler-id": "MSVC",
+      "compiler-version": "19.51.36256.0",
+      "config": "Release",
+      "flags-hash": "6677acb8c8248ee25aadc938c2f6cebee3a723b0f86e7bfdc79f0fec538a0e64",
+      "frontend-variant": "MSVC",
+      "optimized": "1",
+      "processor": "AMD64",
+      "source-fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
+      "system": "Windows"
+    },
+    "consumer": {
+      "arm64": "0",
+      "fast-math": "off",
+      "fma": "AUTO",
+      "has-x86-fma": "0",
+      "simd": "on",
+      "simulated-consteval": "off",
+      "tu-x86-fma": "0",
+      "x86": "1"
+    },
+    "harness": {
+      "qdpp": "on",
+      "tlfloat": "on"
+    },
+    "library": {
+      "arm64": "0",
+      "fast-math": "off",
+      "fast-math-request": "AUTO",
+      "fma": "AUTO",
+      "runtime-fma": "available",
+      "simd": "on",
+      "tu-x86-fma": "0",
+      "x86": "1"
+    },
+    "library_strategy": {
+      "baseline-arm64": "0",
+      "compiled-x86-backend": "0",
+      "msvc-guarded": "1",
+      "neon": "0",
+      "qd-simd": "1",
+      "runtime-check": "1",
+      "runtime-path": "1",
+      "scalar-x86": "0",
+      "sse2": "1",
+      "trig-simd": "1",
+      "wasm-simd": "0"
+    }
+  },
+  "consumer_mode": "strict",
+  "executables": {
+    "accuracy": {
+      "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-msvc-release\\validation\\fltx_accuracy.exe",
+      "sha256": "e2e894e0b9f52c818eb732b03fab602d3c7a64b55b9dca25d95fd474d67b3806",
+      "wasm-sha256": "not-present"
+    }
+  },
+  "host": {
+    "machine": "AMD64",
+    "node": "not-used",
+    "os": "Windows",
+    "os-release": "11",
+    "processor": "AMD64 Family 26 Model 68 Stepping 0, AuthenticAMD",
+    "python": "CPython 3.13.14"
+  },
+  "outputs": {
+    "f32_accuracy.csv": "62fbfbb3f3f04472107b1a9e0919e0b18ede05d9382ce4aa959cac3573df90c9",
+    "f64_accuracy.csv": "1ac42bb5bbb6cb95d644602bf1bd9189c517a5f8f99f56fd9e20072c3e028c0d"
+  },
+  "platform": "windows",
+  "policy": "native-float-libm-baseline-v1",
+  "precisions": [
+    "f32",
+    "f64"
+  ],
+  "run_id": "6d0c8ff908944ebb88cfe56d75876686",
+  "sample_mode": "standard",
+  "schema_version": 2,
+  "source_fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
+  "source_revision": "882890995f149618f5ad4c950bbb2cd0b8e2f976-dirty-1e2aee00bd57",
+  "status": "complete",
+  "target": "windows/x86_64/MSVC",
+  "thresholds": "advisory"
+}

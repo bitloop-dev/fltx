@@ -1,0 +1,265 @@
+/**
+ * fltx/fqd_comparison.h - Comparison operators for qd values.
+ *
+ * Copyright (c) 2026 William Hemsworth
+ *
+ * This software is released under the MIT License.
+ * See LICENSE for details.
+ */
+
+#ifndef FQD_COMPARISON_INCLUDED
+#define FQD_COMPARISON_INCLUDED
+#include <compare>
+#include <type_traits>
+
+#include "fltx/fqd_type.h"
+
+namespace bl {
+
+namespace detail::_qd // primitives and kernels
+{
+    template<class T>
+    concept compare_scalar =
+        !std::is_same_v<std::remove_cvref_t<T>, bool> &&
+        (std::is_same_v<std::remove_cvref_t<T>, float> ||
+         std::is_same_v<std::remove_cvref_t<T>, double> ||
+         detail::fp::is_integer_scalar_v<std::remove_cvref_t<T>>);
+
+    BL_FORCE_INLINE constexpr bool compare_less(
+        double ax0, double ax1, double ax2, double ax3,
+        double bx0, double bx1, double bx2, double bx3) noexcept
+    {
+        if (isnan(ax0) || isnan(bx0))
+            return false;
+
+        if (ax0 < bx0) return true;
+        if (ax0 > bx0) return false;
+        if (ax1 < bx1) return true;
+        if (ax1 > bx1) return false;
+        if (ax2 < bx2) return true;
+        if (ax2 > bx2) return false;
+        return ax3 < bx3;
+    }
+
+    BL_FORCE_INLINE constexpr bool compare_less_equal(
+        double ax0, double ax1, double ax2, double ax3,
+        double bx0, double bx1, double bx2, double bx3) noexcept
+    {
+        if (isnan(ax0) || isnan(bx0))
+            return false;
+
+        if (ax0 < bx0) return true;
+        if (ax0 > bx0) return false;
+        if (ax1 < bx1) return true;
+        if (ax1 > bx1) return false;
+        if (ax2 < bx2) return true;
+        if (ax2 > bx2) return false;
+        return ax3 <= bx3;
+    }
+
+    BL_FORCE_INLINE constexpr bool compare_equal(
+        double ax0, double ax1, double ax2, double ax3,
+        double bx0, double bx1, double bx2, double bx3) noexcept
+    {
+        if (isnan(ax0) || isnan(bx0))
+            return false;
+
+        return ax0 == bx0 && ax1 == bx1 && ax2 == bx2 && ax3 == bx3;
+    }
+
+    BL_FORCE_INLINE constexpr bool compare_unordered(
+        double ax0, double ax1, double ax2, double ax3,
+        double bx0, double bx1, double bx2, double bx3) noexcept
+    {
+        return isnan(ax0) || isnan(ax1) || isnan(ax2) || isnan(ax3) ||
+               isnan(bx0) || isnan(bx1) || isnan(bx2) || isnan(bx3);
+    }
+
+    BL_FORCE_INLINE constexpr std::partial_ordering compare_three_way(
+        double ax0, double ax1, double ax2, double ax3,
+        double bx0, double bx1, double bx2, double bx3) noexcept
+    {
+        if (compare_unordered(ax0, ax1, ax2, ax3, bx0, bx1, bx2, bx3))
+            return std::partial_ordering::unordered;
+        if (compare_less(ax0, ax1, ax2, ax3, bx0, bx1, bx2, bx3))
+            return std::partial_ordering::less;
+        if (compare_less(bx0, bx1, bx2, bx3, ax0, ax1, ax2, ax3))
+            return std::partial_ordering::greater;
+        return std::partial_ordering::equivalent;
+    }
+
+    template<class T>
+    BL_FORCE_INLINE constexpr void compare_terms(T value, double& x0, double& x1, double& x2, double& x3) noexcept
+    {
+        using clean_t = std::remove_cvref_t<T>;
+
+        if constexpr (std::is_same_v<clean_t, float> ||
+                      std::is_same_v<clean_t, double> ||
+                      detail::fp::integer_type_fits_exact_double_v<clean_t>)
+        {
+            x0 = static_cast<double>(value);
+            x1 = 0.0;
+        }
+        else if constexpr (std::is_signed_v<clean_t>)
+        {
+            detail::fp::int64_to_exact_double_pair(static_cast<int64_t>(value), x0, x1);
+        }
+        else
+        {
+            detail::fp::uint64_to_exact_double_pair(static_cast<uint64_t>(value), x0, x1);
+        }
+
+        x2 = 0.0;
+        x3 = 0.0;
+    }
+
+} // namespace detail::_qd
+
+
+[[nodiscard]] BL_FORCE_INLINE constexpr bool operator<(const fqd_s& a, const fqd_s& b)
+{
+    return detail::_qd::compare_less(a.x0, a.x1, a.x2, a.x3, b.x0, b.x1, b.x2, b.x3);
+}
+
+[[nodiscard]] BL_FORCE_INLINE constexpr bool operator>(const fqd_s& a, const fqd_s& b)
+{
+    return b < a;
+}
+
+[[nodiscard]] BL_FORCE_INLINE constexpr bool operator<=(const fqd_s& a, const fqd_s& b)
+{
+    return detail::_qd::compare_less_equal(a.x0, a.x1, a.x2, a.x3, b.x0, b.x1, b.x2, b.x3);
+}
+
+[[nodiscard]] BL_FORCE_INLINE constexpr bool operator>=(const fqd_s& a, const fqd_s& b)
+{
+    return b <= a;
+}
+
+[[nodiscard]] BL_FORCE_INLINE constexpr bool operator==(const fqd_s& a, const fqd_s& b)
+{
+    return detail::_qd::compare_equal(a.x0, a.x1, a.x2, a.x3, b.x0, b.x1, b.x2, b.x3);
+}
+
+[[nodiscard]] BL_FORCE_INLINE constexpr bool operator!=(const fqd_s& a, const fqd_s& b)
+{
+    return !(a == b);
+}
+
+[[nodiscard]] BL_FORCE_INLINE constexpr std::partial_ordering operator<=>(const fqd_s& a, const fqd_s& b) noexcept
+{
+    return detail::_qd::compare_three_way(a.x0, a.x1, a.x2, a.x3, b.x0, b.x1, b.x2, b.x3);
+}
+
+
+template<detail::_qd::compare_scalar T>
+[[nodiscard]] BL_FORCE_INLINE constexpr bool operator<(const fqd_s& a, T b)
+{
+    double bx0{}, bx1{}, bx2{}, bx3{};
+    detail::_qd::compare_terms(b, bx0, bx1, bx2, bx3);
+
+    return detail::_qd::compare_less(a.x0, a.x1, a.x2, a.x3, bx0, bx1, bx2, bx3);
+}
+
+template<detail::_qd::compare_scalar T>
+[[nodiscard]] BL_FORCE_INLINE constexpr bool operator<(T a, const fqd_s& b)
+{
+    double ax0{}, ax1{}, ax2{}, ax3{};
+    detail::_qd::compare_terms(a, ax0, ax1, ax2, ax3);
+
+    return detail::_qd::compare_less(ax0, ax1, ax2, ax3, b.x0, b.x1, b.x2, b.x3);
+}
+
+template<detail::_qd::compare_scalar T>
+[[nodiscard]] BL_FORCE_INLINE constexpr bool operator>(const fqd_s& a, T b)
+{
+    return b < a;
+}
+
+template<detail::_qd::compare_scalar T>
+[[nodiscard]] BL_FORCE_INLINE constexpr bool operator>(T a, const fqd_s& b)
+{
+    return b < a;
+}
+
+template<detail::_qd::compare_scalar T>
+[[nodiscard]] BL_FORCE_INLINE constexpr bool operator<=(const fqd_s& a, T b)
+{
+    double bx0{}, bx1{}, bx2{}, bx3{};
+    detail::_qd::compare_terms(b, bx0, bx1, bx2, bx3);
+
+    return detail::_qd::compare_less_equal(a.x0, a.x1, a.x2, a.x3, bx0, bx1, bx2, bx3);
+}
+
+template<detail::_qd::compare_scalar T>
+[[nodiscard]] BL_FORCE_INLINE constexpr bool operator<=(T a, const fqd_s& b)
+{
+    double ax0{}, ax1{}, ax2{}, ax3{};
+    detail::_qd::compare_terms(a, ax0, ax1, ax2, ax3);
+
+    return detail::_qd::compare_less_equal(ax0, ax1, ax2, ax3, b.x0, b.x1, b.x2, b.x3);
+}
+
+template<detail::_qd::compare_scalar T>
+[[nodiscard]] BL_FORCE_INLINE constexpr bool operator>=(const fqd_s& a, T b)
+{
+    return b <= a;
+}
+
+template<detail::_qd::compare_scalar T>
+[[nodiscard]] BL_FORCE_INLINE constexpr bool operator>=(T a, const fqd_s& b)
+{
+    return b <= a;
+}
+
+template<detail::_qd::compare_scalar T>
+[[nodiscard]] BL_FORCE_INLINE constexpr bool operator==(const fqd_s& a, T b)
+{
+    double bx0{}, bx1{}, bx2{}, bx3{};
+    detail::_qd::compare_terms(b, bx0, bx1, bx2, bx3);
+
+    return detail::_qd::compare_equal(a.x0, a.x1, a.x2, a.x3, bx0, bx1, bx2, bx3);
+}
+
+template<detail::_qd::compare_scalar T>
+[[nodiscard]] BL_FORCE_INLINE constexpr bool operator==(T a, const fqd_s& b)
+{
+    double ax0{}, ax1{}, ax2{}, ax3{};
+    detail::_qd::compare_terms(a, ax0, ax1, ax2, ax3);
+
+    return detail::_qd::compare_equal(ax0, ax1, ax2, ax3, b.x0, b.x1, b.x2, b.x3);
+}
+
+template<detail::_qd::compare_scalar T>
+[[nodiscard]] BL_FORCE_INLINE constexpr bool operator!=(const fqd_s& a, T b)
+{
+    return !(a == b);
+}
+
+template<detail::_qd::compare_scalar T>
+[[nodiscard]] BL_FORCE_INLINE constexpr bool operator!=(T a, const fqd_s& b)
+{
+    return !(a == b);
+}
+
+template<detail::_qd::compare_scalar T>
+[[nodiscard]] BL_FORCE_INLINE constexpr std::partial_ordering operator<=>(const fqd_s& a, T b) noexcept
+{
+    double bx0{}, bx1{}, bx2{}, bx3{};
+    detail::_qd::compare_terms(b, bx0, bx1, bx2, bx3);
+
+    return detail::_qd::compare_three_way(a.x0, a.x1, a.x2, a.x3, bx0, bx1, bx2, bx3);
+}
+
+template<detail::_qd::compare_scalar T>
+[[nodiscard]] BL_FORCE_INLINE constexpr std::partial_ordering operator<=>(T a, const fqd_s& b) noexcept
+{
+    double ax0{}, ax1{}, ax2{}, ax3{};
+    detail::_qd::compare_terms(a, ax0, ax1, ax2, ax3);
+
+    return detail::_qd::compare_three_way(ax0, ax1, ax2, ax3, b.x0, b.x1, b.x2, b.x3);
+}
+
+} // namespace bl
+
+#endif

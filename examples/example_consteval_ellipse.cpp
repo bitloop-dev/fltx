@@ -41,7 +41,7 @@ consteval std::array<Vec2<T>, C> ellipse(T rx, T ry)
 
 int main()
 {
-    using T = f256;
+    using T = fqd;
 
     std::cout << std::setprecision(std::numeric_limits<T>::digits10);
 

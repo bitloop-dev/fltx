@@ -1,0 +1,154 @@
+{
+  "accuracy_parallel": true,
+  "accuracy_samples": 4096,
+  "architecture": "wasm32",
+  "benchmark_corpus_policy": "adaptive-v1",
+  "benchmark_fast_minimum_trial_ms": 15,
+  "benchmark_fast_threshold_ns": 20,
+  "benchmark_fast_trials": 7,
+  "benchmark_maximum_row_ms": 5000,
+  "benchmark_minimum_trial_ms": 8,
+  "benchmark_ordinary_trials": 3,
+  "benchmark_policy": "adaptive-v2",
+  "benchmark_samples": {
+    "dd": 8192,
+    "qd": 4096
+  },
+  "benchmark_slow_threshold_ns": 10000,
+  "benchmark_trials": 7,
+  "compiler": "Emscripten",
+  "configuration": {
+    "build": {
+      "architecture": "wasm32",
+      "compiler-id": "Clang",
+      "compiler-version": "21.0.0",
+      "config": "Release",
+      "flags-hash": "da56489796c4636d9f457ea868fb77ff630a44c5ac085227cf6d448694171e39",
+      "frontend-variant": "GNU",
+      "optimized": "1",
+      "processor": "x86",
+      "source-fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
+      "system": "Emscripten"
+    },
+    "consumer": {
+      "arm64": "0",
+      "fast-math": "on",
+      "fma": "AUTO",
+      "has-x86-fma": "0",
+      "simd": "on",
+      "simulated-consteval": "off",
+      "tu-x86-fma": "0",
+      "x86": "0"
+    },
+    "harness": {
+      "qdpp": "off",
+      "tlfloat": "off"
+    },
+    "library": {
+      "arm64": "0",
+      "fast-math": "off",
+      "fast-math-request": "AUTO",
+      "fma": "AUTO",
+      "runtime-fma": "unavailable",
+      "simd": "on",
+      "tu-x86-fma": "0",
+      "x86": "0"
+    },
+    "library_strategy": {
+      "baseline-arm64": "0",
+      "compiled-x86-backend": "0",
+      "msvc-guarded": "0",
+      "neon": "0",
+      "qd-simd": "1",
+      "runtime-check": "0",
+      "runtime-path": "0",
+      "scalar-x86": "0",
+      "sse2": "0",
+      "trig-simd": "1",
+      "wasm-simd": "1"
+    }
+  },
+  "consumer_mode": "fastmath",
+  "created_utc": "2026-09-02T18:36:27.121358+00:00",
+  "executables": {
+    "accuracy": {
+      "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\wasm32-emscripten-release\\validation\\fltx_accuracy_fastmath.js",
+      "sha256": "8a01ed4e4f80ef10004b7c9e7e2e1519dacd4adb1fe28bca708146ee10aaea12",
+      "wasm-sha256": "9848b78ee1f0a1fd79ad61821367f7e81df71abe33d655295143a9ced5b5a2eb"
+    },
+    "benchmark": {
+      "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\wasm32-emscripten-release\\validation\\fltx_benchmark_fastmath.js",
+      "sha256": "2398e2abed87d2401299222eccb87a4fecd82acfc6222b8adba9f49a39f36206",
+      "wasm-sha256": "5fed16c5736064525b6c21c7225e6ff551aa3ec48516436f490d4565d2faa6ed"
+    }
+  },
+  "host": {
+    "machine": "AMD64",
+    "node": "v22.17.1",
+    "os": "Windows",
+    "os-release": "11",
+    "processor": "AMD64 Family 26 Model 68 Stepping 0, AuthenticAMD",
+    "python": "CPython 3.13.14"
+  },
+  "implementations": {
+    "dd": [
+      {
+        "id": "fltx",
+        "label": "fltx bl::fdd",
+        "short_label": "fltx"
+      }
+    ],
+    "qd": [
+      {
+        "id": "fltx",
+        "label": "fltx bl::fqd",
+        "short_label": "fltx"
+      }
+    ]
+  },
+  "outputs": {
+    "Emscripten_dd_fastmath.csv": "e5bc38e9e41b5a55cc41cb69efbbf83b22555044654e6a537a582bd0b494b355",
+    "Emscripten_qd_fastmath.csv": "2897d3e4b4e25b8bf25b0eae9d229654c02ce97da8be01859f00bdfce1a81e5e",
+    "detail/Emscripten_dd_fastmath_accuracy.csv": "89d61de36c163ffa47b5e30ee652feb21b84f9322da69087ba154bacaa9f5591",
+    "detail/Emscripten_dd_fastmath_benchmark.csv": "4dae60acb31ad0a0c0d0ba8d79824e5a9de66620dafcc20044a4398f68f09bcc",
+    "detail/Emscripten_qd_fastmath_accuracy.csv": "c16a19329081c47294261132c5b7845178ba7418e68cf73366170f1860314f60",
+    "detail/Emscripten_qd_fastmath_benchmark.csv": "a779de0583cb4a8976565644ee31d8f75e8a11f058d86cf12d5454e8a2164554"
+  },
+  "phases": {
+    "dd.accuracy": {
+      "output": "Emscripten_dd_fastmath_accuracy.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "dd.benchmark": {
+      "output": "Emscripten_dd_fastmath_benchmark.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "qd.accuracy": {
+      "output": "Emscripten_qd_fastmath_accuracy.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "qd.benchmark": {
+      "output": "Emscripten_qd_fastmath_benchmark.csv",
+      "return_code": 0,
+      "status": "passed"
+    }
+  },
+  "phases_requested": [
+    "accuracy",
+    "benchmark"
+  ],
+  "platform": "webassembly",
+  "precisions": [
+    "dd",
+    "qd"
+  ],
+  "run_id": "bf9a6d9a01e742c0b67066220891edcd",
+  "sample_mode": "standard",
+  "schema_version": "6",
+  "source_fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
+  "source_revision": "882890995f149618f5ad4c950bbb2cd0b8e2f976-dirty-1e2aee00bd57",
+  "status": "complete"
+}

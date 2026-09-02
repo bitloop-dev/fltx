@@ -130,6 +130,11 @@ namespace
         CHECK(bl::isinf(positive));
         CHECK_FALSE(bl::signbit(positive));
 
+        constexpr std::string_view near_overflow = "1.8e308";
+        const T rounded_overflow = bl::parse<T>(near_overflow);
+        CHECK(bl::isinf(rounded_overflow));
+        CHECK_FALSE(bl::signbit(rounded_overflow));
+
         constexpr std::string_view underflow = "-1e-100000000";
         T negative{ 1.0 };
         const auto underflow_result = bl::from_chars(
@@ -237,12 +242,12 @@ namespace
                high + low == high;
     }
 
-    [[nodiscard]] bool is_canonical(const bl::f128_s& value) noexcept
+    [[nodiscard]] bool is_canonical(const bl::fdd_s& value) noexcept
     {
         return nonoverlapping(value.hi, value.lo);
     }
 
-    [[nodiscard]] bool is_canonical(const bl::f256_s& value) noexcept
+    [[nodiscard]] bool is_canonical(const bl::fqd_s& value) noexcept
     {
         return nonoverlapping(value.x0, value.x1) &&
                nonoverlapping(value.x1, value.x2) &&
@@ -261,16 +266,16 @@ namespace
     }
 
     [[nodiscard]] bool same_encoding(
-        const bl::f128_s& lhs,
-        const bl::f128_s& rhs) noexcept
+        const bl::fdd_s& lhs,
+        const bl::fdd_s& rhs) noexcept
     {
         return same_encoding(lhs.hi, rhs.hi) &&
                same_tail_encoding(lhs.lo, rhs.lo);
     }
 
     [[nodiscard]] bool same_encoding(
-        const bl::f256_s& lhs,
-        const bl::f256_s& rhs) noexcept
+        const bl::fqd_s& lhs,
+        const bl::fqd_s& rhs) noexcept
     {
         return same_encoding(lhs.x0, rhs.x0) &&
                same_tail_encoding(lhs.x1, rhs.x1) &&
@@ -278,14 +283,14 @@ namespace
                same_tail_encoding(lhs.x3, rhs.x3);
     }
 
-    [[nodiscard]] std::string raw_limbs(const bl::f128_s& value)
+    [[nodiscard]] std::string raw_limbs(const bl::fdd_s& value)
     {
         std::ostringstream out;
         out << std::hexfloat << value.hi << ", " << value.lo;
         return out.str();
     }
 
-    [[nodiscard]] std::string raw_limbs(const bl::f256_s& value)
+    [[nodiscard]] std::string raw_limbs(const bl::fqd_s& value)
     {
         std::ostringstream out;
         out << std::hexfloat
@@ -304,25 +309,25 @@ namespace
             (random.next() & 1u) != 0 ? -1.0 : 1.0);
     }
 
-    [[nodiscard]] bl::f128 canonical_f128(
+    [[nodiscard]] bl::fdd canonical_dd(
         fltx::tests::random_bits& random,
         int sample)
     {
         static constexpr std::array boundaries{
-            bl::f128{ 0.0, 0.0 },
-            bl::f128{ -0.0, 0.0 },
-            bl::f128{ std::numeric_limits<double>::denorm_min(), 0.0 },
-            bl::f128{ -std::numeric_limits<double>::denorm_min(), 0.0 },
-            bl::f128{ std::numeric_limits<double>::min(), 0.0 },
-            bl::f128{ -std::numeric_limits<double>::min(), 0.0 },
-            bl::f128{ 1.0, 0x1p-55 },
-            bl::f128{ 1.0, -0x1p-55 },
-            bl::f128{ -1.0, 0x1p-55 },
-            bl::f128{ -1.0, -0x1p-55 },
-            bl::f128{ 0x1p-900, 0x1p-955 },
-            bl::f128{ -0x1p-900, -0x1p-955 },
-            bl::f128{ 0x1p+900, 0x1p+845 },
-            bl::f128{ -0x1p+900, -0x1p+845 },
+            bl::fdd{ 0.0, 0.0 },
+            bl::fdd{ -0.0, 0.0 },
+            bl::fdd{ std::numeric_limits<double>::denorm_min(), 0.0 },
+            bl::fdd{ -std::numeric_limits<double>::denorm_min(), 0.0 },
+            bl::fdd{ std::numeric_limits<double>::min(), 0.0 },
+            bl::fdd{ -std::numeric_limits<double>::min(), 0.0 },
+            bl::fdd{ 1.0, 0x1p-55 },
+            bl::fdd{ 1.0, -0x1p-55 },
+            bl::fdd{ -1.0, 0x1p-55 },
+            bl::fdd{ -1.0, -0x1p-55 },
+            bl::fdd{ 0x1p-900, 0x1p-955 },
+            bl::fdd{ -0x1p-900, -0x1p-955 },
+            bl::fdd{ 0x1p+900, 0x1p+845 },
+            bl::fdd{ -0x1p+900, -0x1p+845 },
         };
 
         if (sample < static_cast<int>(boundaries.size()))
@@ -335,25 +340,25 @@ namespace
         };
     }
 
-    [[nodiscard]] bl::f256 canonical_f256(
+    [[nodiscard]] bl::fqd canonical_qd(
         fltx::tests::random_bits& random,
         int sample)
     {
         static constexpr std::array boundaries{
-            bl::f256{ 0.0, 0.0, 0.0, 0.0 },
-            bl::f256{ -0.0, 0.0, 0.0, 0.0 },
-            bl::f256{ std::numeric_limits<double>::denorm_min(), 0.0, 0.0, 0.0 },
-            bl::f256{ -std::numeric_limits<double>::denorm_min(), 0.0, 0.0, 0.0 },
-            bl::f256{ std::numeric_limits<double>::min(), 0.0, 0.0, 0.0 },
-            bl::f256{ -std::numeric_limits<double>::min(), 0.0, 0.0, 0.0 },
-            bl::f256{ 1.0, 0x1p-55, -0x1p-110, 0x1p-165 },
-            bl::f256{ 1.0, -0x1p-55, 0x1p-110, -0x1p-165 },
-            bl::f256{ -1.0, 0x1p-55, -0x1p-110, 0x1p-165 },
-            bl::f256{ -1.0, -0x1p-55, 0x1p-110, -0x1p-165 },
-            bl::f256{ 0x1p-800, 0x1p-855, -0x1p-910, 0x1p-965 },
-            bl::f256{ -0x1p-800, -0x1p-855, 0x1p-910, -0x1p-965 },
-            bl::f256{ 0x1p+800, 0x1p+745, -0x1p+690, 0x1p+635 },
-            bl::f256{ -0x1p+800, -0x1p+745, 0x1p+690, -0x1p+635 },
+            bl::fqd{ 0.0, 0.0, 0.0, 0.0 },
+            bl::fqd{ -0.0, 0.0, 0.0, 0.0 },
+            bl::fqd{ std::numeric_limits<double>::denorm_min(), 0.0, 0.0, 0.0 },
+            bl::fqd{ -std::numeric_limits<double>::denorm_min(), 0.0, 0.0, 0.0 },
+            bl::fqd{ std::numeric_limits<double>::min(), 0.0, 0.0, 0.0 },
+            bl::fqd{ -std::numeric_limits<double>::min(), 0.0, 0.0, 0.0 },
+            bl::fqd{ 1.0, 0x1p-55, -0x1p-110, 0x1p-165 },
+            bl::fqd{ 1.0, -0x1p-55, 0x1p-110, -0x1p-165 },
+            bl::fqd{ -1.0, 0x1p-55, -0x1p-110, 0x1p-165 },
+            bl::fqd{ -1.0, -0x1p-55, 0x1p-110, -0x1p-165 },
+            bl::fqd{ 0x1p-800, 0x1p-855, -0x1p-910, 0x1p-965 },
+            bl::fqd{ -0x1p-800, -0x1p-855, 0x1p-910, -0x1p-965 },
+            bl::fqd{ 0x1p+800, 0x1p+745, -0x1p+690, 0x1p+635 },
+            bl::fqd{ -0x1p+800, -0x1p+745, 0x1p+690, -0x1p+635 },
         };
 
         if (sample < static_cast<int>(boundaries.size()))
@@ -375,7 +380,7 @@ namespace
     {
         constexpr int sample_count = 10'000;
         constexpr int expansion_round_trip_digits =
-            std::is_same_v<T, bl::f256> ? 67 : 33;
+            std::numeric_limits<T>::max_digits10;
         fltx::tests::random_bits random{ seed };
 
         for (int sample = 0; sample < sample_count; ++sample)
@@ -502,36 +507,49 @@ TEST_CASE("parse, format, and stream round trips preserve values", "[contracts][
 {
     check_parse_and_format<float>();
     check_parse_and_format<double>();
-    check_parse_and_format<bl::f128>();
-    check_parse_and_format<bl::f256>();
-    check_maximum_decimal_precision<bl::f128>();
-    check_maximum_decimal_precision<bl::f256>();
+    check_parse_and_format<bl::fdd>();
+    check_parse_and_format<bl::fqd>();
+    check_maximum_decimal_precision<bl::fdd>();
+    check_maximum_decimal_precision<bl::fqd>();
 
-    const bl::f128 dd = bl::parse<bl::f128>("1.00000000000000000000000000000001");
-    const bl::f256 qd = bl::parse<bl::f256>(
+    const bl::fdd dd = bl::parse<bl::fdd>("1.00000000000000000000000000000001");
+    const bl::fqd qd = bl::parse<bl::fqd>(
         "1.000000000000000000000000000000000000000000000000000000000000001");
-    const std::string dd_text = bl::to_string(dd, 33, std::ios_base::scientific);
-    const std::string qd_text = bl::to_string(qd, 67, std::ios_base::scientific);
-    CHECK(bl::parse<bl::f128>(dd_text) == dd);
-    CHECK(bl::parse<bl::f256>(qd_text) == qd);
+    const std::string dd_text = bl::to_string(
+        dd, std::numeric_limits<bl::fdd>::max_digits10, std::ios_base::scientific);
+    const std::string qd_text = bl::to_string(
+        qd, std::numeric_limits<bl::fqd>::max_digits10, std::ios_base::scientific);
+    CHECK(bl::parse<bl::fdd>(dd_text) == dd);
+    CHECK(bl::parse<bl::fqd>(qd_text) == qd);
+
+    const bl::fqd qd_maximum = std::numeric_limits<bl::fqd>::max();
+    const bl::fqd qd_lowest = std::numeric_limits<bl::fqd>::lowest();
+    CHECK(bl::parse<bl::fqd>(bl::to_string(qd_maximum)) == qd_maximum);
+    CHECK(bl::parse<bl::fqd>(bl::to_string(qd_lowest)) == qd_lowest);
+
+    const bl::fdd dd_sparse_tail{ 1.0, 0x1p-55 };
+    CHECK(bl::parse<bl::fdd>(bl::to_string(dd_sparse_tail)) == dd_sparse_tail);
+
     CHECK(bl::to_string(dd) == bl::to_string(
-        dd, std::numeric_limits<bl::f128>::max_digits10));
+        dd, std::numeric_limits<bl::fdd>::max_digits10));
     CHECK(bl::to_string(qd) == bl::to_string(
-        qd, std::numeric_limits<bl::f256>::max_digits10));
+        qd, std::numeric_limits<bl::fqd>::max_digits10));
     CHECK(bl::to_static_string(dd).view() ==
-          bl::to_static_string(dd, 33).view());
+          bl::to_static_string(dd, std::numeric_limits<bl::fdd>::max_digits10).view());
     CHECK(bl::to_static_string(qd).view() ==
-          bl::to_static_string(qd, 65).view());
+          bl::to_static_string(qd, std::numeric_limits<bl::fqd>::max_digits10).view());
 
     std::stringstream stream;
-    stream << std::scientific << std::setprecision(67) << qd;
-    bl::f256 restored{};
+    stream << std::scientific
+           << std::setprecision(std::numeric_limits<bl::fqd>::max_digits10)
+           << qd;
+    bl::fqd restored{};
     stream >> restored;
     CHECK(restored == qd);
 
-    const bl::f128_s dd_storage =
-        bl::parse<bl::f128_s>("1.00000000000000000000000000000001");
-    const bl::f256_s qd_storage = bl::parse<bl::f256_s>(
+    const bl::fdd_s dd_storage =
+        bl::parse<bl::fdd_s>("1.00000000000000000000000000000001");
+    const bl::fqd_s qd_storage = bl::parse<bl::fqd_s>(
         "1.000000000000000000000000000000000000000000000000000000000000001");
     CHECK(dd_storage.lo != 0.0);
     CHECK((qd_storage.x1 != 0.0 || qd_storage.x2 != 0.0 || qd_storage.x3 != 0.0));
@@ -539,13 +557,13 @@ TEST_CASE("parse, format, and stream round trips preserve values", "[contracts][
     std::stringstream storage_stream;
     storage_stream
         << std::scientific
-        << std::setprecision(std::numeric_limits<bl::f128_s>::max_digits10)
+        << std::setprecision(std::numeric_limits<bl::fdd_s>::max_digits10)
         << dd_storage
         << ' '
-        << std::setprecision(67)
+        << std::setprecision(std::numeric_limits<bl::fqd_s>::max_digits10)
         << qd_storage;
-    bl::f128_s restored_dd_storage{};
-    bl::f256_s restored_qd_storage{};
+    bl::fdd_s restored_dd_storage{};
+    bl::fqd_s restored_qd_storage{};
     storage_stream >> restored_dd_storage >> restored_qd_storage;
     CHECK(restored_dd_storage == dd_storage);
     CHECK(restored_qd_storage == qd_storage);
@@ -555,41 +573,41 @@ TEST_CASE("parsing reports partial and invalid input without hidden overwrite", 
 {
     check_invalid_input_is_transactional<float>();
     check_invalid_input_is_transactional<double>();
-    check_invalid_input_is_transactional<bl::f128>();
-    check_invalid_input_is_transactional<bl::f256>();
+    check_invalid_input_is_transactional<bl::fdd>();
+    check_invalid_input_is_transactional<bl::fqd>();
 
     constexpr std::string_view partial = "1.25tail";
-    bl::f128 value{};
+    bl::fdd value{};
     const auto result = bl::from_chars(partial.data(), partial.data() + partial.size(), value);
     CHECK(result.ec == std::errc{});
     CHECK(result.ptr == partial.data() + 4);
-    CHECK(value == bl::f128{ 1.25 });
+    CHECK(value == bl::fdd{ 1.25 });
 
     std::istringstream stream{ "1.25tail" };
-    bl::f128 unchanged{ 42.0 };
+    bl::fdd unchanged{ 42.0 };
     CHECK_FALSE(static_cast<bool>(stream >> unchanged));
-    CHECK(unchanged == bl::f128{ 42.0 });
+    CHECK(unchanged == bl::fdd{ 42.0 });
 }
 
 TEST_CASE("from_chars preserves partial token boundaries",
           "[contracts][io][charconv]")
 {
-    check_partial_token_boundaries<bl::f128>();
-    check_partial_token_boundaries<bl::f256>();
+    check_partial_token_boundaries<bl::fdd>();
+    check_partial_token_boundaries<bl::fqd>();
 }
 
 TEST_CASE("I/O preserves signed zero and special values", "[contracts][io][special]")
 {
-    const auto inf = std::numeric_limits<bl::f256>::infinity();
-    const auto nan = std::numeric_limits<bl::f256>::quiet_NaN();
+    const auto inf = std::numeric_limits<bl::fqd>::infinity();
+    const auto nan = std::numeric_limits<bl::fqd>::quiet_NaN();
 
     CHECK(bl::to_string(inf) == "inf");
     CHECK(bl::to_string(-inf) == "-inf");
     CHECK(bl::to_string(nan) == "nan");
-    CHECK(bl::isinf(bl::parse<bl::f256>("inf")));
-    CHECK(bl::isnan(bl::parse<bl::f256>("nan")));
+    CHECK(bl::isinf(bl::parse<bl::fqd>("inf")));
+    CHECK(bl::isnan(bl::parse<bl::fqd>("nan")));
 
-    const auto negative_zero = bl::parse<bl::f128>("-0");
+    const auto negative_zero = bl::parse<bl::fdd>("-0");
     CHECK(bl::iszero(negative_zero));
     CHECK(bl::signbit(negative_zero));
     CHECK(bl::to_string(negative_zero, 3, std::ios_base::fixed) == "-0.000");
@@ -599,14 +617,14 @@ TEST_CASE("literals retain digits beyond binary64", "[contracts][io][literal]")
 {
     using namespace bl::literals;
 
-    constexpr bl::f128 dd = "1.00000000000000000000000000000001"_dd;
-    constexpr bl::f256 qd =
+    constexpr bl::fdd dd = "1.00000000000000000000000000000001"_dd;
+    constexpr bl::fqd qd =
         "1.000000000000000000000000000000000000000000000000000000000000001"_qd;
 
-    STATIC_CHECK(dd > bl::f128{ 1.0 });
-    STATIC_CHECK(qd > bl::f256{ 1.0 });
-    STATIC_CHECK(0x1.4p+0_dd == bl::f128{ 1.25 });
-    STATIC_CHECK(0x1.4p+0_qd == bl::f256{ 1.25 });
+    STATIC_CHECK(dd > bl::fdd{ 1.0 });
+    STATIC_CHECK(qd > bl::fqd{ 1.0 });
+    STATIC_CHECK(0x1.4p+0_dd == bl::fdd{ 1.25 });
+    STATIC_CHECK(0x1.4p+0_qd == bl::fqd{ 1.25 });
 }
 
 TEST_CASE("extended parsing preserves hexadecimal precision and range semantics",
@@ -614,17 +632,17 @@ TEST_CASE("extended parsing preserves hexadecimal precision and range semantics"
 {
     using namespace bl::literals;
 
-    STATIC_CHECK("0X1.8P+2"_dd == bl::f128{ 6.0 });
-    STATIC_CHECK("0X1.8P+2"_qd == bl::f256{ 6.0 });
+    STATIC_CHECK("0X1.8P+2"_dd == bl::fdd{ 6.0 });
+    STATIC_CHECK("0X1.8P+2"_qd == bl::fqd{ 6.0 });
     STATIC_CHECK(
-        bl::parse<bl::f256>("+0X1.4P+0") == bl::f256{ 1.25 });
+        bl::parse<bl::fqd>("+0X1.4P+0") == bl::fqd{ 1.25 });
 
     std::string half_hex = "1.";
     half_hex.append(52, '0');
     half_hex += "1p+0";
-    const bl::f256 half_low_bit =
-        bl::f256{ 1.0 } + bl::ldexp(bl::f256{ 1.0 }, -212);
-    CHECK(bl::parse<bl::f256>(half_hex, std::chars_format::hex) ==
+    const bl::fqd half_low_bit =
+        bl::fqd{ 1.0 } + bl::ldexp(bl::fqd{ 1.0 }, -212);
+    CHECK(bl::parse<bl::fqd>(half_hex, std::chars_format::hex) ==
           half_low_bit);
 
     std::string above_half_hex = "1.";
@@ -632,41 +650,41 @@ TEST_CASE("extended parsing preserves hexadecimal precision and range semantics"
     above_half_hex += '1';
     above_half_hex.append(200, '0');
     above_half_hex += "1p+0";
-    CHECK(bl::parse<bl::f256>(above_half_hex, std::chars_format::hex) ==
+    CHECK(bl::parse<bl::fqd>(above_half_hex, std::chars_format::hex) ==
           half_low_bit);
 
-    check_extreme_decimal_saturation<bl::f128>();
-    check_extreme_decimal_saturation<bl::f256>();
+    check_extreme_decimal_saturation<bl::fdd>();
+    check_extreme_decimal_saturation<bl::fqd>();
 }
 
 TEST_CASE("charconv-shaped helpers expose buffers, errors, and complete parsing", "[contracts][io][charconv]")
 {
     check_public_conversion_surface<bl::f32>();
     check_public_conversion_surface<bl::f64>();
-    check_public_conversion_surface<bl::f128_s>();
-    check_public_conversion_surface<bl::f128>();
-    check_public_conversion_surface<bl::f256_s>();
-    check_public_conversion_surface<bl::f256>();
+    check_public_conversion_surface<bl::fdd_s>();
+    check_public_conversion_surface<bl::fdd>();
+    check_public_conversion_surface<bl::fqd_s>();
+    check_public_conversion_surface<bl::fqd>();
 
     std::array<char, 128> buffer{};
     const auto written = bl::to_chars(
         buffer.data(),
         buffer.data() + buffer.size(),
-        bl::f128{ 1.25 },
+        bl::fdd{ 1.25 },
         std::chars_format::fixed,
         3);
     REQUIRE(written.ec == std::errc{});
     CHECK(std::string(buffer.data(), written.ptr) == "1.250");
 
-    const auto parsed = bl::try_parse<bl::f256>("1.25");
+    const auto parsed = bl::try_parse<bl::fqd>("1.25");
     REQUIRE(parsed);
     CHECK(parsed.consumed == 4);
-    CHECK(parsed.value == bl::f256{ 1.25 });
+    CHECK(parsed.value == bl::fqd{ 1.25 });
 
-    bl::f128 unchanged{ 7.0 };
+    bl::fdd unchanged{ 7.0 };
     CHECK_FALSE(bl::try_parse("1.25tail", unchanged));
-    CHECK(unchanged == bl::f128{ 7.0 });
-    CHECK_THROWS_AS(bl::parse<bl::f128>("not-a-number"), std::invalid_argument);
+    CHECK(unchanged == bl::fdd{ 7.0 });
+    CHECK_THROWS_AS(bl::parse<bl::fdd>("not-a-number"), std::invalid_argument);
 
     for (const auto format : {
              std::chars_format::general,
@@ -675,12 +693,12 @@ TEST_CASE("charconv-shaped helpers expose buffers, errors, and complete parsing"
              std::chars_format::hex })
     {
         std::array<char, 256> text{};
-        const bl::f256 original{ 1.25 };
+        const bl::fqd original{ 1.25 };
         const auto encoded =
             bl::to_chars(text.data(), text.data() + text.size(), original, format, 12);
         REQUIRE(encoded.ec == std::errc{});
 
-        bl::f256_s decoded{};
+        bl::fqd_s decoded{};
         const auto decoded_result =
             bl::from_chars(text.data(), encoded.ptr, decoded, format);
         CAPTURE(static_cast<int>(format));
@@ -693,7 +711,7 @@ TEST_CASE("charconv-shaped helpers expose buffers, errors, and complete parsing"
     const auto overflow = bl::to_chars(
         too_small.data(),
         too_small.data() + too_small.size(),
-        bl::f128_s{ 123.0, 0.0 });
+        bl::fdd_s{ 123.0, 0.0 });
     CHECK(overflow.ec == std::errc::value_too_large);
     CHECK(overflow.ptr == too_small.data() + too_small.size());
 
@@ -713,7 +731,7 @@ TEST_CASE("charconv-shaped helpers expose buffers, errors, and complete parsing"
     CHECK(unchanged_native == 7.0f);
 
     CHECK(bl::parse<bl::f64>("0x1.8p+1") == 3.0);
-    CHECK(bl::parse<bl::f128>("+1.25") == bl::f128{ 1.25 });
+    CHECK(bl::parse<bl::fdd>("+1.25") == bl::fdd{ 1.25 });
 
     static_assert(std::is_same_v<
         decltype(bl::to_static_string(bl::f32{})),
@@ -722,11 +740,11 @@ TEST_CASE("charconv-shaped helpers expose buffers, errors, and complete parsing"
         decltype(bl::to_static_string(bl::f64{})),
         bl::f64_io_string>);
     static_assert(std::is_same_v<
-        decltype(bl::to_static_string(bl::f128{})),
-        bl::f128_io_string>);
+        decltype(bl::to_static_string(bl::fdd{})),
+        bl::fdd_io_string>);
     static_assert(std::is_same_v<
-        decltype(bl::to_static_string(bl::f256{})),
-        bl::f256_io_string>);
+        decltype(bl::to_static_string(bl::fqd{})),
+        bl::fqd_io_string>);
 }
 
 TEST_CASE("fixed-capacity strings provide a conventional constexpr string surface",
@@ -773,33 +791,33 @@ TEST_CASE("fixed-capacity strings provide a conventional constexpr string surfac
 TEST_CASE("deterministic high-volume extended round trips preserve every value",
           "[contracts][io][roundtrip]")
 {
-    SECTION("f128")
+    SECTION("dd")
     {
-        check_deterministic_round_trips<bl::f128>(
+        check_deterministic_round_trips<bl::fdd>(
             0x1020304050607080ull,
-            canonical_f128);
+            canonical_dd);
     }
 
-    SECTION("f256")
+    SECTION("qd")
     {
-        check_deterministic_round_trips<bl::f256>(
+        check_deterministic_round_trips<bl::fqd>(
             0x8070605040302010ull,
-            canonical_f256);
+            canonical_qd);
     }
 }
 
 TEST_CASE("default decimal output round trips the nominal value model",
           "[contracts][io][roundtrip][nominal]")
 {
-    SECTION("f128")
+    SECTION("dd")
     {
-        check_nominal_default_round_trips<bl::f128>(
+        check_nominal_default_round_trips<bl::fdd>(
             0x6d2b79f5a4c381e0ull);
     }
 
-    SECTION("f256")
+    SECTION("qd")
     {
-        check_nominal_default_round_trips<bl::f256>(
+        check_nominal_default_round_trips<bl::fqd>(
             0x91e73ac46b5d280full);
     }
 }
@@ -807,32 +825,32 @@ TEST_CASE("default decimal output round trips the nominal value model",
 #if FLTX_HAS_STD_FORMAT
 TEST_CASE("std format integration supports familiar numeric specifications", "[contracts][io][format]")
 {
-    CHECK(std::format("{}", bl::f128{ 1.25 }) == "1.25");
-    CHECK(std::format("{:.4g}", bl::f128{ 1.25 }) == "1.25");
-    CHECK(std::format("{:.3f}", bl::f128{ 1.25 }) == "1.250");
-    CHECK(std::format("{:.2f}", bl::f128_s{ 2.5, 0.0 }) == "2.50");
-    CHECK(std::format("{:.2f}", bl::f256_s{ 2.5, 0.0, 0.0, 0.0 }) == "2.50");
-    CHECK(std::format("{:+.2e}", bl::f256{ 1.5 }) == "+1.50e+00");
-    CHECK(std::format("{:+.2E}", bl::f256{ 1.5 }) == "+1.50E+00");
-    CHECK(std::format("{: .2f}", bl::f128{ 1.25 }) == " 1.25");
-    CHECK(std::format("{: .2f}", bl::f128{ -1.25 }) == "-1.25");
-    CHECK(std::format("{:+08.2f}", bl::f128{ 1.25 }) == "+0001.25");
-    CHECK(std::format("{:08.2f}", bl::f128{ -1.25 }) == "-0001.25");
-    CHECK(std::format("{:>8.2f}", bl::f128{ 1.25 }) == "    1.25");
-    CHECK(std::format("{:<8.2f}", bl::f128{ 1.25 }) == "1.25    ");
-    CHECK(std::format("{:*^8.2f}", bl::f128{ 1.25 }) == "**1.25**");
-    CHECK(std::format("{:#.0f}", bl::f128{ 1.0 }) == "1.");
-    CHECK(std::format("{:#.3g}", bl::f128{ 1.0 }) == "1.00");
-    CHECK(std::format("{:a}", bl::f128{ 1.25 }) == "0x1.4p+0");
-    CHECK(std::format("{:.2a}", bl::f128{ 1.25 }) == "0x1.40p+0");
-    CHECK(std::format("{:+#.0A}", bl::f256{ 1.0 }) == "+0X1.P+0");
-    CHECK(std::format("{:>12.1a}", bl::f128{ 1.25 }) == "    0x1.4p+0");
-    CHECK(std::format("{:.2F}", std::numeric_limits<bl::f128>::infinity()) == "INF");
-    CHECK(std::format("{:+.2F}", std::numeric_limits<bl::f128>::quiet_NaN()) == "+NAN");
-    CHECK(std::format("{:+A}", std::numeric_limits<bl::f256>::infinity()) == "+INF");
+    CHECK(std::format("{}", bl::fdd{ 1.25 }) == "1.25");
+    CHECK(std::format("{:.4g}", bl::fdd{ 1.25 }) == "1.25");
+    CHECK(std::format("{:.3f}", bl::fdd{ 1.25 }) == "1.250");
+    CHECK(std::format("{:.2f}", bl::fdd_s{ 2.5, 0.0 }) == "2.50");
+    CHECK(std::format("{:.2f}", bl::fqd_s{ 2.5, 0.0, 0.0, 0.0 }) == "2.50");
+    CHECK(std::format("{:+.2e}", bl::fqd{ 1.5 }) == "+1.50e+00");
+    CHECK(std::format("{:+.2E}", bl::fqd{ 1.5 }) == "+1.50E+00");
+    CHECK(std::format("{: .2f}", bl::fdd{ 1.25 }) == " 1.25");
+    CHECK(std::format("{: .2f}", bl::fdd{ -1.25 }) == "-1.25");
+    CHECK(std::format("{:+08.2f}", bl::fdd{ 1.25 }) == "+0001.25");
+    CHECK(std::format("{:08.2f}", bl::fdd{ -1.25 }) == "-0001.25");
+    CHECK(std::format("{:>8.2f}", bl::fdd{ 1.25 }) == "    1.25");
+    CHECK(std::format("{:<8.2f}", bl::fdd{ 1.25 }) == "1.25    ");
+    CHECK(std::format("{:*^8.2f}", bl::fdd{ 1.25 }) == "**1.25**");
+    CHECK(std::format("{:#.0f}", bl::fdd{ 1.0 }) == "1.");
+    CHECK(std::format("{:#.3g}", bl::fdd{ 1.0 }) == "1.00");
+    CHECK(std::format("{:a}", bl::fdd{ 1.25 }) == "0x1.4p+0");
+    CHECK(std::format("{:.2a}", bl::fdd{ 1.25 }) == "0x1.40p+0");
+    CHECK(std::format("{:+#.0A}", bl::fqd{ 1.0 }) == "+0X1.P+0");
+    CHECK(std::format("{:>12.1a}", bl::fdd{ 1.25 }) == "    0x1.4p+0");
+    CHECK(std::format("{:.2F}", std::numeric_limits<bl::fdd>::infinity()) == "INF");
+    CHECK(std::format("{:+.2F}", std::numeric_limits<bl::fdd>::quiet_NaN()) == "+NAN");
+    CHECK(std::format("{:+A}", std::numeric_limits<bl::fqd>::infinity()) == "+INF");
 
     #if !defined(__EMSCRIPTEN__)
-    const bl::f128 invalid_format_value{ 1.0 };
+    const bl::fdd invalid_format_value{ 1.0 };
     CHECK_THROWS_AS(
         std::vformat("{:x}", std::make_format_args(invalid_format_value)),
         std::format_error);
@@ -842,7 +860,7 @@ TEST_CASE("std format integration supports familiar numeric specifications", "[c
 TEST_CASE("std format integration preserves long precision and padding",
           "[contracts][io][format]")
 {
-    const bl::f256 pi = std::numbers::pi_v<bl::f256>;
+    const bl::fqd pi = std::numbers::pi_v<bl::fqd>;
 
     const std::string fixed60 = std::format("{:.60f}", pi);
     CHECK(fixed60.size() == 62u);
@@ -875,8 +893,8 @@ TEST_CASE("std format integration preserves long precision and padding",
     CHECK(centered67.size() == 67u);
     CHECK(centered67 == std::string(2u, '*') + fixed60 + std::string(3u, '*'));
 
-    CHECK(std::format("{:.10g}", bl::f256{ 1.25 }) == "1.25");
-    CHECK(std::format("{:#.10g}", bl::f256{ 1.25 }) == "1.250000000");
+    CHECK(std::format("{:.10g}", bl::fqd{ 1.25 }) == "1.25");
+    CHECK(std::format("{:#.10g}", bl::fqd{ 1.25 }) == "1.250000000");
     CHECK(std::format("{:.0f}", pi) == "3");
     CHECK(std::format("{:#.0f}", pi) == "3.");
 }

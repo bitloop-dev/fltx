@@ -20,8 +20,8 @@
 
 #include "fltx/detail/ascii.h"
 #include "fltx/detail/native_float_io.h"
-#include "fltx/f128_string.h"
-#include "fltx/f256_string.h"
+#include "fltx/fdd_string.h"
+#include "fltx/fqd_string.h"
 
 namespace bl::detail::charconv
 {
@@ -264,19 +264,19 @@ namespace bl
 
     namespace detail::charconv
     {
-        [[nodiscard]] BL_NO_INLINE parse_result<f128_s> parse_runtime_f128_s(
+        [[nodiscard]] BL_NO_INLINE parse_result<fdd_s> parse_runtime_dd_s(
             std::string_view text,
             std::chars_format fmt) noexcept;
 
-        [[nodiscard]] BL_NO_INLINE parse_result<f128> parse_runtime_f128(
+        [[nodiscard]] BL_NO_INLINE parse_result<fdd> parse_runtime_dd(
             std::string_view text,
             std::chars_format fmt) noexcept;
 
-        [[nodiscard]] BL_NO_INLINE parse_result<f256_s> parse_runtime_f256_s(
+        [[nodiscard]] BL_NO_INLINE parse_result<fqd_s> parse_runtime_qd_s(
             std::string_view text,
             std::chars_format fmt) noexcept;
 
-        [[nodiscard]] BL_NO_INLINE parse_result<f256> parse_runtime_f256(
+        [[nodiscard]] BL_NO_INLINE parse_result<fqd> parse_runtime_qd(
             std::string_view text,
             std::chars_format fmt) noexcept;
     }
@@ -356,28 +356,28 @@ namespace bl
     [[nodiscard]] constexpr std::to_chars_result to_chars(
         char* first,
         char* last,
-        const f128_s& value) noexcept
+        const fdd_s& value) noexcept
     {
-        return detail::charconv::to_chars_impl<detail::_f128::f128_io_traits>(
+        return detail::charconv::to_chars_impl<detail::_dd::dd_io_traits>(
             first,
             last,
             value,
             std::chars_format::general,
-            std::numeric_limits<f128_s>::max_digits10);
+            std::numeric_limits<fdd_s>::max_digits10);
     }
 
     [[nodiscard]] constexpr std::to_chars_result to_chars(
         char* first,
         char* last,
-        const f128_s& value,
+        const fdd_s& value,
         std::chars_format fmt) noexcept
     {
         const int precision = fmt == std::chars_format::general
-            ? std::numeric_limits<f128_s>::max_digits10
+            ? std::numeric_limits<fdd_s>::max_digits10
             : fmt == std::chars_format::hex
             ? -1
             : 6;
-        return detail::charconv::to_chars_impl<detail::_f128::f128_io_traits>(
+        return detail::charconv::to_chars_impl<detail::_dd::dd_io_traits>(
             first,
             last,
             value,
@@ -388,11 +388,11 @@ namespace bl
     [[nodiscard]] constexpr std::to_chars_result to_chars(
         char* first,
         char* last,
-        const f128_s& value,
+        const fdd_s& value,
         std::chars_format fmt,
         int precision) noexcept
     {
-        return detail::charconv::to_chars_impl<detail::_f128::f128_io_traits>(
+        return detail::charconv::to_chars_impl<detail::_dd::dd_io_traits>(
             first,
             last,
             value,
@@ -403,38 +403,38 @@ namespace bl
     [[nodiscard]] inline std::from_chars_result from_chars(
         const char* first,
         const char* last,
-        f128_s& value,
+        fdd_s& value,
         std::chars_format fmt = std::chars_format::general) noexcept
     {
-        return detail::charconv::from_chars_impl<detail::_f128::f128_io_traits>(first, last, value, fmt);
+        return detail::charconv::from_chars_impl<detail::_dd::dd_io_traits>(first, last, value, fmt);
     }
 
     [[nodiscard]] constexpr std::to_chars_result to_chars(
         char* first,
         char* last,
-        const f256_s& value) noexcept
+        const fqd_s& value) noexcept
     {
-        return detail::charconv::to_chars_impl<detail::_f256::f256_io_traits>(
+        return detail::charconv::to_chars_impl<detail::_qd::qd_io_traits>(
             first,
             last,
             value,
             std::chars_format::general,
-            std::numeric_limits<f256_s>::max_digits10);
+            std::numeric_limits<fqd_s>::max_digits10);
     }
 
     [[nodiscard]] constexpr std::to_chars_result to_chars(
         char* first,
         char* last,
-        const f256_s& value,
+        const fqd_s& value,
         std::chars_format fmt) noexcept
     {
         const int precision = fmt == std::chars_format::general
-            ? std::numeric_limits<f256_s>::max_digits10
+            ? std::numeric_limits<fqd_s>::max_digits10
             : fmt == std::chars_format::hex
             ? -1
             : 6;
 
-        return detail::charconv::to_chars_impl<detail::_f256::f256_io_traits>(
+        return detail::charconv::to_chars_impl<detail::_qd::qd_io_traits>(
             first,
             last,
             value,
@@ -445,11 +445,11 @@ namespace bl
     [[nodiscard]] constexpr std::to_chars_result to_chars(
         char* first,
         char* last,
-        const f256_s& value,
+        const fqd_s& value,
         std::chars_format fmt,
         int precision) noexcept
     {
-        return detail::charconv::to_chars_impl<detail::_f256::f256_io_traits>(
+        return detail::charconv::to_chars_impl<detail::_qd::qd_io_traits>(
             first,
             last,
             value,
@@ -460,10 +460,10 @@ namespace bl
     [[nodiscard]] inline std::from_chars_result from_chars(
         const char* first,
         const char* last,
-        f256_s& value,
+        fqd_s& value,
         std::chars_format fmt = std::chars_format::general) noexcept
     {
-        return detail::charconv::from_chars_impl<detail::_f256::f256_io_traits>(first, last, value, fmt);
+        return detail::charconv::from_chars_impl<detail::_qd::qd_io_traits>(first, last, value, fmt);
     }
 
     namespace detail::charconv
@@ -496,31 +496,31 @@ namespace bl
         };
 
         template<>
-        struct parse_traits_for<f128_s>
+        struct parse_traits_for<fdd_s>
         {
             static constexpr bool supported = true;
-            using traits = detail::_f128::f128_io_traits;
+            using traits = detail::_dd::dd_io_traits;
         };
 
         template<>
-        struct parse_traits_for<f128>
+        struct parse_traits_for<fdd>
         {
             static constexpr bool supported = true;
-            using traits = detail::_f128::f128_io_traits;
+            using traits = detail::_dd::dd_io_traits;
         };
 
         template<>
-        struct parse_traits_for<f256_s>
+        struct parse_traits_for<fqd_s>
         {
             static constexpr bool supported = true;
-            using traits = detail::_f256::f256_io_traits;
+            using traits = detail::_qd::qd_io_traits;
         };
 
         template<>
-        struct parse_traits_for<f256>
+        struct parse_traits_for<fqd>
         {
             static constexpr bool supported = true;
-            using traits = detail::_f256::f256_io_traits;
+            using traits = detail::_qd::qd_io_traits;
         };
 
         [[nodiscard]] BL_FORCE_INLINE constexpr bool has_hex_float_prefix(std::string_view text) noexcept
@@ -692,14 +692,14 @@ namespace bl
             std::string_view text,
             std::chars_format fmt) noexcept
         {
-            if constexpr (std::is_same_v<T, f128_s>)
-                return parse_runtime_f128_s(text, fmt);
-            else if constexpr (std::is_same_v<T, f128>)
-                return parse_runtime_f128(text, fmt);
-            else if constexpr (std::is_same_v<T, f256_s>)
-                return parse_runtime_f256_s(text, fmt);
-            else if constexpr (std::is_same_v<T, f256>)
-                return parse_runtime_f256(text, fmt);
+            if constexpr (std::is_same_v<T, fdd_s>)
+                return parse_runtime_dd_s(text, fmt);
+            else if constexpr (std::is_same_v<T, fdd>)
+                return parse_runtime_dd(text, fmt);
+            else if constexpr (std::is_same_v<T, fqd_s>)
+                return parse_runtime_qd_s(text, fmt);
+            else if constexpr (std::is_same_v<T, fqd>)
+                return parse_runtime_qd(text, fmt);
             else
                 return parse_runtime<T>(text, fmt);
         }
@@ -713,22 +713,22 @@ namespace bl
     {
         static_assert(
             detail::charconv::unqualified_parse_value<Value>,
-            "bl::parse<T> and bl::try_parse<T> expect T to be an unqualified value type, such as bl::f256."
+            "bl::parse<T> and bl::try_parse<T> expect T to be an unqualified value type, such as bl::fqd."
         );
 
         if constexpr (!detail::charconv::parse_traits_for<Value>::supported)
         {
             static_assert(
                 detail::charconv::dependent_false<Value>::value,
-                "bl::parse<T> and bl::try_parse<T> support bl::f32, bl::f64, bl::f128, bl::f128_s, bl::f256, and bl::f256_s."
+                "bl::parse<T> and bl::try_parse<T> support bl::f32, bl::f64, bl::fdd, bl::fdd_s, bl::fqd, and bl::fqd_s."
             );
         }
         else
         {
             #if BL_FP_BARRIER_ACTIVE
             if constexpr (
-                std::is_same_v<Value, f128_s> || std::is_same_v<Value, f128> ||
-                std::is_same_v<Value, f256_s> || std::is_same_v<Value, f256>)
+                std::is_same_v<Value, fdd_s> || std::is_same_v<Value, fdd> ||
+                std::is_same_v<Value, fqd_s> || std::is_same_v<Value, fqd>)
                 return detail::charconv::parse_constexpr<Value>(text, fmt);
             #endif
             BL_CONSTEXPR_RUNTIME_DISPATCH(

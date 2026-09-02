@@ -82,16 +82,16 @@ namespace
         const double negative_zero =
             fltx::tests::native_fp::signed_zero<double>(true);
 
-        if (!sign_bit(fltx::tests::mpfr::traits<bl::f128>::to_real(
-                bl::f128_s{ negative_zero, 0.0 })) ||
-            !sign_bit(fltx::tests::mpfr::traits<bl::f256>::to_real(
-                bl::f256_s{ negative_zero, 0.0, 0.0, 0.0 })))
+        if (!sign_bit(fltx::tests::mpfr::traits<bl::fdd>::to_real(
+                bl::fdd_s{ negative_zero, 0.0 })) ||
+            !sign_bit(fltx::tests::mpfr::traits<bl::fqd>::to_real(
+                bl::fqd_s{ negative_zero, 0.0, 0.0, 0.0 })))
         {
             throw std::logic_error(
                 "MPFR expansion conversion did not preserve negative zero");
         }
 
-        const real resolution = fltx::tests::mpfr::absolute_resolution<bl::f128>();
+        const real resolution = fltx::tests::mpfr::absolute_resolution<bl::fdd>();
         const auto bits = [&](const real& observed, const real& reference) {
             return fltx::tests::mpfr::resolution_adjusted_bits(
                 observed, reference, resolution, 106.0);
@@ -186,7 +186,7 @@ namespace
             else if (argument == "--help")
             {
                 std::cout
-                    << "fltx_accuracy --precision f32|f64|f128|f256 --output FILE "
+                    << "fltx_accuracy --precision f32|f64|dd|qd --output FILE "
                        "--run-id ID --source-revision REV "
                        "[--sample-mode smoke|small|standard|full] [--samples N] "
                        "[--filter TEXT] [--advisory]\n"
@@ -198,8 +198,8 @@ namespace
         }
 
         if (out.precision != "f32" && out.precision != "f64" &&
-            out.precision != "f128" && out.precision != "f256")
-            throw std::runtime_error("--precision must be f32, f64, f128 or f256");
+            out.precision != "dd" && out.precision != "qd")
+            throw std::runtime_error("--precision must be f32, f64, dd or qd");
         if (sample_mode_set && !samples_set)
             out.samples = out.sample_mode == "smoke"
                 ? 12
@@ -250,10 +250,10 @@ int main(int argc, char** argv)
             failures = fltx::tests::accuracy::run_f32(output, settings);
         else if (settings.precision == "f64")
             failures = fltx::tests::accuracy::run_f64(output, settings);
-        else if (settings.precision == "f128")
-            failures = fltx::tests::accuracy::run_f128(output, settings);
+        else if (settings.precision == "dd")
+            failures = fltx::tests::accuracy::run_dd(output, settings);
         else
-            failures = fltx::tests::accuracy::run_f256(output, settings);
+            failures = fltx::tests::accuracy::run_qd(output, settings);
         if (failures != 0 && !settings.advisory)
             return 1;
 

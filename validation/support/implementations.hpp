@@ -22,8 +22,8 @@
 #include <string_view>
 #include <type_traits>
 
-#include <fltx/f128.h>
-#include <fltx/f256.h>
+#include <fltx/fdd.h>
+#include <fltx/fqd.h>
 
 namespace fltx::tests::implementations
 {
@@ -33,11 +33,11 @@ namespace fltx::tests::implementations
         boost::multiprecision::et_off>;
 
 #if FLTX_METRICS_HAS_QDPP
-    using qd_f128 = dd_real;
-    using qd_f256 = qd_real;
+    using qd_dd = dd_real;
+    using qd_qd = qd_real;
 #else
-    using qd_f128 = double;
-    using qd_f256 = double;
+    using qd_dd = double;
+    using qd_qd = double;
 #endif
 
     struct identity
@@ -49,11 +49,11 @@ namespace fltx::tests::implementations
         bool enabled = true;
     };
 
-    inline constexpr identity fltx_f128{
-        "fltx", "fltx", "fltx bl::f128", "fltx"
+    inline constexpr identity fltx_fdd{
+        "fltx", "fltx", "fltx bl::fdd", "fltx"
     };
-    inline constexpr identity fltx_f256{
-        "fltx", "fltx", "fltx bl::f256", "fltx"
+    inline constexpr identity fltx_fqd{
+        "fltx", "fltx", "fltx bl::fqd", "fltx"
     };
     inline constexpr identity native_f32{
         "native", "float", "native float", "bl:: native overloads"
@@ -61,19 +61,19 @@ namespace fltx::tests::implementations
     inline constexpr identity native_f64{
         "native", "double", "native double", "bl:: native overloads"
     };
-    inline constexpr identity qdpp_f128{
+    inline constexpr identity qdpp_dd{
         "qdpp", "ddreal", "qdpp dd_real", "qdpp", FLTX_METRICS_HAS_QDPP != 0
     };
-    inline constexpr identity qdpp_f256{
+    inline constexpr identity qdpp_qd{
         "qdpp", "qdreal", "qdpp qd_real", "qdpp", FLTX_METRICS_HAS_QDPP != 0
     };
-    inline constexpr identity boost_f128{
+    inline constexpr identity boost_dd{
         "cppdd",
         "cppdd",
         "boost::multiprecision::cpp_double_double",
         "Boost.Multiprecision"
     };
-    inline constexpr identity boost_f256{
+    inline constexpr identity boost_qd{
         "mpfr64",
         "mpfr64",
         "boost::multiprecision::mpfr_float_backend<64>",
@@ -83,21 +83,21 @@ namespace fltx::tests::implementations
     inline constexpr std::string_view precision_name =
         std::is_same_v<Float, float> ? "f32" :
         std::is_same_v<Float, double> ? "f64" :
-        std::is_same_v<Float, bl::f128> ? "f128" : "f256";
+        std::is_same_v<Float, bl::fdd> ? "dd" : "qd";
 
     template<class Float>
     inline constexpr identity primary_identity =
         std::is_same_v<Float, float> ? native_f32 :
         std::is_same_v<Float, double> ? native_f64 :
-        std::is_same_v<Float, bl::f128> ? fltx_f128 : fltx_f256;
+        std::is_same_v<Float, bl::fdd> ? fltx_fdd : fltx_fqd;
 
     template<class Float>
     inline constexpr identity qdpp_identity =
-        std::is_same_v<Float, bl::f128> ? qdpp_f128 : qdpp_f256;
+        std::is_same_v<Float, bl::fdd> ? qdpp_dd : qdpp_qd;
 
     template<class Float>
     inline constexpr identity boost_identity =
-        std::is_same_v<Float, bl::f128> ? boost_f128 : boost_f256;
+        std::is_same_v<Float, bl::fdd> ? boost_dd : boost_qd;
 
     using timing_components = std::array<double, 4>;
 
@@ -112,27 +112,27 @@ namespace fltx::tests::implementations
     }
 
     [[nodiscard]] inline timing_components observe(
-        const bl::f128_s& value) noexcept
+        const bl::fdd_s& value) noexcept
     {
         return { value.hi, value.lo, 0.0, 0.0 };
     }
 
     [[nodiscard]] inline timing_components observe(
-        const bl::f128& value) noexcept
+        const bl::fdd& value) noexcept
     {
-        return observe(static_cast<const bl::f128_s&>(value));
+        return observe(static_cast<const bl::fdd_s&>(value));
     }
 
     [[nodiscard]] inline timing_components observe(
-        const bl::f256_s& value) noexcept
+        const bl::fqd_s& value) noexcept
     {
         return { value.x0, value.x1, value.x2, value.x3 };
     }
 
     [[nodiscard]] inline timing_components observe(
-        const bl::f256& value) noexcept
+        const bl::fqd& value) noexcept
     {
-        return observe(static_cast<const bl::f256_s&>(value));
+        return observe(static_cast<const bl::fqd_s&>(value));
     }
 
     [[nodiscard]] inline timing_components observe(const cppdd& value) noexcept
@@ -236,10 +236,10 @@ namespace fltx::tests::implementations
     };
 
     template<>
-    struct value_traits<bl::f128>
+    struct value_traits<bl::fdd>
     {
         static constexpr double nominal_bits =
-            std::numeric_limits<bl::f128>::digits;
+            std::numeric_limits<bl::fdd>::digits;
 
         [[nodiscard]] static const mpfr::real& absolute_resolution()
         {
@@ -248,32 +248,32 @@ namespace fltx::tests::implementations
             return value;
         }
 
-        [[nodiscard]] static bl::f128 from_sample(const sample& value)
+        [[nodiscard]] static bl::fdd from_sample(const sample& value)
         {
             return { value.limb[0], value.limb[1] };
         }
 
-        [[nodiscard]] static mpfr::real to_real(const bl::f128_s& value)
+        [[nodiscard]] static mpfr::real to_real(const bl::fdd_s& value)
         {
-            return mpfr::traits<bl::f128>::to_real(value);
+            return mpfr::traits<bl::fdd>::to_real(value);
         }
 
-        [[nodiscard]] static bool is_finite(const bl::f128_s& value)
+        [[nodiscard]] static bool is_finite(const bl::fdd_s& value)
         {
-            return mpfr::traits<bl::f128>::is_finite(value);
+            return mpfr::traits<bl::fdd>::is_finite(value);
         }
 
-        [[nodiscard]] static bool sign_bit(const bl::f128_s& value)
+        [[nodiscard]] static bool sign_bit(const bl::fdd_s& value)
         {
-            return mpfr::traits<bl::f128>::sign_bit(value);
+            return mpfr::traits<bl::fdd>::sign_bit(value);
         }
     };
 
     template<>
-    struct value_traits<bl::f256>
+    struct value_traits<bl::fqd>
     {
         static constexpr double nominal_bits =
-            std::numeric_limits<bl::f256>::digits;
+            std::numeric_limits<bl::fqd>::digits;
 
         [[nodiscard]] static const mpfr::real& absolute_resolution()
         {
@@ -282,24 +282,24 @@ namespace fltx::tests::implementations
             return value;
         }
 
-        [[nodiscard]] static bl::f256 from_sample(const sample& value)
+        [[nodiscard]] static bl::fqd from_sample(const sample& value)
         {
             return { value.limb[0], value.limb[1], value.limb[2], value.limb[3] };
         }
 
-        [[nodiscard]] static mpfr::real to_real(const bl::f256_s& value)
+        [[nodiscard]] static mpfr::real to_real(const bl::fqd_s& value)
         {
-            return mpfr::traits<bl::f256>::to_real(value);
+            return mpfr::traits<bl::fqd>::to_real(value);
         }
 
-        [[nodiscard]] static bool is_finite(const bl::f256_s& value)
+        [[nodiscard]] static bool is_finite(const bl::fqd_s& value)
         {
-            return mpfr::traits<bl::f256>::is_finite(value);
+            return mpfr::traits<bl::fqd>::is_finite(value);
         }
 
-        [[nodiscard]] static bool sign_bit(const bl::f256_s& value)
+        [[nodiscard]] static bool sign_bit(const bl::fqd_s& value)
         {
-            return mpfr::traits<bl::f256>::sign_bit(value);
+            return mpfr::traits<bl::fqd>::sign_bit(value);
         }
     };
 

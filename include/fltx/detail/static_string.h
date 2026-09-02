@@ -274,10 +274,10 @@ namespace bl
         }
     };
 
-    using f32_io_string  = static_string<64>;
-    using f64_io_string  = static_string<352>;
-    using f128_io_string = static_string<352>;
-    using f256_io_string = static_string<384>;
+    using f32_io_string = static_string<64>;
+    using f64_io_string = static_string<352>;
+    using fdd_io_string = static_string<352>;
+    using fqd_io_string = static_string<384>;
 
 } // namespace bl
 

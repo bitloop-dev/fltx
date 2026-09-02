@@ -957,10 +957,10 @@ namespace fltx::tests::benchmark
         std::vector<sample> values_;
     };
 
-    void run_operations_f128(csv_writer& output, const options& settings);
-    void run_operations_f256(csv_writer& output, const options& settings);
-    void run_workloads_f128(csv_writer& output, const options& settings);
-    void run_workloads_f256(csv_writer& output, const options& settings);
+    void run_operations_dd(csv_writer& output, const options& settings);
+    void run_operations_qd(csv_writer& output, const options& settings);
+    void run_workloads_dd(csv_writer& output, const options& settings);
+    void run_workloads_qd(csv_writer& output, const options& settings);
 }
 
 #endif

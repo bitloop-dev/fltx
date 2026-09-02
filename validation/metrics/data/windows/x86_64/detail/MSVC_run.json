@@ -11,8 +11,8 @@
   "benchmark_ordinary_trials": 3,
   "benchmark_policy": "adaptive-v2",
   "benchmark_samples": {
-    "f128": 8192,
-    "f256": 4096
+    "dd": 8192,
+    "qd": 4096
   },
   "benchmark_slow_threshold_ns": 10000,
   "benchmark_trials": 7,
@@ -21,13 +21,13 @@
     "build": {
       "architecture": "x86_64",
       "compiler-id": "MSVC",
-      "compiler-version": "19.51.36244.0",
+      "compiler-version": "19.51.36256.0",
       "config": "Release",
-      "flags-hash": "a7783233a2a1c2360aa486f3fcd069edd7b754c80c337bb23b401ee04591097b",
+      "flags-hash": "6677acb8c8248ee25aadc938c2f6cebee3a723b0f86e7bfdc79f0fec538a0e64",
       "frontend-variant": "MSVC",
       "optimized": "1",
       "processor": "AMD64",
-      "source-fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
+      "source-fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
       "system": "Windows"
     },
     "consumer": {
@@ -57,9 +57,9 @@
     "library_strategy": {
       "baseline-arm64": "0",
       "compiled-x86-backend": "0",
-      "f256-simd": "1",
       "msvc-guarded": "1",
       "neon": "0",
+      "qd-simd": "1",
       "runtime-check": "1",
       "runtime-path": "1",
       "scalar-x86": "0",
@@ -69,16 +69,16 @@
     }
   },
   "consumer_mode": "strict",
-  "created_utc": "2026-08-15T15:54:19.613451+00:00",
+  "created_utc": "2026-09-02T18:19:09.213790+00:00",
   "executables": {
     "accuracy": {
       "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-msvc-release\\validation\\fltx_accuracy.exe",
-      "sha256": "4ba63c29232cb5d0d74635804780276bdf11d4529a230167a9310b851eb0b829",
+      "sha256": "e2e894e0b9f52c818eb732b03fab602d3c7a64b55b9dca25d95fd474d67b3806",
       "wasm-sha256": "not-present"
     },
     "benchmark": {
       "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-msvc-release\\validation\\fltx_benchmark.exe",
-      "sha256": "7900599869eb450db06a3a7e01f2f19c098456b8d756488d26a334108d8d40d5",
+      "sha256": "f16f5922653e7858ea44302e80ea11ca1b871981433f6055e47e2f7715ddd1bb",
       "wasm-sha256": "not-present"
     }
   },
@@ -91,10 +91,10 @@
     "python": "CPython 3.13.14"
   },
   "implementations": {
-    "f128": [
+    "dd": [
       {
         "id": "fltx",
-        "label": "fltx bl::f128",
+        "label": "fltx bl::fdd",
         "short_label": "fltx"
       },
       {
@@ -113,10 +113,10 @@
         "short_label": "tlquad"
       }
     ],
-    "f256": [
+    "qd": [
       {
         "id": "fltx",
-        "label": "fltx bl::f256",
+        "label": "fltx bl::fqd",
         "short_label": "fltx"
       },
       {
@@ -137,31 +137,31 @@
     ]
   },
   "outputs": {
-    "MSVC_f128.csv": "7971934eac5c75c9f3118579aefb1600a6d0e9eef1bdedca0ce232c9aa81db45",
-    "MSVC_f256.csv": "619f5545eb06903c3b0aff4a351c27d2894738b61b78785c253b73f85982391d",
-    "detail/MSVC_f128_accuracy.csv": "9cc5b048a2cbb469fd7326cf6a3908047762d3bb78a3a057af9d9a050974f1c9",
-    "detail/MSVC_f128_benchmark.csv": "85f446cfac78c3cfb7d5e8168dff2adb00a7371c02fcf8471bc85953570e02cf",
-    "detail/MSVC_f256_accuracy.csv": "c185892d72eec1edcb9457c86db0998053b384ba4801aefbc0225be6248f129c",
-    "detail/MSVC_f256_benchmark.csv": "e26e04f0e637897ca14f6c4f92aff4a63acb65bf2589926ad9116403f6c427dc"
+    "MSVC_dd.csv": "48ad2784f4345d583ed56f84da1a64ba5eb1d0f766bb22df391a68cb5a347888",
+    "MSVC_qd.csv": "37f9eff9764e24eb13ca33ae78c20331338c87d998c31c769b58320ac4e23931",
+    "detail/MSVC_dd_accuracy.csv": "796ca76c8a56711776b081f6a54ffc17058a3a00f8d57ea4505dcb8cb7bec177",
+    "detail/MSVC_dd_benchmark.csv": "2e3672e6818f150441a6f128b8c2753b120f199c6d37dcf21b95ca175d34e861",
+    "detail/MSVC_qd_accuracy.csv": "8454133ccdfbacaefcc545310274541b342da29eccf5b2597459377d2f8f1128",
+    "detail/MSVC_qd_benchmark.csv": "5168917aa187e4f37f9152052c818d9dec9eb409630124923b3eb93acbd653a4"
   },
   "phases": {
-    "f128.accuracy": {
-      "output": "MSVC_f128_accuracy.csv",
+    "dd.accuracy": {
+      "output": "MSVC_dd_accuracy.csv",
       "return_code": 0,
       "status": "passed"
     },
-    "f128.benchmark": {
-      "output": "MSVC_f128_benchmark.csv",
+    "dd.benchmark": {
+      "output": "MSVC_dd_benchmark.csv",
       "return_code": 0,
       "status": "passed"
     },
-    "f256.accuracy": {
-      "output": "MSVC_f256_accuracy.csv",
+    "qd.accuracy": {
+      "output": "MSVC_qd_accuracy.csv",
       "return_code": 0,
       "status": "passed"
     },
-    "f256.benchmark": {
-      "output": "MSVC_f256_benchmark.csv",
+    "qd.benchmark": {
+      "output": "MSVC_qd_benchmark.csv",
       "return_code": 0,
       "status": "passed"
     }
@@ -172,13 +172,13 @@
   ],
   "platform": "windows",
   "precisions": [
-    "f128",
-    "f256"
+    "dd",
+    "qd"
   ],
-  "run_id": "ff1951e869c9480085d12c8d2f11f164",
+  "run_id": "7040a0a218d54643965865e739779674",
   "sample_mode": "standard",
   "schema_version": "6",
-  "source_fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
-  "source_revision": "b38d8f2a0c9da2eeae373bce48a1aa42bf88fcdc-dirty-7cd523deac97",
+  "source_fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
+  "source_revision": "882890995f149618f5ad4c950bbb2cd0b8e2f976-dirty-1e2aee00bd57",
   "status": "complete"
 }

@@ -13,49 +13,49 @@
 namespace bl
 {
     [[nodiscard]] BL_NO_INLINE std::string to_string(
-        const f128_s& value,
+        const fdd_s& value,
         precision_info precision,
         std::ios_base::fmtflags flags)
     {
-        return detail::to_string_impl<detail::_f128::f128_io_traits>(value, precision, flags);
+        return detail::to_string_impl<detail::_dd::dd_io_traits>(value, precision, flags);
     }
 
     [[nodiscard]] BL_NO_INLINE std::string to_string(
-        const f256_s& value,
+        const fqd_s& value,
         precision_info precision,
         std::ios_base::fmtflags flags)
     {
-        return detail::to_string_impl<detail::_f256::f256_io_traits>(value, precision, flags);
+        return detail::to_string_impl<detail::_qd::qd_io_traits>(value, precision, flags);
     }
 
     namespace detail::charconv
     {
-        [[nodiscard]] BL_NO_INLINE parse_result<f128_s> parse_runtime_f128_s(
+        [[nodiscard]] BL_NO_INLINE parse_result<fdd_s> parse_runtime_dd_s(
             std::string_view text,
             std::chars_format fmt) noexcept
         {
-            return parse_runtime<f128_s>(text, fmt);
+            return parse_runtime<fdd_s>(text, fmt);
         }
 
-        [[nodiscard]] BL_NO_INLINE parse_result<f128> parse_runtime_f128(
+        [[nodiscard]] BL_NO_INLINE parse_result<fdd> parse_runtime_dd(
             std::string_view text,
             std::chars_format fmt) noexcept
         {
-            return parse_runtime<f128>(text, fmt);
+            return parse_runtime<fdd>(text, fmt);
         }
 
-        [[nodiscard]] BL_NO_INLINE parse_result<f256_s> parse_runtime_f256_s(
+        [[nodiscard]] BL_NO_INLINE parse_result<fqd_s> parse_runtime_qd_s(
             std::string_view text,
             std::chars_format fmt) noexcept
         {
-            return parse_runtime<f256_s>(text, fmt);
+            return parse_runtime<fqd_s>(text, fmt);
         }
 
-        [[nodiscard]] BL_NO_INLINE parse_result<f256> parse_runtime_f256(
+        [[nodiscard]] BL_NO_INLINE parse_result<fqd> parse_runtime_qd(
             std::string_view text,
             std::chars_format fmt) noexcept
         {
-            return parse_runtime<f256>(text, fmt);
+            return parse_runtime<fqd>(text, fmt);
         }
 
     } // namespace detail::charconv

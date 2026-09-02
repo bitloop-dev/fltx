@@ -16,16 +16,16 @@
 namespace fltx::tests::accuracy::comparison_ops
 {
     template<class Float>
-    using qd_value = std::conditional_t<std::is_same_v<Float, bl::f128>, implementations::qd_f128,
-                                        implementations::qd_f256>;
+    using qd_value = std::conditional_t<std::is_same_v<Float, bl::fdd>, implementations::qd_dd,
+                                        implementations::qd_qd>;
 
     template<class Float>
-    using boost_value = std::conditional_t<std::is_same_v<Float, bl::f128>, implementations::cppdd,
+    using boost_value = std::conditional_t<std::is_same_v<Float, bl::fdd>, implementations::cppdd,
                                            implementations::mpfr64>;
 
     template<class Float>
-    using tlfloat_value = std::conditional_t<std::is_same_v<Float, bl::f128>,
-                                             implementations::tl_f128, implementations::tl_f256>;
+    using tlfloat_value = std::conditional_t<std::is_same_v<Float, bl::fdd>,
+                                             implementations::tl_dd, implementations::tl_qd>;
 
     template<class Float, class Eval> [[nodiscard]] auto qdpp(std::string_view api, Eval evaluate)
     {

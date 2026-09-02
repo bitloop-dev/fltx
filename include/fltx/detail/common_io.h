@@ -1242,13 +1242,17 @@ BL_FORCE_INLINE constexpr void parsed_decimal_to_value(
         if (Traits::isinf(out))
         {
             const typename Traits::value_type maximum = Traits::max_finite();
-            const int maximum_side =
-                exact_decimal::compare_decimal_twice_to_binary_sum<Traits>(
+            // A rounded decimal spelling of the largest finite expansion may
+            // lie slightly above that exact value. Compare it with the true
+            // overflow midpoint between max_finite and the next binade rather
+            // than treating every value above max_finite as infinity.
+            const int overflow_midpoint_side =
+                exact_decimal::compare_decimal_twice_to_binary_sum_with_power_of_two<Traits>(
                     token.bounded_coeff,
                     bounded_dec_exp,
                     maximum,
-                    maximum);
-            if (maximum_side <= 0)
+                    Traits::max_binary_exponent + 1);
+            if (overflow_midpoint_side < 0)
                 out = neg ? -maximum : maximum;
             return;
         }

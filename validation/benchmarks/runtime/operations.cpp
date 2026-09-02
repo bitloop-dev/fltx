@@ -22,17 +22,17 @@ namespace fltx::tests::benchmark
     namespace
     {
         template<class Float>
-        using qd_value = std::conditional_t<std::is_same_v<Float, bl::f128>,
-                                            implementations::qd_f128, implementations::qd_f256>;
+        using qd_value = std::conditional_t<std::is_same_v<Float, bl::fdd>,
+                                            implementations::qd_dd, implementations::qd_qd>;
 
         template<class Float>
-        using boost_value = std::conditional_t<std::is_same_v<Float, bl::f128>,
+        using boost_value = std::conditional_t<std::is_same_v<Float, bl::fdd>,
                                                implementations::cppdd, implementations::mpfr64>;
 
         template<class Float>
         using tlfloat_value =
-            std::conditional_t<std::is_same_v<Float, bl::f128>, implementations::tl_f128,
-                               implementations::tl_f256>;
+            std::conditional_t<std::is_same_v<Float, bl::fdd>, implementations::tl_dd,
+                               implementations::tl_qd>;
 
         template<class Float, class Eval>
         [[nodiscard]] auto qdpp(std::string_view api, Eval evaluate)
@@ -569,7 +569,7 @@ namespace fltx::tests::benchmark
                 qdpp<Float>("qdpp inv", [](const auto& x) { return reference_recip(x); }));
             run.binary(
                 "floating_point_utilities", "fmin", [](const auto& x, const auto& y) { return bl::fmin(x, y); },
-                qdpp_if<Float>(std::is_same_v<Float, bl::f256>, "qdpp min",
+                qdpp_if<Float>(std::is_same_v<Float, bl::fqd>, "qdpp min",
                                [](const auto& x, const auto& y) { return reference_min(x, y); }),
                 boost_impl<Float>("boost::multiprecision::fmin",
                                   [](const auto& x, const auto& y) { return boost_fmin(x, y); }),
@@ -578,7 +578,7 @@ namespace fltx::tests::benchmark
                 }));
             run.binary(
                 "floating_point_utilities", "fmax", [](const auto& x, const auto& y) { return bl::fmax(x, y); },
-                qdpp_if<Float>(std::is_same_v<Float, bl::f256>, "qdpp max",
+                qdpp_if<Float>(std::is_same_v<Float, bl::fqd>, "qdpp max",
                                [](const auto& x, const auto& y) { return reference_max(x, y); }),
                 boost_impl<Float>("boost::multiprecision::fmax",
                                   [](const auto& x, const auto& y) { return boost_fmax(x, y); }),
@@ -1190,7 +1190,7 @@ namespace fltx::tests::benchmark
                     return checksum.value();
                 },
                 task(implementations::qdpp_identity<Float>,
-                     std::is_same_v<Float, bl::f128> ? "qdpp ddrand" : "qdpp qdrand",
+                     std::is_same_v<Float, bl::fdd> ? "qdpp ddrand" : "qdpp qdrand",
                      [](std::size_t batches) {
                          bl::mt19937_64 engine{0x1020304050607080ull};
                          checksum_accumulator checksum;
@@ -1215,13 +1215,13 @@ namespace fltx::tests::benchmark
         }
     } // namespace
 
-    void run_operations_f128(csv_writer& output, const options& settings)
+    void run_operations_dd(csv_writer& output, const options& settings)
     {
-        run_operations<bl::f128>(output, settings);
+        run_operations<bl::fdd>(output, settings);
     }
 
-    void run_operations_f256(csv_writer& output, const options& settings)
+    void run_operations_qd(csv_writer& output, const options& settings)
     {
-        run_operations<bl::f256>(output, settings);
+        run_operations<bl::fqd>(output, settings);
     }
 } // namespace fltx::tests::benchmark

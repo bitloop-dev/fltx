@@ -1,7 +1,5 @@
 /**
- * fltx/f32_classification.h - constexpr <cmath>-style classification functions for f32.
- *
- * f32 classification, predicates, and comparison helpers.
+ * fltx/f32_classification.h - constexpr classification, predicate, and comparison functions for f32.
  *
  * Copyright (c) 2026 William Hemsworth
  *

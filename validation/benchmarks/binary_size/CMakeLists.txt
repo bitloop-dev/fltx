@@ -22,28 +22,28 @@ function(fltx_add_size_probe target precision case_name repeats)
     endif()
 endfunction()
 
-fltx_add_size_probe(fltx_size_f128_baseline 128 0 0)
-fltx_add_size_probe(fltx_size_f128_arithmetic 128 1 32)
-fltx_add_size_probe(fltx_size_f128_math 128 2 16)
-fltx_add_size_probe(fltx_size_f128_io 128 3 8)
-fltx_add_size_probe(fltx_size_f128_random 128 4 16)
-fltx_add_size_probe(fltx_size_f256_baseline 256 0 0)
-fltx_add_size_probe(fltx_size_f256_arithmetic 256 1 32)
-fltx_add_size_probe(fltx_size_f256_math 256 2 16)
-fltx_add_size_probe(fltx_size_f256_io 256 3 8)
-fltx_add_size_probe(fltx_size_f256_random 256 4 16)
+fltx_add_size_probe(fltx_size_dd_baseline 128 0 0)
+fltx_add_size_probe(fltx_size_dd_arithmetic 128 1 32)
+fltx_add_size_probe(fltx_size_dd_math 128 2 16)
+fltx_add_size_probe(fltx_size_dd_io 128 3 8)
+fltx_add_size_probe(fltx_size_dd_random 128 4 16)
+fltx_add_size_probe(fltx_size_qd_baseline 256 0 0)
+fltx_add_size_probe(fltx_size_qd_arithmetic 256 1 32)
+fltx_add_size_probe(fltx_size_qd_math 256 2 16)
+fltx_add_size_probe(fltx_size_qd_io 256 3 8)
+fltx_add_size_probe(fltx_size_qd_random 256 4 16)
 
 set(FLTX_BENCHMARK_SIZE_TARGETS
-    fltx_size_f128_baseline
-    fltx_size_f128_arithmetic
-    fltx_size_f128_math
-    fltx_size_f128_io
-    fltx_size_f128_random
-    fltx_size_f256_baseline
-    fltx_size_f256_arithmetic
-    fltx_size_f256_math
-    fltx_size_f256_io
-    fltx_size_f256_random
+    fltx_size_dd_baseline
+    fltx_size_dd_arithmetic
+    fltx_size_dd_math
+    fltx_size_dd_io
+    fltx_size_dd_random
+    fltx_size_qd_baseline
+    fltx_size_qd_arithmetic
+    fltx_size_qd_math
+    fltx_size_qd_io
+    fltx_size_qd_random
 )
 
 set(FLTX_BENCHMARK_SIZE_REPORT_ARGS)

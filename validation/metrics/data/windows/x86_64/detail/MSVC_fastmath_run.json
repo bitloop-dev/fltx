@@ -11,8 +11,8 @@
   "benchmark_ordinary_trials": 3,
   "benchmark_policy": "adaptive-v2",
   "benchmark_samples": {
-    "f128": 8192,
-    "f256": 4096
+    "dd": 8192,
+    "qd": 4096
   },
   "benchmark_slow_threshold_ns": 10000,
   "benchmark_trials": 7,
@@ -21,13 +21,13 @@
     "build": {
       "architecture": "x86_64",
       "compiler-id": "MSVC",
-      "compiler-version": "19.51.36244.0",
+      "compiler-version": "19.51.36256.0",
       "config": "Release",
-      "flags-hash": "a7783233a2a1c2360aa486f3fcd069edd7b754c80c337bb23b401ee04591097b",
+      "flags-hash": "6677acb8c8248ee25aadc938c2f6cebee3a723b0f86e7bfdc79f0fec538a0e64",
       "frontend-variant": "MSVC",
       "optimized": "1",
       "processor": "AMD64",
-      "source-fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
+      "source-fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
       "system": "Windows"
     },
     "consumer": {
@@ -41,8 +41,8 @@
       "x86": "1"
     },
     "harness": {
-      "qdpp": "on",
-      "tlfloat": "on"
+      "qdpp": "off",
+      "tlfloat": "off"
     },
     "library": {
       "arm64": "0",
@@ -57,9 +57,9 @@
     "library_strategy": {
       "baseline-arm64": "0",
       "compiled-x86-backend": "0",
-      "f256-simd": "1",
       "msvc-guarded": "1",
       "neon": "0",
+      "qd-simd": "1",
       "runtime-check": "1",
       "runtime-path": "1",
       "scalar-x86": "0",
@@ -69,16 +69,16 @@
     }
   },
   "consumer_mode": "fastmath",
-  "created_utc": "2026-08-15T15:56:36.183368+00:00",
+  "created_utc": "2026-09-02T18:21:40.691123+00:00",
   "executables": {
     "accuracy": {
       "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-msvc-release\\validation\\fltx_accuracy_fastmath.exe",
-      "sha256": "6320c964a4a5b80fa3059f7bb596a67e64c84fbf97db3e2015c14cc384ac5602",
+      "sha256": "c9d07a8b3066908b11979b76d2e8e22310022c13372ea4799358ba8b0b5e6eb2",
       "wasm-sha256": "not-present"
     },
     "benchmark": {
       "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-msvc-release\\validation\\fltx_benchmark_fastmath.exe",
-      "sha256": "fe0f59a0fc6bacbb11499f13a0ebe90d6ed0a5f739422fff1e3798c174c6444d",
+      "sha256": "5aa1cd0b5f40d33628553b367155593fb342b83e1bef30082138f06bb6175fd2",
       "wasm-sha256": "not-present"
     }
   },
@@ -91,47 +91,47 @@
     "python": "CPython 3.13.14"
   },
   "implementations": {
-    "f128": [
+    "dd": [
       {
         "id": "fltx",
-        "label": "fltx bl::f128",
+        "label": "fltx bl::fdd",
         "short_label": "fltx"
       }
     ],
-    "f256": [
+    "qd": [
       {
         "id": "fltx",
-        "label": "fltx bl::f256",
+        "label": "fltx bl::fqd",
         "short_label": "fltx"
       }
     ]
   },
   "outputs": {
-    "MSVC_f128_fastmath.csv": "eaf429725944bbdad39761cf0e04ffa37504a8ec70d57cce7bdc396925f59cd4",
-    "MSVC_f256_fastmath.csv": "67ee789e394163226d120be5b2a041d752732604c6fe9926a6d749217ea97c32",
-    "detail/MSVC_f128_fastmath_accuracy.csv": "c4f935551f5c7a7227aebed4136859f2e65ab6cc7ab25058e6bbab18a8afdae6",
-    "detail/MSVC_f128_fastmath_benchmark.csv": "b6492499b46d61963032c12d67ecab3da71ccec5ef4ed0dc0c543af98a4b26aa",
-    "detail/MSVC_f256_fastmath_accuracy.csv": "98413185f0bb3d65ef9b0496d5dd4e9a5e9ecee5c9182d3691f806312f375c2f",
-    "detail/MSVC_f256_fastmath_benchmark.csv": "a4b17a794584aed02eb5a672bfcf1a64ccc8e2ad6abd9054015b20b23feb62c6"
+    "MSVC_dd_fastmath.csv": "76cdc0d860b36ba7c338c7ec7da42b64cf250f3ef1827dc36b7236326898a4fb",
+    "MSVC_qd_fastmath.csv": "e91f3f6a518be9be97644430161c0c1e0a5d6cf40df8105a02a8887fa73da636",
+    "detail/MSVC_dd_fastmath_accuracy.csv": "a575e50dd6394ebacd7e1832a0aa2fadceb19733de8955f0c53c0fbd20df8510",
+    "detail/MSVC_dd_fastmath_benchmark.csv": "7f67ba31fdd06dbf97e6e8dc840cf3be886a3d86b21b300d1b412b9dbdcf93c4",
+    "detail/MSVC_qd_fastmath_accuracy.csv": "e6cbe9d0ce754f08ab8958e3bb5084d3d7824ace413f0bae420b7fc865791e99",
+    "detail/MSVC_qd_fastmath_benchmark.csv": "3f3112c6b010e61144fbc9fef9e3d8d79e51e5a6bd8476579295b690f05a8409"
   },
   "phases": {
-    "f128.accuracy": {
-      "output": "MSVC_f128_fastmath_accuracy.csv",
+    "dd.accuracy": {
+      "output": "MSVC_dd_fastmath_accuracy.csv",
       "return_code": 0,
       "status": "passed"
     },
-    "f128.benchmark": {
-      "output": "MSVC_f128_fastmath_benchmark.csv",
+    "dd.benchmark": {
+      "output": "MSVC_dd_fastmath_benchmark.csv",
       "return_code": 0,
       "status": "passed"
     },
-    "f256.accuracy": {
-      "output": "MSVC_f256_fastmath_accuracy.csv",
+    "qd.accuracy": {
+      "output": "MSVC_qd_fastmath_accuracy.csv",
       "return_code": 0,
       "status": "passed"
     },
-    "f256.benchmark": {
-      "output": "MSVC_f256_fastmath_benchmark.csv",
+    "qd.benchmark": {
+      "output": "MSVC_qd_fastmath_benchmark.csv",
       "return_code": 0,
       "status": "passed"
     }
@@ -142,13 +142,13 @@
   ],
   "platform": "windows",
   "precisions": [
-    "f128",
-    "f256"
+    "dd",
+    "qd"
   ],
-  "run_id": "38734516d65c4154a947aaeb3ae92c72",
+  "run_id": "919f3b86b0474abe9539b26dc0ad3337",
   "sample_mode": "standard",
   "schema_version": "6",
-  "source_fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
-  "source_revision": "b38d8f2a0c9da2eeae373bce48a1aa42bf88fcdc-dirty-7cd523deac97",
+  "source_fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
+  "source_revision": "882890995f149618f5ad4c950bbb2cd0b8e2f976-dirty-1e2aee00bd57",
   "status": "complete"
 }

@@ -10,17 +10,17 @@ namespace fltx::tests::benchmark
     namespace
     {
         template<class Float>
-        using qd_value = std::conditional_t<std::is_same_v<Float, bl::f128>,
-                                            implementations::qd_f128, implementations::qd_f256>;
+        using qd_value = std::conditional_t<std::is_same_v<Float, bl::fdd>,
+                                            implementations::qd_dd, implementations::qd_qd>;
 
         template<class Float>
-        using boost_value = std::conditional_t<std::is_same_v<Float, bl::f128>,
+        using boost_value = std::conditional_t<std::is_same_v<Float, bl::fdd>,
                                                implementations::cppdd, implementations::mpfr64>;
 
         template<class Float>
         using tlfloat_value =
-            std::conditional_t<std::is_same_v<Float, bl::f128>, implementations::tl_f128,
-                               implementations::tl_f256>;
+            std::conditional_t<std::is_same_v<Float, bl::fdd>, implementations::tl_dd,
+                               implementations::tl_qd>;
 
         template<class Value> [[nodiscard]] Value workload_sin(const Value& value)
         {
@@ -492,13 +492,13 @@ namespace fltx::tests::benchmark
         }
     } // namespace
 
-    void run_workloads_f128(csv_writer& output, const options& settings)
+    void run_workloads_dd(csv_writer& output, const options& settings)
     {
-        run_workloads<bl::f128>(output, settings);
+        run_workloads<bl::fdd>(output, settings);
     }
 
-    void run_workloads_f256(csv_writer& output, const options& settings)
+    void run_workloads_qd(csv_writer& output, const options& settings)
     {
-        run_workloads<bl::f256>(output, settings);
+        run_workloads<bl::fqd>(output, settings);
     }
 } // namespace fltx::tests::benchmark

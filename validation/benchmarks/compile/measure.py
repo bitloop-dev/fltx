@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Repeatable public-header and f256 expression compile telemetry."""
+"""Repeatable public-header and fqd expression compile telemetry."""
 
 from __future__ import annotations
 
@@ -16,10 +16,10 @@ from expression_cases import EXPRESSION_STRESS_CASES, expression_for
 
 
 INCLUDE_HEADERS = (
-    "fltx/f128.h",
-    "fltx/f256.h",
-    "fltx/f128_math.h",
-    "fltx/f256_math.h",
+    "fltx/fdd.h",
+    "fltx/fqd.h",
+    "fltx/fdd_math.h",
+    "fltx/fqd_math.h",
     "fltx/math.h",
     "fltx.h",
 )
@@ -65,10 +65,10 @@ def source_for(probe: Probe) -> str:
             return "int main() { return 0; }\n"
         return f"#include <{probe.case}>\nint main() {{ return 0; }}\n"
 
-    value_type = "bl::f256" if probe.style == "expression" else "bl::f256_s"
+    value_type = "bl::fqd" if probe.style == "expression" else "bl::fqd_s"
     safe_case = probe.case.replace("-", "_")
     lines = [
-        "#include <fltx/f256.h>",
+        "#include <fltx/fqd.h>",
         "#if defined(_MSC_VER)",
         "#define FLTX_COMPILE_NOINLINE __declspec(noinline)",
         "#elif defined(__GNUC__) || defined(__clang__)",

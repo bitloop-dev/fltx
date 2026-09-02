@@ -19,8 +19,8 @@
 #include <type_traits>
 #include <utility>
 
-#include <fltx/f128.h>
-#include <fltx/f256.h>
+#include <fltx/fdd.h>
+#include <fltx/fqd.h>
 
 namespace fltx::tests::mpfr
 {
@@ -145,17 +145,17 @@ namespace fltx::tests::mpfr
     };
 
     template<>
-    struct traits<bl::f128>
+    struct traits<bl::fdd>
     {
-        static constexpr thresholds::precision precision = thresholds::precision::f128;
-        static constexpr std::string_view name = "f128";
+        static constexpr thresholds::precision precision = thresholds::precision::fdd;
+        static constexpr std::string_view name = "dd";
 
-        [[nodiscard]] static bl::f128 from_sample(const sample& value)
+        [[nodiscard]] static bl::fdd from_sample(const sample& value)
         {
             return { value.limb[0], value.limb[1] };
         }
 
-        [[nodiscard]] static real to_real(const bl::f128_s& value)
+        [[nodiscard]] static real to_real(const bl::fdd_s& value)
         {
             const bool hi_is_negative = native_fp::sign_bit(value.hi);
             const real out = native_float_to_real(value.hi) +
@@ -165,30 +165,30 @@ namespace fltx::tests::mpfr
                 : out;
         }
 
-        [[nodiscard]] static bool is_finite(const bl::f128_s& value)
+        [[nodiscard]] static bool is_finite(const bl::fdd_s& value)
         {
             return native_fp::is_finite(value.hi) &&
                    native_fp::is_finite(value.lo);
         }
 
-        [[nodiscard]] static bool sign_bit(const bl::f128_s& value)
+        [[nodiscard]] static bool sign_bit(const bl::fdd_s& value)
         {
             return native_fp::sign_bit(value.hi);
         }
     };
 
     template<>
-    struct traits<bl::f256>
+    struct traits<bl::fqd>
     {
-        static constexpr thresholds::precision precision = thresholds::precision::f256;
-        static constexpr std::string_view name = "f256";
+        static constexpr thresholds::precision precision = thresholds::precision::fqd;
+        static constexpr std::string_view name = "qd";
 
-        [[nodiscard]] static bl::f256 from_sample(const sample& value)
+        [[nodiscard]] static bl::fqd from_sample(const sample& value)
         {
             return { value.limb[0], value.limb[1], value.limb[2], value.limb[3] };
         }
 
-        [[nodiscard]] static real to_real(const bl::f256_s& value)
+        [[nodiscard]] static real to_real(const bl::fqd_s& value)
         {
             const bool x0_is_negative = native_fp::sign_bit(value.x0);
             const real out = native_float_to_real(value.x0) +
@@ -200,7 +200,7 @@ namespace fltx::tests::mpfr
                 : out;
         }
 
-        [[nodiscard]] static bool is_finite(const bl::f256_s& value)
+        [[nodiscard]] static bool is_finite(const bl::fqd_s& value)
         {
             return native_fp::is_finite(value.x0) &&
                    native_fp::is_finite(value.x1) &&
@@ -208,7 +208,7 @@ namespace fltx::tests::mpfr
                    native_fp::is_finite(value.x3);
         }
 
-        [[nodiscard]] static bool sign_bit(const bl::f256_s& value)
+        [[nodiscard]] static bool sign_bit(const bl::fqd_s& value)
         {
             return native_fp::sign_bit(value.x0);
         }
@@ -230,7 +230,7 @@ namespace fltx::tests::mpfr
             out = native_float_to_real(static_cast<float>(value.limb[0]));
         else if constexpr (std::is_same_v<Float, double>)
             out = native_float_to_real(value.limb[0]);
-        else if constexpr (std::is_same_v<Float, bl::f128>)
+        else if constexpr (std::is_same_v<Float, bl::fdd>)
             out = native_float_to_real(value.limb[0]) +
                   native_float_to_real(value.limb[1]);
         else
@@ -246,7 +246,7 @@ namespace fltx::tests::mpfr
     {
         sample out{};
         out.label = std::move(label);
-        constexpr std::size_t limb_count = std::is_same_v<Float, bl::f128> ? 2 : 4;
+        constexpr std::size_t limb_count = std::is_same_v<Float, bl::fdd> ? 2 : 4;
         for (std::size_t i = 0; i < limb_count; ++i)
         {
             out.limb[i] = static_cast<double>(value);

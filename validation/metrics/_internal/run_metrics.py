@@ -31,7 +31,7 @@ from source_fingerprint import source_identity, valid_fingerprint
 
 
 SCHEMA_VERSION = "6"
-PRECISIONS = ("f128", "f256")
+PRECISIONS = ("dd", "qd")
 CONSUMER_MODES = ("strict", "fastmath")
 MINIMUM_CREDIBLE_BENCHMARK_NS = 0.001
 ADAPTIVE_SAMPLE_MODES = frozenset(("small", "standard"))
@@ -52,23 +52,23 @@ _ADAPTIVE_PROFILE = {
 SAMPLE_PROFILES = {
     "smoke": {
         "accuracy_samples": 12,
-        "benchmark_samples": {"f128": 12, "f256": 12},
+        "benchmark_samples": {"dd": 12, "qd": 12},
         "benchmark_trials": 3,
         "benchmark_minimum_trial_ms": 3,
     },
     "small": {
         "accuracy_samples": 2048,
-        "benchmark_samples": {"f128": 4096, "f256": 2048},
+        "benchmark_samples": {"dd": 4096, "qd": 2048},
         **_ADAPTIVE_PROFILE,
     },
     "standard": {
         "accuracy_samples": 4096,
-        "benchmark_samples": {"f128": 8192, "f256": 4096},
+        "benchmark_samples": {"dd": 8192, "qd": 4096},
         **_ADAPTIVE_PROFILE,
     },
     "full": {
         "accuracy_samples": 65536,
-        "benchmark_samples": {"f128": 81920, "f256": 40960},
+        "benchmark_samples": {"dd": 81920, "qd": 40960},
         "benchmark_trials": 7,
         "benchmark_minimum_trial_ms": 25,
     },
@@ -96,7 +96,7 @@ CANONICAL_TARGETS = {
     ("linux", "arm64", "Clang"): ("linux", "clang", frozenset(("", "gnu"))),
     ("macos", "x86_64", "AppleClang"): ("darwin", "appleclang", frozenset(("", "gnu"))),
     ("macos", "arm64", "AppleClang"): ("darwin", "appleclang", frozenset(("", "gnu"))),
-    ("wasm32", "wasm32", "Emscripten"): ("emscripten", "clang", frozenset(("", "gnu"))),
+    ("webassembly", "wasm32", "Emscripten"): ("emscripten", "clang", frozenset(("", "gnu"))),
 }
 REQUIRED_CONFIGURATION_FIELDS = {
     "harness": {
@@ -133,7 +133,7 @@ REQUIRED_CONFIGURATION_FIELDS = {
         "sse2",
         "neon",
         "wasm-simd",
-        "f256-simd",
+        "qd-simd",
         "trig-simd",
     },
 }
@@ -753,6 +753,7 @@ def validate_runner_artifacts(
     sample_mode: str,
     consumer_mode: str = "strict",
     environment: Mapping[str, str] | None = None,
+    canonical_publication: bool = False,
 ) -> tuple[str, str, str]:
     """Validate existing runners without configuring, building, or measuring."""
 
@@ -775,7 +776,7 @@ def validate_runner_artifacts(
         platform=None,
         architecture=None,
         compiler=None,
-        publishable=sample_mode == "full",
+        publishable=sample_mode == "full" or canonical_publication,
         environment=environment,
     )
     require_consumer_mode(configuration, consumer_mode, "existing metrics runners")
@@ -1868,7 +1869,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output-root", type=Path)
     parser.add_argument(
         "--platform",
-        help="Output folder, for example windows or wasm32",
+        help="Output folder, for example windows or webassembly",
     )
     parser.add_argument("--architecture", help="Target architecture, for example x86_64")
     parser.add_argument("--compiler", help="File prefix, for example MSVC or Emscripten")
@@ -1938,7 +1939,7 @@ def main(argv: list[str] | None = None) -> int:
     revision = identity.revision
     fingerprint = identity.fingerprint
     run_id = uuid.uuid4().hex
-    complete_run = (
+    full_run = (
         runner_names == {"accuracy", "benchmark"}
         and args.sample_mode == "full"
         and set(precisions) == set(PRECISIONS)
@@ -1947,6 +1948,7 @@ def main(argv: list[str] | None = None) -> int:
         runner_names == {"accuracy", "benchmark"}
         and set(precisions) == set(PRECISIONS)
     )
+    publishable_run = full_run or args.canonical_publication
     durable_run = complete_suite and args.sample_mode in DURABLE_SAMPLE_MODES
     canonical_output_root = (root / "validation" / "metrics" / "data").resolve()
     output_root = (
@@ -1957,22 +1959,22 @@ def main(argv: list[str] | None = None) -> int:
     if output_root == canonical_output_root and not args.canonical_publication:
         print(
             "metrics failed: canonical data may only be written by "
-            "run_preset_metrics.py --release",
+            "run_preset_metrics.py --publish",
             file=sys.stderr,
         )
         return 1
     if args.canonical_publication and (
-        args.sample_mode != "full" or output_root != canonical_output_root
+        not complete_suite or output_root != canonical_output_root
     ):
         print(
-            "metrics failed: canonical publication requires the full profile "
-            "and canonical output root",
+            "metrics failed: canonical publication requires complete accuracy "
+            "and benchmark results for every precision at the canonical output root",
             file=sys.stderr,
         )
         return 1
-    if complete_run and revision == "unknown":
+    if publishable_run and revision == "unknown":
         print(
-            "metrics failed: a full published run requires a known source revision",
+            "metrics failed: a full or published run requires a known source revision",
             file=sys.stderr,
         )
         return 1
@@ -1984,7 +1986,7 @@ def main(argv: list[str] | None = None) -> int:
             platform=platform,
             architecture=architecture,
             compiler=compiler,
-            publishable=complete_run,
+            publishable=publishable_run,
         )
         configuration = require_consumer_mode(
             configuration,
@@ -2161,7 +2163,7 @@ def main(argv: list[str] | None = None) -> int:
                         platform=platform,
                         architecture=architecture,
                         compiler=compiler,
-                        publishable=complete_run,
+                        publishable=publishable_run,
                     )
                     metadata["configuration"] = configuration
                     phase["return_code"] = return_code
@@ -2253,7 +2255,7 @@ def main(argv: list[str] | None = None) -> int:
                     platform=platform,
                     architecture=architecture,
                     compiler=compiler,
-                    publishable=complete_run,
+                    publishable=publishable_run,
                 )
                 metadata["configuration"] = configuration
                 phase["return_code"] = return_code
@@ -2312,7 +2314,7 @@ def main(argv: list[str] | None = None) -> int:
                         configuration["harness"]["tlfloat"] == "on"
                     ),
                     consumer_mode=args.consumer_mode,
-                    require_complete=complete_run,
+                    require_complete=publishable_run,
                     expected_trials=_expected_benchmark_trials(
                         args.sample_mode, profile,
                     ),

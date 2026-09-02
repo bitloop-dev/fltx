@@ -16,7 +16,7 @@ which flushes binary64 subnormals and can discard low expansion limbs. Consumers
 that want fast-math transformations while retaining gradual underflow can add
 `-mno-daz-ftz`; the standard fast-math reports do not use that mitigation.
 
-For f128/f256 basic `+`, `-`, `*`, and `/`, consumer fast-math also selects
+For dd/qd basic `+`, `-`, `*`, and `/`, consumer fast-math also selects
 finite-input runtime kernels that omit NaN, infinity, and signed-zero handling.
 Strict consumers and genuine constant evaluation retain the checked semantics.
 
@@ -24,7 +24,7 @@ Strict consumers and genuine constant evaluation retain the checked semantics.
   expression fusion, dispatch, and named numerical edge cases.
 - `fltx_constexpr_tests` checks genuine compiler constant evaluation, including
   the 58-case-per-type MPFR corpus for all four types in the strict consumer.
-  The fast-math target retains that corpus for f128/f256; native numerical
+  The fast-math target retains that corpus for dd/qd; native numerical
   gates use the strict consumer because fast-math also relaxes the compiler's
   constant evaluator. Exact native special-value assertions still compile in
   both profiles. Overload and return-type matrices belong to the contract suite.
@@ -34,16 +34,16 @@ Strict consumers and genuine constant evaluation retain the checked semantics.
   the library's constexpr algorithms at runtime, so they receive the same
   domains and threshold reporting as the normal runtime algorithms.
 - `fltx_benchmark` measures performance only. A full run uses broad,
-  operation-specific corpora (81,920 base f128 samples and 40,960 base f256
+  operation-specific corpora (81,920 base dd samples and 40,960 base qd
   samples), calibrates fixed batches to at least 25 ms, and reports the median
   of seven trials. Every logical trial runs all registered implementations
   once, rotating which implementation runs first to balance ordering effects.
 
 The initial comparison set is:
 
-- f128: FLTX, Boost `cpp_double_double`, TLFloat `Quad`, and optional qdpp
+- dd: FLTX, Boost `cpp_double_double`, TLFloat `Quad`, and optional qdpp
   `dd_real`;
-- f256: FLTX, Boost MPFR-backed 64-decimal-digit numbers, TLFloat `Octuple`,
+- qd: FLTX, Boost MPFR-backed 64-decimal-digit numbers, TLFloat `Octuple`,
   and optional qdpp `qd_real`.
 
 Each comparison is registered only where the other library exposes a public
@@ -55,7 +55,7 @@ native-precision neighbour that preserves the intended nonzero result
 direction. Parsing remains referenced to the original decimal text. Only FLTX
 thresholds gate the process.
 
-The f128/f256 arithmetic operations share one deterministic paired `general`
+The dd/qd arithmetic operations share one deterministic paired `general`
 corpus: 70% log-random representative magnitudes (including structured operand
 relationships), at least 20% broad exponents, and 5% near the finite exponent
 limits. Add/subtract also reserve 5% for subnormals; multiply/divide use a
@@ -103,7 +103,7 @@ compiler constant evaluation. All consumer-fast-math accuracy lanes are
 advisory for the same reason: reassociation can invalidate expansion arithmetic
 without changing the strict library contract. Genuine strict f32/f64 numerical
 evaluation and strict fixed-simulation remain gating; exact native special-value
-assertions compile in both consumer profiles, and strict f128/f256 accuracy
+assertions compile in both consumer profiles, and strict dd/qd accuracy
 remains gating.
 The artificial fixed-simulation fast-math runner records `-` for its accuracy
 special-value column: clang may emit a trap merely for constructing its
@@ -140,6 +140,8 @@ workflow arguments as the single-preset command:
 python .\validation\metrics\run_all_supported_metrics.py --consumer-mode all
 python .\validation\metrics\run_all_supported_metrics.py `
     --consumer-mode all --quick
+python .\validation\metrics\run_all_supported_metrics.py `
+    --consumer-mode all --standard --publish
 ```
 
 The host matrix is explicit rather than inferred from installed tools:
@@ -171,13 +173,16 @@ fast-math profile comparisons whenever a compatible pair exists. An `all` run
 requires those comparison reports; a focused run simply skips them when the
 other mode is unavailable or stale.
 
-The public commands use mutually exclusive, value-free workflow flags. With no
-workflow flag, `--standard` is implied. `--quick` selects the half-sized
-`small` sample profile, `--full` runs the full profile without publishing, and
-`--release` runs that same full profile and publishes canonical evidence.
-`--output-root` remains available for nonrelease isolation and creates
-`data/` and `generated/` below the supplied path; it cannot be combined with
-`--release`.
+The public commands use mutually exclusive, value-free profile flags. With no
+profile flag, `--standard` is implied. `--quick` selects the half-sized
+`small` sample profile and `--full` selects the full profile. Publication is
+orthogonal: add `--publish` to any profile to write canonical evidence and
+reports beneath `validation/metrics/{data,generated}`. Without `--publish`,
+the selected profile stays under `_unversioned`. `--output-root` remains
+available for custom isolation and creates `data/` and `generated/` below the
+supplied path; it cannot be combined with `--publish`. Published runs still
+require complete accuracy and benchmark results, a known source revision, and
+optimized Release runners.
 The pipeline checks each executable's configuration banner before measurement,
 so fast-math evidence cannot be produced by a strict binary (or vice versa).
 
@@ -187,26 +192,28 @@ python .\validation\metrics\run_preset_metrics.py `
     --consumer-mode all `
     --full
 
-# Publish only after the complete evidence has been accepted.
+# Publish the standard profile after its evidence has been accepted.
 python .\validation\metrics\run_preset_metrics.py `
-    --preset windows-x64-msvc-release --consumer-mode all --release
+    --preset windows-x64-msvc-release `
+    --consumer-mode all `
+    --standard `
+    --publish
 ```
 
-| Workflow | Internal profile | Accuracy samples | Benchmark base (f128/f256) | Trials | Timing |
+| Workflow | Internal profile | Accuracy samples | Benchmark base (dd/qd) | Trials | Timing |
 |---|---|---:|---:|---:|---:|
 | `--quick` | `small` | 2,048 | 4,096 / 2,048 | adaptive 1 / 3 / 7 | 8 or 15 ms target |
 | Default / `--standard` | `standard` | 4,096 | 8,192 / 4,096 | adaptive 1 / 3 / 7 | 8 or 15 ms target |
 | `--full` | `full` | 65,536 | 81,920 / 40,960 | 7 | 25 ms minimum |
-| `--release` | `full` | 65,536 | 81,920 / 40,960 | 7 | 25 ms minimum |
 
-The quick and standard workflows run the f128 and f256 accuracy phases
+The quick and standard workflows run the dd and qd accuracy phases
 concurrently, then benchmark sequentially. They share the same adaptive corpus
 and timing policy, with every quick corpus exactly half its standard size.
 Cheap primitives use large corpora and seven 15 ms trials; ordinary operations
 use three 8 ms trials; operations measured at 10 microseconds or slower use
 three single-batch trials. A soft five-second row budget can reduce the trial
 count to one or three. In standard mode, the four slow gamma/error functions
-use 256 f128 or 128 f256 samples; quick mode uses 128 or 64.
+use 256 dd or 128 qd samples; quick mode uses 128 or 64.
 
 The remaining public Python command in `validation/metrics/` rebuilds every
 report from existing data without running the metrics executables:
@@ -231,12 +238,12 @@ seven SVGs per consumer mode are regenerated; `--force-rerun` explicitly
 bypasses reuse.
 Renderer-only Python changes do not alter the runner source fingerprint.
 
-Canonical release output and the profile-separated unversioned output are:
+Canonical published output and the profile-separated unversioned output are:
 
 ```text
 validation/metrics/
-  data/                                  # canonical release evidence
-  generated/                             # canonical release reports
+  data/                                  # --publish evidence
+  generated/                             # --publish reports
   _unversioned/
     quick/
       data/                              # --quick evidence
@@ -249,14 +256,15 @@ validation/metrics/
       generated/                         # --full reports
 ```
 
-Nonrelease workflows replace only their compatible unversioned profile
-snapshot; `--release` publishes canonical data under `validation/metrics/data`.
+Unpublished profiles replace only their compatible unversioned profile
+snapshot; `--publish` writes canonical data under `validation/metrics/data`
+and matching reports under `validation/metrics/generated`.
 The unversioned trees are ignored by Git and repository search. Report
 filenames are identical across the roots, with `_compact` distinguishing
 presentation variants and `_fastmath` identifying consumer-fast-math evidence
 and reports. Strict and fast-math data also have separate run metadata and
 publication locks. Comparison reports use
-names such as `windows_x86_64_MSVC_f256_strict_fastmath_comp.svg`. They show strict
+names such as `windows_x86_64_MSVC_qd_strict_fastmath_comp.svg`. They show strict
 values first and colour the parenthesized `fast-math - strict` delta. Pairing
 requires matching source, target, sample policy, host, and build/library
 configuration; run IDs and collection times may differ.
@@ -293,7 +301,7 @@ cmake --build --preset windows-x64-msvc-release --target `
 .\build\windows-x64-msvc-release\validation\fltx_contract_tests.exe
 .\build\windows-x64-msvc-release\validation\fltx_constexpr_tests.exe
 .\build\windows-x64-msvc-release\validation\fltx_constexpr_accuracy.exe `
-    --precision f128 --sample-mode smoke
+    --precision dd --sample-mode smoke
 ```
 
 Boost comparisons are always enabled in strict metrics because Boost, GMP, and
@@ -321,7 +329,7 @@ cmake --build --preset windows-x64-msvc-release --target `
 `FLTX_METRICS_QDPP=OFF` remains available as an explicit opt-out for a
 dependency-isolation build.
 
-For a direct noncanonical full f128/f256 run:
+For a direct noncanonical full dd/qd run:
 
 ```powershell
 python validation/metrics/_internal/run_metrics.py `
@@ -349,15 +357,16 @@ canonical target from the runners.
 The runners print their configuration and requested sample profile once,
 stream rows in real time, and flush each row to a `.partial.csv`. Benchmark
 detail rows retain every trial plus total timed iterations and elapsed time.
-A complete passing run atomically publishes
-the detail files and canonical
-`validation/metrics/data/<platform>/<architecture>/<compiler>_<type>.csv`
-files. Filtered and smoke runs stay under `build/` and cannot replace published
-results. The banner records the ordered implementation set for each precision.
+A complete passing run atomically commits the detail files and combined
+`<platform>/<architecture>/<compiler>_<type>.csv` files beneath its selected
+data root. The public preset pipeline selects the canonical root only when
+`--publish` is present. Filtered and smoke runs stay under `build/` and cannot
+replace published results. The banner records the ordered implementation set
+for each precision.
 The manifest requires 85 FLTX benchmark rows, 75 Boost rows per precision, and,
-when enabled, 60 f128 or 62 f256 qdpp rows and 71 TLFloat rows per precision.
+when enabled, 60 dd or 62 qd qdpp rows and 71 TLFloat rows per precision.
 Accuracy contributes 127 FLTX and 118 Boost domain rows per precision. When
-enabled, qdpp contributes 87 f128 or 91 f256 rows and TLFloat contributes 107
+enabled, qdpp contributes 87 dd or 91 qd rows and TLFloat contributes 107
 rows per precision. These are registration checks, not assumptions in the
 runner or SVG renderer.
 
@@ -401,9 +410,9 @@ consumer translation unit.
 ## Native accuracy
 
 f32 and f64 use the same 119 accuracy rows as a native/libm policy baseline,
-but they are not merged into the f128/f256 summary tables. The preset metrics
+but they are not merged into the dd/qd summary tables. The preset metrics
 pipeline records the matching strict or fast-math baseline after each requested
-f128/f256 metrics mode. Run both complete native suites independently with:
+dd/qd metrics mode. Run both complete native suites independently with:
 
 ```powershell
 cmake --build --preset windows-x64-msvc-release --target fltx_native_accuracy_full
@@ -446,8 +455,8 @@ runs the strict contract suite, genuine constexpr checks, package and
 first-party Python tooling checks, and the 4,096-sample standard accuracy corpus
 for all four types through normal and fixed-constexpr runners in both strict and
 consumer-fast-math modes. The deterministic domain anchors and explicit ternary
-operand tuples run in every profile; full and release metrics workflows retain
-the 65,536-sample corpus for deeper evidence. cppdd, qdpp, TLFloat, their
+operand tuples run in every profile; the full metrics profile retains the
+65,536-sample corpus for deeper evidence. cppdd, qdpp, TLFloat, their
 comparison rows, and their dependency smoke checks remain owned by the metrics
 targets and cannot fail this gate. The complete consumer-fast-math contract suite stays
 available as diagnostic evidence but is not a badge gate because the compiler
@@ -464,7 +473,7 @@ a trap under fast-math; this does not affect real runtime or strict
 special-value coverage.
 The genuine f32/f64 constexpr numerical corpus gates the strict consumer. Exact
 native special-value assertions are compiled in both consumer profiles, strict
-native fixed-simulation remains gating, and strict f128/f256 accuracy
+native fixed-simulation remains gating, and strict dd/qd accuracy
 thresholds remain gating.
 The Linux GCC/Clang, Windows MSVC/MinGW, macOS AppleClang, and WebAssembly
 Emscripten workflows all invoke this same target. Any currently reproducible
@@ -477,7 +486,7 @@ performance, and canonical metrics publication remain outside that pull-request 
 The release matrix configures separate `AUTO`, `OFF`, and `ASSUME` build trees,
 then runs `fltx_native_accuracy_full`, `fltx_package_tests`, and a full
 internal metrics-runner invocation with qdpp enabled when comparative ratios are
-wanted. Package and f128/f256 contract thresholds remain gating; native
+wanted. Package and dd/qd contract thresholds remain gating; native
 accuracy is retained as observational policy evidence for comparing the
 consumer-facing extended types against the platform's float/double behavior.
 
@@ -489,8 +498,8 @@ cmake --build --preset windows-x64-msvc-release --target fltx_binary_size
 ```
 
 The first writes a summary covering public-header cost and expression growth at
-25, 100, and 200 functions, plus a separate matrix comparing eager `f256_s`
-with public `f256` expressions for 49 individual fused shapes plus the
+25, 100, and 200 functions, plus a separate matrix comparing eager `fqd_s`
+with public `fqd` expressions for 49 individual fused shapes plus the
 aggregate all-shapes case. The second reports
 dead-code-eliminated linked-size deltas for baseline, arithmetic/expression,
 math, I/O, and random-use buckets for both precisions.
@@ -501,7 +510,7 @@ After matching full runs exist for all requested targets:
 python validation/metrics/rebuild_tables.py `
     --input validation/metrics/data `
     --targets windows/x86_64/MSVC windows/x86_64/MinGW `
-        wasm32/wasm32/Emscripten `
+        webassembly/wasm32/Emscripten `
     --output validation/metrics/generated
 ```
 

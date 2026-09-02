@@ -6,7 +6,7 @@ internal metrics runner never publishes canonical CSVs from a failing run.
 ## Current validation status
 
 `fltx_ci_checks` runs the 4,096-sample standard accuracy corpus for f32, f64,
-f128, and f256 through both the normal and fixed-constexpr runners, in addition
+fdd, and fqd through both the normal and fixed-constexpr runners, in addition
 to the contract, genuine-constexpr, dependency, in-tree package smoke, header,
 standard, and tooling checks. A same-fingerprint result for this expanded
 badge gate has not yet been recorded, so this file makes no passing-platform
@@ -16,7 +16,7 @@ baseline evidence. Native fixed-simulation consumer-fast-math findings are also
 advisory because runtime code generation does not reproduce genuine compiler
 constant evaluation. Genuine strict native numerical constant evaluation,
 native special-value assertions in both consumer profiles, strict native fixed-
-simulation, and every f128/f256 threshold remain gating.
+simulation, and every fdd/fqd threshold remain gating.
 
 The complete consumer-fast-math contract executable is compiled on every
 configured target but is not a badge gate. GCC, Clang, AppleClang, MinGW, and

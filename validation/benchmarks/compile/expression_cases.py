@@ -1,4 +1,4 @@
-"""Declarative f256 expression-shape manifest used by compile benchmarks."""
+"""Declarative fqd expression-shape manifest used by compile benchmarks."""
 
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ EXPRESSION_STRESS_CASES = (*EXPRESSION_CASES, "all_supported_fused_kernels")
 def validate_manifest() -> None:
     if len(EXPRESSION_CASES) != 49:
         raise ValueError(
-            f"expected 49 individual f256 expression shapes, found {len(EXPRESSION_CASES)}"
+            f"expected 49 individual fqd expression shapes, found {len(EXPRESSION_CASES)}"
         )
     if len(EXPRESSION_STRESS_CASES) != 50:
         raise ValueError("the expression benchmark must define 50 stress cases")
@@ -77,7 +77,7 @@ def expression_for(case_id: str, index: int = 0) -> str:
     try:
         return EXPRESSION_CASES[case_id]
     except KeyError as error:
-        raise ValueError(f"unknown f256 expression case {case_id!r}") from error
+        raise ValueError(f"unknown fqd expression case {case_id!r}") from error
 
 
 validate_manifest()

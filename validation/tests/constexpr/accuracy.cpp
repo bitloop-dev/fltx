@@ -365,19 +365,19 @@ namespace
     };
 
     template<>
-    struct corpus_traits<bl::f128_s>
+    struct corpus_traits<bl::fdd_s>
     {
-        using public_type = bl::f128;
-        static constexpr thresholds::precision precision = thresholds::precision::f128;
-        static constexpr std::string_view label = "f128";
+        using public_type = bl::fdd;
+        static constexpr thresholds::precision precision = thresholds::precision::fdd;
+        static constexpr std::string_view label = "dd";
     };
 
     template<>
-    struct corpus_traits<bl::f256_s>
+    struct corpus_traits<bl::fqd_s>
     {
-        using public_type = bl::f256;
-        static constexpr thresholds::precision precision = thresholds::precision::f256;
-        static constexpr std::string_view label = "f256";
+        using public_type = bl::fqd;
+        static constexpr thresholds::precision precision = thresholds::precision::fqd;
+        static constexpr std::string_view label = "qd";
     };
 
     template<class Float>
@@ -578,10 +578,10 @@ TEST_CASE("MPFR observation preserves native values by representation",
     CHECK(oracle::is_exact_score(oracle::exact_score()));
 }
 
-TEST_CASE("genuine constexpr f128 corpus meets MPFR accuracy gates",
-          "[constexpr][accuracy][corpus][f128]")
+TEST_CASE("genuine constexpr fdd corpus meets MPFR accuracy gates",
+          "[constexpr][accuracy][corpus][fdd]")
 {
-    check_corpus<bl::f128_s>();
+    check_corpus<bl::fdd_s>();
 }
 
 // Consumer fast-math also relaxes compiler constant evaluation. Its complete
@@ -603,8 +603,8 @@ TEST_CASE("genuine constexpr f64 corpus meets MPFR accuracy gates",
 }
 #endif
 
-TEST_CASE("genuine constexpr f256 corpus meets MPFR accuracy gates",
-          "[constexpr][accuracy][corpus][f256]")
+TEST_CASE("genuine constexpr fqd corpus meets MPFR accuracy gates",
+          "[constexpr][accuracy][corpus][fqd]")
 {
-    check_corpus<bl::f256_s>();
+    check_corpus<bl::fqd_s>();
 }

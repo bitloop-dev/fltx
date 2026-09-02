@@ -4,12 +4,18 @@
     "accuracy_table.svg"
   ],
   "run_ids": {
-    "wasm32/wasm32/Emscripten": "07cb9aa0af7241f981735eab48f97723"
+    "webassembly/wasm32/Emscripten": "d946828be6f140a0a4db7369610a6a34",
+    "windows/x86_64/ClangCL": "6935501f8a5e4e5e9f641729dc842411",
+    "windows/x86_64/MSVC": "7040a0a218d54643965865e739779674",
+    "windows/x86_64/MinGW": "36324ea202d44d678cf3e4fe87aafe82"
   },
   "schema_version": "6",
-  "source_fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
-  "source_revision": "b38d8f2a0c9da2eeae373bce48a1aa42bf88fcdc-dirty-7cd523deac97",
+  "source_fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
+  "source_revision": "882890995f149618f5ad4c950bbb2cd0b8e2f976-dirty-1e2aee00bd57",
   "targets": [
-    "wasm32/wasm32/Emscripten"
+    "windows/x86_64/MSVC",
+    "windows/x86_64/MinGW",
+    "windows/x86_64/ClangCL",
+    "webassembly/wasm32/Emscripten"
   ]
 }

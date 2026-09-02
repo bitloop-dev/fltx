@@ -11,8 +11,8 @@
   "benchmark_ordinary_trials": 3,
   "benchmark_policy": "adaptive-v2",
   "benchmark_samples": {
-    "f128": 8192,
-    "f256": 4096
+    "dd": 8192,
+    "qd": 4096
   },
   "benchmark_slow_threshold_ns": 10000,
   "benchmark_trials": 7,
@@ -27,7 +27,7 @@
       "frontend-variant": "MSVC",
       "optimized": "1",
       "processor": "AMD64",
-      "source-fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
+      "source-fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
       "system": "Windows"
     },
     "consumer": {
@@ -42,7 +42,7 @@
     },
     "harness": {
       "qdpp": "off",
-      "tlfloat": "on"
+      "tlfloat": "off"
     },
     "library": {
       "arm64": "0",
@@ -57,9 +57,9 @@
     "library_strategy": {
       "baseline-arm64": "0",
       "compiled-x86-backend": "0",
-      "f256-simd": "1",
       "msvc-guarded": "0",
       "neon": "0",
+      "qd-simd": "1",
       "runtime-check": "1",
       "runtime-path": "1",
       "scalar-x86": "0",
@@ -69,16 +69,16 @@
     }
   },
   "consumer_mode": "fastmath",
-  "created_utc": "2026-08-15T15:59:35.615758+00:00",
+  "created_utc": "2026-09-02T18:24:19.384848+00:00",
   "executables": {
     "accuracy": {
       "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-clangcl-release\\validation\\fltx_accuracy_fastmath.exe",
-      "sha256": "10a63056d8021ca117fcea276fdd5aa23ffd765928873a5fe6256d81b2d5869c",
+      "sha256": "2b5dd90b6fff390fd056d7c835254b74e4851e2cbb1bd074b076de879fad03c4",
       "wasm-sha256": "not-present"
     },
     "benchmark": {
       "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-clangcl-release\\validation\\fltx_benchmark_fastmath.exe",
-      "sha256": "a69ebe797d14061d8dded6a9994d10e2777e2cdc3a0d00add1a3366d97c45bf2",
+      "sha256": "ecf9c0c1b1e8bd68e3db31924417425198d112a8cb31f2eceb71e66d7bcccb96",
       "wasm-sha256": "not-present"
     }
   },
@@ -91,47 +91,47 @@
     "python": "CPython 3.13.14"
   },
   "implementations": {
-    "f128": [
+    "dd": [
       {
         "id": "fltx",
-        "label": "fltx bl::f128",
+        "label": "fltx bl::fdd",
         "short_label": "fltx"
       }
     ],
-    "f256": [
+    "qd": [
       {
         "id": "fltx",
-        "label": "fltx bl::f256",
+        "label": "fltx bl::fqd",
         "short_label": "fltx"
       }
     ]
   },
   "outputs": {
-    "ClangCL_f128_fastmath.csv": "26139729d519f8d98dd45e2569b7446fad166eb6eb56562b1729736afad88c3c",
-    "ClangCL_f256_fastmath.csv": "40779e682047aff6f944758a8cf5357830465f91b70af947d84ab20e31e52fcf",
-    "detail/ClangCL_f128_fastmath_accuracy.csv": "d0217c3ae65cc4aeb76e18f876ddcf5c22b84c0658c9852a0fc5894b65b87022",
-    "detail/ClangCL_f128_fastmath_benchmark.csv": "43a9066ea3d01e97aa1a7da2abe8a8a4b799b0b6d553c63d0da628829c90204c",
-    "detail/ClangCL_f256_fastmath_accuracy.csv": "13e8874f5983ae2ce05aea6a8e67af07b254e4709c6b8a080022c96590632575",
-    "detail/ClangCL_f256_fastmath_benchmark.csv": "6cbf7b69af0f0ccb27622889714e8210c4504814af3074ed38f54005fba62f8f"
+    "ClangCL_dd_fastmath.csv": "74a8b7a5e4e0eca7b68e50bf2fe83c26f64a07a4b73c6e162c8cca2a32974dff",
+    "ClangCL_qd_fastmath.csv": "218abda4321d917859aaaaa6d047973817cceb4e45a7a8237949ddc4a58b8b26",
+    "detail/ClangCL_dd_fastmath_accuracy.csv": "2cf14ea5155131481c2e6d66a50f662162b95f276948945632c0d916811e6ce3",
+    "detail/ClangCL_dd_fastmath_benchmark.csv": "c9141db655b81a1949c73591c3fe297ae5efa217342bfb6eb5fe4a3e4d57e6cb",
+    "detail/ClangCL_qd_fastmath_accuracy.csv": "d402b3043e08a9a172954ea1d0f6f4f9509a2dfd5afb1b01a37457556b56ff6e",
+    "detail/ClangCL_qd_fastmath_benchmark.csv": "2f45c0ed02e55a5436d13e632ea4c09aefbe690516a1395d5342f334e54ef7df"
   },
   "phases": {
-    "f128.accuracy": {
-      "output": "ClangCL_f128_fastmath_accuracy.csv",
+    "dd.accuracy": {
+      "output": "ClangCL_dd_fastmath_accuracy.csv",
       "return_code": 0,
       "status": "passed"
     },
-    "f128.benchmark": {
-      "output": "ClangCL_f128_fastmath_benchmark.csv",
+    "dd.benchmark": {
+      "output": "ClangCL_dd_fastmath_benchmark.csv",
       "return_code": 0,
       "status": "passed"
     },
-    "f256.accuracy": {
-      "output": "ClangCL_f256_fastmath_accuracy.csv",
+    "qd.accuracy": {
+      "output": "ClangCL_qd_fastmath_accuracy.csv",
       "return_code": 0,
       "status": "passed"
     },
-    "f256.benchmark": {
-      "output": "ClangCL_f256_fastmath_benchmark.csv",
+    "qd.benchmark": {
+      "output": "ClangCL_qd_fastmath_benchmark.csv",
       "return_code": 0,
       "status": "passed"
     }
@@ -142,13 +142,13 @@
   ],
   "platform": "windows",
   "precisions": [
-    "f128",
-    "f256"
+    "dd",
+    "qd"
   ],
-  "run_id": "081f2f75d252445da1de5098f50b7f37",
+  "run_id": "c76b06fbfcdd4497a992a6d9e17c2e03",
   "sample_mode": "standard",
   "schema_version": "6",
-  "source_fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
-  "source_revision": "b38d8f2a0c9da2eeae373bce48a1aa42bf88fcdc-dirty-7cd523deac97",
+  "source_fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
+  "source_revision": "882890995f149618f5ad4c950bbb2cd0b8e2f976-dirty-1e2aee00bd57",
   "status": "complete"
 }

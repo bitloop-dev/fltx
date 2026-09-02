@@ -860,6 +860,32 @@ template<class Traits>
     return compare_shifted(lhs, rhs, rhs_exp - lhs_exp);
 }
 
+[[nodiscard]] constexpr inline int compare_decimal_twice_to_binary_magnitude(
+    const biguint& coefficient,
+    int decimal_exp,
+    const biguint& magnitude,
+    int binary_exp) noexcept
+{
+    if (decimal_exp >= 0)
+    {
+        const biguint scaled_decimal =
+            mul_big(coefficient, pow5_big(decimal_exp));
+        return compare_binary_scaled(
+            scaled_decimal,
+            decimal_exp + 1,
+            magnitude,
+            binary_exp);
+    }
+
+    const int scale = -decimal_exp;
+    const biguint scaled_magnitude = mul_big(magnitude, pow5_big(scale));
+    return compare_binary_scaled(
+        coefficient,
+        1 - scale,
+        scaled_magnitude,
+        binary_exp);
+}
+
 template<class Traits>
 [[nodiscard]] constexpr inline int compare_decimal_twice_to_binary_sum(
     const biguint& coefficient,
@@ -905,24 +931,51 @@ template<class Traits>
         sum = lhs_magnitude;
     }
 
-    if (decimal_exp >= 0)
+    return compare_decimal_twice_to_binary_magnitude(
+        coefficient,
+        decimal_exp,
+        sum,
+        sum_exp);
+}
+
+template<class Traits>
+[[nodiscard]] constexpr inline int compare_decimal_twice_to_binary_sum_with_power_of_two(
+    const biguint& coefficient,
+    int decimal_exp,
+    const typename Traits::value_type& value,
+    int power_exponent) noexcept
+{
+    biguint magnitude;
+    int binary_exp = 0;
+    bool neg = false;
+    const bool have_value = exact_binary_components<Traits>(
+        value, magnitude, binary_exp, neg);
+    if (neg)
+        return 0;
+
+    if (!have_value)
     {
-        const biguint scaled_decimal =
-            mul_big(coefficient, pow5_big(decimal_exp));
-        return compare_binary_scaled(
-            scaled_decimal,
-            decimal_exp + 1,
-            sum,
-            sum_exp);
+        magnitude = biguint{ 1 };
+        binary_exp = power_exponent;
+    }
+    else if (binary_exp <= power_exponent)
+    {
+        biguint power{ 1 };
+        power.shl_bits(power_exponent - binary_exp);
+        magnitude.add_inplace(power);
+    }
+    else
+    {
+        magnitude.shl_bits(binary_exp - power_exponent);
+        magnitude.add_small(1);
+        binary_exp = power_exponent;
     }
 
-    const int scale = -decimal_exp;
-    const biguint scaled_sum = mul_big(sum, pow5_big(scale));
-    return compare_binary_scaled(
+    return compare_decimal_twice_to_binary_magnitude(
         coefficient,
-        1 - scale,
-        scaled_sum,
-        sum_exp);
+        decimal_exp,
+        magnitude,
+        binary_exp);
 }
 
 template<class Traits>

@@ -1,5 +1,5 @@
 /**
- * fltx/detail/f64_math_basic.h - constexpr <cmath>-style basic math helpers for f64.
+ * fltx/detail/f64_math_basic.h - constexpr basic math functions for f64.
  *
  * f64 rounding, decomposition, remainder, min/max, and adjacent-value helpers.
  *
@@ -544,6 +544,13 @@ namespace detail::_f64_impl
         if (!isfinite(x) || !isfinite(y) || !isfinite(z) || !isfinite(direct_product)) [[unlikely]]
             return direct_product + z;
 
+        if (iszero(direct_product) && iszero(z) && (iszero(x) || iszero(y))) [[unlikely]]
+        {
+            const bool product_negative = signbit(x) != signbit(y);
+            return std::bit_cast<double>(
+                product_negative && signbit(z) ? 0x8000000000000000ULL : 0ULL);
+        }
+
         double product{};
         double product_error{};
         #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
@@ -710,18 +717,12 @@ namespace detail::_f64_impl
 
 [[nodiscard]] BL_FORCE_INLINE constexpr double fmin(double a, double b) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::fmin(a, b),
-        std::fmin(a, b)
-    );
+    return detail::_f64_impl::fmin(a, b);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr double fmax(double a, double b) noexcept
 {
-    BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_f64_impl::fmax(a, b),
-        std::fmax(a, b)
-    );
+    return detail::_f64_impl::fmax(a, b);
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr double fdim(double x, double y) noexcept

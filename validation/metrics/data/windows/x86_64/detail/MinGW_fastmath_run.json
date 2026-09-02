@@ -11,8 +11,8 @@
   "benchmark_ordinary_trials": 3,
   "benchmark_policy": "adaptive-v2",
   "benchmark_samples": {
-    "f128": 8192,
-    "f256": 4096
+    "dd": 8192,
+    "qd": 4096
   },
   "benchmark_slow_threshold_ns": 10000,
   "benchmark_trials": 7,
@@ -27,7 +27,7 @@
       "frontend-variant": "GNU",
       "optimized": "1",
       "processor": "AMD64",
-      "source-fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
+      "source-fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
       "system": "Windows"
     },
     "consumer": {
@@ -41,8 +41,8 @@
       "x86": "1"
     },
     "harness": {
-      "qdpp": "on",
-      "tlfloat": "on"
+      "qdpp": "off",
+      "tlfloat": "off"
     },
     "library": {
       "arm64": "0",
@@ -57,9 +57,9 @@
     "library_strategy": {
       "baseline-arm64": "0",
       "compiled-x86-backend": "1",
-      "f256-simd": "1",
       "msvc-guarded": "0",
       "neon": "0",
+      "qd-simd": "1",
       "runtime-check": "1",
       "runtime-path": "0",
       "scalar-x86": "0",
@@ -69,16 +69,16 @@
     }
   },
   "consumer_mode": "fastmath",
-  "created_utc": "2026-08-15T16:03:27.373439+00:00",
+  "created_utc": "2026-09-02T18:27:31.289005+00:00",
   "executables": {
     "accuracy": {
       "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-mingw-release\\validation\\fltx_accuracy_fastmath.exe",
-      "sha256": "50f20f4e1b6b6fd08e7b96e2d30e297ad9921e0e193c2aa4d6a5ea4b54206307",
+      "sha256": "ee0a86246f0703cd585ef4c698fc4f913cfda9b87e83a5f640d133d353389842",
       "wasm-sha256": "not-present"
     },
     "benchmark": {
       "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-mingw-release\\validation\\fltx_benchmark_fastmath.exe",
-      "sha256": "01ea43e02271ca018be9638ed9cdb692f8335a0be3db4992854be26204881b67",
+      "sha256": "964cf90a45ec3ac6a6b9e4d69101a2346a39bb996d5712fc88b23f130e7ab5e7",
       "wasm-sha256": "not-present"
     }
   },
@@ -91,47 +91,47 @@
     "python": "CPython 3.13.14"
   },
   "implementations": {
-    "f128": [
+    "dd": [
       {
         "id": "fltx",
-        "label": "fltx bl::f128",
+        "label": "fltx bl::fdd",
         "short_label": "fltx"
       }
     ],
-    "f256": [
+    "qd": [
       {
         "id": "fltx",
-        "label": "fltx bl::f256",
+        "label": "fltx bl::fqd",
         "short_label": "fltx"
       }
     ]
   },
   "outputs": {
-    "MinGW_f128_fastmath.csv": "6bc956a90de1f65e382697dc9140e0ef2027c53d93f24bf716b9100707e30ed2",
-    "MinGW_f256_fastmath.csv": "c532c6c305e6de9f70bff9b0c2b9f635043232d277db9434a496a786af981aa8",
-    "detail/MinGW_f128_fastmath_accuracy.csv": "6979b7860b072c9980f9d219f586a90a5062a8f62c0530f8b46db7b6827b4f0f",
-    "detail/MinGW_f128_fastmath_benchmark.csv": "9fa38ed62343155767b50098330bfd07e5e752a9d54b539c9e143bf4689740e5",
-    "detail/MinGW_f256_fastmath_accuracy.csv": "68b24cda916efc8d7687c45b9901776e5f25437603b05378ea1aecd7c7990dfc",
-    "detail/MinGW_f256_fastmath_benchmark.csv": "65ee41a06ebdcdddcd1cb3bfd726b5c4a4dacc3b061e6f173e309598099b46a0"
+    "MinGW_dd_fastmath.csv": "f958ed0291ca2d94a029733bbae4516a39b125c8752db928a0c7636afdad21d6",
+    "MinGW_qd_fastmath.csv": "2eb7515efa84e61854c5c3693cbb7698f62ad0564359490bb7374e75c46574f2",
+    "detail/MinGW_dd_fastmath_accuracy.csv": "0f0540d4c5595fc1737239bd752867b09d9b763a7b4920cafebf6c9b7378d43c",
+    "detail/MinGW_dd_fastmath_benchmark.csv": "36c3e9e67718b49e36f91f35d1960d45bada26f3b624626acefc2744a542ead7",
+    "detail/MinGW_qd_fastmath_accuracy.csv": "55ae5ef223628416991603eb65e12aa647a387bdd0a721280dc97ce368c580a3",
+    "detail/MinGW_qd_fastmath_benchmark.csv": "f1c743442803604fdc0ebaf58827a9bad750bc200dc9ac4d8276b0729e727b3d"
   },
   "phases": {
-    "f128.accuracy": {
-      "output": "MinGW_f128_fastmath_accuracy.csv",
+    "dd.accuracy": {
+      "output": "MinGW_dd_fastmath_accuracy.csv",
       "return_code": 0,
       "status": "passed"
     },
-    "f128.benchmark": {
-      "output": "MinGW_f128_fastmath_benchmark.csv",
+    "dd.benchmark": {
+      "output": "MinGW_dd_fastmath_benchmark.csv",
       "return_code": 0,
       "status": "passed"
     },
-    "f256.accuracy": {
-      "output": "MinGW_f256_fastmath_accuracy.csv",
+    "qd.accuracy": {
+      "output": "MinGW_qd_fastmath_accuracy.csv",
       "return_code": 0,
       "status": "passed"
     },
-    "f256.benchmark": {
-      "output": "MinGW_f256_fastmath_benchmark.csv",
+    "qd.benchmark": {
+      "output": "MinGW_qd_fastmath_benchmark.csv",
       "return_code": 0,
       "status": "passed"
     }
@@ -142,13 +142,13 @@
   ],
   "platform": "windows",
   "precisions": [
-    "f128",
-    "f256"
+    "dd",
+    "qd"
   ],
-  "run_id": "1f47748c24e4435f9d017479a2e54bbd",
+  "run_id": "a10549fafcbd47c8b5dec99ce26daab3",
   "sample_mode": "standard",
   "schema_version": "6",
-  "source_fingerprint": "7cd523deac971d7dc5123aa7d3aba292e38500fefa271f9811614c6106280be1",
-  "source_revision": "b38d8f2a0c9da2eeae373bce48a1aa42bf88fcdc-dirty-7cd523deac97",
+  "source_fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
+  "source_revision": "882890995f149618f5ad4c950bbb2cd0b8e2f976-dirty-1e2aee00bd57",
   "status": "complete"
 }

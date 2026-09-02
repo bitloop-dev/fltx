@@ -34,7 +34,7 @@ from run_metrics import (
 from svg_table import Cell, Column, Row, Table, WHITE, write
 
 
-PRECISIONS = ("f128", "f256")
+PRECISIONS = ("dd", "qd")
 MISSING = "#e5e7eb"
 RESULT_RED = "#b91c1c"
 RESULT_AMBER = "#92400e"
@@ -131,7 +131,7 @@ OPERATION_ORDER = {
 
 PLATFORM_LABELS = {
     "windows": "Windows",
-    "wasm32": "WebAssembly",
+    "webassembly": "WebAssembly",
     "linux": "Linux",
     "macos": "macOS",
 }

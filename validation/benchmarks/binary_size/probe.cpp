@@ -4,9 +4,9 @@
 #include <string_view>
 
 #if FLTX_BENCHMARK_SIZE_PRECISION == 128
-using value_type = bl::f128;
+using value_type = bl::fdd;
 #elif FLTX_BENCHMARK_SIZE_PRECISION == 256
-using value_type = bl::f256;
+using value_type = bl::fqd;
 #else
 #error "FLTX_BENCHMARK_SIZE_PRECISION must be 128 or 256"
 #endif

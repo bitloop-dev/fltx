@@ -43,7 +43,7 @@ def accuracy_row(
     domain: str = "moderate",
 ) -> dict[str, str]:
     identity = {
-        "fltx": ("fltx", "fltx bl::f128"),
+        "fltx": ("fltx", "fltx bl::fdd"),
         "qdpp": ("ddreal", "qdpp dd_real"),
         "cppdd": ("cppdd", "boost::multiprecision::cpp_double_double"),
         "tlfloat": ("tlquad", "TLFloat Quad"),
@@ -54,7 +54,7 @@ def accuracy_row(
         "run_id": "run",
         "source_revision": "rev",
         "source_fingerprint": FINGERPRINT,
-        "precision": "f128",
+        "precision": "dd",
         "group": group,
         "operation": operation,
         "implementation": implementation,
@@ -87,7 +87,7 @@ def benchmark_row(
     operation: str = "add",
 ) -> dict[str, str]:
     identity = {
-        "fltx": ("fltx", "fltx bl::f128"),
+        "fltx": ("fltx", "fltx bl::fdd"),
         "qdpp": ("ddreal", "qdpp dd_real"),
         "cppdd": ("cppdd", "boost::multiprecision::cpp_double_double"),
         "tlfloat": ("tlquad", "TLFloat Quad"),
@@ -97,7 +97,7 @@ def benchmark_row(
         "run_id": "run",
         "source_revision": "rev",
         "source_fingerprint": FINGERPRINT,
-        "precision": "f128",
+        "precision": "dd",
         "group": group,
         "operation": operation,
         "implementation": implementation,
@@ -159,7 +159,7 @@ def synthetic_dataset(order: tuple[str, ...]) -> tuple[build_tables.Dataset, bui
         },
     }
     canonical = {
-        (target, "f128", "arithmetic", "add", implementation):
+        (target, "dd", "arithmetic", "add", implementation):
             rows[implementation]
         for implementation in order
     }
@@ -167,7 +167,7 @@ def synthetic_dataset(order: tuple[str, ...]) -> tuple[build_tables.Dataset, bui
         build_tables.Dataset(
             canonical=canonical,
             accuracy={},
-            implementations={(target, "f128"): order, (target, "f256"): ("fltx",)},
+            implementations={(target, "dd"): order, (target, "qd"): ("fltx",)},
             revisions={"rev"},
             fingerprints={FINGERPRINT},
             runs={target: "run"},
@@ -180,7 +180,7 @@ def synthetic_performance_dataset(
     order: tuple[str, ...],
 ) -> tuple[build_performance.PerformanceDataset, build_tables.Target]:
     source, target = synthetic_dataset(order)
-    column = build_performance.ColumnKey("f128", target)
+    column = build_performance.ColumnKey("dd", target)
     rows = {
         (column, group, operation, implementation): row
         for (
@@ -190,7 +190,7 @@ def synthetic_performance_dataset(
             operation,
             implementation,
         ), row in source.canonical.items()
-        if row_target == target and precision == "f128"
+        if row_target == target and precision == "dd"
     }
     return (
         build_performance.PerformanceDataset(
@@ -200,7 +200,7 @@ def synthetic_performance_dataset(
                 (column, "arithmetic", "add"): order,
             },
             run_ids={column: "run"},
-            sources={column: Path("windows/x86_64/MSVC_f128.csv")},
+            sources={column: Path("windows/x86_64/MSVC_dd.csv")},
         ),
         target,
     )
@@ -278,7 +278,7 @@ class SourceFingerprintTests(unittest.TestCase):
 
 class ManifestTests(unittest.TestCase):
     def test_operation_families_match_the_public_metrics_taxonomy(self) -> None:
-        operations = manifest.EXPECTED_BENCHMARK["f128"]
+        operations = manifest.EXPECTED_BENCHMARK["dd"]
         arithmetic = {
             operation
             for group, operation in operations
@@ -315,21 +315,21 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual(
             {key: len(value) for key, value in
              manifest.benchmark_manifest(
-                 "f128", qdpp=True, tlfloat=True,
+                 "dd", qdpp=True, tlfloat=True,
              ).items()},
             {"fltx": 85, "qdpp": 60, "cppdd": 75, "tlfloat": 71},
         )
         self.assertEqual(
             {key: len(value) for key, value in
              manifest.accuracy_manifest(
-                 "f256", qdpp=True, tlfloat=True,
+                 "qd", qdpp=True, tlfloat=True,
              ).items()},
             {"fltx": 127, "qdpp": 95, "mpfr64": 118, "tlfloat": 111},
         )
 
     def test_extended_accuracy_separates_arithmetic_subnormal_evidence(self) -> None:
         rows = manifest.accuracy_manifest(
-            "f256", qdpp=True, tlfloat=True,
+            "qd", qdpp=True, tlfloat=True,
         )["fltx"]
         arithmetic = {
             row for row in rows
@@ -351,7 +351,7 @@ class ManifestTests(unittest.TestCase):
 
     def test_fmod_quotient_reduction_domain_is_extended_precision_only(self) -> None:
         quotient_reduction = ("remainders", "fmod", "quotient_reduction")
-        for precision in ("f128", "f256"):
+        for precision in ("dd", "qd"):
             self.assertIn(
                 quotient_reduction,
                 manifest.accuracy_manifest(
@@ -384,7 +384,7 @@ class ManifestTests(unittest.TestCase):
         self.assertIs(passed, True)
 
     def test_trig_accuracy_requires_quadrant_boundaries(self) -> None:
-        for precision in ("f128", "f256"):
+        for precision in ("dd", "qd"):
             rows = manifest.accuracy_manifest(
                 precision,
                 qdpp=True,
@@ -403,14 +403,14 @@ class ManifestTests(unittest.TestCase):
     def test_qdpp_disabled_keeps_boost(self) -> None:
         self.assertEqual(
             tuple(manifest.benchmark_manifest(
-                "f128", qdpp=False, tlfloat=True,
+                "dd", qdpp=False, tlfloat=True,
             )),
             ("fltx", "cppdd", "tlfloat"),
         )
 
     def test_formatter_accuracy_rows_follow_supported_apis(self) -> None:
         accuracy = manifest.accuracy_manifest(
-            "f128", qdpp=True, tlfloat=True,
+            "dd", qdpp=True, tlfloat=True,
         )
         formatter_rows = {
             ("io", operation, domain)
@@ -426,7 +426,7 @@ class ManifestTests(unittest.TestCase):
 
     def test_comparison_accuracy_covers_every_enabled_implementation(self) -> None:
         accuracy = manifest.accuracy_manifest(
-            "f256", qdpp=True, tlfloat=True,
+            "qd", qdpp=True, tlfloat=True,
         )
         rows = {
             ("comparisons", operation, "moderate")
@@ -440,15 +440,15 @@ class ManifestTests(unittest.TestCase):
 
     def test_noteworthy_public_api_labels(self) -> None:
         self.assertEqual(
-            manifest.api_name("qdpp", "f128", "io", "parse"),
+            manifest.api_name("qdpp", "dd", "io", "parse"),
             "qdpp read",
         )
         self.assertEqual(
-            manifest.api_name("cppdd", "f128", "roots_and_powers", "ipow"),
+            manifest.api_name("cppdd", "dd", "roots_and_powers", "ipow"),
             "boost::multiprecision::pow(value, int)",
         )
         self.assertEqual(
-            manifest.api_name("tlfloat", "f128", "rounding", "roundeven"),
+            manifest.api_name("tlfloat", "dd", "rounding", "roundeven"),
             "tlfloat::rint",
         )
 
@@ -544,12 +544,12 @@ class ValidationTests(unittest.TestCase):
             )
 
         self.assertEqual(
-            run_metrics.metrics_stem("MSVC", "f128", "strict"),
-            "MSVC_f128",
+            run_metrics.metrics_stem("MSVC", "dd", "strict"),
+            "MSVC_dd",
         )
         self.assertEqual(
-            run_metrics.metrics_stem("MSVC", "f128", "fastmath"),
-            "MSVC_f128_fastmath",
+            run_metrics.metrics_stem("MSVC", "dd", "fastmath"),
+            "MSVC_dd_fastmath",
         )
         self.assertEqual(
             run_metrics.run_metadata_stem("MSVC", "fastmath"),
@@ -609,7 +609,7 @@ class ValidationTests(unittest.TestCase):
             "--quick",
             "--standard",
             "--full",
-            "--release",
+            "--publish",
             "--output-root PATH",
             "--force-rerun",
             "--consumer-mode {strict,fastmath,all}",
@@ -629,7 +629,7 @@ class ValidationTests(unittest.TestCase):
             "--quick",
             "--standard",
             "--full",
-            "--release",
+            "--publish",
             "--output-root PATH",
             "--force-rerun",
             "--consumer-mode {strict,fastmath,all}",
@@ -806,7 +806,7 @@ class ValidationTests(unittest.TestCase):
             run_metrics.SAMPLE_PROFILES["standard"],
             {
                 "accuracy_samples": 4096,
-                "benchmark_samples": {"f128": 8192, "f256": 4096},
+                "benchmark_samples": {"dd": 8192, "qd": 4096},
                 "benchmark_trials": 7,
                 "benchmark_minimum_trial_ms": 8,
                 "benchmark_policy": "adaptive-v2",
@@ -828,7 +828,7 @@ class ValidationTests(unittest.TestCase):
         self.assertEqual(small["accuracy_samples"], 2048)
         self.assertEqual(
             small["benchmark_samples"],
-            {"f128": 4096, "f256": 2048},
+            {"dd": 4096, "qd": 2048},
         )
         self.assertEqual(
             {
@@ -845,13 +845,12 @@ class ValidationTests(unittest.TestCase):
 
     def test_public_workflow_flags_map_to_internal_sample_modes(self) -> None:
         cases = (
-            ((), "standard", "standard", False),
-            (("--quick",), "quick", "small", False),
-            (("--standard",), "standard", "standard", False),
-            (("--full",), "full", "full", False),
-            (("--release",), "release", "full", True),
+            ((), "standard", "standard"),
+            (("--quick",), "quick", "small"),
+            (("--standard",), "standard", "standard"),
+            (("--full",), "full", "full"),
         )
-        for flags, workflow, sample_mode, canonical in cases:
+        for flags, workflow, sample_mode in cases:
             with self.subTest(flags=flags):
                 args = preset_pipeline.parse_args([
                     "--preset", "native-release", *flags,
@@ -859,23 +858,32 @@ class ValidationTests(unittest.TestCase):
                 policy = preset_pipeline.METRICS_WORKFLOWS[args.workflow]
                 self.assertEqual(args.workflow, workflow)
                 self.assertEqual(policy.sample_mode, sample_mode)
-                self.assertEqual(policy.canonical_publication, canonical)
+                self.assertFalse(args.publish)
 
-    def test_preset_pipeline_release_flag_selects_publication_profile(self) -> None:
-        args = preset_pipeline.parse_args([
-            "--preset", "native-release",
-            "--release",
-        ])
-        self.assertEqual(args.workflow, "release")
-        self.assertEqual(
-            preset_pipeline.METRICS_WORKFLOWS[args.workflow].sample_mode,
-            "full",
-        )
+    def test_publish_is_orthogonal_to_every_metrics_profile(self) -> None:
+        for profile, sample_mode in (
+            ("--quick", "small"),
+            ("--standard", "standard"),
+            ("--full", "full"),
+        ):
+            with self.subTest(profile=profile):
+                args = preset_pipeline.parse_args([
+                    "--preset", "native-release",
+                    profile,
+                    "--publish",
+                ])
+                self.assertTrue(args.publish)
+                self.assertEqual(
+                    preset_pipeline.METRICS_WORKFLOWS[args.workflow].sample_mode,
+                    sample_mode,
+                )
+
+    def test_full_profile_keeps_its_complete_sample_policy(self) -> None:
         self.assertEqual(
             run_metrics.SAMPLE_PROFILES["full"],
             {
                 "accuracy_samples": 65536,
-                "benchmark_samples": {"f128": 81920, "f256": 40960},
+                "benchmark_samples": {"dd": 81920, "qd": 40960},
                 "benchmark_trials": 7,
                 "benchmark_minimum_trial_ms": 25,
             },
@@ -897,14 +905,43 @@ class ValidationTests(unittest.TestCase):
         for flags in (
             ("--quick", "--standard"),
             ("--quick", "--full"),
-            ("--standard", "--release"),
-            ("--full", "--release"),
+            ("--standard", "--full"),
         ):
             with self.subTest(flags=flags), redirect_stderr(io.StringIO()):
                 with self.assertRaises(SystemExit):
                     preset_pipeline.parse_args([
                         "--preset", "native-release", *flags,
                     ])
+
+    def test_preset_pipeline_rejects_removed_release_flag(self) -> None:
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            preset_pipeline.parse_args([
+                "--preset", "native-release", "--release",
+            ])
+
+    def test_preset_pipeline_forwards_publish_independently(self) -> None:
+        args = preset_pipeline.parse_args([
+            "--preset", "native-release",
+            "--quick",
+            "--publish",
+            "--consumer-mode", "all",
+        ])
+        with mock.patch.object(
+            preset_pipeline, "run_pipeline", return_value=[]
+        ) as run:
+            preset_pipeline.run_pipeline_from_args(
+                Path("source"), args.preset, args,
+            )
+
+        run.assert_called_once_with(
+            Path("source"),
+            "native-release",
+            workflow="quick",
+            output_root=None,
+            publish=True,
+            force_rerun=False,
+            consumer_mode="all",
+        )
 
     def test_compatible_evidence_handoff_reuses_the_existing_run(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -1005,7 +1042,7 @@ class ValidationTests(unittest.TestCase):
             ("Windows", "x86_64", "GNU", "GNU"):
                 ("windows", "x86_64", "MinGW"),
             ("Emscripten", "wasm32", "Clang", "GNU"):
-                ("wasm32", "wasm32", "Emscripten"),
+                ("webassembly", "wasm32", "Emscripten"),
             ("Linux", "x86_64", "GNU", "GNU"):
                 ("linux", "x86_64", "GCC"),
             ("Linux", "arm64", "GNU", "GNU"):
@@ -1080,7 +1117,7 @@ class ValidationTests(unittest.TestCase):
         root = Path("C:/source/fltx")
         with self.assertRaisesRegex(
             preset_pipeline.PipelineError,
-            "canonical metrics output requires --release",
+            "canonical metrics output requires --publish",
         ):
             preset_pipeline.metrics_paths(
                 root,
@@ -1093,7 +1130,7 @@ class ValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(run_metrics.MetricsError, "duplicate"):
             run_metrics._validate_identity(
                 rows, Path("benchmark.csv"), run_id="run", revision="rev",
-                fingerprint=FINGERPRINT, precision="f128",
+                fingerprint=FINGERPRINT, precision="dd",
             )
 
     def test_missing_enabled_implementation_is_rejected(self) -> None:
@@ -1104,7 +1141,7 @@ class ValidationTests(unittest.TestCase):
             }
             for implementation, expected in
             manifest.accuracy_manifest(
-                "f128", qdpp=False, tlfloat=False,
+                "dd", qdpp=False, tlfloat=False,
             ).items()
             for group, operation, domain in expected
         ]
@@ -1115,14 +1152,14 @@ class ValidationTests(unittest.TestCase):
             }
             for implementation, expected in
             manifest.benchmark_manifest(
-                "f128", qdpp=False, tlfloat=False,
+                "dd", qdpp=False, tlfloat=False,
             ).items()
             for group, operation in expected
             if not (implementation == "cppdd" and operation == "add")
         ]
         with self.assertRaisesRegex(run_metrics.MetricsError, "incomplete cppdd"):
             run_metrics._validate_completeness(
-                accuracy, benchmark, precision="f128",
+                accuracy, benchmark, precision="dd",
                 accuracy_path=Path("accuracy.csv"),
                 benchmark_path=Path("benchmark.csv"),
                 qdpp_enabled=False,
@@ -1207,7 +1244,7 @@ class RenderingTests(unittest.TestCase):
     def test_all_headline_accuracy_is_uncapped_bits_accurate(self) -> None:
         dataset, target = synthetic_dataset(("fltx", "cppdd", "qdpp"))
         fltx = dataset.canonical[
-            (target, "f128", "arithmetic", "add", "fltx")
+            (target, "dd", "arithmetic", "add", "fltx")
         ]
         fltx["mean_bits"] = "118.5"
         fltx["worst_bits"] = "114"
@@ -1215,7 +1252,7 @@ class RenderingTests(unittest.TestCase):
         cell = build_tables.accuracy_table(dataset, (target,)).rows[0].cells[0]
         self.assertEqual(cell.lines[:2], ("avg 118.5b", "min 114.0b"))
 
-        overview = build_overview.render_overview(dataset, target, "f128")
+        overview = build_overview.render_overview(dataset, target, "dd")
         self.assertIn(">118.5</text>", overview)
         self.assertIn(">114.0</text>", overview)
         self.assertIn(">bits accurate</text>", overview)
@@ -1223,12 +1260,12 @@ class RenderingTests(unittest.TestCase):
         tooltip = build_overview._tooltip(
             dataset,
             target,
-            "f128",
+            "dd",
             "arithmetic",
             "add",
             "fltx",
             dataset.canonical[
-                (target, "f128", "arithmetic", "add", "fltx")
+                (target, "dd", "arithmetic", "add", "fltx")
             ],
         )
         self.assertNotIn("nominal", tooltip)
@@ -1260,7 +1297,7 @@ class RenderingTests(unittest.TestCase):
         self.assertIn('stroke="#000000"', table_svg)
 
         dataset, target = synthetic_dataset(("fltx", "cppdd"))
-        overview_svg = build_overview.render_overview(dataset, target, "f128")
+        overview_svg = build_overview.render_overview(dataset, target, "dd")
         self.assertIn('font-size="18"', overview_svg)
         self.assertIn('font-size="10.8"', overview_svg)
         self.assertEqual(build_overview.CELL_PADDING, 8)
@@ -1296,13 +1333,13 @@ class RenderingTests(unittest.TestCase):
     def test_reports_hide_the_raw_random_engine_benchmark(self) -> None:
         dataset, target = synthetic_dataset(("fltx",))
         source = dataset.canonical[
-            (target, "f128", "arithmetic", "add", "fltx")
+            (target, "dd", "arithmetic", "add", "fltx")
         ]
         row = dict(source)
         row["group"] = "random"
         row["operation"] = "mt19937_64"
         dataset.canonical[
-            (target, "f128", "random", "mt19937_64", "fltx")
+            (target, "dd", "random", "mt19937_64", "fltx")
         ] = row
         self.assertNotIn(
             ("random", "mt19937_64"),
@@ -1313,7 +1350,7 @@ class RenderingTests(unittest.TestCase):
             build_overview.render_overview(
                 dataset,
                 target,
-                "f128",
+                "dd",
                 "compact",
             ),
         )
@@ -1396,9 +1433,9 @@ class RenderingTests(unittest.TestCase):
     def test_performance_headers_name_the_measured_fltx_type(self) -> None:
         dataset, _ = synthetic_performance_dataset(("fltx", "qdpp"))
         svg = build_performance.render(dataset)
-        self.assertIn(">bl::f128<", svg)
-        self.assertNotIn(">vs bl::f128<", svg)
-        self.assertIn("; bl::f128; arithmetic / add", svg)
+        self.assertIn(">bl::fdd<", svg)
+        self.assertNotIn(">vs bl::fdd<", svg)
+        self.assertIn("; bl::fdd; arithmetic / add", svg)
 
     def test_compact_performance_uses_overview_dark_theme_and_font(self) -> None:
         dataset, _ = synthetic_performance_dataset(("fltx", "cppdd"))
@@ -1487,7 +1524,7 @@ class RenderingTests(unittest.TestCase):
             "Windows / x64 / GCC (MinGW-w64)",
         )
         self.assertEqual(
-            build_tables.Target("wasm32", "wasm32", "Emscripten").label,
+            build_tables.Target("webassembly", "wasm32", "Emscripten").label,
             "WebAssembly / wasm32 / Clang (Emscripten)",
         )
 
@@ -1497,28 +1534,28 @@ class RenderingTests(unittest.TestCase):
         source, target = synthetic_dataset(("fltx", "cppdd"))
         add_rows = [
             dict(source.canonical[
-                (target, "f128", "arithmetic", "add", implementation)
+                (target, "dd", "arithmetic", "add", implementation)
             ])
             for implementation in ("fltx", "cppdd")
         ]
-        f256_abs_rows = []
+        qd_abs_rows = []
         for row in add_rows:
             candidate = dict(row)
-            candidate["precision"] = "f256"
+            candidate["precision"] = "qd"
             candidate["group"] = "arithmetic"
             candidate["operation"] = "abs"
             candidate["run_id"] = "different-run"
-            f256_abs_rows.append(candidate)
+            qd_abs_rows.append(candidate)
 
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             write_canonical(
-                root / "windows" / "x86_64" / "MSVC_f128.csv",
+                root / "windows" / "x86_64" / "MSVC_dd.csv",
                 add_rows,
             )
             write_canonical(
-                root / "wasm32" / "wasm32" / "Emscripten_f256.csv",
-                f256_abs_rows,
+                root / "webassembly" / "wasm32" / "Emscripten_qd.csv",
+                qd_abs_rows,
             )
             dataset = build_performance.discover(root)
             _, metadata_path = build_performance.build(
@@ -1539,8 +1576,8 @@ class RenderingTests(unittest.TestCase):
                 for source in metadata["sources"]
             },
             {
-                ("windows", "x86_64", "MSVC", "f128"),
-                ("wasm32", "wasm32", "Emscripten", "f256"),
+                ("windows", "x86_64", "MSVC", "dd"),
+                ("webassembly", "wasm32", "Emscripten", "qd"),
             },
         )
         self.assertEqual(
@@ -1552,8 +1589,8 @@ class RenderingTests(unittest.TestCase):
         )
         svg = build_performance.render(dataset)
         for text in (
-            "bl::f128",
-            "bl::f256",
+            "bl::fdd",
+            "bl::fqd",
             "Windows",
             "x64",
             "WebAssembly",
@@ -1591,7 +1628,7 @@ class RenderingTests(unittest.TestCase):
     def test_performance_reports_keep_consumer_modes_separate(self) -> None:
         source, target = synthetic_dataset(("fltx",))
         strict_rows = [dict(source.canonical[
-            (target, "f128", "arithmetic", "add", "fltx")
+            (target, "dd", "arithmetic", "add", "fltx")
         ])]
         fastmath_rows = [dict(strict_rows[0])]
         fastmath_rows[0]["run_id"] = "fastmath-run"
@@ -1599,11 +1636,11 @@ class RenderingTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             write_canonical(
-                root / "windows" / "x86_64" / "MSVC_f128.csv",
+                root / "windows" / "x86_64" / "MSVC_dd.csv",
                 strict_rows,
             )
             write_canonical(
-                root / "windows" / "x86_64" / "MSVC_f128_fastmath.csv",
+                root / "windows" / "x86_64" / "MSVC_dd_fastmath.csv",
                 fastmath_rows,
             )
             strict = build_performance.discover(root)
@@ -1626,7 +1663,7 @@ class RenderingTests(unittest.TestCase):
     def test_performance_discovery_keeps_architectures_separate(self) -> None:
         source, target = synthetic_dataset(("fltx",))
         rows = [dict(source.canonical[
-            (target, "f128", "arithmetic", "add", "fltx")
+            (target, "dd", "arithmetic", "add", "fltx")
         ])]
         arm_rows = [dict(rows[0])]
         arm_rows[0]["run_id"] = "arm-run"
@@ -1634,11 +1671,11 @@ class RenderingTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             write_canonical(
-                root / "linux" / "x86_64" / "GCC_f128.csv",
+                root / "linux" / "x86_64" / "GCC_dd.csv",
                 rows,
             )
             write_canonical(
-                root / "linux" / "arm64" / "GCC_f128.csv",
+                root / "linux" / "arm64" / "GCC_dd.csv",
                 arm_rows,
             )
             dataset = build_performance.discover(root)
@@ -1653,7 +1690,7 @@ class RenderingTests(unittest.TestCase):
     def test_performance_discovery_rejects_a_malformed_present_csv(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             path = (
-                Path(temporary) / "windows" / "x86_64" / "MSVC_f128.csv"
+                Path(temporary) / "windows" / "x86_64" / "MSVC_dd.csv"
             )
             path.parent.mkdir(parents=True)
             path.write_text("wrong\nvalue\n", encoding="utf-8")
@@ -1697,15 +1734,28 @@ class RenderingTests(unittest.TestCase):
 
     def test_overview_has_one_body_row_per_operation_and_fltx_first(self) -> None:
         dataset, target = synthetic_dataset(("fltx", "qdpp", "cppdd", "tlfloat"))
-        svg = build_overview.render_overview(dataset, target, "f128")
+        svg = build_overview.render_overview(dataset, target, "dd")
         self.assertEqual(svg.count('class="body-row"'), 1)
-        self.assertLess(svg.find(">bl::f128<"), svg.find(">qdpp (dd_real)<"))
         self.assertLess(
-            svg.find(">bl::f128<"),
+            svg.find(">fltx (fdd)<"),
+            svg.find(">qdpp (dd_real)<"),
+        )
+        self.assertLess(
+            svg.find(">fltx (fdd)<"),
             svg.find(">boost (cpp_double_double)<"),
         )
-        self.assertIn(">TLFloat (tlquad)<", svg)
+        self.assertIn(">TLFloat (Quad)<", svg)
         self.assertIn("&lt;cppdd &amp; api&gt;", svg)
+
+        qd_row = dict(dataset.canonical[
+            (target, "dd", "arithmetic", "add", "fltx")
+        ])
+        qd_row["precision"] = "qd"
+        dataset.canonical[
+            (target, "qd", "arithmetic", "add", "fltx")
+        ] = qd_row
+        qd_svg = build_overview.render_overview(dataset, target, "qd")
+        self.assertIn(">fltx (fqd)<", qd_svg)
 
     def test_overview_uses_qualified_competitor_primary_headers(self) -> None:
         self.assertEqual(
@@ -1714,17 +1764,18 @@ class RenderingTests(unittest.TestCase):
                 "ddreal": "qdpp (dd_real)",
                 "qdreal": "qdpp (qd_real)",
                 "cppdd": "boost (cpp_double_double)",
-                "mpfr64": "mpfr_float_backend<64>",
-                "tlquad": "TLFloat (tlquad)",
-                "tloct": "TLFloat (tloct)",
+                "mpfr64": "boost (mpfr_float_backend<64>)",
+                "tlquad": "TLFloat (Quad)",
+                "tloct": "TLFloat (Octuple)",
             },
         )
 
     def test_overview_formats_exact_unavailable_and_fixed_numbers(self) -> None:
         self.assertEqual(build_overview._fmt_bits("inf"), "exact")
         self.assertEqual(build_overview._fmt_bits(""), "-")
-        self.assertEqual(build_overview._fmt_bits_compact("240.6"), "240.6")
-        self.assertEqual(build_overview._fmt_bits_compact("215.4"), "215.4")
+        self.assertEqual(build_overview._fmt_bits("240.6"), "240.6")
+        self.assertEqual(build_overview._fmt_bits_compact("240.6"), "241")
+        self.assertEqual(build_overview._fmt_bits_compact("215.4"), "215")
         self.assertEqual(build_overview._fmt_bits_compact("inf"), "=")
         self.assertEqual(build_overview._fmt_ns("8770"), "8,770")
         self.assertNotIn("e", build_overview._fmt_ns("8770").lower())
@@ -1818,13 +1869,13 @@ class RenderingTests(unittest.TestCase):
             "pass": "no",
         })
         dataset.accuracy.update({
-            (target, "f128", "arithmetic", "add", "fltx", "general"):
+            (target, "dd", "arithmetic", "add", "fltx", "general"):
                 general,
-            (target, "f128", "arithmetic", "add", "fltx", "subnormal"):
+            (target, "dd", "arithmetic", "add", "fltx", "subnormal"):
                 subnormal,
         })
         canonical = dataset.canonical[
-            (target, "f128", "arithmetic", "add", "fltx")
+            (target, "dd", "arithmetic", "add", "fltx")
         ]
         canonical.update({
             "mean_bits": "55",
@@ -1839,7 +1890,7 @@ class RenderingTests(unittest.TestCase):
         display = build_overview._display_row(
             dataset,
             target,
-            "f128",
+            "dd",
             "arithmetic",
             "add",
             "fltx",
@@ -1854,14 +1905,14 @@ class RenderingTests(unittest.TestCase):
         self.assertEqual(display["domains_total"], "1")
         self.assertEqual(display["subnormal_support"], "no")
 
-        svg = build_overview.render_overview(dataset, target, "f128")
+        svg = build_overview.render_overview(dataset, target, "dd")
         self.assertIn(">Subnorm</text>", svg)
         self.assertIn(">110.0</text>", svg)
         self.assertIn(">100.0</text>", svg)
         self.assertIn(">✗</text>", svg)
 
         dataset.consumer_mode = "strict"
-        strict_svg = build_overview.render_overview(dataset, target, "f128")
+        strict_svg = build_overview.render_overview(dataset, target, "dd")
         self.assertNotIn(">Subnorm</text>", strict_svg)
         self.assertIn(">55.0</text>", strict_svg)
 
@@ -1893,7 +1944,7 @@ class RenderingTests(unittest.TestCase):
 
     def test_overview_colours_only_the_speed_ratio_text(self) -> None:
         dataset, target = synthetic_dataset(("fltx", "cppdd"))
-        svg = build_overview.render_overview(dataset, target, "f128")
+        svg = build_overview.render_overview(dataset, target, "dd")
         ratio_color = build_tables._ratio_color(1 / 2)
         self.assertIn(
             '<tspan fill="#e7e9ee">20.00 ns</tspan>',
@@ -1919,7 +1970,7 @@ class RenderingTests(unittest.TestCase):
             ),
             (
                 ("348", build_tables._ratio_color(1 / 2.05)),
-                (" ns", build_overview.COMPACT_BENCHMARK_UNIT_TEXT),
+                ("ns", build_overview.COMPACT_BENCHMARK_UNIT_TEXT),
             ),
         )
         self.assertEqual(
@@ -1933,10 +1984,10 @@ class RenderingTests(unittest.TestCase):
 
         dataset, target = synthetic_dataset(("fltx", "cppdd"))
         full = build_overview.render_overview(
-            dataset, target, "f128", "full",
+            dataset, target, "dd", "full",
         )
         compact = build_overview.render_overview(
-            dataset, target, "f128", "compact",
+            dataset, target, "dd", "compact",
         )
         self.assertIn(
             f'<tspan fill="{build_overview.BENCHMARK_SEPARATOR_TEXT}"> · </tspan>',
@@ -1946,6 +1997,12 @@ class RenderingTests(unittest.TestCase):
             f'<tspan fill="{build_overview.BENCHMARK_SEPARATOR_TEXT}"> · </tspan>',
             compact,
         )
+        self.assertIn(
+            f'<tspan fill="{build_overview.COMPACT_BENCHMARK_UNIT_TEXT}" '
+            f'dx="{build_overview.COMPACT_BENCHMARK_UNIT_GAP}">ns</tspan>',
+            compact,
+        )
+        self.assertNotIn("> ns</tspan>", compact)
         full_width = int(re.search(r'<svg[^>]+width="(\d+)"', full).group(1))
         compact_width = int(re.search(r'<svg[^>]+width="(\d+)"', compact).group(1))
         self.assertLess(compact_width, full_width)
@@ -1967,8 +2024,10 @@ class RenderingTests(unittest.TestCase):
         self.assertIn("Text: green pass", full)
         self.assertIn("@font-face", compact)
         self.assertIn("font-family:'Ubuntu Mono'", compact)
-        self.assertIn('font-size="11.8"', compact)
+        self.assertIn("text-rendering:optimizeLegibility", compact)
+        self.assertIn('font-size="10"', compact)
         self.assertNotIn("@font-face", full)
+        self.assertNotIn("text-rendering:optimizeLegibility", full)
         self.assertIn(
             f'fill="{build_overview.OPERATION_ROW_FILLS[0]}"',
             compact,
@@ -2008,7 +2067,7 @@ class RenderingTests(unittest.TestCase):
                 operation,
                 _,
             ) in dataset.canonical
-            if row_target == target and row_precision == "f128"
+            if row_target == target and row_precision == "dd"
         })
         compact_third_y = sum(build_overview.COMPACT_HEADER_HEIGHTS[:2])
         for implementation in ("fltx", "cppdd"):
@@ -2019,7 +2078,7 @@ class RenderingTests(unittest.TestCase):
             widths = build_overview._column_widths(
                 dataset,
                 target,
-                "f128",
+                "dd",
                 compact_operations,
                 implementation,
                 "compact",
@@ -2043,25 +2102,41 @@ class RenderingTests(unittest.TestCase):
         self.assertIn(">min<", compact_fltx_header)
         self.assertRegex(
             compact_fltx_header,
-            r'font-size="13" font-weight="normal"[^>]*>bl::f128</text>',
+            r'font-size="11" font-weight="normal"[^>]*>'
+            r'fltx \(fdd\)</text>',
         )
         self.assertRegex(
             compact,
-            r'font-size="13" font-weight="bold">operation</text>',
+            r'font-size="11" font-weight="bold">operation</text>',
         )
         self.assertRegex(
             compact,
-            r'font-size="11\.8" font-weight="normal">Arithmetic</text>',
+            r'font-size="10" font-weight="normal">Arithmetic</text>',
         )
         self.assertRegex(
             compact,
-            r'font-size="11\.8" font-weight="normal">add</text>',
+            r'font-size="10" font-weight="normal">add</text>',
+        )
+        compact_body = compact.split(
+            '<g class="body-row">', 1,
+        )[1].split("</g>", 1)[0]
+        self.assertRegex(
+            compact_body,
+            r'<text x="5"[^>]*>add</text>',
+        )
+        compact_group = compact.split(
+            '<g class="group-row"', 1,
+        )[1].split("</g>", 1)[0]
+        self.assertRegex(
+            compact_group,
+            r'<text x="7"[^>]*>Arithmetic</text>',
         )
         self.assertRegex(
             full.split(
                 'data-implementation="fltx"', 1,
             )[1].split("</g>", 1)[0],
-            r'font-size="12" font-weight="bold"[^>]*>bl::f128</text>',
+            r'font-size="12" font-weight="bold"[^>]*>'
+            r'fltx \(fdd\)</text>',
         )
         self.assertRegex(
             full,
@@ -2076,12 +2151,12 @@ class RenderingTests(unittest.TestCase):
             r'font-size="12" font-weight="normal">add</text>',
         )
         competitor = dataset.canonical[
-            (target, "f128", "arithmetic", "add", "cppdd")
+            (target, "dd", "arithmetic", "add", "cppdd")
         ]
         tooltip = build_overview._tooltip(
             dataset,
             target,
-            "f128",
+            "dd",
             "arithmetic",
             "add",
             "cppdd",
@@ -2092,6 +2167,7 @@ class RenderingTests(unittest.TestCase):
     def test_compact_overview_sizes_text_for_ubuntu_mono(self) -> None:
         self.assertEqual(build_overview.COMPACT_MARGIN, 0)
         self.assertEqual(build_overview.COMPACT_TABLE_GAP, 3)
+        self.assertEqual(build_overview.COMPACT_CELL_PADDING, 4)
         self.assertEqual(
             build_overview.COMPACT_HEADER_HEIGHTS,
             (
@@ -2112,11 +2188,11 @@ class RenderingTests(unittest.TestCase):
         )
         self.assertAlmostEqual(
             build_overview._estimated_character_width("compact", 9),
-            5.9,
+            5.0,
         )
         self.assertAlmostEqual(
             build_overview._estimated_character_width("compact", 10),
-            6.5,
+            5.5,
         )
         self.assertEqual(
             build_overview._estimated_character_width("full", 9),
@@ -2133,7 +2209,7 @@ class RenderingTests(unittest.TestCase):
                     len("long_operation")
                     * build_overview._estimated_character_width("compact", 9)
                 )
-                + build_overview.CELL_PADDING
+                + build_overview.COMPACT_CELL_PADDING
                 + 4
             ),
         )
@@ -2141,7 +2217,7 @@ class RenderingTests(unittest.TestCase):
     def test_overview_judges_fltx_against_the_fastest_competitor(self) -> None:
         dataset, target = synthetic_dataset(("fltx", "cppdd", "qdpp"))
         fastest = build_overview._fastest_competitor(
-            dataset, target, "f128", "arithmetic", "add",
+            dataset, target, "dd", "arithmetic", "add",
         )
         self.assertIsNotNone(fastest)
         competitor, ratio = fastest
@@ -2150,7 +2226,7 @@ class RenderingTests(unittest.TestCase):
         self.assertEqual(
             build_overview._benchmark_spans(
                 dataset.canonical[
-                    (target, "f128", "arithmetic", "add", "fltx")
+                    (target, "dd", "arithmetic", "add", "fltx")
                 ],
                 "fltx",
                 fltx_speed_ratio=ratio,
@@ -2160,7 +2236,7 @@ class RenderingTests(unittest.TestCase):
         self.assertEqual(
             build_overview._benchmark_spans(
                 dataset.canonical[
-                    (target, "f128", "arithmetic", "add", "fltx")
+                    (target, "dd", "arithmetic", "add", "fltx")
                 ],
                 "fltx",
                 fltx_speed_ratio=ratio,
@@ -2168,18 +2244,18 @@ class RenderingTests(unittest.TestCase):
             ),
             (
                 ("10.0", build_tables._ratio_color(0.8)),
-                (" ns", build_overview.COMPACT_BENCHMARK_UNIT_TEXT),
+                ("ns", build_overview.COMPACT_BENCHMARK_UNIT_TEXT),
             ),
         )
         tooltip = build_overview._tooltip(
             dataset,
             target,
-            "f128",
+            "dd",
             "arithmetic",
             "add",
             "fltx",
             dataset.canonical[
-                (target, "f128", "arithmetic", "add", "fltx")
+                (target, "dd", "arithmetic", "add", "fltx")
             ],
         )
         self.assertIn(
@@ -2202,7 +2278,7 @@ class RenderingTests(unittest.TestCase):
                 "#123456",
                 "compact",
             ),
-            ("100.4", "#123456", "#e7e9ee"),
+            ("100", "#123456", "#e7e9ee"),
         )
         self.assertEqual(
             build_overview._accuracy_style(
@@ -2218,17 +2294,17 @@ class RenderingTests(unittest.TestCase):
         )
         dataset, target = synthetic_dataset(("fltx",))
         exact = dataset.canonical[
-            (target, "f128", "arithmetic", "add", "fltx")
+            (target, "dd", "arithmetic", "add", "fltx")
         ]
         exact["mean_bits"] = "inf"
         exact["p01_bits"] = "inf"
         exact["worst_bits"] = "inf"
         compact = build_overview.render_overview(
-            dataset, target, "f128", "compact",
+            dataset, target, "dd", "compact",
         )
         self.assertEqual(
             compact.count(
-                'font-size="17.8" font-weight="normal">=</text>'
+                'font-size="16" font-weight="normal">=</text>'
             ),
             2,
         )
@@ -2303,15 +2379,15 @@ class RenderingTests(unittest.TestCase):
         dataset, target = synthetic_dataset(("fltx", "qdpp", "cppdd"))
         for implementation in ("fltx", "qdpp", "cppdd"):
             source = dataset.canonical[
-                (target, "f128", "arithmetic", "add", implementation)
+                (target, "dd", "arithmetic", "add", implementation)
             ]
             row = dict(source)
             row["group"] = "rounding"
             row["operation"] = "round"
             dataset.canonical[
-                (target, "f128", "rounding", "round", implementation)
+                (target, "dd", "rounding", "round", implementation)
             ] = row
-        svg = build_overview.render_overview(dataset, target, "f128")
+        svg = build_overview.render_overview(dataset, target, "dd")
         positions = [
             (int(x), int(width))
             for x, width in re.findall(
@@ -2389,10 +2465,10 @@ class RenderingTests(unittest.TestCase):
             ("rounding", "round"),
         ]
         fltx_widths = build_overview._column_widths(
-            dataset, target, "f128", operation_rows, "fltx",
+            dataset, target, "dd", operation_rows, "fltx",
         )
         qdpp_widths = build_overview._column_widths(
-            dataset, target, "f128", operation_rows, "qdpp",
+            dataset, target, "dd", operation_rows, "qdpp",
         )
         self.assertGreaterEqual(
             fltx_widths[0] + fltx_widths[1], required("bits accurate")
@@ -2423,7 +2499,7 @@ class RenderingTests(unittest.TestCase):
         compact_qdpp_widths = build_overview._column_widths(
             dataset,
             target,
-            "f128",
+            "dd",
             operation_rows,
             "qdpp",
             "compact",
@@ -2431,7 +2507,7 @@ class RenderingTests(unittest.TestCase):
         compact_benchmark_values = [
             build_overview._benchmark_text(
                 dataset.canonical[
-                    (target, "f128", group, operation, "qdpp")
+                    (target, "dd", group, operation, "qdpp")
                 ],
                 "qdpp",
                 "compact",
@@ -2440,16 +2516,33 @@ class RenderingTests(unittest.TestCase):
         ]
         compact_benchmark_content = (
             math.ceil(
-                max(map(len, (*compact_benchmark_values, "(ns)")))
-                * build_overview._estimated_character_width("compact", 9)
+                max(
+                    build_overview._estimated_text_width(
+                        value, "compact", 9,
+                    )
+                    for value in (*compact_benchmark_values, "(ns)")
+                )
             )
-            + build_overview.CELL_PADDING
+            + build_overview.COMPACT_CELL_PADDING
         )
         self.assertEqual(
             compact_qdpp_widths[3],
-            compact_benchmark_content,
+            max(
+                build_overview.COLUMN_SPECS[3][2]
+                - (
+                    build_overview.CELL_PADDING
+                    - build_overview.COMPACT_CELL_PADDING
+                ),
+                compact_benchmark_content,
+            ),
         )
-        self.assertEqual(compact_qdpp_widths[:2], (39, 33))
+        self.assertEqual(
+            compact_qdpp_widths[4],
+            build_overview.COLUMN_SPECS[4][2]
+            - (build_overview.CELL_PADDING - build_overview.COMPACT_CELL_PADDING)
+            - build_overview.COMPACT_SPECIAL_WIDTH_REDUCTION,
+        )
+        self.assertEqual(compact_qdpp_widths[:2], (25, 25))
 
 
 class ProfileComparisonTests(unittest.TestCase):
@@ -2463,7 +2556,7 @@ class ProfileComparisonTests(unittest.TestCase):
         strict, target = synthetic_dataset(("fltx",))
         fastmath, _ = synthetic_dataset(("fltx",))
         fastmath_row = fastmath.canonical[
-            (target, "f128", "arithmetic", "add", "fltx")
+            (target, "dd", "arithmetic", "add", "fltx")
         ]
         fastmath_row.update(fastmath_changes)
         strict.runs[target] = "strict-run"
@@ -2497,7 +2590,7 @@ class ProfileComparisonTests(unittest.TestCase):
             "sample_mode": "full",
             "consumer_mode": mode,
             "accuracy_samples": 65536,
-            "benchmark_samples": {"f128": 81920, "f256": 40960},
+            "benchmark_samples": {"dd": 81920, "qd": 40960},
             "benchmark_trials": 7,
             "benchmark_minimum_trial_ms": 25,
             "phases_requested": ["accuracy", "benchmark"],
@@ -2606,6 +2699,10 @@ class ProfileComparisonTests(unittest.TestCase):
     def test_comparison_metadata_allows_separate_compatible_runs(self) -> None:
         strict = self.metadata("strict", "strict-run")
         fastmath = self.metadata("fastmath", "fastmath-run")
+        strict["configuration"]["harness"] = {
+            "qdpp": "on",
+            "tlfloat": "on",
+        }
         self.assertIsNone(
             build_profile_comparison._compatibility_reason(strict, fastmath)
         )
@@ -2639,16 +2736,16 @@ class ProfileComparisonTests(unittest.TestCase):
         comparison, target = self.comparison(domains_total="2")
         with self.assertRaisesRegex(run_metrics.MetricsError, "domain totals"):
             build_profile_comparison.render_comparison(
-                comparison, target, "f128",
+                comparison, target, "dd",
             )
 
     def test_comparison_renders_one_fltx_block_with_colored_deltas(self) -> None:
         comparison, target = self.comparison(ns_iter="9", mean_bits="109")
         svg = build_profile_comparison.render_comparison(
-            comparison, target, "f128",
+            comparison, target, "dd",
         )
-        self.assertIn("f128 strict vs consumer fast-math", svg)
-        self.assertEqual(svg.count(">bl::f128</text>"), 1)
+        self.assertIn("fdd strict vs consumer fast-math", svg)
+        self.assertEqual(svg.count(">bl::fdd</text>"), 1)
         self.assertIn(">±0</text>", svg)
         self.assertIn(">Subnorm</text>", svg)
         self.assertIn(">✓</tspan>", svg)
@@ -2678,20 +2775,20 @@ class ProfileComparisonTests(unittest.TestCase):
                     "pass": "no",
                 })
             dataset.accuracy.update({
-                (target, "f128", "arithmetic", "add", "fltx", "general"):
+                (target, "dd", "arithmetic", "add", "fltx", "general"):
                     general,
-                (target, "f128", "arithmetic", "add", "fltx", "subnormal"):
+                (target, "dd", "arithmetic", "add", "fltx", "subnormal"):
                     subnormal,
             })
             dataset.canonical[
-                (target, "f128", "arithmetic", "add", "fltx")
+                (target, "dd", "arithmetic", "add", "fltx")
             ].update({
                 "domains_passed": "2" if passed else "1",
                 "domains_total": "2",
             })
 
         strict, fastmath, _ = build_profile_comparison._comparison_rows(
-            comparison, target, "f128",
+            comparison, target, "dd",
         )
         key = ("arithmetic", "add")
         self.assertEqual(strict[key]["mean_bits"], "110.0")
@@ -2700,7 +2797,7 @@ class ProfileComparisonTests(unittest.TestCase):
         self.assertEqual(fastmath[key]["subnormal_support"], "no")
 
         svg = build_profile_comparison.render_comparison(
-            comparison, target, "f128",
+            comparison, target, "dd",
         )
         self.assertIn(">✗</tspan>", svg)
         self.assertIn("subnormal support: yes -&gt; no", svg)
@@ -2851,6 +2948,7 @@ class PresetPipelineTests(unittest.TestCase):
                     "first-release",
                     workflow="full",
                     output_root=Path("staging"),
+                    publish=False,
                     force_rerun=True,
                     consumer_mode="all",
                 ),
@@ -2859,6 +2957,7 @@ class PresetPipelineTests(unittest.TestCase):
                     "second-release",
                     workflow="full",
                     output_root=Path("staging"),
+                    publish=False,
                     force_rerun=True,
                     consumer_mode="all",
                 ),
@@ -2866,6 +2965,35 @@ class PresetPipelineTests(unittest.TestCase):
         )
         self.assertIn("running metrics preset 1/2: first-release", output.getvalue())
         self.assertIn("generated metrics reports for second-release", output.getvalue())
+
+    def test_all_supported_pipeline_forwards_publish(self) -> None:
+        with (
+            mock.patch.object(
+                supported_preset_pipeline,
+                "supported_presets",
+                return_value=("only-release",),
+            ),
+            mock.patch.object(
+                preset_pipeline,
+                "run_pipeline",
+                return_value=(),
+            ) as run,
+            redirect_stdout(io.StringIO()),
+        ):
+            status = supported_preset_pipeline.main(
+                Path("source"), ["--standard", "--publish"],
+            )
+
+        self.assertEqual(status, 0)
+        run.assert_called_once_with(
+            Path("source"),
+            "only-release",
+            workflow="standard",
+            output_root=None,
+            publish=True,
+            force_rerun=False,
+            consumer_mode="strict",
+        )
 
     def test_all_supported_pipeline_does_not_accept_a_preset(self) -> None:
         with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
@@ -2956,7 +3084,7 @@ class PresetPipelineTests(unittest.TestCase):
             {"accuracy", "performance", "overview"},
         )
         self.assertIn(
-            "windows_x86_64_MSVC_f128_overview_compact.svg",
+            "windows_x86_64_MSVC_dd_overview_compact.svg",
             {path.name for path in outputs},
         )
 
@@ -3065,10 +3193,10 @@ class PresetPipelineTests(unittest.TestCase):
                     output / "accuracy" / f"accuracy_table{mode_suffix}.svg",
                     output / "performance" / f"performance_table{mode_suffix}.svg",
                     output / "performance" / f"performance_table{mode_suffix}_compact.svg",
-                    output / "overview" / f"windows_x86_64_MSVC_f128{mode_suffix}_overview.svg",
-                    output / "overview" / f"windows_x86_64_MSVC_f128{mode_suffix}_overview_compact.svg",
-                    output / "overview" / f"windows_x86_64_MSVC_f256{mode_suffix}_overview.svg",
-                    output / "overview" / f"windows_x86_64_MSVC_f256{mode_suffix}_overview_compact.svg",
+                    output / "overview" / f"windows_x86_64_MSVC_dd{mode_suffix}_overview.svg",
+                    output / "overview" / f"windows_x86_64_MSVC_dd{mode_suffix}_overview_compact.svg",
+                    output / "overview" / f"windows_x86_64_MSVC_qd{mode_suffix}_overview.svg",
+                    output / "overview" / f"windows_x86_64_MSVC_qd{mode_suffix}_overview_compact.svg",
                 )
                 for path in generated:
                     path.parent.mkdir(parents=True, exist_ok=True)
@@ -3212,13 +3340,51 @@ class PresetPipelineTests(unittest.TestCase):
         second_command = run.call_args_list[1].args[0]
         self.assertEqual(
             first_command[first_command.index("--precision") + 1],
-            "f128",
+            "dd",
         )
         self.assertEqual(
             second_command[second_command.index("--precision") + 1],
-            "f256",
+            "qd",
         )
         self.assertTrue(all(call.args[1] == "accuracy" for call in run.call_args_list))
+
+    def test_standard_publication_requires_publishable_runners(self) -> None:
+        identity = source_fingerprint.SourceIdentity(
+            revision="test-revision",
+            fingerprint=FINGERPRINT,
+        )
+        canonical = (
+            Path(run_metrics.__file__).resolve().parents[3]
+            / "validation"
+            / "metrics"
+            / "data"
+        )
+        with (
+            mock.patch.object(
+                run_metrics, "source_identity", return_value=identity,
+            ),
+            mock.patch.object(
+                run_metrics,
+                "_run_provenance",
+                return_value={"host": {}, "executables": {}},
+            ),
+            mock.patch.object(
+                run_metrics,
+                "_preflight_runners",
+                side_effect=run_metrics.MetricsError("stop after preflight"),
+            ) as preflight,
+            redirect_stderr(io.StringIO()),
+        ):
+            status = run_metrics.main([
+                "--accuracy", "accuracy.exe",
+                "--benchmark", "benchmark.exe",
+                "--sample-mode", "standard",
+                "--output-root", str(canonical),
+                "--canonical-publication",
+            ])
+
+        self.assertEqual(status, 1)
+        self.assertTrue(preflight.call_args.kwargs["publishable"])
 
     def test_standard_runs_both_accuracy_precisions_before_benchmarks(self) -> None:
         configuration = ValidationTests.configuration_banner()
@@ -3273,7 +3439,7 @@ class PresetPipelineTests(unittest.TestCase):
             ])
 
         self.assertEqual(status, 1)
-        self.assertEqual(accuracy_started, {"f128", "f256"})
+        self.assertEqual(accuracy_started, {"dd", "qd"})
         self.assertTrue(benchmark_saw_both)
         self.assertEqual(
             [call.args[1] for call in run.call_args_list].count("benchmark"),
@@ -3289,7 +3455,7 @@ class PresetPipelineTests(unittest.TestCase):
 
         def fake_run(command, runner_name, **kwargs):
             precision = command[command.index("--precision") + 1]
-            return configuration, int(runner_name == "accuracy" and precision == "f128")
+            return configuration, int(runner_name == "accuracy" and precision == "dd")
 
         with (
             mock.patch.object(run_metrics, "source_identity", return_value=identity),
@@ -3374,6 +3540,7 @@ class PresetPipelineTests(unittest.TestCase):
                 sample_mode="full",
                 consumer_mode="strict",
                 environment=selection.environment,
+                canonical_publication=False,
             ),
             mock.call(
                 Path("."),
@@ -3384,6 +3551,7 @@ class PresetPipelineTests(unittest.TestCase):
                 sample_mode="full",
                 consumer_mode="fastmath",
                 environment=selection.environment,
+                canonical_publication=False,
             ),
         ])
 
@@ -3752,17 +3920,20 @@ class PresetPipelineTests(unittest.TestCase):
                     ),
                 ),
             )
-            self.assertEqual(
-                preset_pipeline.metrics_paths(root, "release"),
-                preset_pipeline.MetricsPaths(
-                    data=resolved_root / "validation" / "metrics" / "data",
-                    generated=(
-                        resolved_root / "validation" / "metrics" / "generated"
-                    ),
-                ),
+            canonical = preset_pipeline.MetricsPaths(
+                data=resolved_root / "validation" / "metrics" / "data",
+                generated=resolved_root / "validation" / "metrics" / "generated",
             )
+            for workflow in ("quick", "standard", "full"):
+                with self.subTest(published_workflow=workflow):
+                    self.assertEqual(
+                        preset_pipeline.metrics_paths(
+                            root, workflow, publish=True,
+                        ),
+                        canonical,
+                    )
 
-    def test_custom_output_root_is_noncanonical_and_release_rejects_it(self) -> None:
+    def test_custom_output_root_is_noncanonical_and_publish_rejects_it(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             custom = root / "staging"
@@ -3776,9 +3947,11 @@ class PresetPipelineTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(
                 preset_pipeline.PipelineError,
-                "--release cannot be combined with --output-root",
+                "--publish cannot be combined with --output-root",
             ):
-                preset_pipeline.metrics_paths(root, "release", custom)
+                preset_pipeline.metrics_paths(
+                    root, "quick", custom, publish=True,
+                )
 
 
 if __name__ == "__main__":

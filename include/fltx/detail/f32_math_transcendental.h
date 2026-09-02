@@ -1,5 +1,5 @@
 /**
- * fltx/detail/f32_math_transcendental.h - constexpr <cmath>-style transcendental math helpers for f32.
+ * fltx/detail/f32_math_transcendental.h - constexpr transcendental functions for f32.
  *
  * f32 exp/log, roots, pow, trig, hyperbolic, erf, and gamma helpers.
  *

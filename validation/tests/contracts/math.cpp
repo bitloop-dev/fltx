@@ -23,12 +23,12 @@ namespace
         return high + low == high;
     }
 
-    [[nodiscard]] bool is_canonical(const bl::f128_s& value) noexcept
+    [[nodiscard]] bool is_canonical(const bl::fdd_s& value) noexcept
     {
         return nonoverlapping(value.hi, value.lo);
     }
 
-    [[nodiscard]] bool is_canonical(const bl::f256_s& value) noexcept
+    [[nodiscard]] bool is_canonical(const bl::fqd_s& value) noexcept
     {
         return nonoverlapping(value.x0, value.x1) &&
                nonoverlapping(value.x1, value.x2) &&
@@ -45,7 +45,7 @@ namespace
     template<class T>
     [[nodiscard]] T expansion(double leading, double trailing)
     {
-        if constexpr (std::is_same_v<T, bl::f128>)
+        if constexpr (std::is_same_v<T, bl::fdd>)
             return T{ leading, trailing };
         else
             return T{ leading, trailing, 0.0, 0.0 };
@@ -65,7 +65,7 @@ namespace
         const T above_eight = bl::nextafter(eight, T{ 16.0 });
         const T below_eight = bl::nextafter(eight, zero);
 
-        if constexpr (std::is_same_v<T, bl::f128>)
+        if constexpr (std::is_same_v<T, bl::fdd>)
         {
             if (above_one != T{ 1.0, 0x1p-105 } ||
                 below_one != T{ 1.0, -0x1p-106 } ||
@@ -232,13 +232,28 @@ namespace
 
         #if defined(FLTX_FAST_MATH)
         constexpr bool relaxed_basic_arithmetic =
-            std::is_same_v<T, bl::f128> || std::is_same_v<T, bl::f256>;
+            std::is_same_v<T, bl::fdd> || std::is_same_v<T, bl::fqd>;
         #else
         constexpr bool relaxed_basic_arithmetic = false;
         #endif
 
         if constexpr (!relaxed_basic_arithmetic)
         {
+            check_zero("+zero + +zero", T{ zero + zero }, false);
+            check_zero("-zero + -zero", T{ negative_zero + negative_zero }, true);
+            check_zero("+zero + -zero", T{ zero + negative_zero }, false);
+            check_zero("-zero + +zero", T{ negative_zero + zero }, false);
+            check_zero("+zero - +zero", T{ zero - zero }, false);
+            check_zero("-zero - +zero", T{ negative_zero - zero }, true);
+            check_zero("+zero - -zero", T{ zero - negative_zero }, false);
+            check_zero("-zero - -zero", T{ negative_zero - negative_zero }, false);
+            check_zero("-zero + scalar -zero",
+                T{ negative_zero + -0.0 }, true);
+            check_zero("-zero - scalar +zero",
+                T{ negative_zero - 0.0 }, true);
+            check_zero("scalar -zero - +zero",
+                T{ -0.0 - zero }, true);
+
             check_infinity("infinity + finite", T{ infinity + one }, false);
             check_infinity("finite + -infinity", T{ one + negative_infinity }, true);
             check_nan("infinity + -infinity", T{ infinity + negative_infinity });
@@ -275,6 +290,13 @@ namespace
         check_nan("fma NaN propagation", T{ bl::fma(nan, one, one) });
         check_infinity("fma infinity result",
             T{ bl::fma(infinity, one, one) }, false);
+        if constexpr (!relaxed_basic_arithmetic)
+        {
+            check_zero("fma(+zero, one, +zero)",
+                T{ bl::fma(zero, one, zero) }, false);
+            check_zero("fma(-zero, one, -zero)",
+                T{ bl::fma(negative_zero, one, negative_zero) }, true);
+        }
 
         CHECK(T{ bl::fmin(nan, one) } == one);
         CHECK(T{ bl::fmin(one, nan) } == one);
@@ -282,20 +304,14 @@ namespace
         CHECK(T{ bl::fmax(one, nan) } == one);
         check_nan("fmin(NaN, NaN)", T{ bl::fmin(nan, nan) });
         check_nan("fmax(NaN, NaN)", T{ bl::fmax(nan, nan) });
-        if constexpr (std::is_same_v<T, bl::f32> || std::is_same_v<T, bl::f64>)
-        {
-            check_zero("fmin(+zero, -zero)",
-                T{ bl::fmin(zero, negative_zero) });
-            check_zero("fmax(-zero, +zero)",
-                T{ bl::fmax(negative_zero, zero) });
-        }
-        else
-        {
-            check_zero("fmin(+zero, -zero)",
-                T{ bl::fmin(zero, negative_zero) }, true);
-            check_zero("fmax(-zero, +zero)",
-                T{ bl::fmax(negative_zero, zero) }, false);
-        }
+        check_zero("fmin(+zero, -zero)",
+            T{ bl::fmin(zero, negative_zero) }, true);
+        check_zero("fmin(-zero, +zero)",
+            T{ bl::fmin(negative_zero, zero) }, true);
+        check_zero("fmax(+zero, -zero)",
+            T{ bl::fmax(zero, negative_zero) }, false);
+        check_zero("fmax(-zero, +zero)",
+            T{ bl::fmax(negative_zero, zero) }, false);
 
         check_nan("fdim NaN propagation", T{ bl::fdim(nan, one) });
         check_infinity("fdim(+infinity, finite)",
@@ -560,15 +576,15 @@ TEST_CASE("exact math contracts hold for both expansion types", "[contracts][mat
 {
     check_exact_math<bl::f32>();
     check_exact_math<bl::f64>();
-    check_exact_math<bl::f128>();
-    check_exact_math<bl::f256>();
+    check_exact_math<bl::fdd>();
+    check_exact_math<bl::fqd>();
 }
 
 TEST_CASE("nextafter follows the nominal 106 and 212 bit models",
           "[contracts][math][nextafter]")
 {
-    STATIC_CHECK(nominal_nextafter_contract<bl::f128>());
-    STATIC_CHECK(nominal_nextafter_contract<bl::f256>());
+    STATIC_CHECK(nominal_nextafter_contract<bl::fdd>());
+    STATIC_CHECK(nominal_nextafter_contract<bl::fqd>());
 
     const auto check_edges = []<class T>()
     {
@@ -593,24 +609,24 @@ TEST_CASE("nextafter follows the nominal 106 and 212 bit models",
         CHECK(bl::fpclassify(below_minimum) == FP_SUBNORMAL);
         CHECK(bl::nextafter(below_minimum, limits::min()) == limits::min());
     };
-    check_edges.template operator()<bl::f128>();
-    check_edges.template operator()<bl::f256>();
+    check_edges.template operator()<bl::fdd>();
+    check_edges.template operator()<bl::fqd>();
 
-    constexpr bl::f128 sparse128{ 1.0, 0x1.8p-106 };
-    constexpr bl::f256 sparse256{
+    constexpr bl::fdd sparse_dd{ 1.0, 0x1.8p-106 };
+    constexpr bl::fqd sparse_qd{
         1.0, 0x1p-55, -0x1p-120, 0x1.8p-212
     };
-    STATIC_CHECK(bl::nextafter(sparse128, bl::f128{ 2.0 }) ==
-                 sparse128 + bl::f128{ 0x1p-105 });
-    STATIC_CHECK(bl::nextafter(sparse256, bl::f256{ 2.0 }) ==
-                 sparse256 + bl::f256{ 0x1p-211 });
-    STATIC_CHECK(bl::ilogb(bl::f128{ 1.0, -0x1p-107 }) == -1);
-    STATIC_CHECK(bl::ilogb(bl::f256{ 1.0, -0x1p-213, 0.0, 0.0 }) == -1);
+    STATIC_CHECK(bl::nextafter(sparse_dd, bl::fdd{ 2.0 }) ==
+                 sparse_dd + bl::fdd{ 0x1p-105 });
+    STATIC_CHECK(bl::nextafter(sparse_qd, bl::fqd{ 2.0 }) ==
+                 sparse_qd + bl::fqd{ 0x1p-211 });
+    STATIC_CHECK(bl::ilogb(bl::fdd{ 1.0, -0x1p-107 }) == -1);
+    STATIC_CHECK(bl::ilogb(bl::fqd{ 1.0, -0x1p-213, 0.0, 0.0 }) == -1);
 
 #if LDBL_MANT_DIG > DBL_MANT_DIG
     constexpr long double extended_target = 1.0L + 0x1p-60L;
-    STATIC_CHECK(bl::nexttoward(bl::f128{ 1.0 }, extended_target) > bl::f128{ 1.0 });
-    STATIC_CHECK(bl::nexttoward(bl::f256{ 1.0 }, extended_target) > bl::f256{ 1.0 });
+    STATIC_CHECK(bl::nexttoward(bl::fdd{ 1.0 }, extended_target) > bl::fdd{ 1.0 });
+    STATIC_CHECK(bl::nexttoward(bl::fqd{ 1.0 }, extended_target) > bl::fqd{ 1.0 });
 #endif
 }
 
@@ -618,27 +634,27 @@ TEST_CASE("rounding and decomposition preserve defined semantics", "[contracts][
 {
     check_decomposition<bl::f32>();
     check_decomposition<bl::f64>();
-    check_decomposition<bl::f128>();
-    check_decomposition<bl::f256>();
+    check_decomposition<bl::fdd>();
+    check_decomposition<bl::fqd>();
 
-    CHECK(bl::floor(bl::f128{ -2.25 }) == bl::f128{ -3.0 });
-    CHECK(bl::ceil(bl::f128{ -2.25 }) == bl::f128{ -2.0 });
-    CHECK(bl::trunc(bl::f256{ -2.75 }) == bl::f256{ -2.0 });
-    CHECK(bl::round(bl::f256{ -2.5 }) == bl::f256{ -3.0 });
-    CHECK(bl::roundeven(bl::f128{ 2.5 }) == bl::f128{ 2.0 });
-    CHECK(bl::roundeven(bl::f128{ 3.5 }) == bl::f128{ 4.0 });
-    CHECK(bl::lround(bl::f128{ -2.5 }) == -3L);
-    CHECK(bl::llround(bl::f256{ 2.5 }) == 3LL);
+    CHECK(bl::floor(bl::fdd{ -2.25 }) == bl::fdd{ -3.0 });
+    CHECK(bl::ceil(bl::fdd{ -2.25 }) == bl::fdd{ -2.0 });
+    CHECK(bl::trunc(bl::fqd{ -2.75 }) == bl::fqd{ -2.0 });
+    CHECK(bl::round(bl::fqd{ -2.5 }) == bl::fqd{ -3.0 });
+    CHECK(bl::roundeven(bl::fdd{ 2.5 }) == bl::fdd{ 2.0 });
+    CHECK(bl::roundeven(bl::fdd{ 3.5 }) == bl::fdd{ 4.0 });
+    CHECK(bl::lround(bl::fdd{ -2.5 }) == -3L);
+    CHECK(bl::llround(bl::fqd{ 2.5 }) == 3LL);
     CHECK(bl::to_string(
-        bl::round_decimals(bl::f128{ 1.2345 }, 2),
+        bl::round_decimals(bl::fdd{ 1.2345 }, 2),
         2,
         std::ios_base::fixed) == "1.23");
     CHECK(bl::to_string(
-        bl::round_decimals(bl::f256{ 1.2345 }, 2),
+        bl::round_decimals(bl::fqd{ 1.2345 }, 2),
         2,
         std::ios_base::fixed) == "1.23");
-    CHECK(bl::round_significant(bl::f128{ 1234.5 }, 3) == bl::f128{ 1230.0 });
-    CHECK(bl::round_significant(bl::f256{ 1234.5 }, 3) == bl::f256{ 1230.0 });
+    CHECK(bl::round_significant(bl::fdd{ 1234.5 }, 3) == bl::fdd{ 1230.0 });
+    CHECK(bl::round_significant(bl::fqd{ 1234.5 }, 3) == bl::fqd{ 1230.0 });
 }
 
 TEST_CASE("decimal and significant-figure rounding preserve tie rules", "[contracts][math][rounding]")
@@ -662,54 +678,54 @@ TEST_CASE("decimal and significant-figure rounding preserve tie rules", "[contra
     CHECK(bl::round_significant(12500.0, 2) == 12000.0);
     CHECK(bl::round_significant(13500.0, 2) == 14000.0);
 
-    check_expansion_precision_rounding<bl::f128>();
-    check_expansion_precision_rounding<bl::f256>();
+    check_expansion_precision_rounding<bl::fdd>();
+    check_expansion_precision_rounding<bl::fqd>();
 }
 
 TEST_CASE("integer rounding covers expansion limbs at signed boundaries", "[contracts][math][rounding]")
 {
-    const bl::f128 long_min128{
+    const bl::fdd long_min_dd{
         static_cast<double>(std::numeric_limits<long>::min()), 0.5
     };
-    const bl::f256 long_min256{
+    const bl::fqd long_min_qd{
         static_cast<double>(std::numeric_limits<long>::min()), 0.5, 0.0, 0.0
     };
-    CHECK(bl::lround(long_min128) == std::numeric_limits<long>::min());
-    CHECK(bl::lround(long_min256) == std::numeric_limits<long>::min());
+    CHECK(bl::lround(long_min_dd) == std::numeric_limits<long>::min());
+    CHECK(bl::lround(long_min_qd) == std::numeric_limits<long>::min());
 
     if constexpr (std::numeric_limits<long>::digits <= 53)
     {
-        const bl::f128 long_max128{
+        const bl::fdd long_max_dd{
             static_cast<double>(std::numeric_limits<long>::max()), -0.49
         };
-        const bl::f256 long_max256{
+        const bl::fqd long_max_qd{
             static_cast<double>(std::numeric_limits<long>::max()),
             -0.49, 0.0, 0.0
         };
-        CHECK(bl::lround(long_max128) == std::numeric_limits<long>::max());
-        CHECK(bl::lround(long_max256) == std::numeric_limits<long>::max());
+        CHECK(bl::lround(long_max_dd) == std::numeric_limits<long>::max());
+        CHECK(bl::lround(long_max_qd) == std::numeric_limits<long>::max());
     }
 
-    const bl::f128 long_long_min128{
+    const bl::fdd long_long_min_dd{
         static_cast<double>(std::numeric_limits<long long>::min()), 0.5
     };
-    const bl::f256 long_long_min256{
+    const bl::fqd long_long_min_qd{
         static_cast<double>(std::numeric_limits<long long>::min()),
         0.5, 0.0, 0.0
     };
-    CHECK(bl::llround(long_long_min128) ==
+    CHECK(bl::llround(long_long_min_dd) ==
           std::numeric_limits<long long>::min());
-    CHECK(bl::llround(long_long_min256) ==
+    CHECK(bl::llround(long_long_min_qd) ==
           std::numeric_limits<long long>::min());
 
-    CHECK(bl::llround(bl::f128{ 0x1p52, 0.5 }) == 4503599627370497LL);
-    CHECK(bl::llround(bl::f256{ 0x1p52, 0.5, 0.0, 0.0 }) ==
+    CHECK(bl::llround(bl::fdd{ 0x1p52, 0.5 }) == 4503599627370497LL);
+    CHECK(bl::llround(bl::fqd{ 0x1p52, 0.5, 0.0, 0.0 }) ==
           4503599627370497LL);
-    CHECK(bl::llround(bl::f128{ -0x1p52, -0.5 }) == -4503599627370497LL);
-    CHECK(bl::llround(bl::f256{ -0x1p52, -0.5, 0.0, 0.0 }) ==
+    CHECK(bl::llround(bl::fdd{ -0x1p52, -0.5 }) == -4503599627370497LL);
+    CHECK(bl::llround(bl::fqd{ -0x1p52, -0.5, 0.0, 0.0 }) ==
           -4503599627370497LL);
-    CHECK(bl::llround(bl::f128{ 0x1p53, -0.5 }) == 9007199254740992LL);
-    CHECK(bl::llround(bl::f256{ 0x1p53, -0.5, 0.0, 0.0 }) ==
+    CHECK(bl::llround(bl::fdd{ 0x1p53, -0.5 }) == 9007199254740992LL);
+    CHECK(bl::llround(bl::fqd{ 0x1p53, -0.5, 0.0, 0.0 }) ==
           9007199254740992LL);
 }
 
@@ -717,11 +733,11 @@ TEST_CASE("sincos overloads agree and log_as_double is well scaled", "[contracts
 {
     check_sincos<bl::f32>();
     check_sincos<bl::f64>();
-    check_sincos<bl::f128>();
-    check_sincos<bl::f256>();
+    check_sincos<bl::fdd>();
+    check_sincos<bl::fqd>();
 
-    CHECK(std::abs(bl::log_as_double(bl::exp(bl::f128{ 1.0 })) - 1.0) < 1e-14);
-    CHECK(std::abs(bl::log_as_double(bl::exp(bl::f256{ 1.0 })) - 1.0) < 1e-14);
+    CHECK(std::abs(bl::log_as_double(bl::exp(bl::fdd{ 1.0 })) - 1.0) < 1e-14);
+    CHECK(std::abs(bl::log_as_double(bl::exp(bl::fqd{ 1.0 })) - 1.0) < 1e-14);
 }
 
 TEST_CASE("public expansion math results keep nonoverlapping limbs",
@@ -812,8 +828,8 @@ TEST_CASE("public expansion math results keep nonoverlapping limbs",
             bl::round_significant(T{ 12345.6789 }, 5));
     };
 
-    check.template operator()<bl::f128>();
-    check.template operator()<bl::f256>();
+    check.template operator()<bl::fdd>();
+    check.template operator()<bl::fqd>();
 }
 
 TEST_CASE("arithmetic special values follow IEEE conventions", "[contracts][math][special]")
@@ -825,8 +841,8 @@ TEST_CASE("arithmetic special values follow IEEE conventions", "[contracts][math
     check_arithmetic_special_values<bl::f32>("f32");
     check_arithmetic_special_values<bl::f64>("f64");
 #endif
-    check_arithmetic_special_values<bl::f128>("f128");
-    check_arithmetic_special_values<bl::f256>("f256");
+    check_arithmetic_special_values<bl::fdd>("dd");
+    check_arithmetic_special_values<bl::fqd>("qd");
 }
 
 TEST_CASE("roots and powers handle poles and invalid domains", "[contracts][math][special]")
@@ -835,8 +851,8 @@ TEST_CASE("roots and powers handle poles and invalid domains", "[contracts][math
     check_root_and_power_special_values<bl::f32>("f32");
     check_root_and_power_special_values<bl::f64>("f64");
 #endif
-    check_root_and_power_special_values<bl::f128>("f128");
-    check_root_and_power_special_values<bl::f256>("f256");
+    check_root_and_power_special_values<bl::fdd>("dd");
+    check_root_and_power_special_values<bl::fqd>("qd");
 }
 
 TEST_CASE("transcendentals preserve signed outputs and domain semantics", "[contracts][math][special]")
@@ -845,8 +861,8 @@ TEST_CASE("transcendentals preserve signed outputs and domain semantics", "[cont
     check_transcendental_special_values<bl::f32>("f32");
     check_transcendental_special_values<bl::f64>("f64");
 #endif
-    check_transcendental_special_values<bl::f128>("f128");
-    check_transcendental_special_values<bl::f256>("f256");
+    check_transcendental_special_values<bl::fdd>("dd");
+    check_transcendental_special_values<bl::fqd>("qd");
 }
 
 TEST_CASE("rounding and remainder special values preserve signs", "[contracts][math][special]")
@@ -855,8 +871,8 @@ TEST_CASE("rounding and remainder special values preserve signs", "[contracts][m
     check_rounding_and_remainder_special_values<bl::f32>("f32");
     check_rounding_and_remainder_special_values<bl::f64>("f64");
 #endif
-    check_rounding_and_remainder_special_values<bl::f128>("f128");
-    check_rounding_and_remainder_special_values<bl::f256>("f256");
+    check_rounding_and_remainder_special_values<bl::fdd>("dd");
+    check_rounding_and_remainder_special_values<bl::fqd>("qd");
 }
 
 TEST_CASE("fixed rounding ignores the process rounding mode", "[contracts][math][rounding]")
@@ -865,8 +881,8 @@ TEST_CASE("fixed rounding ignores the process rounding mode", "[contracts][math]
     // WebAssembly has a fixed nearest-even environment and does not expose
     // mutable hardware rounding modes.
     CHECK(bl::roundeven(2.5) == 2.0);
-    CHECK(bl::round(bl::f128{ 2.5 }) == bl::f128{ 3.0 });
-    CHECK(bl::floor(bl::f256{ -2.25 }) == bl::f256{ -3.0 });
+    CHECK(bl::round(bl::fdd{ 2.5 }) == bl::fdd{ 3.0 });
+    CHECK(bl::floor(bl::fqd{ -2.25 }) == bl::fqd{ -3.0 });
 #else
     struct guard
     {
@@ -879,8 +895,8 @@ TEST_CASE("fixed rounding ignores the process rounding mode", "[contracts][math]
     {
         REQUIRE(std::fesetround(mode) == 0);
         CHECK(bl::roundeven(2.5) == 2.0);
-        CHECK(bl::round(bl::f128{ 2.5 }) == bl::f128{ 3.0 });
-        CHECK(bl::floor(bl::f256{ -2.25 }) == bl::f256{ -3.0 });
+        CHECK(bl::round(bl::fdd{ 2.5 }) == bl::fdd{ 3.0 });
+        CHECK(bl::floor(bl::fqd{ -2.25 }) == bl::fqd{ -3.0 });
     }
 #endif
 }

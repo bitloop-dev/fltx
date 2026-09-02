@@ -22,7 +22,7 @@ static unsigned char to_byte(double x)
 int main()
 {
     // switch which underlying type is used
-    using flt = f128;
+    using flt = fdd;
 
     // mandelbrot iteration limit / coordinate / zoom
     constexpr int max_iter = 20000;

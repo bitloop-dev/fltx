@@ -539,7 +539,7 @@ namespace fltx::tests::domains
         out.values.reserve(count + 3);
 
         // This count-independent regression witness was first exposed by a
-        // 32,768-sample f256 fixed-constexpr run. Keep it explicit so smaller
+        // 32,768-sample qd fixed-constexpr run. Keep it explicit so smaller
         // profiles cannot lose it through corpus-size-dependent operand pairing.
         out.values.push_back({
             {
@@ -621,7 +621,7 @@ namespace fltx::tests::domains
             if (retained_limbs == 2 && value.limb[offset_limb] == original)
             {
                 throw std::logic_error(
-                    "f128 argument-reduction perturbation was rounded away");
+                    "fdd argument-reduction perturbation was rounded away");
             }
 
             if (negative)
@@ -736,7 +736,7 @@ namespace fltx::tests::domains
         return argument_reduction_impl(count, max_exponent, seed, 4);
     }
 
-    [[nodiscard]] inline domain argument_reduction_f128(
+    [[nodiscard]] inline domain argument_reduction_dd(
         std::size_t count,
         int max_exponent = 159,
         std::uint64_t seed = default_seed ^ 0x07u)

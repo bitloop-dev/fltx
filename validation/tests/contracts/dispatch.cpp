@@ -26,11 +26,11 @@ static_assert(std::is_same_v<
     bl_enum_type_map_t<bl::FloatType, bl::FloatType::F64>,
     bl::f64>);
 static_assert(std::is_same_v<
-    bl_enum_type_map_t<bl::FloatType, bl::FloatType::F128>,
-    bl::f128>);
+    bl_enum_type_map_t<bl::FloatType, bl::FloatType::FDD>,
+    bl::fdd>);
 static_assert(std::is_same_v<
-    bl_enum_type_map_t<bl::FloatType, bl::FloatType::F256>,
-    bl::f256>);
+    bl_enum_type_map_t<bl::FloatType, bl::FloatType::FQD>,
+    bl::fqd>);
 
 namespace
 {
@@ -83,16 +83,16 @@ TEST_CASE("runtime float selection maps to the documented template type", "[cont
 
     CHECK(bl_table_invoke(table, bl_enum_type(bl::FloatType::F32), true) == 11);
     CHECK(bl_table_invoke(table, bl_enum_type(bl::FloatType::F64), true) == 12);
-    CHECK(bl_table_invoke(table, bl_enum_type(bl::FloatType::F128), true) == 14);
-    CHECK(bl_table_invoke(table, bl_enum_type(bl::FloatType::F256), true) == 15);
-    CHECK(bl_table_invoke(table, bl_enum_type(bl::FloatType::F256), false) == 5);
+    CHECK(bl_table_invoke(table, bl_enum_type(bl::FloatType::FDD), true) == 14);
+    CHECK(bl_table_invoke(table, bl_enum_type(bl::FloatType::FQD), true) == 15);
+    CHECK(bl_table_invoke(table, bl_enum_type(bl::FloatType::FQD), false) == 5);
 }
 
 TEST_CASE("type tags, member functions, and callable objects share dispatch semantics", "[contracts][dispatch]")
 {
     CHECK(bl_table_invoke(
         bl_dispatch_table(dispatch_probe, 10),
-        bl_type<bl::f128>,
+        bl_type<bl::fdd>,
         true) == 14);
 
     CHECK(bl_table_invoke<bl::f64>(
@@ -102,7 +102,7 @@ TEST_CASE("type tags, member functions, and callable objects share dispatch sema
     const member_probe object;
     CHECK(bl_table_invoke(
         bl_dispatch_table_memfn(object, member_probe::apply, 10),
-        bl_enum_type(bl::FloatType::F256),
+        bl_enum_type(bl::FloatType::FQD),
         true) == 15);
 
     const callable_probe callable;
@@ -113,7 +113,7 @@ TEST_CASE("type tags, member functions, and callable objects share dispatch sema
 
     CHECK(bl_table_invoke(
         bl_dispatch_table(two_type_probe, 10),
-        bl_enum_type(bl::FloatType::F128),
+        bl_enum_type(bl::FloatType::FDD),
         bl_enum_type(bl::FloatType::F64),
         true) == 16);
 }
@@ -135,16 +135,16 @@ TEST_CASE("raw enum dispatch supports explicit sparse domains", "[contracts][dis
 
 TEST_CASE("dispatch domain helpers report the actual table shape", "[contracts][dispatch]")
 {
-    const auto type = bl_enum_type(bl::FloatType::F128);
+    const auto type = bl_enum_type(bl::FloatType::FDD);
     CHECK(bl_dispatch_arg_domain_size(type) == 4);
     CHECK(bl_enum_type_domain_size(type) == 4);
-    CHECK(bl_dispatch_arg_domain_size(bl_type<bl::f128>) == 1);
+    CHECK(bl_dispatch_arg_domain_size(bl_type<bl::fdd>) == 1);
     CHECK(bl_dispatch_arg_domain_size(dispatch_mode::add) == 2);
     CHECK(bl_dispatch_table_variant_count(type, true) == 8);
     CHECK(bl_table_variants_count(type, dispatch_mode::add, true) == 16);
     CHECK(bl_dispatch_table_domain_sizes(type, true) == std::array<std::size_t, 2>{ 4, 2 });
     CHECK(bl_dispatch_table_domain_sizes(
-        bl_type<bl::f128>,
+        bl_type<bl::fdd>,
         type,
         dispatch_mode::add,
         true) == std::array<std::size_t, 4>{ 1, 4, 2, 2 });

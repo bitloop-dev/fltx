@@ -1,7 +1,5 @@
 /**
- * fltx/f64_classification.h - constexpr <cmath>-style classification functions for f64.
- *
- * f64 classification, predicates, and comparison helpers.
+ * fltx/f64_classification.h - constexpr classification, predicate, and comparison functions for f64.
  *
  * Copyright (c) 2026 William Hemsworth
  *

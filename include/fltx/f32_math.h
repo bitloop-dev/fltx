@@ -1,5 +1,5 @@
 /**
- * fltx/f32_math.h - constexpr <cmath>-style functions for f32.
+ * fltx/f32_math.h - constexpr counterparts to selected <cmath> functions for f32.
  *
  * Copyright (c) 2026 William Hemsworth
  *

@@ -9,31 +9,31 @@
 
 using namespace bl;
 
-/* Notes:
+/*
 
-    - Dispatch tables grow multiplicatively with each dispatched template argument.
-    - Large domains can significantly increase executable size and compile time.
-    - Use dispatch tables sparingly, mainly where runtime performance matters.
-    - Prefer the smallest domain needed for the use case.
+- Dispatch tables grow multiplicatively with each dispatched template argument.
+- Large domains can significantly increase executable size and compile time.
+- Use dispatch tables sparingly, mainly where runtime performance matters.
+- Prefer the smallest domain needed for the use case.
 
 Example:
 
-    If only f128/f256 are needed, create a smaller enum and map those types manually:
+    If only fdd/fqd are needed, create a smaller enum and map those types manually:
 
-    enum struct WideFloatType { F128, F256, COUNT };
-    bl_map_enum_to_type(WideFloatType::F128, bl::f128);
-    bl_map_enum_to_type(WideFloatType::F256, bl::f256);
+    enum struct WideFloatType { FDD, FQD, COUNT };
+    bl_map_enum_to_type(WideFloatType::FDD, bl::fdd);
+    bl_map_enum_to_type(WideFloatType::FQD, bl::fqd);
 
     bl_table_invoke(
-        bl_dispatch_table(foo, runtime_arg0, runtime_arg1),
-        bl_enum_type(WideFloatType::F128)
+        bl_dispatch_table(foo, runtime_args),
+        bl_enum_type(WideFloatType::FDD)
     );
 */
 
 template<typename T1, typename T2, bool Test_Bool>
 void print_math(std::string_view name)
 {
-    // T1 can be: f32 / f64 / f128 / f256
+    // T1 can be: [f32, f64, fdd, fqd]
     constexpr T1 pi_v  = std::numbers::pi_v<T1>;
     constexpr T1 min_v = std::numeric_limits<T1>::min();
     constexpr T1 max_v = std::numeric_limits<T1>::max();
@@ -144,19 +144,19 @@ print_math<f64>():
    bl::sin(pi_v / 5.0) = 0.587785252292473
    c: 0.587785
 
-print_math<f128>():
- f128 min        = 2.225073858507201383090232717332e-308
- f128 max        = 1.797693134862315708145274237317e+308
- f128 PI         = 3.14159265358979323846264338328
+print_math<fdd>():
+ fdd min        = 2.225073858507201383090232717332e-308
+ fdd max        = 1.797693134862315708145274237317e+308
+ fdd PI         = 3.14159265358979323846264338328
    bl::sin(pi_v / 6.0) = 0.5
    bl::sin(pi_v / 5.0) = 0.5877852522924731291687059546391
    c: 0.587785
    Test_Bool is TRUE
 
-print_math<f256>():
- f256 min        = 2.22507385850720138309023271733240406421921598046233183055332742e-308
- f256 max        = 1.79769313486231570814527423731704356798070567525844996598917477e+308
- f256 PI         = 3.14159265358979323846264338327950288419716939937510582097494459
+print_math<fqd>():
+ fqd min        = 2.22507385850720138309023271733240406421921598046233183055332742e-308
+ fqd max        = 1.79769313486231570814527423731704356798070567525844996598917477e+308
+ fqd PI         = 3.14159265358979323846264338327950288419716939937510582097494459
    bl::sin(pi_v / 6.0) = 0.5
    bl::sin(pi_v / 5.0) = 0.587785252292473129168705954639072768597652437643145991072272481
    c: 0.587785

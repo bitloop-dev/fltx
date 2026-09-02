@@ -1,5 +1,5 @@
 /**
- * fltx/dispatch.h - FloatType dispatch helpers for f32, f64, f128, and f256.
+ * fltx/dispatch.h - FloatType dispatch helpers for f32, f64, fdd, and fqd.
  *
  * Copyright (c) 2026 William Hemsworth
  *
@@ -11,11 +11,11 @@
 #define FLTX_DISPATCH_INCLUDED
 #include "fltx/core.h"
 #include "fltx/traits.h"
-#include "fltx/template_dispatch.h"
+#include "fltx/util/template_dispatch.h"
 
-bl_map_enum_to_type(bl::FloatType::F32,  bl::f32);
-bl_map_enum_to_type(bl::FloatType::F64,  bl::f64);
-bl_map_enum_to_type(bl::FloatType::F128, bl::f128);
-bl_map_enum_to_type(bl::FloatType::F256, bl::f256);
+bl_map_enum_to_type(bl::FloatType::F32, bl::f32);
+bl_map_enum_to_type(bl::FloatType::F64, bl::f64);
+bl_map_enum_to_type(bl::FloatType::FDD, bl::fdd);
+bl_map_enum_to_type(bl::FloatType::FQD, bl::fqd);
 
 #endif

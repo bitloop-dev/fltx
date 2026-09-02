@@ -49,6 +49,6 @@ void print_case(std::string_view name)
 int main()
 {
     print_case<f64>("f64");
-    print_case<f128>("f128");
-    print_case<f256>("f256");
+    print_case<fdd>("fdd");
+    print_case<fqd>("fqd");
 }

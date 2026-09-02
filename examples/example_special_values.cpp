@@ -13,12 +13,12 @@ const char* class_name(int cls)
 {
     switch (cls)
     {
-    case FP_INFINITE:  return "infinite";
-    case FP_NAN:       return "nan";
-    case FP_NORMAL:    return "normal";
-    case FP_SUBNORMAL: return "subnormal";
-    case FP_ZERO:      return "zero";
-    default:           return "unknown";
+    case FP_INFINITE:   return "infinite";
+    case FP_NAN:        return "nan";
+    case FP_NORMAL:     return "normal";
+    case FP_SUBNORMAL:  return "subnormal";
+    case FP_ZERO:       return "zero";
+    default:            return "unknown";
     }
 }
 
@@ -37,7 +37,7 @@ void describe(std::string_view name, T value)
 
 int main()
 {
-    using T = f256;
+    using T = fqd;
 
     describe("positive zero", T{ 0.0 });
     describe("negative zero", T{ -0.0 });
@@ -60,20 +60,4 @@ int main()
         << "ldexp(significand, exponent): " << rebuilt << "\n"
         << "modf(-12.75): integer = " << integer_part << ", fraction = " << fraction << "\n"
         << "nextafter(0, 1): " << bl::nextafter(T{ 0 }, T{ 1 }) << "\n\n";
-
-
-    constexpr int counter_width = 3;
-    constexpr int zeros_before_counter =
-        std::numeric_limits<T>::digits10 - counter_width; // 60 for f256
-
-    constexpr int places = zeros_before_counter + counter_width;
-    const T step = bl::pow(10_qd, -places);
-
-    std::cout << std::fixed << std::setprecision(places);
-
-    for (int i = 1; i <= 4; ++i)
-    {
-        const T v = T{ i } * step;
-        std::cout << v << "\n";
-    }
 }

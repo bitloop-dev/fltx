@@ -34,7 +34,7 @@ std::string_view written_view(const std::array<char, N>& buffer, const char* end
 
 int main()
 {
-    constexpr f256 value = std::numbers::pi_v<f256> + 1_qd / 7_qd;
+    constexpr fqd value = std::numbers::pi_v<fqd> + 1_qd / 7_qd;
 
     std::array<char, 160> buffer{};
     const auto out = bl::to_chars(
@@ -47,7 +47,7 @@ int main()
     std::cout << "to_chars fixed status: " << errc_name(out.ec) << "\n";
     std::cout << "text: " << written_view(buffer, out.ptr) << "\n\n";
 
-    f256 parsed{};
+    fqd parsed{};
     const auto in = bl::from_chars(
         buffer.data(),
         out.ptr,
@@ -55,11 +55,11 @@ int main()
         std::chars_format::fixed);
 
     std::cout << "from_chars status: " << errc_name(in.ec) << "\n";
-    std::cout << std::setprecision(std::numeric_limits<f256>::digits10);
+    std::cout << std::setprecision(std::numeric_limits<fqd>::digits10);
     std::cout << "parsed: " << parsed << "\n\n";
 
     constexpr std::string_view packet = "6.02214076e23 mol";
-    f256 scanned{};
+    fqd scanned{};
     const auto scan = bl::from_chars(packet.data(), packet.data() + packet.size(), scanned);
 
     std::cout << "scanned prefix: " << scanned << "\n";
@@ -68,7 +68,7 @@ int main()
               << std::string_view{ scan.ptr, static_cast<std::size_t>(packet.data() + packet.size() - scan.ptr) }
               << "\n\n";
 
-    const auto strict = bl::try_parse<f256>(packet);
+    const auto strict = bl::try_parse<fqd>(packet);
     std::cout << "try_parse whole packet status: " << errc_name(strict.ec) << "\n";
     std::cout << "try_parse consumed chars: " << strict.consumed << "\n";
 }

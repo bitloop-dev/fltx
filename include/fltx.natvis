@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
 
-  <Type Name="bl::f128">
+  <Type Name="bl::fdd">
     <DisplayString Condition="lo == 0">{hi}</DisplayString>
     <DisplayString Condition="lo != 0">{hi}…</DisplayString>
     <Expand>
@@ -10,7 +10,7 @@
     </Expand>
   </Type>
 
-  <Type Name="bl::f128_s">
+  <Type Name="bl::fdd_s">
     <DisplayString Condition="lo == 0">{hi}</DisplayString>
     <DisplayString Condition="lo != 0">{hi}…</DisplayString>
     <Expand>
@@ -19,7 +19,7 @@
     </Expand>
   </Type>
 
-  <Type Name="bl::f256">
+  <Type Name="bl::fqd">
     <DisplayString Condition="x1 == 0">{x0}</DisplayString>
     <DisplayString Condition="x1 != 0">{x0}…</DisplayString>
     <Expand>
@@ -30,7 +30,7 @@
     </Expand>
   </Type>
 
-  <Type Name="bl::f256_s">
+  <Type Name="bl::fqd_s">
     <DisplayString Condition="x1 == 0">{x0}</DisplayString>
     <DisplayString Condition="x1 != 0">{x0}…</DisplayString>
     <Expand>

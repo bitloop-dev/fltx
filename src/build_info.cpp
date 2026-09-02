@@ -9,7 +9,7 @@
 
 #include "fltx/detail/build_info.h"
 #include "fltx/detail/common_fp.h"
-#include "fltx/detail/f256_simd_config.h"
+#include "fltx/detail/fqd_simd_config.h"
 
 #if FLTX_X86_FMA_RUNTIME_CHECK
 #  if defined(_MSC_VER)
@@ -103,8 +103,8 @@ const bl::detail::compiled_build_info& bl::detail::library_build_info() noexcept
         .has_sse2 = FLTX_HAS_SSE2,
         .has_neon = FLTX_HAS_NEON,
         .has_wasm_simd = FLTX_HAS_WASM_SIMD,
-        .f256_simd_enabled = FLTX_F256_ENABLE_SIMD,
-        .f256_trig_simd_enabled = FLTX_F256_ENABLE_TRIG_SIMD,
+        .qd_simd_enabled = FLTX_FQD_ENABLE_SIMD,
+        .qd_trig_simd_enabled = FLTX_FQD_ENABLE_TRIG_SIMD,
         .simd_fma_two_prod = FLTX_SIMD_USE_FMA_TWO_PROD
     };
     return info;

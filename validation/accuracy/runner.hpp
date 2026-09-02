@@ -1490,7 +1490,7 @@ namespace fltx::tests::accuracy
                 operation == "acos";
             const std::string category =
                 info.id == "qdpp" &&
-                implementations::precision_name<Float> == "f128" &&
+                implementations::precision_name<Float> == "dd" &&
                 unsafe_ddreal_special
                     ? "No"
                     : probe().category();
@@ -1498,8 +1498,8 @@ namespace fltx::tests::accuracy
             #if defined(FLTX_FAST_MATH)
             const bool relaxed_basic_arithmetic =
                 info.id == "fltx" &&
-                (implementations::precision_name<Float> == "f128" ||
-                 implementations::precision_name<Float> == "f256") &&
+                (implementations::precision_name<Float> == "dd" ||
+                 implementations::precision_name<Float> == "qd") &&
                 (operation == "add" || operation == "subtract" ||
                  operation == "multiply" || operation == "divide");
             #else
@@ -1644,8 +1644,8 @@ namespace fltx::tests::accuracy
         std::unordered_map<std::string, std::string> signed_zero_support_;
     };
 
-    int run_f128(csv_writer& output, const options& settings);
-    int run_f256(csv_writer& output, const options& settings);
+    int run_dd(csv_writer& output, const options& settings);
+    int run_qd(csv_writer& output, const options& settings);
     int run_f32(csv_writer& output, const options& settings);
     int run_f64(csv_writer& output, const options& settings);
 }

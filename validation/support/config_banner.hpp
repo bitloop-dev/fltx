@@ -140,11 +140,11 @@ namespace fltx::tests::support
     !FLTX_TESTS_ENABLE_EXTERNAL_COMPARISONS || \
     (defined(FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH) && \
      FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH)
-        std::fprintf(stderr, "[implementations] f128=fltx f256=fltx\n");
+        std::fprintf(stderr, "[implementations] dd=fltx qd=fltx\n");
 #else
         std::fprintf(stderr,
-                     "[implementations] f128=fltx%s,cppdd%s "
-                     "f256=fltx%s,mpfr64%s\n",
+                     "[implementations] dd=fltx%s,cppdd%s "
+                     "qd=fltx%s,mpfr64%s\n",
                      FLTX_METRICS_QDPP_ENABLED ? ",qdpp" : "", FLTX_METRICS_HAS_TLFLOAT ? ",tlfloat" : "",
                      FLTX_METRICS_QDPP_ENABLED ? ",qdpp" : "", FLTX_METRICS_HAS_TLFLOAT ? ",tlfloat" : "");
 #endif
@@ -185,11 +185,11 @@ namespace fltx::tests::support
         std::fprintf(stderr,
                      "[fltx lib strategy] compiled-x86-backend=%d runtime-check=%d "
                      "msvc-guarded=%d scalar-x86=%d baseline-arm64=%d runtime-path=%d "
-                     "sse2=%d neon=%d wasm-simd=%d f256-simd=%d trig-simd=%d\n",
+                     "sse2=%d neon=%d wasm-simd=%d qd-simd=%d trig-simd=%d\n",
                      library.compiled_x86_fma_backend, library.x86_fma_runtime_check,
                      library.msvc_guarded_x86_fma, library.scalar_x86_fma,
                      library.baseline_arm64_fma, library.has_runtime_fma_path, library.has_sse2,
-                     library.has_neon, library.has_wasm_simd, library.f256_simd_enabled,
-                     library.f256_trig_simd_enabled);
+                     library.has_neon, library.has_wasm_simd, library.qd_simd_enabled,
+                     library.qd_trig_simd_enabled);
     }
 } // namespace fltx::tests::support

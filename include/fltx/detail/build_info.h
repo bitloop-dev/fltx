@@ -45,8 +45,8 @@ namespace bl::detail
         bool has_sse2;
         bool has_neon;
         bool has_wasm_simd;
-        bool f256_simd_enabled;
-        bool f256_trig_simd_enabled;
+        bool qd_simd_enabled;
+        bool qd_trig_simd_enabled;
         bool simd_fma_two_prod;
     };
 

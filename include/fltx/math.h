@@ -1,5 +1,5 @@
 /**
- * fltx/math.h - constexpr <cmath>-style overloads.
+ * fltx/math.h - constexpr math functions for all supported floating-point types.
  *
  * Copyright (c) 2026 William Hemsworth
  *
@@ -11,9 +11,8 @@
 #define FLTX_MATH_INCLUDED
 
 #include "fltx/core.h"
-#include "fltx/f64_math.h"
-#include "fltx/f32_math.h"
-#include "fltx/f128_math.h"
-#include "fltx/f256_math.h"
+#include "fltx/native_math.h"
+#include "fltx/fdd_math.h"
+#include "fltx/fqd_math.h"
 
 #endif

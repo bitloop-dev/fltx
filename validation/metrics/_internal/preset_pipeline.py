@@ -45,7 +45,6 @@ DEFAULT_WORKFLOW = "standard"
 @dataclass(frozen=True)
 class MetricsWorkflow:
     sample_mode: str
-    canonical_publication: bool = False
 
 
 @dataclass(frozen=True)
@@ -58,7 +57,6 @@ METRICS_WORKFLOWS = {
     "quick": MetricsWorkflow("small"),
     "standard": MetricsWorkflow("standard"),
     "full": MetricsWorkflow("full"),
-    "release": MetricsWorkflow("full", canonical_publication=True),
 }
 
 
@@ -220,6 +218,8 @@ def metrics_paths(
     root: Path,
     workflow: str,
     output_root: Path | None = None,
+    *,
+    publish: bool = False,
 ) -> MetricsPaths:
     policy = METRICS_WORKFLOWS.get(workflow)
     if policy is None:
@@ -230,9 +230,9 @@ def metrics_paths(
         data=metrics / "data",
         generated=metrics / "generated",
     )
-    if policy.canonical_publication:
+    if publish:
         if output_root is not None:
-            raise PipelineError("--release cannot be combined with --output-root")
+            raise PipelineError("--publish cannot be combined with --output-root")
         return canonical
 
     selected = (
@@ -245,7 +245,7 @@ def metrics_paths(
         generated=selected / "generated",
     )
     if paths == canonical:
-        raise PipelineError("canonical metrics output requires --release")
+        raise PipelineError("canonical metrics output requires --publish")
     return paths
 
 
@@ -254,6 +254,8 @@ def existing_runner_artifacts(
     selection: PresetSelection,
     sample_mode: str,
     environment: Mapping[str, str] | None = None,
+    *,
+    publish: bool = False,
 ) -> dict[str, Path] | None:
     """Return source-current runner artifacts without invoking CMake."""
 
@@ -274,6 +276,7 @@ def existing_runner_artifacts(
                     sample_mode=sample_mode,
                     consumer_mode=consumer_mode,
                     environment=environment,
+                    canonical_publication=publish,
                 )
             )
         if len(identities) != 1:
@@ -304,6 +307,7 @@ def run_pipeline(
     *,
     workflow: str = DEFAULT_WORKFLOW,
     output_root: Path | None = None,
+    publish: bool = False,
     force_rerun: bool = False,
     consumer_mode: str = "strict",
 ) -> list[Path]:
@@ -318,7 +322,12 @@ def run_pipeline(
     if policy is None:
         raise PipelineError(f"unsupported metrics workflow {workflow!r}")
     selected_sample_mode = policy.sample_mode
-    selected_paths = metrics_paths(root, workflow, output_root)
+    selected_paths = metrics_paths(
+        root,
+        workflow,
+        output_root,
+        publish=publish,
+    )
     selection = resolve_preset(root, preset)
     environment = selection.environment
     artifacts = existing_runner_artifacts(
@@ -326,6 +335,7 @@ def run_pipeline(
         selection,
         selected_sample_mode,
         environment,
+        publish=publish,
     )
     if artifacts is None:
         cmake_environment: Mapping[str, str] | None = None
@@ -411,7 +421,7 @@ def run_pipeline(
                 str(selected_paths.data),
                 *(
                     ["--canonical-publication"]
-                    if policy.canonical_publication
+                    if publish
                     else []
                 ),
                 "--result-file",
@@ -624,7 +634,7 @@ def add_workflow_arguments(parser: argparse.ArgumentParser) -> None:
         action="store_const",
         const="quick",
         dest="workflow",
-        help="run the half-sized small profile without publishing",
+        help="run the half-sized small profile",
     )
     modes.add_argument(
         "--standard",
@@ -638,26 +648,24 @@ def add_workflow_arguments(parser: argparse.ArgumentParser) -> None:
         action="store_const",
         const="full",
         dest="workflow",
-        help="run the full profile without publishing",
-    )
-    modes.add_argument(
-        "--release",
-        action="store_const",
-        const="release",
-        dest="workflow",
-        help=(
-            "publish the full canonical metrics profile; this flag takes no "
-            "value and cannot be combined with --output-root"
-        ),
+        help="run the full profile",
     )
     parser.set_defaults(workflow=DEFAULT_WORKFLOW)
+    parser.add_argument(
+        "--publish",
+        action="store_true",
+        help=(
+            "publish the selected profile to validation/metrics/data and "
+            "validation/metrics/generated; cannot be combined with --output-root"
+        ),
+    )
     parser.add_argument(
         "--output-root",
         type=Path,
         metavar="PATH",
         help=(
             "development metrics root; data and generated directories are "
-            "created below PATH (not allowed with --release)"
+            "created below PATH (not allowed with --publish)"
         ),
     )
     parser.add_argument(
@@ -704,6 +712,7 @@ def run_pipeline_from_args(
         preset,
         workflow=args.workflow,
         output_root=args.output_root,
+        publish=args.publish,
         force_rerun=args.force_rerun,
         consumer_mode=args.consumer_mode,
     )

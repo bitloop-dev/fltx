@@ -99,6 +99,7 @@ def _normalized_metadata(metadata: dict[str, object]) -> dict[str, object]:
     if not isinstance(consumer, dict):
         raise MetricsError("comparison metadata has invalid consumer configuration")
     consumer.pop("fast-math", None)
+    configuration.pop("harness", None)
     return normalized
 
 
@@ -553,7 +554,10 @@ def render_comparison(
     add_text(
         overview.MARGIN,
         23,
-        f"{precision} strict vs consumer fast-math \u2014 {target.label}",
+        (
+            f"{overview.PRECISION_TYPE_NAMES[precision]} strict vs consumer "
+            f"fast-math \u2014 {target.label}"
+        ),
         anchor="start",
         weight="bold",
         size=15,
@@ -595,7 +599,7 @@ def render_comparison(
     add_text(
         block_x + block_width / 2,
         header_y + 16,
-        f"bl::{precision}",
+        f"bl::{overview.PRECISION_TYPE_NAMES[precision]}",
         weight="bold",
         fill="#ffffff",
         size=10,

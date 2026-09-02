@@ -132,8 +132,8 @@ _COMPARISON_ACCURACY = frozenset({
 EXPECTED_ACCURACY = {
     "f32": _NATIVE_ACCURACY - _NATIVE_EXCLUDED_ACCURACY,
     "f64": _NATIVE_ACCURACY - _NATIVE_EXCLUDED_ACCURACY,
-    "f128": _ALL_ACCURACY | _COMPARISON_ACCURACY,
-    "f256": _ALL_ACCURACY | _COMPARISON_ACCURACY,
+    "dd": _ALL_ACCURACY | _COMPARISON_ACCURACY,
+    "qd": _ALL_ACCURACY | _COMPARISON_ACCURACY,
 }
 
 _BENCHMARK_OPERATIONS = frozenset({
@@ -177,7 +177,7 @@ _BENCHMARK_OPERATIONS = frozenset({
 
 EXPECTED_BENCHMARK = {
     precision: _BENCHMARK_OPERATIONS
-    for precision in ("f128", "f256")
+    for precision in ("dd", "qd")
 }
 
 _NO_QDPP = frozenset({
@@ -211,16 +211,16 @@ _TLFLOAT_UNAVAILABLE = frozenset({
 })
 
 IMPLEMENTATIONS = {
-    "f128": (
-        Implementation("fltx", "fltx", "fltx bl::f128", 106.0),
+    "dd": (
+        Implementation("fltx", "fltx", "fltx bl::fdd", 106.0),
         Implementation("qdpp", "ddreal", "qdpp dd_real", 106.0),
         Implementation(
             "cppdd", "cppdd", "boost::multiprecision::cpp_double_double", 106.0,
         ),
         Implementation("tlfloat", "tlquad", "TLFloat Quad", 113.0),
     ),
-    "f256": (
-        Implementation("fltx", "fltx", "fltx bl::f256", 212.0),
+    "qd": (
+        Implementation("fltx", "fltx", "fltx bl::fqd", 212.0),
         Implementation("qdpp", "qdreal", "qdpp qd_real", 212.0),
         Implementation(
             "mpfr64", "mpfr64",
@@ -247,7 +247,7 @@ def benchmark_manifest(
     precision: str, *, qdpp: bool, tlfloat: bool,
 ) -> dict[str, frozenset[Operation]]:
     qd_missing = set(_NO_QDPP)
-    if precision == "f128":
+    if precision == "dd":
         qd_missing.update({("floating_point_utilities", "fmin"), ("floating_point_utilities", "fmax")})
     return {
         implementation.id: (
@@ -296,7 +296,7 @@ def api_name(
             ("io", "to_chars"): "qdpp write",
             ("io", "parse"): "qdpp read",
             ("random", "uniform_real"):
-                "qdpp ddrand" if precision == "f128" else "qdpp qdrand",
+                "qdpp ddrand" if precision == "dd" else "qdpp qdrand",
             ("floating_point_utilities", "recip"): "qdpp inv",
             ("roots_and_powers", "sqr"): "qdpp sqr",
         }
@@ -340,20 +340,20 @@ def api_name(
     return special.get((group, operation), f"{boost}::{operation}")
 
 
-assert len(EXPECTED_BENCHMARK["f128"]) == 85
+assert len(EXPECTED_BENCHMARK["dd"]) == 85
 assert len(EXPECTED_ACCURACY["f32"]) == 119
 assert len(EXPECTED_ACCURACY["f64"]) == 119
 _ALL = {"qdpp": True, "tlfloat": True}
-assert len(benchmark_manifest("f128", **_ALL)["qdpp"]) == 60
-assert len(benchmark_manifest("f256", **_ALL)["qdpp"]) == 62
-assert len(benchmark_manifest("f128", **_ALL)["cppdd"]) == 75
-assert len(benchmark_manifest("f256", **_ALL)["mpfr64"]) == 75
-assert len(benchmark_manifest("f128", **_ALL)["tlfloat"]) == 71
-assert len(benchmark_manifest("f256", **_ALL)["tlfloat"]) == 71
-assert len(accuracy_manifest("f128", **_ALL)["fltx"]) == 127
-assert len(accuracy_manifest("f128", **_ALL)["qdpp"]) == 91
-assert len(accuracy_manifest("f256", **_ALL)["qdpp"]) == 95
-assert len(accuracy_manifest("f128", **_ALL)["cppdd"]) == 118
-assert len(accuracy_manifest("f256", **_ALL)["mpfr64"]) == 118
-assert len(accuracy_manifest("f128", **_ALL)["tlfloat"]) == 111
-assert len(accuracy_manifest("f256", **_ALL)["tlfloat"]) == 111
+assert len(benchmark_manifest("dd", **_ALL)["qdpp"]) == 60
+assert len(benchmark_manifest("qd", **_ALL)["qdpp"]) == 62
+assert len(benchmark_manifest("dd", **_ALL)["cppdd"]) == 75
+assert len(benchmark_manifest("qd", **_ALL)["mpfr64"]) == 75
+assert len(benchmark_manifest("dd", **_ALL)["tlfloat"]) == 71
+assert len(benchmark_manifest("qd", **_ALL)["tlfloat"]) == 71
+assert len(accuracy_manifest("dd", **_ALL)["fltx"]) == 127
+assert len(accuracy_manifest("dd", **_ALL)["qdpp"]) == 91
+assert len(accuracy_manifest("qd", **_ALL)["qdpp"]) == 95
+assert len(accuracy_manifest("dd", **_ALL)["cppdd"]) == 118
+assert len(accuracy_manifest("qd", **_ALL)["mpfr64"]) == 118
+assert len(accuracy_manifest("dd", **_ALL)["tlfloat"]) == 111
+assert len(accuracy_manifest("qd", **_ALL)["tlfloat"]) == 111

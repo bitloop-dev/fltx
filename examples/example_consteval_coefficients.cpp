@@ -42,7 +42,7 @@ constexpr T sum_values(const std::array<T, N>& values)
 
 int main()
 {
-    using T = f256;
+    using T = fqd;
 
     constexpr auto kernel = gaussian_kernel<4>( bl::parse<T>("1.25") );
     constexpr T kernel_sum = sum_values(kernel);

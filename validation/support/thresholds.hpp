@@ -9,8 +9,8 @@ namespace fltx::tests::thresholds
     {
         f32,
         f64,
-        f128,
-        f256
+        fdd,
+        fqd
     };
 
     [[nodiscard]] constexpr double target_bits(precision value) noexcept
@@ -19,7 +19,7 @@ namespace fltx::tests::thresholds
             return 24.0;
         if (value == precision::f64)
             return 53.0;
-        return value == precision::f128 ? 106.0 : 212.0;
+        return value == precision::fdd ? 106.0 : 212.0;
     }
 
     [[nodiscard]] constexpr double required(
@@ -40,9 +40,9 @@ namespace fltx::tests::thresholds
             return 48.0;
         }
 
-        const bool f128 = value == precision::f128;
-        const double arithmetic = f128 ? 90.0 : 190.0;
-        const double transcendental = f128 ? 80.0 : 180.0;
+        const bool fdd = value == precision::fdd;
+        const double arithmetic = fdd ? 90.0 : 190.0;
+        const double transcendental = fdd ? 80.0 : 180.0;
 
         if (operation == "parse")
             return target_bits(value);
@@ -50,7 +50,7 @@ namespace fltx::tests::thresholds
         if (domain == "argument_reduction")
         {
             if (operation == "tan")
-                return f128 ? 75.0 : 170.0;
+                return fdd ? 75.0 : 170.0;
             return transcendental;
         }
         if (domain == "cancellation")
@@ -62,7 +62,7 @@ namespace fltx::tests::thresholds
         if (domain == "boundary")
             return transcendental;
         if (operation == "tan")
-            return f128 ? 75.0 : 170.0;
+            return fdd ? 75.0 : 170.0;
         if (operation == "sin" || operation == "cos" ||
             operation == "atan" || operation == "atan2" ||
             operation == "asin" || operation == "acos" ||

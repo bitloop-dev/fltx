@@ -10,7 +10,7 @@
 #ifndef FLTX_LIMITS_INCLUDED
 #define FLTX_LIMITS_INCLUDED
 
-#include "fltx/f128_limits.h"
-#include "fltx/f256_limits.h"
+#include "fltx/fdd_limits.h"
+#include "fltx/fqd_limits.h"
 
 #endif

@@ -266,9 +266,9 @@ function(fltx_configure_internal_target _TARGET)
     if(NOT FLTX_SIMD)
         target_compile_definitions(${_TARGET} PRIVATE
             FLTX_HEADER_SIMD_OFF=1
-            FLTX_F128_ENABLE_SIMD=0
-            FLTX_F256_ENABLE_SIMD=0
-            FLTX_F256_ENABLE_TRIG_SIMD=0
+            FLTX_FDD_ENABLE_SIMD=0
+            FLTX_FQD_ENABLE_SIMD=0
+            FLTX_FQD_ENABLE_TRIG_SIMD=0
         )
     endif()
 

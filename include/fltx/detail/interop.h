@@ -7,100 +7,100 @@
  * See LICENSE for details.
  */
 
-// This header is intentionally multi-pass. fltx/f128.h and fltx/f256.h both include it
+// This header is intentionally multi-pass. fltx/fdd.h and fltx/fqd.h both include it
 // at the end; the interop bodies are emitted only after both types are complete.
 
-#if defined(F128_INCLUDED) && defined(F256_INCLUDED) && !defined(FLTX_INTEROP_INCLUDED)
+#if defined(FDD_INCLUDED) && defined(FQD_INCLUDED) && !defined(FLTX_INTEROP_INCLUDED)
 #define FLTX_INTEROP_INCLUDED
 
 namespace bl
 {
-    BL_FORCE_INLINE constexpr f256_s::operator f128_s() const noexcept { return f128_s{ x0, x1 }; }
-    BL_FORCE_INLINE constexpr f256_s::operator f128() const noexcept { return f128_s{ x0, x1 }; }
-    BL_FORCE_INLINE constexpr f128_s::operator f256_s() const noexcept { return f256_s{ hi, lo }; }
+    BL_FORCE_INLINE constexpr fqd_s::operator fdd_s() const noexcept { return fdd_s{ x0, x1 }; }
+    BL_FORCE_INLINE constexpr fqd_s::operator fdd() const noexcept { return fdd_s{ x0, x1 }; }
+    BL_FORCE_INLINE constexpr fdd_s::operator fqd_s() const noexcept { return fqd_s{ hi, lo }; }
 
-    BL_FORCE_INLINE constexpr f128::operator f256_s() const noexcept { return f256_s{ hi, lo }; }
-    BL_FORCE_INLINE constexpr f128::operator f256() const noexcept { return f256_s{ hi, lo }; }
+    BL_FORCE_INLINE constexpr fdd::operator fqd_s() const noexcept { return fqd_s{ hi, lo }; }
+    BL_FORCE_INLINE constexpr fdd::operator fqd() const noexcept { return fqd_s{ hi, lo }; }
 
-    BL_FORCE_INLINE constexpr f256::operator f128_s() const noexcept { return f128_s{ x0, x1 }; }
-    BL_FORCE_INLINE constexpr f256::operator f128() const noexcept { return f128_s{ x0, x1 }; }
+    BL_FORCE_INLINE constexpr fqd::operator fdd_s() const noexcept { return fdd_s{ x0, x1 }; }
+    BL_FORCE_INLINE constexpr fqd::operator fdd() const noexcept { return fdd_s{ x0, x1 }; }
 
-    BL_FORCE_INLINE constexpr f256::f256(f128_s x) noexcept
+    BL_FORCE_INLINE constexpr fqd::fqd(fdd_s x) noexcept
     {
         x0 = x.hi; x1 = x.lo; x2 = 0.0; x3 = 0.0;
     }
 
-    BL_FORCE_INLINE constexpr f128_s& f128_s::operator=(f256_s x) noexcept
+    BL_FORCE_INLINE constexpr fdd_s& fdd_s::operator=(fqd_s x) noexcept
     {
         hi = x.x0; lo = x.x1;
         return *this;
     }
 
-    BL_FORCE_INLINE constexpr f256_s& f256_s::operator=(f128_s x) noexcept
+    BL_FORCE_INLINE constexpr fqd_s& fqd_s::operator=(fdd_s x) noexcept
     {
         x0 = x.hi; x1 = x.lo; x2 = 0.0; x3 = 0.0;
         return *this;
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s operator+(const f256_s& a, const f128_s& b) noexcept
+    [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s operator+(const fqd_s& a, const fdd_s& b) noexcept
     {
-        return detail::_f256::add_dd(a, detail::_f256::dd_scalar{ b.hi, b.lo });
+        return detail::_qd::add_dd(a, detail::_qd::dd_scalar{ b.hi, b.lo });
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s operator-(const f256_s& a, const f128_s& b) noexcept
+    [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s operator-(const fqd_s& a, const fdd_s& b) noexcept
     {
-        return detail::_f256::sub_dd(a, detail::_f256::dd_scalar{ b.hi, b.lo });
+        return detail::_qd::sub_dd(a, detail::_qd::dd_scalar{ b.hi, b.lo });
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s operator*(const f256_s& a, const f128_s& b) noexcept
+    [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s operator*(const fqd_s& a, const fdd_s& b) noexcept
     {
-        return detail::_f256::mul_dd(a, detail::_f256::dd_scalar{ b.hi, b.lo });
+        return detail::_qd::mul_dd(a, detail::_qd::dd_scalar{ b.hi, b.lo });
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s operator/(const f256_s& a, const f128_s& b) noexcept
+    [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s operator/(const fqd_s& a, const fdd_s& b) noexcept
     {
-        return detail::_f256::div_dd(a, detail::_f256::dd_scalar{ b.hi, b.lo });
+        return detail::_qd::div_dd(a, detail::_qd::dd_scalar{ b.hi, b.lo });
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s operator+(const f128_s& a, const f256_s& b) noexcept
+    [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s operator+(const fdd_s& a, const fqd_s& b) noexcept
     {
-        return detail::_f256::add_dd(b, detail::_f256::dd_scalar{ a.hi, a.lo });
+        return detail::_qd::add_dd(b, detail::_qd::dd_scalar{ a.hi, a.lo });
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s operator-(const f128_s& a, const f256_s& b) noexcept
+    [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s operator-(const fdd_s& a, const fqd_s& b) noexcept
     {
-        return detail::_f256::sub_dd(detail::_f256::dd_scalar{ a.hi, a.lo }, b);
+        return detail::_qd::sub_dd(detail::_qd::dd_scalar{ a.hi, a.lo }, b);
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s operator*(const f128_s& a, const f256_s& b) noexcept
+    [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s operator*(const fdd_s& a, const fqd_s& b) noexcept
     {
-        return detail::_f256::mul_dd(b, detail::_f256::dd_scalar{ a.hi, a.lo });
+        return detail::_qd::mul_dd(b, detail::_qd::dd_scalar{ a.hi, a.lo });
     }
 
-    [[nodiscard]] BL_FORCE_INLINE constexpr f256_s operator/(const f128_s& a, const f256_s& b) noexcept
+    [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s operator/(const fdd_s& a, const fqd_s& b) noexcept
     {
-        return detail::_f256::div_dd(detail::_f256::dd_scalar{ a.hi, a.lo }, b);
+        return detail::_qd::div_dd(detail::_qd::dd_scalar{ a.hi, a.lo }, b);
     }
 
-    BL_FORCE_INLINE constexpr f256_s& f256_s::operator+=(const f128_s& rhs) noexcept
+    BL_FORCE_INLINE constexpr fqd_s& fqd_s::operator+=(const fdd_s& rhs) noexcept
     {
         *this = *this + rhs;
         return *this;
     }
 
-    BL_FORCE_INLINE constexpr f256_s& f256_s::operator-=(const f128_s& rhs) noexcept
+    BL_FORCE_INLINE constexpr fqd_s& fqd_s::operator-=(const fdd_s& rhs) noexcept
     {
         *this = *this - rhs;
         return *this;
     }
 
-    BL_FORCE_INLINE constexpr f256_s& f256_s::operator*=(const f128_s& rhs) noexcept
+    BL_FORCE_INLINE constexpr fqd_s& fqd_s::operator*=(const fdd_s& rhs) noexcept
     {
         *this = *this * rhs;
         return *this;
     }
 
-    BL_FORCE_INLINE constexpr f256_s& f256_s::operator/=(const f128_s& rhs) noexcept
+    BL_FORCE_INLINE constexpr fqd_s& fqd_s::operator/=(const fdd_s& rhs) noexcept
     {
         *this = *this / rhs;
         return *this;

@@ -2,8 +2,8 @@
 
 set(FLTX_ACCURACY_SOURCE_FILE_PATHS
     "${FLTX_VALIDATION_SOURCE_DIR}/accuracy/main.cpp"
-    "${FLTX_VALIDATION_SOURCE_DIR}/accuracy/f128.cpp"
-    "${FLTX_VALIDATION_SOURCE_DIR}/accuracy/f256.cpp"
+    "${FLTX_VALIDATION_SOURCE_DIR}/accuracy/fdd.cpp"
+    "${FLTX_VALIDATION_SOURCE_DIR}/accuracy/fqd.cpp"
     "${FLTX_VALIDATION_SOURCE_DIR}/accuracy/native.cpp"
 )
 
@@ -324,7 +324,7 @@ if(BUILD_TESTING)
         )
     endfunction()
 
-    foreach(precision f32 f64 f128 f256)
+    foreach(precision f32 f64 dd qd)
         set(FLTX_SIMULATED_FASTMATH_SMOKE_POLICY)
         if(precision STREQUAL "f32" OR precision STREQUAL "f64")
             set(FLTX_SIMULATED_FASTMATH_SMOKE_POLICY --advisory)
@@ -380,7 +380,7 @@ if(BUILD_TESTING)
         )
     endfunction()
 
-    foreach(precision f128 f256)
+    foreach(precision dd qd)
         fltx_tests_add_benchmark_smoke(
             fltx_benchmark
             fltx.benchmark

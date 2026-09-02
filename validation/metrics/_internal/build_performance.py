@@ -38,10 +38,10 @@ from run_metrics import (
 )
 
 
-PRECISIONS = ("f128", "f256")
-PRECISION_LABELS = {"f128": "bl::f128", "f256": "bl::f256"}
+PRECISIONS = ("dd", "qd")
+PRECISION_LABELS = {"dd": "bl::fdd", "qd": "bl::fqd"}
 CANONICAL_FILE_RE = re.compile(
-    r"(?P<compiler>.+)_(?P<precision>f128|f256)"
+    r"(?P<compiler>.+)_(?P<precision>dd|qd)"
     r"(?P<consumer_suffix>_fastmath)?\.csv$",
     re.IGNORECASE,
 )
@@ -50,7 +50,7 @@ PLATFORM_ORDER = {
     "windows": 0,
     "linux": 1,
     "macos": 2,
-    "wasm32": 3,
+    "webassembly": 3,
 }
 COMPILER_ORDER = {
     "msvc": 0,

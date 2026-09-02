@@ -30,10 +30,10 @@ namespace fltx::tests::accuracy::trig_domains
 
         static const real half_pi =
             boost::math::constants::pi<real>() / 2;
-        static constexpr std::array<int, 3> f128_offset_bits{
+        static constexpr std::array<int, 3> dd_offset_bits{
             64, 82, 100
         };
-        static constexpr std::array<int, 4> f256_offset_bits{
+        static constexpr std::array<int, 4> qd_offset_bits{
             64, 118, 172, 204
         };
 
@@ -53,9 +53,9 @@ namespace fltx::tests::accuracy::trig_domains
         {
             const real anchor = multiplier * half_pi;
             constexpr int deepest_offset =
-                std::is_same_v<Float, bl::f128>
-                ? f128_offset_bits.back()
-                : f256_offset_bits.back();
+                std::is_same_v<Float, bl::fdd>
+                ? dd_offset_bits.back()
+                : qd_offset_bits.back();
             const real delta = perturbation(anchor, deepest_offset);
             sample below = converted(anchor - delta, "below " + label);
             sample nearest = converted(anchor, "nearest " + label);
@@ -131,15 +131,15 @@ namespace fltx::tests::accuracy::trig_domains
                 multiplier = -multiplier;
 
             int offset_bits;
-            if constexpr (std::is_same_v<Float, bl::f128>)
+            if constexpr (std::is_same_v<Float, bl::fdd>)
             {
                 offset_bits =
-                    f128_offset_bits[index % f128_offset_bits.size()];
+                    dd_offset_bits[index % dd_offset_bits.size()];
             }
             else
             {
                 offset_bits =
-                    f256_offset_bits[index % f256_offset_bits.size()];
+                    qd_offset_bits[index % qd_offset_bits.size()];
             }
 
             const real anchor = multiplier * half_pi;

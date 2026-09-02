@@ -63,7 +63,7 @@ namespace
             else if (argument == "--help")
             {
                 std::cout
-                    << "fltx_benchmark --precision f128|f256 --output FILE "
+                    << "fltx_benchmark --precision dd|qd --output FILE "
                        "--run-id ID --source-revision REV "
                        "[--sample-mode smoke|small|standard|full] [--samples N] "
                        "[--trials N (maximum for small/standard)] "
@@ -75,8 +75,8 @@ namespace
                 throw std::runtime_error("unknown argument: " + argument);
         }
 
-        if (out.precision != "f128" && out.precision != "f256")
-            throw std::runtime_error("--precision must be f128 or f256");
+        if (out.precision != "dd" && out.precision != "qd")
+            throw std::runtime_error("--precision must be dd or qd");
         if (sample_mode_set)
         {
             if (!samples_set)
@@ -84,11 +84,11 @@ namespace
                 if (out.sample_mode == "smoke")
                     out.samples = 12;
                 else if (out.sample_mode == "small")
-                    out.samples = out.precision == "f128" ? 4096 : 2048;
+                    out.samples = out.precision == "dd" ? 4096 : 2048;
                 else if (out.sample_mode == "standard")
-                    out.samples = out.precision == "f128" ? 8192 : 4096;
+                    out.samples = out.precision == "dd" ? 8192 : 4096;
                 else
-                    out.samples = out.precision == "f128" ? 81920 : 40960;
+                    out.samples = out.precision == "dd" ? 81920 : 40960;
             }
             if (!trials_set)
                 out.trials = out.sample_mode == "smoke" ? 3 : 7;
@@ -162,15 +162,15 @@ int main(int argc, char** argv)
         });
         const std::size_t first_result_row = output.rows_written();
 
-        if (settings.precision == "f128")
+        if (settings.precision == "dd")
         {
-            fltx::tests::benchmark::run_operations_f128(output, settings);
-            fltx::tests::benchmark::run_workloads_f128(output, settings);
+            fltx::tests::benchmark::run_operations_dd(output, settings);
+            fltx::tests::benchmark::run_workloads_dd(output, settings);
         }
         else
         {
-            fltx::tests::benchmark::run_operations_f256(output, settings);
-            fltx::tests::benchmark::run_workloads_f256(output, settings);
+            fltx::tests::benchmark::run_operations_qd(output, settings);
+            fltx::tests::benchmark::run_workloads_qd(output, settings);
         }
 
         const std::size_t result_rows = output.rows_written() - first_result_row;

@@ -1,5 +1,5 @@
 /**
- * fltx/f64_math.h - constexpr <cmath>-style functions for f64.
+ * fltx/f64_math.h - constexpr counterparts to selected <cmath> functions for f64.
  *
  * Copyright (c) 2026 William Hemsworth
  *

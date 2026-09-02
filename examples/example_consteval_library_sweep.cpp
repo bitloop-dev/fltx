@@ -190,221 +190,207 @@ consteval f64 f64_test()
     return scalar_sum;
 }
 
-consteval f128 f128_test()
+consteval fdd fdd_test()
 {
-    constexpr f128 abs_result = bl::abs(-0.123_dd);
-    constexpr f128 fma_result = bl::fma(0.123_dd, 4.56_dd, -0.75_dd);
+    constexpr fdd abs_result = bl::abs(-0.123_dd);
+    constexpr fdd fma_result = bl::fma(0.123_dd, 4.56_dd, -0.75_dd);
                                       
-    constexpr f128 floor_result     = bl::floor(2.75_dd);
-    constexpr f128 ceil_result      = bl::ceil(2.25_dd);
-    constexpr f128 trunc_result     = bl::trunc(-2.75_dd);
-    constexpr f128 round_result     = bl::round(2.5_dd);
+    constexpr fdd floor_result     = bl::floor(2.75_dd);
+    constexpr fdd ceil_result      = bl::ceil(2.25_dd);
+    constexpr fdd trunc_result     = bl::trunc(-2.75_dd);
+    constexpr fdd round_result     = bl::round(2.5_dd);
     constexpr long lround_result    = bl::lround(2.5_dd);
     constexpr llong llround_result  = bl::llround(2.5_dd);
-    constexpr f128 roundeven_result = bl::roundeven(2.5_dd);
+    constexpr fdd roundeven_result = bl::roundeven(2.5_dd);
                                       
-    constexpr f128 fmod_result      = bl::fmod(5.5_dd, 2.0_dd);
-    constexpr f128 remainder_result = bl::remainder(5.5_dd, 2.0_dd);
-    constexpr f128 remquo_result1   = [] { int quo{}; return bl::remquo(5.5_dd, 2.0_dd, &quo); }();
+    constexpr fdd fmod_result      = bl::fmod(5.5_dd, 2.0_dd);
+    constexpr fdd remainder_result = bl::remainder(5.5_dd, 2.0_dd);
+    constexpr fdd remquo_result1   = [] { int quo{}; return bl::remquo(5.5_dd, 2.0_dd, &quo); }();
     constexpr int remquo_result2    = [] { int quo{}; (void)bl::remquo(5.5_dd, 2.0_dd, &quo); return quo; }();
                                       
-    constexpr f128 fmin_result     = bl::fmin(-0.25_dd, 0.5_dd);
-    constexpr f128 fmax_result     = bl::fmax(-0.25_dd, 0.5_dd);
-    constexpr f128 fdim_result     = bl::fdim(1.25_dd, 0.75_dd);
-    constexpr f128 copysign_result = bl::copysign(0.125_dd, -1.0_dd);
+    constexpr fdd fmin_result     = bl::fmin(-0.25_dd, 0.5_dd);
+    constexpr fdd fmax_result     = bl::fmax(-0.25_dd, 0.5_dd);
+    constexpr fdd fdim_result     = bl::fdim(1.25_dd, 0.75_dd);
+    constexpr fdd copysign_result = bl::copysign(0.125_dd, -1.0_dd);
                                       
-    constexpr f128 sqrt_result  = bl::sqrt(0.123_dd);
-    constexpr f128 cbrt_result  = bl::cbrt(0.123_dd);
-    constexpr f128 hypot_result = bl::hypot(0.3_dd, 0.4_dd);
-    constexpr f128 pow_result   = bl::pow(0.123_dd, 4.56_dd);
-    constexpr f128 pow10_result = bl::pow(10.0_dd, 2);
+    constexpr fdd sqrt_result  = bl::sqrt(0.123_dd);
+    constexpr fdd cbrt_result  = bl::cbrt(0.123_dd);
+    constexpr fdd hypot_result = bl::hypot(0.3_dd, 0.4_dd);
+    constexpr fdd pow_result   = bl::pow(0.123_dd, 4.56_dd);
+    constexpr fdd pow10_result = bl::pow(10.0_dd, 2);
                                       
-    constexpr f128 exp_result   = bl::exp(0.123_dd);
-    constexpr f128 exp2_result  = bl::exp2(0.123_dd);
-    constexpr f128 expm1_result = bl::expm1(0.123_dd);
-    constexpr f128 log_result   = bl::log(1.123_dd);
-    constexpr f128 log2_result  = bl::log2(1.123_dd);
-    constexpr f128 log10_result = bl::log10(1.123_dd);
-    constexpr f128 log1p_result = bl::log1p(0.123_dd);
-    constexpr f128 logb_result  = bl::logb(12.5_dd);
+    constexpr fdd exp_result   = bl::exp(0.123_dd);
+    constexpr fdd exp2_result  = bl::exp2(0.123_dd);
+    constexpr fdd expm1_result = bl::expm1(0.123_dd);
+    constexpr fdd log_result   = bl::log(1.123_dd);
+    constexpr fdd log2_result  = bl::log2(1.123_dd);
+    constexpr fdd log10_result = bl::log10(1.123_dd);
+    constexpr fdd log1p_result = bl::log1p(0.123_dd);
+    constexpr fdd logb_result  = bl::logb(12.5_dd);
     constexpr int ilogb_result  = bl::ilogb(12.5_dd);
                                       
-    constexpr f128 sin_result   = bl::sin(0.123_dd);
-    constexpr f128 cos_result   = bl::cos(0.123_dd);
-    constexpr f128 tan_result   = bl::tan(0.123_dd);
-    constexpr f128 asin_result  = bl::asin(0.123_dd);
-    constexpr f128 acos_result  = bl::acos(0.123_dd);
-    constexpr f128 atan_result  = bl::atan(0.123_dd);
-    constexpr f128 atan2_result = bl::atan2(0.123_dd, 0.456_dd);
+    constexpr fdd sin_result   = bl::sin(0.123_dd);
+    constexpr fdd cos_result   = bl::cos(0.123_dd);
+    constexpr fdd tan_result   = bl::tan(0.123_dd);
+    constexpr fdd asin_result  = bl::asin(0.123_dd);
+    constexpr fdd acos_result  = bl::acos(0.123_dd);
+    constexpr fdd atan_result  = bl::atan(0.123_dd);
+    constexpr fdd atan2_result = bl::atan2(0.123_dd, 0.456_dd);
                                       
-    constexpr f128 sinh_result  = bl::sinh(0.123_dd);
-    constexpr f128 cosh_result  = bl::cosh(0.123_dd);
-    constexpr f128 tanh_result  = bl::tanh(0.123_dd);
-    constexpr f128 asinh_result = bl::asinh(0.123_dd);
-    constexpr f128 acosh_result = bl::acosh(1.123_dd);
-    constexpr f128 atanh_result = bl::atanh(0.123_dd);
+    constexpr fdd sinh_result  = bl::sinh(0.123_dd);
+    constexpr fdd cosh_result  = bl::cosh(0.123_dd);
+    constexpr fdd tanh_result  = bl::tanh(0.123_dd);
+    constexpr fdd asinh_result = bl::asinh(0.123_dd);
+    constexpr fdd acosh_result = bl::acosh(1.123_dd);
+    constexpr fdd atanh_result = bl::atanh(0.123_dd);
                                       
-    constexpr f128 erf_result    = bl::erf(0.123_dd);
-    constexpr f128 erfc_result   = bl::erfc(0.123_dd);
-    constexpr f128 lgamma_result = bl::lgamma(1.123_dd);
-    constexpr f128 tgamma_result = bl::tgamma(1.123_dd);
+    constexpr fdd erf_result    = bl::erf(0.123_dd);
+    constexpr fdd erfc_result   = bl::erfc(0.123_dd);
+    constexpr fdd lgamma_result = bl::lgamma(1.123_dd);
+    constexpr fdd tgamma_result = bl::tgamma(1.123_dd);
                                       
-    constexpr f128 ldexp_result    = bl::ldexp(0.123_dd, 5);
-    constexpr f128 scalbn_result   = bl::scalbn(0.123_dd, 5);
-    constexpr f128 scalbln_result  = bl::scalbln(0.123_dd, 5L);
-    constexpr f128 frexp_result    = [] { int exp{}; return bl::frexp(12.5_dd, &exp); }();
+    constexpr fdd ldexp_result    = bl::ldexp(0.123_dd, 5);
+    constexpr fdd scalbn_result   = bl::scalbn(0.123_dd, 5);
+    constexpr fdd scalbln_result  = bl::scalbln(0.123_dd, 5L);
+    constexpr fdd frexp_result    = [] { int exp{}; return bl::frexp(12.5_dd, &exp); }();
     constexpr int frexp_exp_result = [] { int exp{}; (void)bl::frexp(12.5_dd, &exp); return exp; }();
-    constexpr f128 modf_result     = [] { f128 ip{}; return bl::modf(12.5_dd, &ip); }();
-    constexpr f128 modf_int_result = [] { f128 ip{}; (void)bl::modf(12.5_dd, &ip); return ip; }();
+    constexpr fdd modf_result     = [] { fdd ip{}; return bl::modf(12.5_dd, &ip); }();
+    constexpr fdd modf_int_result = [] { fdd ip{}; (void)bl::modf(12.5_dd, &ip); return ip; }();
 
-    constexpr f128 nextafter_result   = bl::nextafter(0.123_dd, 0.124_dd);
-    constexpr f128 nexttoward_result1 = bl::nexttoward(0.123_dd, 0.124L);
-    constexpr f128 nexttoward_result2 = bl::nexttoward(0.123_dd, 0.124_dd);
+    constexpr fdd nextafter_result   = bl::nextafter(0.123_dd, 0.124_dd);
+    constexpr fdd nexttoward_result1 = bl::nexttoward(0.123_dd, 0.124L);
+    constexpr fdd nexttoward_result2 = bl::nexttoward(0.123_dd, 0.124_dd);
 
-    constexpr f128 scalar_sum =
+    constexpr fdd scalar_sum =
         abs_result + fma_result
         + floor_result + ceil_result + trunc_result + round_result
-        + f128{ static_cast<double>(lround_result) } + f128{ static_cast<double>(llround_result) }
+        + fdd{ static_cast<double>(lround_result) } + fdd{ static_cast<double>(llround_result) }
         + roundeven_result
-        + fmod_result + remainder_result + remquo_result1 + f128{ static_cast<double>(remquo_result2) }
+        + fmod_result + remainder_result + remquo_result1 + fdd{ static_cast<double>(remquo_result2) }
         + fmin_result + fmax_result + fdim_result + copysign_result
         + sqrt_result + cbrt_result + hypot_result + pow_result + pow10_result
         + exp_result + exp2_result + expm1_result
-        + log_result + log2_result + log10_result + log1p_result + logb_result + f128{ static_cast<double>(ilogb_result) }
+        + log_result + log2_result + log10_result + log1p_result + logb_result + fdd{ static_cast<double>(ilogb_result) }
         + sin_result + cos_result + tan_result + asin_result + acos_result + atan_result + atan2_result
         + sinh_result + cosh_result + tanh_result + asinh_result + acosh_result + atanh_result
         + erf_result + erfc_result + lgamma_result + tgamma_result
         + ldexp_result + scalbn_result + scalbln_result
-        + frexp_result + f128{ static_cast<double>(frexp_exp_result) } + modf_result + modf_int_result
+        + frexp_result + fdd{ static_cast<double>(frexp_exp_result) } + modf_result + modf_int_result
         + nextafter_result + nexttoward_result1 + nexttoward_result2;
 
     return scalar_sum;
 }
 
-consteval f256 f256_test()
+consteval fqd fqd_test()
 {
-    constexpr f256 abs_result = bl::abs(-0.123_qd);
-    constexpr f256 fma_result = bl::fma(0.123_qd, 4.56_qd, -0.75_qd);
+    constexpr fqd abs_result = bl::abs(-0.123_qd);
+    constexpr fqd fma_result = bl::fma(0.123_qd, 4.56_qd, -0.75_qd);
 
-    constexpr f256 floor_result     = bl::floor(2.75_qd);
-    constexpr f256 ceil_result      = bl::ceil(2.25_qd);
-    constexpr f256 trunc_result     = bl::trunc(-2.75_qd);
-    constexpr f256 round_result     = bl::round(2.5_qd);
+    constexpr fqd floor_result     = bl::floor(2.75_qd);
+    constexpr fqd ceil_result      = bl::ceil(2.25_qd);
+    constexpr fqd trunc_result     = bl::trunc(-2.75_qd);
+    constexpr fqd round_result     = bl::round(2.5_qd);
     constexpr long lround_result    = bl::lround(2.5_qd);
     constexpr llong llround_result  = bl::llround(2.5_qd);
-    constexpr f256 roundeven_result = bl::roundeven(2.5_qd);
+    constexpr fqd roundeven_result = bl::roundeven(2.5_qd);
 
-    constexpr f256 fmod_result      = bl::fmod(5.5_qd, 2.0_qd);
-    constexpr f256 remainder_result = bl::remainder(5.5_qd, 2.0_qd);
-    constexpr f256 remquo_result1   = [] { int quo{}; return bl::remquo(5.5_qd, 2.0_qd, &quo); }();
+    constexpr fqd fmod_result      = bl::fmod(5.5_qd, 2.0_qd);
+    constexpr fqd remainder_result = bl::remainder(5.5_qd, 2.0_qd);
+    constexpr fqd remquo_result1   = [] { int quo{}; return bl::remquo(5.5_qd, 2.0_qd, &quo); }();
     constexpr int remquo_result2    = [] { int quo{}; (void)bl::remquo(5.5_qd, 2.0_qd, &quo); return quo; }();
 
-    constexpr f256 fmin_result     = bl::fmin(-0.25_qd, 0.5_qd);
-    constexpr f256 fmax_result     = bl::fmax(-0.25_qd, 0.5_qd);
-    constexpr f256 fdim_result     = bl::fdim(1.25_qd, 0.75_qd);
-    constexpr f256 copysign_result = bl::copysign(0.125_qd, -1.0_qd);
+    constexpr fqd fmin_result     = bl::fmin(-0.25_qd, 0.5_qd);
+    constexpr fqd fmax_result     = bl::fmax(-0.25_qd, 0.5_qd);
+    constexpr fqd fdim_result     = bl::fdim(1.25_qd, 0.75_qd);
+    constexpr fqd copysign_result = bl::copysign(0.125_qd, -1.0_qd);
                                       
-    constexpr f256 sqrt_result  = bl::sqrt(0.123_qd);
-    constexpr f256 cbrt_result  = bl::cbrt(0.123_qd);
-    constexpr f256 hypot_result = bl::hypot(0.3_qd, 0.4_qd);
-    constexpr f256 pow_result   = bl::pow(0.123_qd, 4.56_qd);
-    constexpr f256 pow10_result = bl::pow(10.0_qd, 2);
+    constexpr fqd sqrt_result  = bl::sqrt(0.123_qd);
+    constexpr fqd cbrt_result  = bl::cbrt(0.123_qd);
+    constexpr fqd hypot_result = bl::hypot(0.3_qd, 0.4_qd);
+    constexpr fqd pow_result   = bl::pow(0.123_qd, 4.56_qd);
+    constexpr fqd pow10_result = bl::pow(10.0_qd, 2);
                                       
-    constexpr f256 exp_result   = bl::exp(0.123_qd);
-    constexpr f256 exp2_result  = bl::exp2(0.123_qd);
-    constexpr f256 expm1_result = bl::expm1(0.123_qd);
-    constexpr f256 log_result   = bl::log(1.123_qd);
-    constexpr f256 log2_result  = bl::log2(1.123_qd);
-    constexpr f256 log10_result = bl::log10(1.123_qd);
-    constexpr f256 log1p_result = bl::log1p(0.123_qd);
-    constexpr f256 logb_result  = bl::logb(12.5_qd);
+    constexpr fqd exp_result   = bl::exp(0.123_qd);
+    constexpr fqd exp2_result  = bl::exp2(0.123_qd);
+    constexpr fqd expm1_result = bl::expm1(0.123_qd);
+    constexpr fqd log_result   = bl::log(1.123_qd);
+    constexpr fqd log2_result  = bl::log2(1.123_qd);
+    constexpr fqd log10_result = bl::log10(1.123_qd);
+    constexpr fqd log1p_result = bl::log1p(0.123_qd);
+    constexpr fqd logb_result  = bl::logb(12.5_qd);
     constexpr int ilogb_result  = bl::ilogb(12.5_qd);
                                            
-    constexpr f256 sin_result   = bl::sin(0.123_qd);
-    constexpr f256 cos_result   = bl::cos(0.123_qd);
-    constexpr f256 tan_result   = bl::tan(0.123_qd);
-    constexpr f256 asin_result  = bl::asin(0.123_qd);
-    constexpr f256 acos_result  = bl::acos(0.123_qd);
-    constexpr f256 atan_result  = bl::atan(0.123_qd);
-    constexpr f256 atan2_result = bl::atan2(0.123_qd, 0.456_qd);
+    constexpr fqd sin_result   = bl::sin(0.123_qd);
+    constexpr fqd cos_result   = bl::cos(0.123_qd);
+    constexpr fqd tan_result   = bl::tan(0.123_qd);
+    constexpr fqd asin_result  = bl::asin(0.123_qd);
+    constexpr fqd acos_result  = bl::acos(0.123_qd);
+    constexpr fqd atan_result  = bl::atan(0.123_qd);
+    constexpr fqd atan2_result = bl::atan2(0.123_qd, 0.456_qd);
                                            
-    constexpr f256 sinh_result  = bl::sinh(0.123_qd);
-    constexpr f256 cosh_result  = bl::cosh(0.123_qd);
-    constexpr f256 tanh_result  = bl::tanh(0.123_qd);
-    constexpr f256 asinh_result = bl::asinh(0.123_qd);
-    constexpr f256 acosh_result = bl::acosh(1.123_qd);
-    constexpr f256 atanh_result = bl::atanh(0.123_qd);
+    constexpr fqd sinh_result  = bl::sinh(0.123_qd);
+    constexpr fqd cosh_result  = bl::cosh(0.123_qd);
+    constexpr fqd tanh_result  = bl::tanh(0.123_qd);
+    constexpr fqd asinh_result = bl::asinh(0.123_qd);
+    constexpr fqd acosh_result = bl::acosh(1.123_qd);
+    constexpr fqd atanh_result = bl::atanh(0.123_qd);
                                       
-    constexpr f256 erf_result    = bl::erf(0.123_qd);
-    constexpr f256 erfc_result   = bl::erfc(0.123_qd);
-    constexpr f256 lgamma_result = bl::lgamma(1.123_qd);
-    constexpr f256 tgamma_result = bl::tgamma(1.123_qd);
+    constexpr fqd erf_result    = bl::erf(0.123_qd);
+    constexpr fqd erfc_result   = bl::erfc(0.123_qd);
+    constexpr fqd lgamma_result = bl::lgamma(1.123_qd);
+    constexpr fqd tgamma_result = bl::tgamma(1.123_qd);
                                       
-    constexpr f256 ldexp_result    = bl::ldexp(0.123_qd, 5);
-    constexpr f256 scalbn_result   = bl::scalbn(0.123_qd, 5);
-    constexpr f256 scalbln_result  = bl::scalbln(0.123_qd, 5L);
-    constexpr f256 frexp_result    = [] { int exp{}; return bl::frexp(12.5_qd, &exp); }();
+    constexpr fqd ldexp_result    = bl::ldexp(0.123_qd, 5);
+    constexpr fqd scalbn_result   = bl::scalbn(0.123_qd, 5);
+    constexpr fqd scalbln_result  = bl::scalbln(0.123_qd, 5L);
+    constexpr fqd frexp_result    = [] { int exp{}; return bl::frexp(12.5_qd, &exp); }();
     constexpr int frexp_exp_result = [] { int exp{}; (void)bl::frexp(12.5_qd, &exp); return exp; }();
-    constexpr f256 modf_result     = [] { f256 ip{}; return bl::modf(12.5_qd, &ip); }();
-    constexpr f256 modf_int_result = [] { f256 ip{}; (void)bl::modf(12.5_qd, &ip); return ip; }();
+    constexpr fqd modf_result     = [] { fqd ip{}; return bl::modf(12.5_qd, &ip); }();
+    constexpr fqd modf_int_result = [] { fqd ip{}; (void)bl::modf(12.5_qd, &ip); return ip; }();
 
-    constexpr f256 nextafter_result   = bl::nextafter(0.123_qd, 0.124_qd);
-    constexpr f256 nexttoward_result1 = bl::nexttoward(0.123_qd, 0.124L);
-    constexpr f256 nexttoward_result2 = bl::nexttoward(0.123_qd, 0.124_qd);
+    constexpr fqd nextafter_result   = bl::nextafter(0.123_qd, 0.124_qd);
+    constexpr fqd nexttoward_result1 = bl::nexttoward(0.123_qd, 0.124L);
+    constexpr fqd nexttoward_result2 = bl::nexttoward(0.123_qd, 0.124_qd);
 
-    constexpr f256 scalar_sum =
+    constexpr fqd scalar_sum =
         abs_result + fma_result
         + floor_result + ceil_result + trunc_result + round_result
-        + f256{ static_cast<double>(lround_result) } + f256{ static_cast<double>(llround_result) }
+        + fqd{ static_cast<double>(lround_result) } + fqd{ static_cast<double>(llround_result) }
         + roundeven_result
-        + fmod_result + remainder_result + remquo_result1 + f256{ static_cast<double>(remquo_result2) }
+        + fmod_result + remainder_result + remquo_result1 + fqd{ static_cast<double>(remquo_result2) }
         + fmin_result + fmax_result + fdim_result + copysign_result
         + sqrt_result + cbrt_result + hypot_result + pow_result + pow10_result
         + exp_result + exp2_result + expm1_result
-        + log_result + log2_result + log10_result + log1p_result + logb_result + f256{ static_cast<double>(ilogb_result) }
+        + log_result + log2_result + log10_result + log1p_result + logb_result + fqd{ static_cast<double>(ilogb_result) }
         + sin_result + cos_result + tan_result + asin_result + acos_result + atan_result + atan2_result
         + sinh_result + cosh_result + tanh_result + asinh_result + acosh_result + atanh_result
         + erf_result + erfc_result + lgamma_result + tgamma_result
         + ldexp_result + scalbn_result + scalbln_result
-        + frexp_result + f256{ static_cast<double>(frexp_exp_result) } + modf_result + modf_int_result
+        + frexp_result + fqd{ static_cast<double>(frexp_exp_result) } + modf_result + modf_int_result
         + nextafter_result + nexttoward_result1 + nexttoward_result2;
 
     return scalar_sum;
-}
-
-template<class T>
-consteval bool approx_match(T lhs, T rhs)
-{
-    const T diff = bl::abs(lhs - rhs);
-    const T lhs_abs = bl::abs(lhs);
-    const T rhs_abs = bl::abs(rhs);
-    const T scale = (lhs_abs > rhs_abs) ? lhs_abs : rhs_abs;
-    const T floor = T{ 1 };
-    const T reference = (scale > floor) ? scale : floor;
-    const T tolerance = std::numeric_limits<T>::epsilon() * T{ 16 };
-
-    return diff <= reference * tolerance;
 }
 
 int main()
 {
-    constexpr f32 result_f32   = f32_test();
-    constexpr f64 result_f64   = f64_test();
-    constexpr f128 result_f128 = f128_test();
-    constexpr f256 result_f256 = f256_test();
+    constexpr f32 result_f32 = f32_test();
+    constexpr f64 result_f64 = f64_test();
+    constexpr fdd result_fdd = fdd_test();
+    constexpr fqd result_fqd = fqd_test();
 
     constexpr bool match =
-        approx_match(result_f32,  static_cast<f32>(result_f64)) &&
-        approx_match(result_f64,  static_cast<f64>(result_f128)) &&
-        approx_match(result_f128, static_cast<f128>(result_f256));
+        bl::approx_eq(result_f32, static_cast<f32>(result_f64)) &&
+        bl::approx_eq(result_f64, static_cast<f64>(result_fdd)) &&
+        bl::approx_eq(result_fdd, static_cast<fdd>(result_fqd));
 
     std::cout
         << std::fixed
-        << std::setprecision(std::numeric_limits<f256>::digits10)
+        << std::setprecision(std::numeric_limits<fqd>::digits10)
         << result_f32 << "\n"
         << result_f64 << "\n"
-        << result_f128 << "\n"
-        << result_f256;
+        << result_fdd << "\n"
+        << result_fqd;
 
     return match ? 0 : 1;
 }

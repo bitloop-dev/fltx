@@ -7,66 +7,66 @@
     {
       "architecture": "x86_64",
       "compiler": "MSVC",
-      "file": "windows/x86_64/MSVC_f128_fastmath.csv",
+      "file": "windows/x86_64/MSVC_dd_fastmath.csv",
       "platform": "windows",
-      "precision": "f128",
-      "run_id": "38734516d65c4154a947aaeb3ae92c72"
+      "precision": "dd",
+      "run_id": "919f3b86b0474abe9539b26dc0ad3337"
     },
     {
       "architecture": "x86_64",
       "compiler": "ClangCL",
-      "file": "windows/x86_64/ClangCL_f128_fastmath.csv",
+      "file": "windows/x86_64/ClangCL_dd_fastmath.csv",
       "platform": "windows",
-      "precision": "f128",
-      "run_id": "081f2f75d252445da1de5098f50b7f37"
+      "precision": "dd",
+      "run_id": "c76b06fbfcdd4497a992a6d9e17c2e03"
     },
     {
       "architecture": "x86_64",
       "compiler": "MinGW",
-      "file": "windows/x86_64/MinGW_f128_fastmath.csv",
+      "file": "windows/x86_64/MinGW_dd_fastmath.csv",
       "platform": "windows",
-      "precision": "f128",
-      "run_id": "1f47748c24e4435f9d017479a2e54bbd"
+      "precision": "dd",
+      "run_id": "a10549fafcbd47c8b5dec99ce26daab3"
     },
     {
       "architecture": "wasm32",
       "compiler": "Emscripten",
-      "file": "wasm32/wasm32/Emscripten_f128_fastmath.csv",
-      "platform": "wasm32",
-      "precision": "f128",
-      "run_id": "680cbf9c13134cc08ab2b5bd2bd1191c"
+      "file": "webassembly/wasm32/Emscripten_dd_fastmath.csv",
+      "platform": "webassembly",
+      "precision": "dd",
+      "run_id": "bf9a6d9a01e742c0b67066220891edcd"
     },
     {
       "architecture": "x86_64",
       "compiler": "MSVC",
-      "file": "windows/x86_64/MSVC_f256_fastmath.csv",
+      "file": "windows/x86_64/MSVC_qd_fastmath.csv",
       "platform": "windows",
-      "precision": "f256",
-      "run_id": "38734516d65c4154a947aaeb3ae92c72"
+      "precision": "qd",
+      "run_id": "919f3b86b0474abe9539b26dc0ad3337"
     },
     {
       "architecture": "x86_64",
       "compiler": "ClangCL",
-      "file": "windows/x86_64/ClangCL_f256_fastmath.csv",
+      "file": "windows/x86_64/ClangCL_qd_fastmath.csv",
       "platform": "windows",
-      "precision": "f256",
-      "run_id": "081f2f75d252445da1de5098f50b7f37"
+      "precision": "qd",
+      "run_id": "c76b06fbfcdd4497a992a6d9e17c2e03"
     },
     {
       "architecture": "x86_64",
       "compiler": "MinGW",
-      "file": "windows/x86_64/MinGW_f256_fastmath.csv",
+      "file": "windows/x86_64/MinGW_qd_fastmath.csv",
       "platform": "windows",
-      "precision": "f256",
-      "run_id": "1f47748c24e4435f9d017479a2e54bbd"
+      "precision": "qd",
+      "run_id": "a10549fafcbd47c8b5dec99ce26daab3"
     },
     {
       "architecture": "wasm32",
       "compiler": "Emscripten",
-      "file": "wasm32/wasm32/Emscripten_f256_fastmath.csv",
-      "platform": "wasm32",
-      "precision": "f256",
-      "run_id": "680cbf9c13134cc08ab2b5bd2bd1191c"
+      "file": "webassembly/wasm32/Emscripten_qd_fastmath.csv",
+      "platform": "webassembly",
+      "precision": "qd",
+      "run_id": "bf9a6d9a01e742c0b67066220891edcd"
     }
   ]
 }

@@ -10,9 +10,9 @@
 #ifndef FLTX_IO_INCLUDED
 #define FLTX_IO_INCLUDED
 
-#include "fltx/limits.h"
 #include "fltx/charconv.h"
 #include "fltx/string.h"
 #include "fltx/stream.h"
+#include "fltx/format.h"
 
 #endif

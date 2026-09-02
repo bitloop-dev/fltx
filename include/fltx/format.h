@@ -140,15 +140,15 @@ namespace bl::detail::format
     struct io_traits_for;
 
     template<>
-    struct io_traits_for<bl::f128_s>
+    struct io_traits_for<bl::fdd_s>
     {
-        using type = bl::detail::_f128::f128_io_traits;
+        using type = bl::detail::_dd::dd_io_traits;
     };
 
     template<>
-    struct io_traits_for<bl::f256_s>
+    struct io_traits_for<bl::fqd_s>
     {
-        using type = bl::detail::_f256::f256_io_traits;
+        using type = bl::detail::_qd::qd_io_traits;
     };
 
     [[nodiscard]] inline bool has_sign_prefix(const std::string& text) noexcept
@@ -288,7 +288,7 @@ namespace bl::detail::format
 } // namespace bl::detail::format
 
 template<>
-struct std::formatter<bl::f128_s, char>
+struct std::formatter<bl::fdd_s, char>
 {
     bl::detail::format::standard_format_spec spec{};
 
@@ -298,14 +298,14 @@ struct std::formatter<bl::f128_s, char>
     }
 
     template<class FormatContext>
-    auto format(const bl::f128_s& value, FormatContext& ctx) const
+    auto format(const bl::fdd_s& value, FormatContext& ctx) const
     {
         return bl::detail::format::format_value(value, spec, ctx);
     }
 };
 
 template<>
-struct std::formatter<bl::f128, char>
+struct std::formatter<bl::fdd, char>
 {
     bl::detail::format::standard_format_spec spec{};
 
@@ -315,14 +315,14 @@ struct std::formatter<bl::f128, char>
     }
 
     template<class FormatContext>
-    auto format(const bl::f128& value, FormatContext& ctx) const
+    auto format(const bl::fdd& value, FormatContext& ctx) const
     {
-        return bl::detail::format::format_value(static_cast<const bl::f128_s&>(value), spec, ctx);
+        return bl::detail::format::format_value(static_cast<const bl::fdd_s&>(value), spec, ctx);
     }
 };
 
 template<>
-struct std::formatter<bl::f256_s, char>
+struct std::formatter<bl::fqd_s, char>
 {
     bl::detail::format::standard_format_spec spec{};
 
@@ -332,14 +332,14 @@ struct std::formatter<bl::f256_s, char>
     }
 
     template<class FormatContext>
-    auto format(const bl::f256_s& value, FormatContext& ctx) const
+    auto format(const bl::fqd_s& value, FormatContext& ctx) const
     {
         return bl::detail::format::format_value(value, spec, ctx);
     }
 };
 
 template<>
-struct std::formatter<bl::f256, char>
+struct std::formatter<bl::fqd, char>
 {
     bl::detail::format::standard_format_spec spec{};
 
@@ -349,9 +349,9 @@ struct std::formatter<bl::f256, char>
     }
 
     template<class FormatContext>
-    auto format(const bl::f256& value, FormatContext& ctx) const
+    auto format(const bl::fqd& value, FormatContext& ctx) const
     {
-        return bl::detail::format::format_value(static_cast<const bl::f256_s&>(value), spec, ctx);
+        return bl::detail::format::format_value(static_cast<const bl::fqd_s&>(value), spec, ctx);
     }
 };
 

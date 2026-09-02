@@ -1,0 +1,90 @@
+{
+  "accuracy_samples": 4096,
+  "architecture": "wasm32",
+  "compiler": "Emscripten",
+  "configuration": {
+    "build": {
+      "architecture": "wasm32",
+      "compiler-id": "Clang",
+      "compiler-version": "21.0.0",
+      "config": "Release",
+      "flags-hash": "da56489796c4636d9f457ea868fb77ff630a44c5ac085227cf6d448694171e39",
+      "frontend-variant": "GNU",
+      "optimized": "1",
+      "processor": "x86",
+      "source-fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
+      "system": "Emscripten"
+    },
+    "consumer": {
+      "arm64": "0",
+      "fast-math": "on",
+      "fma": "AUTO",
+      "has-x86-fma": "0",
+      "simd": "on",
+      "simulated-consteval": "off",
+      "tu-x86-fma": "0",
+      "x86": "0"
+    },
+    "harness": {
+      "qdpp": "off",
+      "tlfloat": "off"
+    },
+    "library": {
+      "arm64": "0",
+      "fast-math": "off",
+      "fast-math-request": "AUTO",
+      "fma": "AUTO",
+      "runtime-fma": "unavailable",
+      "simd": "on",
+      "tu-x86-fma": "0",
+      "x86": "0"
+    },
+    "library_strategy": {
+      "baseline-arm64": "0",
+      "compiled-x86-backend": "0",
+      "msvc-guarded": "0",
+      "neon": "0",
+      "qd-simd": "1",
+      "runtime-check": "0",
+      "runtime-path": "0",
+      "scalar-x86": "0",
+      "sse2": "0",
+      "trig-simd": "1",
+      "wasm-simd": "1"
+    }
+  },
+  "consumer_mode": "fastmath",
+  "executables": {
+    "accuracy": {
+      "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\wasm32-emscripten-release\\validation\\fltx_accuracy_fastmath.js",
+      "sha256": "8a01ed4e4f80ef10004b7c9e7e2e1519dacd4adb1fe28bca708146ee10aaea12",
+      "wasm-sha256": "9848b78ee1f0a1fd79ad61821367f7e81df71abe33d655295143a9ced5b5a2eb"
+    }
+  },
+  "host": {
+    "machine": "AMD64",
+    "node": "v22.17.1",
+    "os": "Windows",
+    "os-release": "11",
+    "processor": "AMD64 Family 26 Model 68 Stepping 0, AuthenticAMD",
+    "python": "CPython 3.13.14"
+  },
+  "outputs": {
+    "f32_accuracy.csv": "0611a0d18fc43a8cebc747507d337ab33446022d7603e9fe39e8f6c708181e23",
+    "f64_accuracy.csv": "d2a1481e178de78ad5199dc8bb4a1a9712d8d3c0d4cfa8b0085f876bb1d3c418"
+  },
+  "platform": "wasm32",
+  "policy": "native-float-libm-baseline-v1",
+  "precisions": [
+    "f32",
+    "f64"
+  ],
+  "run_id": "0b98f8c57252465a8d62554a0218d5b4",
+  "sample_mode": "standard",
+  "schema_version": 2,
+  "source_fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
+  "source_revision": "882890995f149618f5ad4c950bbb2cd0b8e2f976-dirty-1e2aee00bd57",
+  "status": "complete",
+  "target": "wasm32/wasm32/Emscripten",
+  "thresholds": "advisory"
+}

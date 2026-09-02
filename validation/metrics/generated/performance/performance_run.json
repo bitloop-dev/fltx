@@ -7,66 +7,66 @@
     {
       "architecture": "x86_64",
       "compiler": "MSVC",
-      "file": "windows/x86_64/MSVC_f128.csv",
+      "file": "windows/x86_64/MSVC_dd.csv",
       "platform": "windows",
-      "precision": "f128",
-      "run_id": "ff1951e869c9480085d12c8d2f11f164"
+      "precision": "dd",
+      "run_id": "7040a0a218d54643965865e739779674"
     },
     {
       "architecture": "x86_64",
       "compiler": "ClangCL",
-      "file": "windows/x86_64/ClangCL_f128.csv",
+      "file": "windows/x86_64/ClangCL_dd.csv",
       "platform": "windows",
-      "precision": "f128",
-      "run_id": "1bd8465fefb349c8bd408bdef2fbe2ea"
+      "precision": "dd",
+      "run_id": "6935501f8a5e4e5e9f641729dc842411"
     },
     {
       "architecture": "x86_64",
       "compiler": "MinGW",
-      "file": "windows/x86_64/MinGW_f128.csv",
+      "file": "windows/x86_64/MinGW_dd.csv",
       "platform": "windows",
-      "precision": "f128",
-      "run_id": "1bc36f9be0894bcfb934a2e01311a61e"
+      "precision": "dd",
+      "run_id": "36324ea202d44d678cf3e4fe87aafe82"
     },
     {
       "architecture": "wasm32",
       "compiler": "Emscripten",
-      "file": "wasm32/wasm32/Emscripten_f128.csv",
-      "platform": "wasm32",
-      "precision": "f128",
-      "run_id": "07cb9aa0af7241f981735eab48f97723"
+      "file": "webassembly/wasm32/Emscripten_dd.csv",
+      "platform": "webassembly",
+      "precision": "dd",
+      "run_id": "d946828be6f140a0a4db7369610a6a34"
     },
     {
       "architecture": "x86_64",
       "compiler": "MSVC",
-      "file": "windows/x86_64/MSVC_f256.csv",
+      "file": "windows/x86_64/MSVC_qd.csv",
       "platform": "windows",
-      "precision": "f256",
-      "run_id": "ff1951e869c9480085d12c8d2f11f164"
+      "precision": "qd",
+      "run_id": "7040a0a218d54643965865e739779674"
     },
     {
       "architecture": "x86_64",
       "compiler": "ClangCL",
-      "file": "windows/x86_64/ClangCL_f256.csv",
+      "file": "windows/x86_64/ClangCL_qd.csv",
       "platform": "windows",
-      "precision": "f256",
-      "run_id": "1bd8465fefb349c8bd408bdef2fbe2ea"
+      "precision": "qd",
+      "run_id": "6935501f8a5e4e5e9f641729dc842411"
     },
     {
       "architecture": "x86_64",
       "compiler": "MinGW",
-      "file": "windows/x86_64/MinGW_f256.csv",
+      "file": "windows/x86_64/MinGW_qd.csv",
       "platform": "windows",
-      "precision": "f256",
-      "run_id": "1bc36f9be0894bcfb934a2e01311a61e"
+      "precision": "qd",
+      "run_id": "36324ea202d44d678cf3e4fe87aafe82"
     },
     {
       "architecture": "wasm32",
       "compiler": "Emscripten",
-      "file": "wasm32/wasm32/Emscripten_f256.csv",
-      "platform": "wasm32",
-      "precision": "f256",
-      "run_id": "07cb9aa0af7241f981735eab48f97723"
+      "file": "webassembly/wasm32/Emscripten_qd.csv",
+      "platform": "webassembly",
+      "precision": "qd",
+      "run_id": "d946828be6f140a0a4db7369610a6a34"
     }
   ]
 }
