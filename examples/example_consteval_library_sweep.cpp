@@ -386,10 +386,13 @@ int main()
 
     std::cout
         << std::fixed
-        << std::setprecision(std::numeric_limits<fqd>::digits10)
+        << std::setprecision(std::numeric_limits<f32>::digits10)
         << result_f32 << "\n"
+        << std::setprecision(std::numeric_limits<f64>::digits10)
         << result_f64 << "\n"
+        << std::setprecision(std::numeric_limits<fdd>::digits10)
         << result_fdd << "\n"
+        << std::setprecision(std::numeric_limits<fqd>::digits10)
         << result_fqd;
 
     return match ? 0 : 1;

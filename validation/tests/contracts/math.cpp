@@ -248,11 +248,11 @@ namespace
             check_zero("+zero - -zero", T{ zero - negative_zero }, false);
             check_zero("-zero - -zero", T{ negative_zero - negative_zero }, false);
             check_zero("-zero + scalar -zero",
-                T{ negative_zero + -0.0 }, true);
+                static_cast<T>(negative_zero + -0.0), true);
             check_zero("-zero - scalar +zero",
-                T{ negative_zero - 0.0 }, true);
+                static_cast<T>(negative_zero - 0.0), true);
             check_zero("scalar -zero - +zero",
-                T{ -0.0 - zero }, true);
+                static_cast<T>(-0.0 - zero), true);
 
             check_infinity("infinity + finite", T{ infinity + one }, false);
             check_infinity("finite + -infinity", T{ one + negative_infinity }, true);
