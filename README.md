@@ -528,7 +528,7 @@ The Ubuntu/Debian flow is:
 
 ```bash
 sudo apt update
-sudo apt install -y git build-essential cmake ninja-build python3 pkg-config autoconf autoconf-archive automake libtool m4
+sudo apt install -y git curl zip unzip tar build-essential cmake ninja-build python3 pkg-config autoconf autoconf-archive automake libtool m4
 
 git clone --recurse-submodules https://github.com/bitloop-dev/fltx.git
 cd fltx
