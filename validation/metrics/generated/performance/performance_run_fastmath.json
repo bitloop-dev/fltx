@@ -29,6 +29,22 @@
       "run_id": "a10549fafcbd47c8b5dec99ce26daab3"
     },
     {
+      "architecture": "x86_64",
+      "compiler": "GCC",
+      "file": "linux/x86_64/GCC_dd_fastmath.csv",
+      "platform": "linux",
+      "precision": "dd",
+      "run_id": "59b2982d54c7452385ae9e273a4213f8"
+    },
+    {
+      "architecture": "x86_64",
+      "compiler": "Clang",
+      "file": "linux/x86_64/Clang_dd_fastmath.csv",
+      "platform": "linux",
+      "precision": "dd",
+      "run_id": "3501b22601904cbfa72dd0e2ba76758d"
+    },
+    {
       "architecture": "wasm32",
       "compiler": "Emscripten",
       "file": "webassembly/wasm32/Emscripten_dd_fastmath.csv",
@@ -59,6 +75,22 @@
       "platform": "windows",
       "precision": "qd",
       "run_id": "a10549fafcbd47c8b5dec99ce26daab3"
+    },
+    {
+      "architecture": "x86_64",
+      "compiler": "GCC",
+      "file": "linux/x86_64/GCC_qd_fastmath.csv",
+      "platform": "linux",
+      "precision": "qd",
+      "run_id": "59b2982d54c7452385ae9e273a4213f8"
+    },
+    {
+      "architecture": "x86_64",
+      "compiler": "Clang",
+      "file": "linux/x86_64/Clang_qd_fastmath.csv",
+      "platform": "linux",
+      "precision": "qd",
+      "run_id": "3501b22601904cbfa72dd0e2ba76758d"
     },
     {
       "architecture": "wasm32",

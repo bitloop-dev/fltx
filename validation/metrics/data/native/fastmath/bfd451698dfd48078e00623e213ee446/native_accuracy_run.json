@@ -1,0 +1,90 @@
+{
+  "accuracy_samples": 4096,
+  "architecture": "x86_64",
+  "compiler": "GCC",
+  "configuration": {
+    "build": {
+      "architecture": "x86_64",
+      "compiler-id": "GNU",
+      "compiler-version": "15.2.0",
+      "config": "Release",
+      "flags-hash": "44eb66df877d0b9561dbac33751ae04d234de70a2ddac038b7f9e2f470f05e60",
+      "frontend-variant": "GNU",
+      "optimized": "1",
+      "processor": "x86_64",
+      "source-fingerprint": "e69f86fa5e6a90511ab16666e9d7d3b59c206539b7f5abc006f004f8e3f10241",
+      "system": "Linux"
+    },
+    "consumer": {
+      "arm64": "0",
+      "fast-math": "on",
+      "fma": "AUTO",
+      "has-x86-fma": "0",
+      "simd": "on",
+      "simulated-consteval": "off",
+      "tu-x86-fma": "0",
+      "x86": "1"
+    },
+    "harness": {
+      "qdpp": "off",
+      "tlfloat": "off"
+    },
+    "library": {
+      "arm64": "0",
+      "fast-math": "off",
+      "fast-math-request": "AUTO",
+      "fma": "AUTO",
+      "runtime-fma": "available",
+      "simd": "on",
+      "tu-x86-fma": "0",
+      "x86": "1"
+    },
+    "library_strategy": {
+      "baseline-arm64": "0",
+      "compiled-x86-backend": "1",
+      "msvc-guarded": "0",
+      "neon": "0",
+      "qd-simd": "1",
+      "runtime-check": "1",
+      "runtime-path": "0",
+      "scalar-x86": "0",
+      "sse2": "1",
+      "trig-simd": "1",
+      "wasm-simd": "0"
+    }
+  },
+  "consumer_mode": "fastmath",
+  "executables": {
+    "accuracy": {
+      "path": "/home/ubuntu/fltx/build/linux-x64-gcc-release/validation/fltx_accuracy_fastmath",
+      "sha256": "a7eda6841090e4d9952e056b1e8f483d57bd64d93257f2ced1c58f4a11a36a18",
+      "wasm-sha256": "not-present"
+    }
+  },
+  "host": {
+    "machine": "x86_64",
+    "node": "not-used",
+    "os": "Linux",
+    "os-release": "7.0.0-15-generic",
+    "processor": "unknown",
+    "python": "CPython 3.14.4"
+  },
+  "outputs": {
+    "f32_accuracy.csv": "928ba41ed98cc8dc8d8948334ac534898002aef20298b2203f608bb5c6f851ad",
+    "f64_accuracy.csv": "11e8480f816b59df9e2897ce4d674768447524e49333e0cfb5111f670ff74a11"
+  },
+  "platform": "linux",
+  "policy": "native-float-libm-baseline-v1",
+  "precisions": [
+    "f32",
+    "f64"
+  ],
+  "run_id": "bfd451698dfd48078e00623e213ee446",
+  "sample_mode": "standard",
+  "schema_version": 2,
+  "source_fingerprint": "e69f86fa5e6a90511ab16666e9d7d3b59c206539b7f5abc006f004f8e3f10241",
+  "source_revision": "918528b7660e94a8698933f74b15e2a0f0f28a7b",
+  "status": "complete",
+  "target": "linux/x86_64/GCC",
+  "thresholds": "advisory"
+}

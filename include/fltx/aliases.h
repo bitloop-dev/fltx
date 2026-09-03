@@ -27,6 +27,7 @@ namespace bl
         using ::bl::f64;
         using ::bl::fdd;
         using ::bl::fqd;
+
         using ::bl::fdd_s;
         using ::bl::fqd_s;
 

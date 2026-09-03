@@ -6,7 +6,7 @@
 #include <fltx/fqd_math.h>
 #include <fltx/numbers.h>
 
-using namespace bl;
+using namespace bl::types;
 
 template<typename T>
 bool roundtrip(std::string_view name)

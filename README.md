@@ -626,6 +626,26 @@ _Compared with reference libraries_
 </details>
 
 <details>
+<summary><code>Linux · x86-64 · GCC</code></summary>
+<br>
+<a href="https://raw.githubusercontent.com/bitloop-dev/fltx/main/validation/metrics/generated/overview/linux_x86_64_GCC_dd_overview.svg">
+  <img src="validation/metrics/generated/overview/linux_x86_64_GCC_dd_overview_compact.svg"
+       alt="Double-double metrics for Linux x86-64 with GCC"
+       width="100%">
+</a>
+</details>
+
+<details>
+<summary><code>Linux · x86-64 · Clang</code></summary>
+<br>
+<a href="https://raw.githubusercontent.com/bitloop-dev/fltx/main/validation/metrics/generated/overview/linux_x86_64_Clang_dd_overview.svg">
+  <img src="validation/metrics/generated/overview/linux_x86_64_Clang_dd_overview_compact.svg"
+       alt="Double-double metrics for Linux x86-64 with Clang"
+       width="100%">
+</a>
+</details>
+
+<details>
 <summary><code>WebAssembly · wasm32 · Emscripten</code></summary>
 <br>
 <a href="https://raw.githubusercontent.com/bitloop-dev/fltx/main/validation/metrics/generated/overview/webassembly_wasm32_Emscripten_dd_overview.svg">
@@ -664,6 +684,24 @@ _Compared with reference libraries_
 <a href="https://raw.githubusercontent.com/bitloop-dev/fltx/main/validation/metrics/generated/overview/windows_x86_64_ClangCL_qd_overview.svg">
   <img src="validation/metrics/generated/overview/windows_x86_64_ClangCL_qd_overview_compact.svg"
        alt="Quad-double metrics for Windows x86-64 with ClangCL"
+       width="100%">
+</a>
+</details>
+<details>
+<summary><code>Linux · x86-64 · GCC</code></summary>
+<br>
+<a href="https://raw.githubusercontent.com/bitloop-dev/fltx/main/validation/metrics/generated/overview/linux_x86_64_GCC_qd_overview.svg">
+  <img src="validation/metrics/generated/overview/linux_x86_64_GCC_qd_overview_compact.svg"
+       alt="Quad-double metrics for Linux x86-64 with GCC"
+       width="100%">
+</a>
+</details>
+<details>
+<summary><code>Linux · x86-64 · Clang</code></summary>
+<br>
+<a href="https://raw.githubusercontent.com/bitloop-dev/fltx/main/validation/metrics/generated/overview/linux_x86_64_Clang_qd_overview.svg">
+  <img src="validation/metrics/generated/overview/linux_x86_64_Clang_qd_overview_compact.svg"
+       alt="Quad-double metrics for Linux x86-64 with Clang"
        width="100%">
 </a>
 </details>

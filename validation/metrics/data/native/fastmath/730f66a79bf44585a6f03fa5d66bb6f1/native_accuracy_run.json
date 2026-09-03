@@ -1,0 +1,90 @@
+{
+  "accuracy_samples": 4096,
+  "architecture": "x86_64",
+  "compiler": "Clang",
+  "configuration": {
+    "build": {
+      "architecture": "x86_64",
+      "compiler-id": "Clang",
+      "compiler-version": "21.1.8",
+      "config": "Release",
+      "flags-hash": "f1495be1bd5141b518128f4ff63e7f32f93319ad1bbfc9687e92da7b2ee8359a",
+      "frontend-variant": "GNU",
+      "optimized": "1",
+      "processor": "x86_64",
+      "source-fingerprint": "e69f86fa5e6a90511ab16666e9d7d3b59c206539b7f5abc006f004f8e3f10241",
+      "system": "Linux"
+    },
+    "consumer": {
+      "arm64": "0",
+      "fast-math": "on",
+      "fma": "AUTO",
+      "has-x86-fma": "0",
+      "simd": "on",
+      "simulated-consteval": "off",
+      "tu-x86-fma": "0",
+      "x86": "1"
+    },
+    "harness": {
+      "qdpp": "off",
+      "tlfloat": "off"
+    },
+    "library": {
+      "arm64": "0",
+      "fast-math": "off",
+      "fast-math-request": "AUTO",
+      "fma": "AUTO",
+      "runtime-fma": "available",
+      "simd": "on",
+      "tu-x86-fma": "0",
+      "x86": "1"
+    },
+    "library_strategy": {
+      "baseline-arm64": "0",
+      "compiled-x86-backend": "1",
+      "msvc-guarded": "0",
+      "neon": "0",
+      "qd-simd": "1",
+      "runtime-check": "1",
+      "runtime-path": "0",
+      "scalar-x86": "0",
+      "sse2": "1",
+      "trig-simd": "1",
+      "wasm-simd": "0"
+    }
+  },
+  "consumer_mode": "fastmath",
+  "executables": {
+    "accuracy": {
+      "path": "/home/ubuntu/fltx/build/linux-x64-clang-release/validation/fltx_accuracy_fastmath",
+      "sha256": "4d1c61bcee9e7d81eae9cff5865b101a0d4dcd75188cfab6178800974a9146b9",
+      "wasm-sha256": "not-present"
+    }
+  },
+  "host": {
+    "machine": "x86_64",
+    "node": "not-used",
+    "os": "Linux",
+    "os-release": "7.0.0-15-generic",
+    "processor": "unknown",
+    "python": "CPython 3.14.4"
+  },
+  "outputs": {
+    "f32_accuracy.csv": "9e4063465d8272c06f147258b4c73387b2a3bfcfd2214ed7daf3745e4227ef13",
+    "f64_accuracy.csv": "005adb107f79561a7f81e94c4cdb7ac2651919cc5b526ed593f89f0b66628b4e"
+  },
+  "platform": "linux",
+  "policy": "native-float-libm-baseline-v1",
+  "precisions": [
+    "f32",
+    "f64"
+  ],
+  "run_id": "730f66a79bf44585a6f03fa5d66bb6f1",
+  "sample_mode": "standard",
+  "schema_version": 2,
+  "source_fingerprint": "e69f86fa5e6a90511ab16666e9d7d3b59c206539b7f5abc006f004f8e3f10241",
+  "source_revision": "918528b7660e94a8698933f74b15e2a0f0f28a7b",
+  "status": "complete",
+  "target": "linux/x86_64/Clang",
+  "thresholds": "advisory"
+}

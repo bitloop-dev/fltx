@@ -1,0 +1,184 @@
+{
+  "accuracy_parallel": true,
+  "accuracy_samples": 4096,
+  "architecture": "x86_64",
+  "benchmark_corpus_policy": "adaptive-v1",
+  "benchmark_fast_minimum_trial_ms": 15,
+  "benchmark_fast_threshold_ns": 20,
+  "benchmark_fast_trials": 7,
+  "benchmark_maximum_row_ms": 5000,
+  "benchmark_minimum_trial_ms": 8,
+  "benchmark_ordinary_trials": 3,
+  "benchmark_policy": "adaptive-v2",
+  "benchmark_samples": {
+    "dd": 8192,
+    "qd": 4096
+  },
+  "benchmark_slow_threshold_ns": 10000,
+  "benchmark_trials": 7,
+  "compiler": "GCC",
+  "configuration": {
+    "build": {
+      "architecture": "x86_64",
+      "compiler-id": "GNU",
+      "compiler-version": "15.2.0",
+      "config": "Release",
+      "flags-hash": "44eb66df877d0b9561dbac33751ae04d234de70a2ddac038b7f9e2f470f05e60",
+      "frontend-variant": "GNU",
+      "optimized": "1",
+      "processor": "x86_64",
+      "source-fingerprint": "e69f86fa5e6a90511ab16666e9d7d3b59c206539b7f5abc006f004f8e3f10241",
+      "system": "Linux"
+    },
+    "consumer": {
+      "arm64": "0",
+      "fast-math": "off",
+      "fma": "AUTO",
+      "has-x86-fma": "0",
+      "simd": "on",
+      "simulated-consteval": "off",
+      "tu-x86-fma": "0",
+      "x86": "1"
+    },
+    "harness": {
+      "qdpp": "on",
+      "tlfloat": "on"
+    },
+    "library": {
+      "arm64": "0",
+      "fast-math": "off",
+      "fast-math-request": "AUTO",
+      "fma": "AUTO",
+      "runtime-fma": "available",
+      "simd": "on",
+      "tu-x86-fma": "0",
+      "x86": "1"
+    },
+    "library_strategy": {
+      "baseline-arm64": "0",
+      "compiled-x86-backend": "1",
+      "msvc-guarded": "0",
+      "neon": "0",
+      "qd-simd": "1",
+      "runtime-check": "1",
+      "runtime-path": "0",
+      "scalar-x86": "0",
+      "sse2": "1",
+      "trig-simd": "1",
+      "wasm-simd": "0"
+    }
+  },
+  "consumer_mode": "strict",
+  "created_utc": "2026-09-03T03:51:25.906297+00:00",
+  "executables": {
+    "accuracy": {
+      "path": "/home/ubuntu/fltx/build/linux-x64-gcc-release/validation/fltx_accuracy",
+      "sha256": "10f3160e08b8eebf1cfadeb3b6fe33d7287062932d09e34dba11d238b261ef59",
+      "wasm-sha256": "not-present"
+    },
+    "benchmark": {
+      "path": "/home/ubuntu/fltx/build/linux-x64-gcc-release/validation/fltx_benchmark",
+      "sha256": "39706a9408d9d9455b7cb8a4ea1c0cb9a1fc3a218a1a41121dbdc4a35f8dbfc8",
+      "wasm-sha256": "not-present"
+    }
+  },
+  "host": {
+    "machine": "x86_64",
+    "node": "not-used",
+    "os": "Linux",
+    "os-release": "7.0.0-15-generic",
+    "processor": "unknown",
+    "python": "CPython 3.14.4"
+  },
+  "implementations": {
+    "dd": [
+      {
+        "id": "fltx",
+        "label": "fltx bl::fdd",
+        "short_label": "fltx"
+      },
+      {
+        "id": "qdpp",
+        "label": "qdpp dd_real",
+        "short_label": "ddreal"
+      },
+      {
+        "id": "cppdd",
+        "label": "boost::multiprecision::cpp_double_double",
+        "short_label": "cppdd"
+      },
+      {
+        "id": "tlfloat",
+        "label": "TLFloat Quad",
+        "short_label": "tlquad"
+      }
+    ],
+    "qd": [
+      {
+        "id": "fltx",
+        "label": "fltx bl::fqd",
+        "short_label": "fltx"
+      },
+      {
+        "id": "qdpp",
+        "label": "qdpp qd_real",
+        "short_label": "qdreal"
+      },
+      {
+        "id": "mpfr64",
+        "label": "boost::multiprecision::mpfr_float_backend<64>",
+        "short_label": "mpfr64"
+      },
+      {
+        "id": "tlfloat",
+        "label": "TLFloat Octuple",
+        "short_label": "tloct"
+      }
+    ]
+  },
+  "outputs": {
+    "GCC_dd.csv": "139183341fca661f85c75d58bb2063360796b5cdc0e26a4c20d5d9759150be09",
+    "GCC_qd.csv": "65d995e797364309ca4d7a9843187b26908449ebfec3f8389c9acf731cb97c6b",
+    "detail/GCC_dd_accuracy.csv": "11df47a0b8755aa39c6f963bfb1a7757caf5274d48a7e462a89622e50da2dc0a",
+    "detail/GCC_dd_benchmark.csv": "88b6a53804c8cb4eae2759e60226fd9212bb957eb0b1f387fb4d55504bbe9a11",
+    "detail/GCC_qd_accuracy.csv": "c98e97187dcf2df130a58ba64ecbbdcc1f32813a03301601a33bb2821c46bbce",
+    "detail/GCC_qd_benchmark.csv": "a43c72ab333f67fe6e4cd8943f779d1ee56e636d3c69a8bf0c8f04e6b1428bbc"
+  },
+  "phases": {
+    "dd.accuracy": {
+      "output": "GCC_dd_accuracy.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "dd.benchmark": {
+      "output": "GCC_dd_benchmark.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "qd.accuracy": {
+      "output": "GCC_qd_accuracy.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "qd.benchmark": {
+      "output": "GCC_qd_benchmark.csv",
+      "return_code": 0,
+      "status": "passed"
+    }
+  },
+  "phases_requested": [
+    "accuracy",
+    "benchmark"
+  ],
+  "platform": "linux",
+  "precisions": [
+    "dd",
+    "qd"
+  ],
+  "run_id": "00f48956afad431e88b9f4c73909aa48",
+  "sample_mode": "standard",
+  "schema_version": "6",
+  "source_fingerprint": "e69f86fa5e6a90511ab16666e9d7d3b59c206539b7f5abc006f004f8e3f10241",
+  "source_revision": "918528b7660e94a8698933f74b15e2a0f0f28a7b",
+  "status": "complete"
+}
