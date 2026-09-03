@@ -336,8 +336,6 @@ Use:
 - `bl::parse<T>(text, fallback)` when a fallback value is enough.
 - `bl::try_parse<T>` for non-throwing parsing with error and consumed-character details.
 
-String input is intentionally routed through the parsing APIs. Constructors for `fdd` and `fqd` are for numeric and storage-form values, not direct text parsing.
-
 Stream output supports `std::setprecision`, `std::fixed`, `std::scientific`, `std::showpoint`, `std::showpos`, and `std::uppercase`.
 
 ### Buffer-oriented conversion:
@@ -528,7 +526,7 @@ The Ubuntu/Debian flow is:
 
 ```bash
 sudo apt update
-sudo apt install -y git curl zip unzip tar build-essential cmake ninja-build python3 pkg-config autoconf autoconf-archive automake libtool m4
+sudo apt install -y git curl zip unzip tar build-essential cmake ninja-build clang python3 pkg-config autoconf autoconf-archive automake libtool m4
 
 git clone --recurse-submodules https://github.com/bitloop-dev/fltx.git
 cd fltx
