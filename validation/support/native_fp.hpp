@@ -5,12 +5,14 @@
 #include <cstdint>
 #include <type_traits>
 
-#if defined(__clang__) && defined(FLTX_FAST_MATH)
+#if defined(__clang__) && \
+    (defined(FLTX_FAST_MATH) || defined(__FAST_MATH__))
   #define FLTX_VALIDATION_SPECIAL_VALUE_FUNCTION \
       inline __attribute__((noinline, optnone))
   #define FLTX_VALIDATION_PRECISE_FUNCTION \
       inline __attribute__((noinline, optnone))
-#elif defined(__GNUC__) && defined(FLTX_FAST_MATH)
+#elif defined(__GNUC__) && \
+      (defined(FLTX_FAST_MATH) || defined(__FAST_MATH__))
   #define FLTX_VALIDATION_SPECIAL_VALUE_FUNCTION \
       inline __attribute__((noinline, optimize("no-fast-math")))
   #define FLTX_VALIDATION_PRECISE_FUNCTION \
@@ -21,6 +23,17 @@
 #else
   #define FLTX_VALIDATION_SPECIAL_VALUE_FUNCTION inline
   #define FLTX_VALIDATION_PRECISE_FUNCTION inline
+#endif
+
+#if defined(_MSC_VER)
+  #define FLTX_VALIDATION_BIT_CAPTURE_FUNCTION __forceinline
+#elif defined(__GNUC__) || defined(__clang__)
+  // Keep representation capture in the fast-math caller. Passing a signed
+  // zero through a floating-point call boundary may canonicalize it first.
+  #define FLTX_VALIDATION_BIT_CAPTURE_FUNCTION \
+      inline __attribute__((always_inline))
+#else
+  #define FLTX_VALIDATION_BIT_CAPTURE_FUNCTION inline
 #endif
 
 namespace fltx::tests::native_fp

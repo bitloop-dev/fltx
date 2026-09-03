@@ -185,7 +185,8 @@ namespace fltx::tests::implementations
             return static_cast<float>(value.limb[0]);
         }
 
-        [[nodiscard]] static mpfr::real to_real(float value)
+        [[nodiscard]] static FLTX_VALIDATION_BIT_CAPTURE_FUNCTION mpfr::real
+        to_real(float value)
         {
             return mpfr::native_float_to_real(value);
         }
@@ -219,7 +220,8 @@ namespace fltx::tests::implementations
             return value.limb[0];
         }
 
-        [[nodiscard]] static mpfr::real to_real(double value)
+        [[nodiscard]] static FLTX_VALIDATION_BIT_CAPTURE_FUNCTION mpfr::real
+        to_real(double value)
         {
             return mpfr::native_float_to_real(value);
         }
@@ -253,7 +255,8 @@ namespace fltx::tests::implementations
             return { value.limb[0], value.limb[1] };
         }
 
-        [[nodiscard]] static mpfr::real to_real(const bl::fdd_s& value)
+        [[nodiscard]] static FLTX_VALIDATION_BIT_CAPTURE_FUNCTION mpfr::real
+        to_real(const bl::fdd_s& value)
         {
             return mpfr::traits<bl::fdd>::to_real(value);
         }
@@ -287,7 +290,8 @@ namespace fltx::tests::implementations
             return { value.limb[0], value.limb[1], value.limb[2], value.limb[3] };
         }
 
-        [[nodiscard]] static mpfr::real to_real(const bl::fqd_s& value)
+        [[nodiscard]] static FLTX_VALIDATION_BIT_CAPTURE_FUNCTION mpfr::real
+        to_real(const bl::fqd_s& value)
         {
             return mpfr::traits<bl::fqd>::to_real(value);
         }

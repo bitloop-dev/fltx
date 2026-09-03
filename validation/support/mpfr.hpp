@@ -8,6 +8,7 @@
 #include <boost/multiprecision/mpfr.hpp>
 
 #include <algorithm>
+#include <array>
 #include <bit>
 #include <cmath>
 #include <cstddef>
@@ -37,14 +38,13 @@ namespace fltx::tests::mpfr
 
     template<class Float>
     [[nodiscard]] FLTX_VALIDATION_PRECISE_FUNCTION real
-    native_float_to_real(const Float& value)
+    native_bits_to_real(native_fp::bits_type<Float> value_bits)
     {
         static_assert(
             std::is_same_v<Float, float> || std::is_same_v<Float, double>);
 
         using format = native_fp::binary_format<Float>;
         using bits_type = typename format::bits_type;
-        const bits_type value_bits = native_fp::bits(value);
         const bool negative = (value_bits & format::sign_mask) != 0;
         const bits_type fraction = value_bits & format::fraction_mask;
         const bits_type exponent_bits =
@@ -73,6 +73,31 @@ namespace fltx::tests::mpfr
         using boost::multiprecision::ldexp;
         const real magnitude = ldexp(real{significand}, exponent);
         return negative ? -magnitude : magnitude;
+    }
+
+    template<class Float>
+    [[nodiscard]] FLTX_VALIDATION_BIT_CAPTURE_FUNCTION real
+    native_float_to_real(const Float& value)
+    {
+        // Cross into the precise MPFR conversion as integer object bits.
+        return native_bits_to_real<Float>(native_fp::bits(value));
+    }
+
+    template<std::size_t LimbCount>
+    [[nodiscard]] FLTX_VALIDATION_PRECISE_FUNCTION real
+    expansion_bits_to_real(
+        const std::array<native_fp::bits_type<double>, LimbCount>& limb_bits)
+    {
+        static_assert(LimbCount > 0);
+        const bool leading_is_negative =
+            (limb_bits.front() &
+             native_fp::binary_format<double>::sign_mask) != 0;
+        real out{0};
+        for (const auto bits : limb_bits)
+            out += native_bits_to_real<double>(bits);
+        return out == 0 && leading_is_negative
+            ? signed_zero(true)
+            : out;
     }
 
     [[nodiscard]] constexpr double exact_score() noexcept
@@ -155,14 +180,13 @@ namespace fltx::tests::mpfr
             return { value.limb[0], value.limb[1] };
         }
 
-        [[nodiscard]] static real to_real(const bl::fdd_s& value)
+        [[nodiscard]] static FLTX_VALIDATION_BIT_CAPTURE_FUNCTION real
+        to_real(const bl::fdd_s& value)
         {
-            const bool hi_is_negative = native_fp::sign_bit(value.hi);
-            const real out = native_float_to_real(value.hi) +
-                             native_float_to_real(value.lo);
-            return out == 0 && hi_is_negative
-                ? signed_zero(true)
-                : out;
+            return expansion_bits_to_real(std::array{
+                native_fp::bits(value.hi),
+                native_fp::bits(value.lo),
+            });
         }
 
         [[nodiscard]] static bool is_finite(const bl::fdd_s& value)
@@ -188,16 +212,15 @@ namespace fltx::tests::mpfr
             return { value.limb[0], value.limb[1], value.limb[2], value.limb[3] };
         }
 
-        [[nodiscard]] static real to_real(const bl::fqd_s& value)
+        [[nodiscard]] static FLTX_VALIDATION_BIT_CAPTURE_FUNCTION real
+        to_real(const bl::fqd_s& value)
         {
-            const bool x0_is_negative = native_fp::sign_bit(value.x0);
-            const real out = native_float_to_real(value.x0) +
-                             native_float_to_real(value.x1) +
-                             native_float_to_real(value.x2) +
-                             native_float_to_real(value.x3);
-            return out == 0 && x0_is_negative
-                ? signed_zero(true)
-                : out;
+            return expansion_bits_to_real(std::array{
+                native_fp::bits(value.x0),
+                native_fp::bits(value.x1),
+                native_fp::bits(value.x2),
+                native_fp::bits(value.x3),
+            });
         }
 
         [[nodiscard]] static bool is_finite(const bl::fqd_s& value)
