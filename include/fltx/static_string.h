@@ -1,5 +1,5 @@
 /**
- * fltx/detail/static_string.h - Fixed-capacity constexpr string helpers for fltx I/O.
+ * fltx/static_string.h - Fixed-capacity constexpr string type for fltx I/O.
  *
  * Copyright (c) 2026 William Hemsworth
  *
@@ -7,35 +7,14 @@
  * See LICENSE for details.
  */
 
-#ifndef FLTX_DETAIL_STATIC_STRING_INCLUDED
-#define FLTX_DETAIL_STATIC_STRING_INCLUDED
+#ifndef FLTX_STATIC_STRING_INCLUDED
+#define FLTX_STATIC_STRING_INCLUDED
 #include <cstddef>
 #include <string>
 #include <string_view>
 
 namespace bl
 {
-    struct precision_info
-    {
-        int digits = -1;
-        int leading_digits = 0;
-        int trailing_digits = 0;
-
-        constexpr precision_info() noexcept = default;
-
-        constexpr precision_info(int precision_digits) noexcept :
-            digits(precision_digits)
-        {
-        }
-
-        constexpr precision_info(int precision_digits, int leading, int trailing) noexcept :
-            digits(precision_digits),
-            leading_digits(leading),
-            trailing_digits(trailing)
-        {
-        }
-    };
-
     template<std::size_t capacity>
     struct static_string
     {

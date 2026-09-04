@@ -15,25 +15,26 @@
 
 namespace bl
 {
-    BL_FORCE_INLINE constexpr fqd_s::operator fdd_s() const noexcept { return fdd_s{ x0, x1 }; }
-    BL_FORCE_INLINE constexpr fqd_s::operator fdd() const noexcept { return fdd_s{ x0, x1 }; }
+    BL_FORCE_INLINE constexpr fqd_s::operator fdd_s() const noexcept
+    {
+        if (x0 == 0.0 && x1 == 0.0 && x2 == 0.0 && x3 == 0.0)
+            return fdd_s{ x0, 0.0 };
+        return fdd_s{ x0, x1 } + fdd_s{ x2, x3 };
+    }
+
+    BL_FORCE_INLINE constexpr fqd_s::operator fdd() const noexcept
+    {
+        return static_cast<fdd_s>(*this);
+    }
+
     BL_FORCE_INLINE constexpr fdd_s::operator fqd_s() const noexcept { return fqd_s{ hi, lo }; }
 
     BL_FORCE_INLINE constexpr fdd::operator fqd_s() const noexcept { return fqd_s{ hi, lo }; }
     BL_FORCE_INLINE constexpr fdd::operator fqd() const noexcept { return fqd_s{ hi, lo }; }
 
-    BL_FORCE_INLINE constexpr fqd::operator fdd_s() const noexcept { return fdd_s{ x0, x1 }; }
-    BL_FORCE_INLINE constexpr fqd::operator fdd() const noexcept { return fdd_s{ x0, x1 }; }
-
     BL_FORCE_INLINE constexpr fqd::fqd(fdd_s x) noexcept
     {
         x0 = x.hi; x1 = x.lo; x2 = 0.0; x3 = 0.0;
-    }
-
-    BL_FORCE_INLINE constexpr fdd_s& fdd_s::operator=(fqd_s x) noexcept
-    {
-        hi = x.x0; lo = x.x1;
-        return *this;
     }
 
     BL_FORCE_INLINE constexpr fqd_s& fqd_s::operator=(fdd_s x) noexcept

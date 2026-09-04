@@ -563,132 +563,205 @@ namespace detail::_qd_expr
     template<class T> using prod_t  = clean_t<decltype(std::declval<T>().prod)>;
     template<class T> using value_t = clean_t<decltype(std::declval<T>().value)>;
 
+    template<class T>
+    inline constexpr bool is_direct_conversion_target_v =
+        std::is_same_v<T, clean_t<T>> &&
+        (std::is_same_v<T, fdd_s> ||
+         std::is_same_v<T, fdd> ||
+         detail::fp::is_native_arithmetic_scalar_v<T>);
+
+    template<class T, class Expr>
+    [[nodiscard]] BL_FORCE_INLINE constexpr T convert_expression(const Expr& expr) noexcept;
+
     // expression nodes
     struct leaf_expr
     {
+        using fltx_expression_value_type = fqd;
+        using fltx_expression_storage_type = fqd_s;
+
         fqd_s value;
 
-        BL_FORCE_INLINE constexpr operator fqd() const& = delete;
-        BL_FORCE_INLINE constexpr operator fqd() && noexcept { return fqd{ value }; }
+        BL_FORCE_INLINE constexpr operator fqd() const noexcept { return fqd{ value }; }
+
+        template<class T, std::enable_if_t<is_direct_conversion_target_v<T>, int> = 0>
+        [[nodiscard]] explicit constexpr operator T() const noexcept { return convert_expression<T>(*this); }
     };
 
     template<class L>
     struct mul_double_expr
     {
+        using fltx_expression_value_type = fqd;
+        using fltx_expression_storage_type = fqd_s;
+
         L left;
         double right;
 
-        BL_FORCE_INLINE constexpr operator fqd() const& = delete;
-        BL_FORCE_INLINE constexpr operator fqd() && noexcept { return fqd{ eval_to_qd_s(*this) }; }
+        BL_FORCE_INLINE constexpr operator fqd() const noexcept { return fqd{ eval_to_qd_s(*this) }; }
+
+        template<class T, std::enable_if_t<is_direct_conversion_target_v<T>, int> = 0>
+        [[nodiscard]] explicit constexpr operator T() const noexcept { return convert_expression<T>(*this); }
     };
 
     template<class L>
     struct add_double_expr
     {
+        using fltx_expression_value_type = fqd;
+        using fltx_expression_storage_type = fqd_s;
+
         L left;
         double right;
 
-        BL_FORCE_INLINE constexpr operator fqd() const& = delete;
-        BL_FORCE_INLINE constexpr operator fqd() && noexcept { return fqd{ eval_to_qd_s(*this) }; }
+        BL_FORCE_INLINE constexpr operator fqd() const noexcept { return fqd{ eval_to_qd_s(*this) }; }
+
+        template<class T, std::enable_if_t<is_direct_conversion_target_v<T>, int> = 0>
+        [[nodiscard]] explicit constexpr operator T() const noexcept { return convert_expression<T>(*this); }
     };
 
     template<class R>
     struct double_sub_expr
     {
+        using fltx_expression_value_type = fqd;
+        using fltx_expression_storage_type = fqd_s;
+
         double left;
         R right;
 
-        BL_FORCE_INLINE constexpr operator fqd() const& = delete;
-        BL_FORCE_INLINE constexpr operator fqd() && noexcept { return fqd{ eval_to_qd_s(*this) }; }
+        BL_FORCE_INLINE constexpr operator fqd() const noexcept { return fqd{ eval_to_qd_s(*this) }; }
+
+        template<class T, std::enable_if_t<is_direct_conversion_target_v<T>, int> = 0>
+        [[nodiscard]] explicit constexpr operator T() const noexcept { return convert_expression<T>(*this); }
     };
 
     template<class L, class R>
     struct add_expr
     {
+        using fltx_expression_value_type = fqd;
+        using fltx_expression_storage_type = fqd_s;
+
         L left;
         R right;
 
-        BL_FORCE_INLINE constexpr operator fqd() const& = delete;
-        BL_FORCE_INLINE constexpr operator fqd() && noexcept { return fqd{ eval_to_qd_s(*this) }; }
+        BL_FORCE_INLINE constexpr operator fqd() const noexcept { return fqd{ eval_to_qd_s(*this) }; }
+
+        template<class T, std::enable_if_t<is_direct_conversion_target_v<T>, int> = 0>
+        [[nodiscard]] explicit constexpr operator T() const noexcept { return convert_expression<T>(*this); }
     };
 
     template<class L, class R>
     struct sub_expr
     {
+        using fltx_expression_value_type = fqd;
+        using fltx_expression_storage_type = fqd_s;
+
         L left;
         R right;
 
-        BL_FORCE_INLINE constexpr operator fqd() const& = delete;
-        BL_FORCE_INLINE constexpr operator fqd() && noexcept { return fqd{ eval_to_qd_s(*this) }; }
+        BL_FORCE_INLINE constexpr operator fqd() const noexcept { return fqd{ eval_to_qd_s(*this) }; }
+
+        template<class T, std::enable_if_t<is_direct_conversion_target_v<T>, int> = 0>
+        [[nodiscard]] explicit constexpr operator T() const noexcept { return convert_expression<T>(*this); }
     };
 
     template<class L, class R>
     struct mul_expr
     {
+        using fltx_expression_value_type = fqd;
+        using fltx_expression_storage_type = fqd_s;
+
         L left;
         R right;
 
-        BL_FORCE_INLINE constexpr operator fqd() const& = delete;
-        BL_FORCE_INLINE constexpr operator fqd() && noexcept { return fqd{ eval_to_qd_s(*this) }; }
+        BL_FORCE_INLINE constexpr operator fqd() const noexcept { return fqd{ eval_to_qd_s(*this) }; }
+
+        template<class T, std::enable_if_t<is_direct_conversion_target_v<T>, int> = 0>
+        [[nodiscard]] explicit constexpr operator T() const noexcept { return convert_expression<T>(*this); }
     };
 
     template<class L, class R>
     struct div_expr
     {
+        using fltx_expression_value_type = fqd;
+        using fltx_expression_storage_type = fqd_s;
+
         L left;
         R right;
 
-        BL_FORCE_INLINE constexpr operator fqd() const& = delete;
-        BL_FORCE_INLINE constexpr operator fqd() && noexcept { return fqd{ eval_to_qd_s(*this) }; }
+        BL_FORCE_INLINE constexpr operator fqd() const noexcept { return fqd{ eval_to_qd_s(*this) }; }
+
+        template<class T, std::enable_if_t<is_direct_conversion_target_v<T>, int> = 0>
+        [[nodiscard]] explicit constexpr operator T() const noexcept { return convert_expression<T>(*this); }
     };
 
     template<class L>
     struct div_double_expr
     {
+        using fltx_expression_value_type = fqd;
+        using fltx_expression_storage_type = fqd_s;
+
         L left;
         double right;
 
-        BL_FORCE_INLINE constexpr operator fqd() const& = delete;
-        BL_FORCE_INLINE constexpr operator fqd() && noexcept { return fqd{ eval_to_qd_s(*this) }; }
+        BL_FORCE_INLINE constexpr operator fqd() const noexcept { return fqd{ eval_to_qd_s(*this) }; }
+
+        template<class T, std::enable_if_t<is_direct_conversion_target_v<T>, int> = 0>
+        [[nodiscard]] explicit constexpr operator T() const noexcept { return convert_expression<T>(*this); }
     };
 
     template<class R>
     struct double_div_expr
     {
+        using fltx_expression_value_type = fqd;
+        using fltx_expression_storage_type = fqd_s;
+
         double left;
         R right;
 
-        BL_FORCE_INLINE constexpr operator fqd() const& = delete;
-        BL_FORCE_INLINE constexpr operator fqd() && noexcept { return fqd{ eval_to_qd_s(*this) }; }
+        BL_FORCE_INLINE constexpr operator fqd() const noexcept { return fqd{ eval_to_qd_s(*this) }; }
+
+        template<class T, std::enable_if_t<is_direct_conversion_target_v<T>, int> = 0>
+        [[nodiscard]] explicit constexpr operator T() const noexcept { return convert_expression<T>(*this); }
     };
 
     template<class L, class R, int RSign>
     struct prod_pair_expr
     {
+        using fltx_expression_value_type = fqd;
+        using fltx_expression_storage_type = fqd_s;
+
         static constexpr int r_sign = RSign;
 
         L left;
         R right;
 
-        BL_FORCE_INLINE constexpr operator fqd() const& = delete;
-        BL_FORCE_INLINE constexpr operator fqd() && noexcept { return fqd{ eval_to_qd_s(*this) }; }
+        BL_FORCE_INLINE constexpr operator fqd() const noexcept { return fqd{ eval_to_qd_s(*this) }; }
+
+        template<class T, std::enable_if_t<is_direct_conversion_target_v<T>, int> = 0>
+        [[nodiscard]] explicit constexpr operator T() const noexcept { return convert_expression<T>(*this); }
     };
 
     template<class P, class V, int VSign>
     struct prod_value_expr
     {
+        using fltx_expression_value_type = fqd;
+        using fltx_expression_storage_type = fqd_s;
+
         static constexpr int v_sign = VSign;
 
         P prod;
         V value;
 
-        BL_FORCE_INLINE constexpr operator fqd() const& = delete;
-        BL_FORCE_INLINE constexpr operator fqd() && noexcept { return fqd{ eval_to_qd_s(*this) }; }
+        BL_FORCE_INLINE constexpr operator fqd() const noexcept { return fqd{ eval_to_qd_s(*this) }; }
+
+        template<class T, std::enable_if_t<is_direct_conversion_target_v<T>, int> = 0>
+        [[nodiscard]] explicit constexpr operator T() const noexcept { return convert_expression<T>(*this); }
     };
 
     template<class L, class R, class V, int RSign, int VSign>
     struct prod_pair_value_expr
     {
+        using fltx_expression_value_type = fqd;
+        using fltx_expression_storage_type = fqd_s;
+
         static constexpr int r_sign = RSign;
         static constexpr int v_sign = VSign;
 
@@ -696,19 +769,26 @@ namespace detail::_qd_expr
         R right;
         V value;
 
-        BL_FORCE_INLINE constexpr operator fqd() const& = delete;
-        BL_FORCE_INLINE constexpr operator fqd() && noexcept { return fqd{ eval_to_qd_s(*this) }; }
+        BL_FORCE_INLINE constexpr operator fqd() const noexcept { return fqd{ eval_to_qd_s(*this) }; }
+
+        template<class T, std::enable_if_t<is_direct_conversion_target_v<T>, int> = 0>
+        [[nodiscard]] explicit constexpr operator T() const noexcept { return convert_expression<T>(*this); }
     };
 
     template<class A, class B, class C>
     struct prod_triple_add_expr
     {
+        using fltx_expression_value_type = fqd;
+        using fltx_expression_storage_type = fqd_s;
+
         A first;
         B second;
         C third;
 
-        BL_FORCE_INLINE constexpr operator fqd() const& = delete;
-        BL_FORCE_INLINE constexpr operator fqd() && noexcept { return fqd{ eval_to_qd_s(*this) }; }
+        BL_FORCE_INLINE constexpr operator fqd() const noexcept { return fqd{ eval_to_qd_s(*this) }; }
+
+        template<class T, std::enable_if_t<is_direct_conversion_target_v<T>, int> = 0>
+        [[nodiscard]] explicit constexpr operator T() const noexcept { return convert_expression<T>(*this); }
     };
 
     template<>                                           struct is_expr< leaf_expr >                             : std::true_type {};
@@ -2392,6 +2472,14 @@ namespace detail::_qd_expr
                 return eval_eager(expr);
             }
         }
+    }
+
+    template<class T, class Expr>
+    [[nodiscard]] BL_FORCE_INLINE constexpr T convert_expression(const Expr& expr) noexcept
+    {
+        static_assert(is_direct_conversion_target_v<T>);
+        const fqd eager{ eval_to_qd_s(expr) };
+        return static_cast<T>(eager);
     }
 
     // expression builders

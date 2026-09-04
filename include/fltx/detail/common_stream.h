@@ -15,6 +15,7 @@
 #include <ostream>
 #include <string>
 
+#include "fltx/static_string.h"
 #include "fltx/detail/common_io.h"
 
 namespace bl

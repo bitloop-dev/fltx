@@ -137,6 +137,13 @@ struct fqd_s
     BL_FORCE_INLINE constexpr fqd_s& operator=(fdd_s x) noexcept;
     BL_FORCE_INLINE constexpr fqd_s& operator=(double x) noexcept { x0 = x; x1 = 0.0; x2 = 0.0; x3 = 0.0; return *this; }
     BL_FORCE_INLINE constexpr fqd_s& operator=(float x) noexcept { x0 = static_cast<double>(x); x1 = 0.0; x2 = 0.0; x3 = 0.0; return *this; }
+    BL_FORCE_INLINE constexpr fqd_s& operator=(long double x) noexcept
+    {
+        double limbs[4]{};
+        detail::fp::long_double_to_double_expansion(x, limbs);
+        x0 = limbs[0]; x1 = limbs[1]; x2 = limbs[2]; x3 = limbs[3];
+        return *this;
+    }
 
     BL_FORCE_INLINE constexpr fqd_s& operator=(uint64_t u) noexcept;
     BL_FORCE_INLINE constexpr fqd_s& operator=(int64_t v) noexcept;
@@ -319,9 +326,12 @@ struct fqd_s
 
     [[nodiscard]] explicit constexpr operator fdd() const noexcept;
     [[nodiscard]] explicit constexpr operator fdd_s() const noexcept;
-    [[nodiscard]] explicit constexpr operator double() const noexcept { return ((x0 + x1) + (x2 + x3)); }
-    [[nodiscard]] explicit constexpr operator float() const noexcept { return static_cast<float>(((x0 + x1) + (x2 + x3))); }
-    [[nodiscard]] explicit constexpr operator int() const noexcept { return static_cast<int>(((x0 + x1) + (x2 + x3))); }
+
+    template<class T, std::enable_if_t<detail::fp::is_native_arithmetic_scalar_v<T>, int> = 0>
+    [[nodiscard]] explicit constexpr operator T() const noexcept
+    {
+        return detail::fp::expansion_to_native<T>(x0, x1, x2, x3);
+    }
 
     [[nodiscard]] constexpr fqd_s operator+() const { return *this; }
     [[nodiscard]] constexpr fqd_s operator-() const noexcept { return fqd_s{ -x0, -x1, -x2, -x3 }; }
@@ -346,12 +356,13 @@ struct fqd : public fqd_s
 {
     fqd() = default;
     constexpr fqd(double _x0, double _x1, double _x2, double _x3) noexcept : fqd_s{ _x0, _x1, _x2, _x3 } {}
-    constexpr fqd(float  x) noexcept : fqd_s{ ((double)x), 0.0 } {}
-    constexpr fqd(double x) noexcept : fqd_s{ ((double)x), 0.0 } {}
-    constexpr fqd(int64_t v) noexcept : fqd_s{} { static_cast<fqd_s&>(*this)  = static_cast<int64_t>(v); }
-    constexpr fqd(uint64_t u) noexcept : fqd_s{} { static_cast<fqd_s&>(*this) = static_cast<uint64_t>(u); }
-    constexpr fqd(int32_t  v) noexcept : fqd((int64_t)v) {}
-    constexpr fqd(uint32_t u) noexcept : fqd((int64_t)u) {}
+
+    template<class T, std::enable_if_t<detail::fp::is_native_arithmetic_scalar_v<T>, int> = 0>
+    constexpr fqd(T x) noexcept : fqd_s{}
+    {
+        static_cast<fqd_s&>(*this) = x;
+    }
+
     constexpr fqd(fdd_s f) noexcept;
     constexpr fqd(const fqd_s& f) noexcept : fqd_s{ f.x0, f.x1, f.x2, f.x3 } {}
 
@@ -367,10 +378,7 @@ struct fqd : public fqd_s
         return *this;
     }
 
-    [[nodiscard]] explicit constexpr operator fdd_s() const noexcept;
-    [[nodiscard]] explicit constexpr operator fdd()   const noexcept;
-    [[nodiscard]] explicit constexpr operator double() const noexcept { return ((x0 + x1) + (x2 + x3)); }
-    [[nodiscard]] explicit constexpr operator float()  const noexcept { return static_cast<float>(((x0 + x1) + (x2 + x3))); }
+    [[nodiscard]] static constexpr fqd eps() noexcept { return fqd{ fqd_s::eps() }; }
 };
 
 } // namespace bl

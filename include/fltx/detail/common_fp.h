@@ -53,6 +53,10 @@ template<class T>
 inline constexpr bool is_integer_scalar_v = std::is_integral_v<std::remove_cv_t<T>> && (sizeof(std::remove_cv_t<T>) <= 8);
 
 template<class T>
+inline constexpr bool is_native_arithmetic_scalar_v =
+    is_integer_scalar_v<T> || std::is_floating_point_v<std::remove_cv_t<T>>;
+
+template<class T>
 inline constexpr bool integer_type_fits_exact_double_v = std::is_integral_v<std::remove_cv_t<T>> && (sizeof(std::remove_cv_t<T>) < 8);
 
 struct double_double
@@ -515,6 +519,155 @@ BL_FORCE_INLINE constexpr double ceil(double x) noexcept
 BL_FORCE_INLINE constexpr double trunc(double x) noexcept
 {
     return signbit(x) ? ceil(x) : floor(x);
+}
+
+namespace conversion
+{
+    struct signed_integer_accumulator
+    {
+        std::uint64_t low{};
+        int high{};
+
+        BL_FORCE_INLINE constexpr void add(double value) noexcept
+        {
+            if (value == 0.0)
+                return;
+
+            const bool negative = signbit(value);
+            const double magnitude = absd(value);
+            const bool high_unit = magnitude >= 0x1p64;
+            const std::uint64_t term = high_unit
+                ? std::uint64_t{ 0 }
+                : static_cast<std::uint64_t>(magnitude);
+
+            if (negative)
+            {
+                const std::uint64_t previous = low;
+                low -= term;
+                high -= static_cast<int>(high_unit) + static_cast<int>(previous < term);
+            }
+            else
+            {
+                const std::uint64_t previous = low;
+                low += term;
+                high += static_cast<int>(high_unit) + static_cast<int>(low < previous);
+            }
+        }
+    };
+
+    template<class T>
+    [[nodiscard]] BL_FORCE_INLINE constexpr T accumulator_to_integer(
+        signed_integer_accumulator value) noexcept
+    {
+        using target_type = std::remove_cv_t<T>;
+        static_assert(is_integer_scalar_v<target_type> && !std::is_same_v<target_type, bool>);
+
+        if constexpr (std::is_unsigned_v<target_type>)
+        {
+            return static_cast<target_type>(value.low);
+        }
+        else
+        {
+            if (value.high >= 0)
+                return static_cast<target_type>(value.low);
+
+            const std::uint64_t magnitude = std::uint64_t{ 0 } - value.low;
+            if constexpr (sizeof(target_type) == sizeof(std::int64_t))
+            {
+                if (magnitude == (std::uint64_t{ 1 } << 63))
+                    return std::numeric_limits<target_type>::lowest();
+            }
+            return static_cast<target_type>(-static_cast<std::int64_t>(magnitude));
+        }
+    }
+
+    template<class T, class... Tail>
+    [[nodiscard]] BL_FORCE_INLINE constexpr T expansion_to_integer(
+        double leading,
+        Tail... tail) noexcept
+    {
+        static_assert(is_integer_scalar_v<T> && !std::is_same_v<std::remove_cv_t<T>, bool>);
+        static_assert((std::is_same_v<double, std::remove_cv_t<Tail>> && ...));
+
+        const double limbs[] = { leading, tail... };
+        bool negative = signbit(leading);
+        if (leading == 0.0)
+        {
+            for (double limb : limbs)
+            {
+                if (limb != 0.0)
+                {
+                    negative = signbit(limb);
+                    break;
+                }
+            }
+        }
+
+        signed_integer_accumulator result{};
+        for (double limb : limbs)
+        {
+            const double integral = negative ? ceil(limb) : floor(limb);
+            result.add(integral);
+            if (integral != limb)
+                break;
+        }
+        return accumulator_to_integer<T>(result);
+    }
+
+    template<class T, class... Tail>
+    [[nodiscard]] BL_FORCE_INLINE constexpr T expansion_to_floating(
+        double leading,
+        Tail... tail) noexcept
+    {
+        static_assert(std::is_floating_point_v<std::remove_cv_t<T>>);
+        static_assert((std::is_same_v<double, std::remove_cv_t<Tail>> && ...));
+
+        if (leading == 0.0 && ((tail == 0.0) && ...))
+            return static_cast<T>(leading);
+
+        long double result = static_cast<long double>(leading);
+        ((result += static_cast<long double>(tail)), ...);
+        return static_cast<T>(result);
+    }
+
+} // namespace conversion
+
+template<class T, class... Tail>
+[[nodiscard]] BL_FORCE_INLINE constexpr T expansion_to_native(
+    double leading,
+    Tail... tail) noexcept
+{
+    using target_type = std::remove_cv_t<T>;
+    static_assert(is_native_arithmetic_scalar_v<target_type>);
+
+    if constexpr (std::is_same_v<target_type, bool>)
+        return leading != 0.0 || ((tail != 0.0) || ...);
+    else if constexpr (std::is_integral_v<target_type>)
+        return conversion::expansion_to_integer<target_type>(leading, tail...);
+    else
+        return conversion::expansion_to_floating<target_type>(leading, tail...);
+}
+
+template<int LimbCount>
+BL_FORCE_INLINE constexpr void long_double_to_double_expansion(
+    long double value,
+    double (&out)[LimbCount]) noexcept
+{
+    static_assert(LimbCount > 0);
+
+    out[0] = static_cast<double>(value);
+    for (int i = 1; i < LimbCount; ++i)
+        out[i] = 0.0;
+
+    if (!isfinite(out[0]) || out[0] == 0.0)
+        return;
+
+    long double remainder = value - static_cast<long double>(out[0]);
+    for (int i = 1; i < LimbCount && remainder != 0.0L; ++i)
+    {
+        out[i] = static_cast<double>(remainder);
+        remainder -= static_cast<long double>(out[i]);
+    }
 }
 
 BL_FORCE_INLINE constexpr bool double_integer_is_odd(double x) noexcept

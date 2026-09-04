@@ -5,6 +5,7 @@
 #include <concepts>
 #include <cstddef>
 #include <limits>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -121,9 +122,90 @@ using clamp_product_expression = std::remove_cvref_t<decltype(
         std::declval<bl::fqd>(),
         std::declval<bl::fqd>(),
         std::declval<bl::fqd>()) * std::declval<bl::fqd>())>;
+
+template<class Expr>
+concept has_direct_qd_expression_conversions = requires(Expr&& expression)
+{
+    static_cast<bl::fdd_s>(std::move(expression));
+    static_cast<bl::fdd>(std::move(expression));
+    static_cast<bool>(std::move(expression));
+    static_cast<char>(std::move(expression));
+    static_cast<signed char>(std::move(expression));
+    static_cast<unsigned char>(std::move(expression));
+    static_cast<wchar_t>(std::move(expression));
+    static_cast<char8_t>(std::move(expression));
+    static_cast<char16_t>(std::move(expression));
+    static_cast<char32_t>(std::move(expression));
+    static_cast<short>(std::move(expression));
+    static_cast<unsigned short>(std::move(expression));
+    static_cast<int>(std::move(expression));
+    static_cast<unsigned int>(std::move(expression));
+    static_cast<long>(std::move(expression));
+    static_cast<unsigned long>(std::move(expression));
+    static_cast<long long>(std::move(expression));
+    static_cast<unsigned long long>(std::move(expression));
+    static_cast<std::size_t>(std::move(expression));
+    static_cast<float>(std::move(expression));
+    static_cast<double>(std::move(expression));
+    static_cast<long double>(std::move(expression));
+};
+
+template<class Expr>
+concept has_lvalue_double_conversion = requires(Expr& expression)
+{
+    static_cast<double>(expression);
+};
+
+template<class Expr>
+concept has_const_rvalue_double_conversion = requires(const Expr&& expression)
+{
+    static_cast<double>(std::move(expression));
+};
+
+using qd_leaf_expression = bl::detail::_qd_expr::leaf_expr;
+using qd_mul_expression = bl::detail::_qd_expr::mul_expr<qd_leaf_expression, qd_leaf_expression>;
+using qd_expression_nodes = std::tuple<
+    qd_leaf_expression,
+    bl::detail::_qd_expr::mul_double_expr<qd_leaf_expression>,
+    bl::detail::_qd_expr::add_double_expr<qd_leaf_expression>,
+    bl::detail::_qd_expr::double_sub_expr<qd_leaf_expression>,
+    bl::detail::_qd_expr::add_expr<qd_leaf_expression, qd_leaf_expression>,
+    bl::detail::_qd_expr::sub_expr<qd_leaf_expression, qd_leaf_expression>,
+    qd_mul_expression,
+    bl::detail::_qd_expr::div_expr<qd_leaf_expression, qd_leaf_expression>,
+    bl::detail::_qd_expr::div_double_expr<qd_leaf_expression>,
+    bl::detail::_qd_expr::double_div_expr<qd_leaf_expression>,
+    bl::detail::_qd_expr::prod_pair_expr<qd_mul_expression, qd_mul_expression, 1>,
+    bl::detail::_qd_expr::prod_value_expr<qd_mul_expression, qd_leaf_expression, 1>,
+    bl::detail::_qd_expr::prod_pair_value_expr<qd_mul_expression, qd_mul_expression, qd_leaf_expression, 1, 1>,
+    bl::detail::_qd_expr::prod_triple_add_expr<qd_mul_expression, qd_mul_expression, qd_mul_expression>>;
+
+template<class... Expr>
+consteval bool all_expression_nodes_have_direct_conversions(std::tuple<Expr...>*)
+{
+    return (has_direct_qd_expression_conversions<Expr> && ...);
+}
+
+template<class... Expr>
+consteval bool all_expression_nodes_publish_their_value_type(std::tuple<Expr...>*)
+{
+    return ((bl::fltx_expression<Expr> &&
+             std::same_as<bl::fltx_expression_value_t<Expr>, bl::fqd> &&
+             std::same_as<bl::fltx_expression_storage_t<Expr>, bl::fqd_s>) && ...);
+}
+
 static_assert(std::constructible_from<bl::fqd, product_expression&&>);
-static_assert(!std::constructible_from<bl::fqd, product_expression&>);
-static_assert(!std::constructible_from<bl::fqd, const product_expression&&>);
+static_assert(std::constructible_from<bl::fqd, product_expression&>);
+static_assert(std::constructible_from<bl::fqd, const product_expression&&>);
+static_assert(all_expression_nodes_have_direct_conversions(static_cast<qd_expression_nodes*>(nullptr)));
+static_assert(all_expression_nodes_publish_their_value_type(static_cast<qd_expression_nodes*>(nullptr)));
+static_assert(std::same_as<bl::fltx_expression_value_t<double>, double>);
+static_assert(std::same_as<bl::fltx_expression_value_t<bl::fdd>, bl::fdd>);
+static_assert(std::same_as<bl::fltx_expression_storage_t<double>, double>);
+static_assert(std::same_as<bl::fltx_expression_storage_t<bl::fdd>, bl::fdd>);
+static_assert(!std::convertible_to<product_expression&&, double>);
+static_assert(has_lvalue_double_conversion<product_expression>);
+static_assert(has_const_rvalue_double_conversion<product_expression>);
 static_assert(bl::detail::_qd_expr::is_expr<abs_product_expression>::value);
 static_assert(bl::detail::_qd_expr::is_expr<clamp_product_expression>::value);
 
@@ -172,6 +254,37 @@ TEST_CASE("delayed fqd expressions own math temporaries and storage members",
         ((a.x + a.y * 0.5) - (b.x / 3.0)) +
         ((2.0 * b.y) - (a.x * b.y)) / (a.y + 1.25);
     require_same_limbs(delayed_storage, immediate_storage);
+}
+
+TEST_CASE("owning fqd expressions convert directly to value and narrower scalar types",
+          "[contracts][expressions][conversion]")
+{
+    const auto make_expression = [] {
+        return expression_x / expression_c + 0.25;
+    };
+    const bl::fqd expected = make_expression();
+
+    CHECK(static_cast<bl::fdd_s>(make_expression()) == static_cast<bl::fdd_s>(expected));
+    CHECK(static_cast<bl::fdd>(make_expression()) == static_cast<bl::fdd>(expected));
+    CHECK(static_cast<double>(make_expression()) == static_cast<double>(expected));
+    CHECK(static_cast<float>(make_expression()) == static_cast<float>(expected));
+    CHECK(static_cast<long double>(make_expression()) == static_cast<long double>(expected));
+    CHECK(static_cast<int>(make_expression()) == static_cast<int>(expected));
+    CHECK(static_cast<std::size_t>(make_expression()) == static_cast<std::size_t>(expected));
+    CHECK(static_cast<unsigned char>(make_expression()) == static_cast<unsigned char>(expected));
+    CHECK(static_cast<bool>(make_expression()) == static_cast<bool>(expected));
+
+    const auto expression = make_expression();
+    CHECK(bl::fqd{ expression } == expected);
+    CHECK(static_cast<bl::fdd_s>(expression) == static_cast<bl::fdd_s>(expected));
+    CHECK(static_cast<bl::fdd>(expression) == static_cast<bl::fdd>(expected));
+    CHECK(static_cast<double>(expression) == static_cast<double>(expected));
+    CHECK(static_cast<float>(expression) == static_cast<float>(expected));
+    CHECK(static_cast<long double>(expression) == static_cast<long double>(expected));
+    CHECK(static_cast<int>(expression) == static_cast<int>(expected));
+    CHECK(static_cast<std::size_t>(expression) == static_cast<std::size_t>(expected));
+    CHECK(static_cast<unsigned char>(expression) == static_cast<unsigned char>(expected));
+    CHECK(static_cast<bool>(expression) == static_cast<bool>(expected));
 }
 
 TEST_CASE("fqd multiplication remains fused with a following subtraction",

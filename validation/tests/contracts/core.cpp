@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <array>
 #include <compare>
 #include <cmath>
@@ -422,20 +423,52 @@ TEST_CASE("extended types preserve arithmetic and conversion contracts", "[contr
     CHECK(static_cast<double>(bl::fdd{ 1.5 }) == 1.5);
     CHECK(static_cast<float>(bl::fqd{ 1.5 }) == 1.5f);
     CHECK(static_cast<int>(bl::fdd_s{ 7.75 }) == 7);
+    CHECK(static_cast<int>(bl::fdd_s{ 1.0, -0x1p-60 }) == 0);
+    CHECK(static_cast<int>(bl::fdd_s{ -1.0, 0x1p-60 }) == 0);
+    CHECK(static_cast<int>(bl::fqd_s{ 1.0, -0x1p-60, 0.0, 0.0 }) == 0);
+    CHECK(static_cast<int>(bl::fqd_s{ -1.0, 0x1p-60, 0.0, 0.0 }) == 0);
+    CHECK(static_cast<std::int64_t>(bl::fdd{ exact }) == exact);
+    CHECK(static_cast<std::int64_t>(bl::fqd{ exact }) == exact);
+    CHECK((std::size_t)bl::fqd{ 7.75 } == std::size_t{ 7 });
+    CHECK(static_cast<std::uint64_t>(bl::fdd{ std::numeric_limits<std::uint64_t>::max() }) ==
+          std::numeric_limits<std::uint64_t>::max());
+    CHECK(static_cast<std::uint64_t>(bl::fqd{ std::numeric_limits<std::uint64_t>::max() }) ==
+          std::numeric_limits<std::uint64_t>::max());
+    CHECK(static_cast<std::int64_t>(bl::fdd{ std::numeric_limits<std::int64_t>::max() }) ==
+          std::numeric_limits<std::int64_t>::max());
+    CHECK(static_cast<std::int64_t>(bl::fqd{ std::numeric_limits<std::int64_t>::lowest() }) ==
+          std::numeric_limits<std::int64_t>::lowest());
+    CHECK(!static_cast<bool>(bl::fdd_s{ -0.0 }));
+    CHECK(static_cast<bool>(std::numeric_limits<bl::fqd>::quiet_NaN()));
+    CHECK(std::signbit(static_cast<float>(bl::fdd_s{ -0.0 })));
+    CHECK(std::signbit(static_cast<double>(bl::fqd_s{ -0.0 })));
+    CHECK(std::signbit(static_cast<long double>(bl::fqd_s{ -0.0 })));
+
+    constexpr long double extended = 1.0L + 0x1p-60L;
+    CHECK(static_cast<long double>(bl::fdd{ extended }) == extended);
+    CHECK(static_cast<long double>(bl::fqd{ extended }) == extended);
+
+    const bl::fqd_s narrow_source{ 1.0, 0.0, 0x1p-105, 0.0 };
+    CHECK(static_cast<bl::fdd_s>(narrow_source) ==
+          bl::fdd_s{ 1.0 } + bl::fdd_s{ 0x1p-105 });
 
     bl::fdd_s assigned_dd{};
     assigned_dd = exact;
     CHECK(assigned_dd == exact);
     assigned_dd = std::uint32_t{ 42 };
     CHECK(assigned_dd == 42);
+    assigned_dd = extended;
+    CHECK(static_cast<long double>(assigned_dd) == extended);
 
     bl::fqd_s assigned_qd{};
     assigned_qd = static_cast<std::uint64_t>(exact);
     CHECK(assigned_qd == exact);
     assigned_qd = std::int16_t{ -42 };
     CHECK(assigned_qd == -42);
+    assigned_qd = extended;
+    CHECK(static_cast<long double>(assigned_qd) == extended);
 
-    assigned_dd = qd;
+    assigned_dd = static_cast<bl::fdd_s>(qd);
     CHECK(assigned_dd == dd);
     assigned_qd = dd;
     CHECK(assigned_qd == qd);
@@ -498,6 +531,12 @@ TEST_CASE("limits, constants, and traits describe both expansion types", "[contr
 {
     STATIC_CHECK(bl::fdd_s::eps() == std::numeric_limits<bl::fdd_s>::epsilon());
     STATIC_CHECK(bl::fqd_s::eps() == std::numeric_limits<bl::fqd_s>::epsilon());
+    STATIC_CHECK(std::same_as<decltype(bl::fdd::eps()), bl::fdd>);
+    STATIC_CHECK(std::same_as<decltype(bl::fqd::eps()), bl::fqd>);
+    STATIC_CHECK(bl::fdd::eps() == std::numeric_limits<bl::fdd>::epsilon());
+    STATIC_CHECK(bl::fqd::eps() == std::numeric_limits<bl::fqd>::epsilon());
+    STATIC_CHECK(std::max(bl::fdd::eps(), bl::abs(bl::fdd{ 0.0 })) == bl::fdd::eps());
+    STATIC_CHECK(std::max(bl::fqd::eps(), bl::abs(bl::fqd{ 0.0 })) == bl::fqd::eps());
     STATIC_CHECK(std::numeric_limits<bl::fdd_s>::highest() ==
                  std::numeric_limits<bl::fdd_s>::max());
     STATIC_CHECK(std::numeric_limits<bl::fqd_s>::highest() ==

@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <cstddef>
 #include <ios>
 #include <limits>
 #include <string_view>
@@ -23,6 +24,44 @@ namespace
     {
         const T scale = bl::fmax(bl::abs(expected), T{ 1.0 });
         return bl::abs(actual - expected) <= bl::ldexp(scale, -bits);
+    }
+
+    constexpr bool expression_conversions_are_constant_evaluated()
+    {
+        const bl::fqd numerator{ 3.5, 0x1p-60, -0x1p-120, 0x1p-180 };
+        const bl::fqd denominator{ 1.25, -0x1p-61, 0x1p-121, -0x1p-181 };
+        const auto expression = numerator / denominator + 0.25;
+        const bl::fqd expected = expression;
+
+        return static_cast<bl::fdd_s>(expression) == static_cast<bl::fdd_s>(expected) &&
+               static_cast<bl::fdd>(expression) == static_cast<bl::fdd>(expected) &&
+               static_cast<double>(expression) == static_cast<double>(expected) &&
+               static_cast<float>(expression) == static_cast<float>(expected) &&
+               static_cast<long double>(expression) == static_cast<long double>(expected) &&
+               static_cast<std::size_t>(expression) == static_cast<std::size_t>(expected) &&
+               static_cast<unsigned char>(expression) == static_cast<unsigned char>(expected) &&
+               static_cast<bool>(expression) == static_cast<bool>(expected) &&
+               static_cast<int>(expression) == static_cast<int>(expected);
+    }
+
+    constexpr bool native_conversions_preserve_expansion_value()
+    {
+        constexpr std::int64_t exact = (std::int64_t{ 1 } << 60) + 3;
+        constexpr long double extended = 1.0L + 0x1p-60L;
+        constexpr bl::fdd below_one{ 1.0, -0x1p-60 };
+        constexpr bl::fqd above_negative_one{ -1.0, 0x1p-60, 0.0, 0.0 };
+        constexpr bl::fdd negative_zero{ -0.0 };
+
+        return static_cast<int>(below_one) == 0 &&
+               static_cast<int>(above_negative_one) == 0 &&
+               static_cast<std::int64_t>(bl::fdd{ exact }) == exact &&
+               static_cast<std::int64_t>(bl::fqd{ exact }) == exact &&
+               static_cast<std::uint64_t>(bl::fdd{ std::numeric_limits<std::uint64_t>::max() }) ==
+                   std::numeric_limits<std::uint64_t>::max() &&
+               static_cast<long double>(bl::fdd{ extended }) == extended &&
+               static_cast<long double>(bl::fqd{ extended }) == extended &&
+               !static_cast<bool>(negative_zero) &&
+               bl::signbit(static_cast<double>(negative_zero));
     }
 
     constexpr bl::fdd dd_input{ 1.25 };
@@ -338,6 +377,8 @@ namespace
 
     static_assert(dd_sqrt == bl::fdd{ 2.0 });
     static_assert(qd_sqrt == bl::fqd{ 2.0 });
+    static_assert(expression_conversions_are_constant_evaluated());
+    static_assert(native_conversions_preserve_expansion_value());
     static_assert(dd_exp_log > bl::fdd{ 1.249 });
     static_assert(dd_exp_log < bl::fdd{ 1.251 });
     static_assert(qd_exp_log > bl::fqd{ 1.249 });
@@ -386,6 +427,8 @@ TEST_CASE("genuine constant evaluation covers representative heavy paths", "[con
     CHECK(within_roundoff(dd_sincos.c, bl::cos(dd_input)));
 
     CHECK(qd_sqrt == bl::sqrt(bl::fqd{ 4.0 }));
+    STATIC_CHECK(expression_conversions_are_constant_evaluated());
+    STATIC_CHECK(native_conversions_preserve_expansion_value());
     CHECK(qd_exp_log == bl::exp(bl::log(qd_input)));
     CHECK(within_roundoff(qd_sincos.s, bl::sin(qd_input)));
     CHECK(within_roundoff(qd_sincos.c, bl::cos(qd_input)));

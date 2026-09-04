@@ -14,6 +14,8 @@
 #include <string>
 
 #include "fltx/fqd_limits.h"
+#include "fltx/static_string.h"
+#include "fltx/string_options.h"
 #include "fltx/detail/fqd_math_basic.h"
 #include "fltx/detail/common_io.h"
 
@@ -392,6 +394,19 @@ namespace detail::_qd // primitives and kernels
     const fqd_s& value,
     precision_info precision = std::numeric_limits<fqd_s>::max_digits10,
     std::ios_base::fmtflags flags = std::ios_base::fmtflags{});
+
+[[nodiscard]] BL_FORCE_INLINE std::string to_string(
+    const fqd_s& value,
+    precision_info precision,
+    std::ios_base::fmtflags flags,
+    trailing_zero_policy trailing_zeros)
+{
+    std::string out = to_string(value, precision, flags);
+    detail::apply_trailing_zero_policy(out, trailing_zeros);
+    return out;
+}
+
+std::string to_string(const fqd_s&, precision_info, bool) = delete;
 
 namespace detail::_qd // primitives and kernels
 {

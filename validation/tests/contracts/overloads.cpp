@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <type_traits>
 #include <utility>
@@ -33,6 +34,64 @@ namespace
     {
         { left = right } -> std::same_as<Left&>;
     };
+
+    template<class From, class To>
+    concept explicitly_castable = requires (const From& value)
+    {
+        static_cast<To>(value);
+    };
+
+    template<class T>
+    concept contextually_boolean = requires (const T& value)
+    {
+        { !value } -> std::same_as<bool>;
+    };
+
+    template<class... T>
+    struct type_list {};
+
+    using native_arithmetic_types = type_list<
+        bool,
+        char,
+        signed char,
+        unsigned char,
+        wchar_t,
+        char8_t,
+        char16_t,
+        char32_t,
+        short,
+        unsigned short,
+        int,
+        unsigned int,
+        long,
+        unsigned long,
+        long long,
+        unsigned long long,
+        std::size_t,
+        float,
+        double,
+        long double>;
+
+    template<class... T>
+    consteval bool native_scalars_implicitly_construct_values(type_list<T...>*)
+    {
+        return ((std::convertible_to<T, bl::fdd> &&
+                 std::convertible_to<T, bl::fqd>) && ...);
+    }
+
+    template<class Source, class... T>
+    consteval bool extended_value_has_explicit_native_casts(type_list<T...>*)
+    {
+        return ((explicitly_castable<Source, T> &&
+                 !std::convertible_to<Source, T>) && ...);
+    }
+
+    template<class... T>
+    consteval bool native_scalars_assign_to_storage(type_list<T...>*)
+    {
+        return ((assignment_returns_left<bl::fdd_s, T> &&
+                 assignment_returns_left<bl::fqd_s, T>) && ...);
+    }
 }
 
 static_assert(arithmetic_returns<bl::fdd_s, bl::fdd_s, bl::fdd_s>());
@@ -71,11 +130,24 @@ static_assert(std::constructible_from<bl::fqd, std::int64_t>);
 static_assert(std::constructible_from<bl::fqd, std::uint32_t>);
 static_assert(std::constructible_from<bl::fqd, bl::fdd_s>);
 static_assert(std::constructible_from<bl::fqd, bl::fqd_s>);
+static_assert(native_scalars_implicitly_construct_values(static_cast<native_arithmetic_types*>(nullptr)));
+static_assert(native_scalars_assign_to_storage(static_cast<native_arithmetic_types*>(nullptr)));
+static_assert(extended_value_has_explicit_native_casts<bl::fdd_s>(static_cast<native_arithmetic_types*>(nullptr)));
+static_assert(extended_value_has_explicit_native_casts<bl::fdd>(static_cast<native_arithmetic_types*>(nullptr)));
+static_assert(extended_value_has_explicit_native_casts<bl::fqd_s>(static_cast<native_arithmetic_types*>(nullptr)));
+static_assert(extended_value_has_explicit_native_casts<bl::fqd>(static_cast<native_arithmetic_types*>(nullptr)));
+static_assert(contextually_boolean<bl::fdd_s>);
+static_assert(contextually_boolean<bl::fdd>);
+static_assert(contextually_boolean<bl::fqd_s>);
+static_assert(contextually_boolean<bl::fqd>);
+static_assert(!std::convertible_to<double, bl::fdd_s>);
+static_assert(!std::convertible_to<double, bl::fqd_s>);
 static_assert(std::convertible_to<bl::fdd, bl::fqd>);
 static_assert(std::convertible_to<bl::fdd_s, bl::fqd_s>);
 static_assert(!std::convertible_to<bl::fqd, bl::fdd>);
 static_assert(!std::convertible_to<bl::fqd_s, bl::fdd_s>);
-static_assert(assignment_returns_left<bl::fdd_s, bl::fqd_s>);
+static_assert(!assignment_returns_left<bl::fdd_s, bl::fqd_s>);
+static_assert(!assignment_returns_left<bl::fdd, bl::fqd>);
 static_assert(assignment_returns_left<bl::fqd_s, bl::fdd_s>);
 static_assert(assignment_returns_left<bl::fdd_s, std::int16_t>);
 static_assert(assignment_returns_left<bl::fqd_s, std::uint16_t>);

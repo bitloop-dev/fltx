@@ -17,6 +17,33 @@
 
 namespace bl
 {
+    template<class T, class = void>
+    struct fltx_expression_traits
+    {
+        static constexpr bool is_expression = false;
+        using value_type = std::remove_cvref_t<T>;
+        using storage_type = std::remove_cvref_t<T>;
+    };
+
+    template<class T>
+    struct fltx_expression_traits<
+        T,
+        std::void_t<typename std::remove_cvref_t<T>::fltx_expression_value_type>>
+    {
+        static constexpr bool is_expression = true;
+        using value_type = typename std::remove_cvref_t<T>::fltx_expression_value_type;
+        using storage_type = typename std::remove_cvref_t<T>::fltx_expression_storage_type;
+    };
+
+    template<class T>
+    concept fltx_expression = fltx_expression_traits<T>::is_expression;
+
+    template<class T>
+    using fltx_expression_value_t = typename fltx_expression_traits<T>::value_type;
+
+    template<class T>
+    using fltx_expression_storage_t = typename fltx_expression_traits<T>::storage_type;
+
     template<class T> concept fltx_f32 = std::same_as<std::remove_cv_t<T>, f32>;
     template<class T> concept fltx_f64 = std::same_as<std::remove_cv_t<T>, f64>;
     template<class T> concept fltx_fdd = std::same_as<std::remove_cv_t<T>, fdd_s> ||

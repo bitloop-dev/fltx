@@ -15,6 +15,8 @@
 #include <string>
 
 #include "fltx/aliases.h"
+#include "fltx/static_string.h"
+#include "fltx/string_options.h"
 #include "fltx/detail/native_float_io.h"
 
 namespace bl
@@ -68,6 +70,19 @@ namespace bl
     }
 
     [[nodiscard]] BL_FORCE_INLINE std::string to_string(
+        f32 value,
+        precision_info precision,
+        std::ios_base::fmtflags flags,
+        trailing_zero_policy trailing_zeros)
+    {
+        std::string out = to_string(value, precision, flags);
+        detail::apply_trailing_zero_policy(out, trailing_zeros);
+        return out;
+    }
+
+    std::string to_string(f32, precision_info, bool) = delete;
+
+    [[nodiscard]] BL_FORCE_INLINE std::string to_string(
         f64 value,
         precision_info precision = std::numeric_limits<f64>::digits10,
         std::ios_base::fmtflags flags = std::ios_base::fmtflags{})
@@ -84,6 +99,19 @@ namespace bl
             detail::collapse_fixed_string(out, precision);
         return out;
     }
+
+    [[nodiscard]] BL_FORCE_INLINE std::string to_string(
+        f64 value,
+        precision_info precision,
+        std::ios_base::fmtflags flags,
+        trailing_zero_policy trailing_zeros)
+    {
+        std::string out = to_string(value, precision, flags);
+        detail::apply_trailing_zero_policy(out, trailing_zeros);
+        return out;
+    }
+
+    std::string to_string(f64, precision_info, bool) = delete;
 
 } // namespace bl
 

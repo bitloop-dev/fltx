@@ -18,11 +18,24 @@
 #include <fltx/format.h>
 #include <fltx/math.h>
 #include <fltx/numbers.h>
+#include <fltx/static_string.h>
+#include <fltx/string_options.h>
 
 #include "../../support/samples.hpp"
 
 namespace
 {
+    template<class T>
+    concept accepts_boolean_format_flags = requires(T value)
+    {
+        bl::to_string(value, bl::precision_info{ 3 }, true);
+    };
+
+    static_assert(!accepts_boolean_format_flags<bl::f32>);
+    static_assert(!accepts_boolean_format_flags<bl::f64>);
+    static_assert(!accepts_boolean_format_flags<bl::fdd>);
+    static_assert(!accepts_boolean_format_flags<bl::fqd>);
+
     template<class T>
     void check_parse_and_format()
     {
@@ -567,6 +580,31 @@ TEST_CASE("parse, format, and stream round trips preserve values", "[contracts][
     storage_stream >> restored_dd_storage >> restored_qd_storage;
     CHECK(restored_dd_storage == dd_storage);
     CHECK(restored_qd_storage == qd_storage);
+}
+
+TEST_CASE("to_string trailing-zero policy preserves notation and strips only the mantissa",
+          "[contracts][io][format]")
+{
+    using enum bl::trailing_zero_policy;
+
+    const auto check = []<class T>()
+    {
+        CHECK(bl::to_string(T{ 1.25 }, 5, std::ios_base::scientific, standard) ==
+              "1.25000e+00");
+        CHECK(bl::to_string(T{ 1.25 }, 5, std::ios_base::scientific, strip) ==
+              "1.25e+00");
+        CHECK(bl::to_string(T{ 1.0 }, 5, std::ios_base::scientific, strip) ==
+              "1e+00");
+        CHECK(bl::to_string(T{ 1.25 }, 4, std::ios_base::fixed, strip) ==
+              "1.25");
+        CHECK(bl::to_string(T{ -0.0 }, 3, std::ios_base::fixed, strip) ==
+              "-0");
+    };
+
+    check.template operator()<bl::f32>();
+    check.template operator()<bl::f64>();
+    check.template operator()<bl::fdd>();
+    check.template operator()<bl::fqd>();
 }
 
 TEST_CASE("parsing reports partial and invalid input without hidden overwrite", "[contracts][io]")

@@ -90,9 +90,15 @@ struct fdd_s
 {
     double hi, lo;
 
-    BL_FORCE_INLINE constexpr fdd_s& operator=(fqd_s x) noexcept;
     BL_FORCE_INLINE constexpr fdd_s& operator=(double x) noexcept { hi = x; lo = 0.0; return *this; }
     BL_FORCE_INLINE constexpr fdd_s& operator=(float x) noexcept { hi = static_cast<double>(x); lo = 0.0; return *this; }
+    BL_FORCE_INLINE constexpr fdd_s& operator=(long double x) noexcept
+    {
+        double limbs[2]{};
+        detail::fp::long_double_to_double_expansion(x, limbs);
+        hi = limbs[0]; lo = limbs[1];
+        return *this;
+    }
 
     BL_FORCE_INLINE constexpr fdd_s& operator=(uint64_t u) noexcept;
     BL_FORCE_INLINE constexpr fdd_s& operator=(int64_t v) noexcept;
@@ -243,9 +249,12 @@ struct fdd_s
     }
 
     [[nodiscard]] constexpr operator fqd_s() const noexcept;
-    [[nodiscard]] explicit constexpr operator double() const noexcept { return hi + lo; }
-    [[nodiscard]] explicit constexpr operator float() const noexcept { return static_cast<float>(hi + lo); }
-    [[nodiscard]] explicit constexpr operator int() const noexcept { return static_cast<int>(hi + lo); }
+
+    template<class T, std::enable_if_t<detail::fp::is_native_arithmetic_scalar_v<T>, int> = 0>
+    [[nodiscard]] explicit constexpr operator T() const noexcept
+    {
+        return detail::fp::expansion_to_native<T>(hi, lo);
+    }
 
     [[nodiscard]] constexpr fdd_s operator+() const { return *this; }
     [[nodiscard]] constexpr fdd_s operator-() const noexcept { return fdd_s{ -hi, -lo }; }
@@ -258,20 +267,21 @@ struct fdd : public fdd_s
 {
     fdd() = default;
     constexpr fdd(double _hi, double _lo) noexcept : fdd_s{ _hi, _lo } {}
-    constexpr fdd(float  x) noexcept : fdd_s{ ((double)x), 0.0 } {}
-    constexpr fdd(double x) noexcept : fdd_s{ ((double)x), 0.0 } {}
-    constexpr fdd(int64_t v) noexcept : fdd_s{} { static_cast<fdd_s&>(*this)  = static_cast<int64_t>(v); }
-    constexpr fdd(uint64_t u) noexcept : fdd_s{} { static_cast<fdd_s&>(*this) = static_cast<uint64_t>(u); }
-    constexpr fdd(int32_t  v) noexcept : fdd((int64_t)v) {}
-    constexpr fdd(uint32_t u) noexcept : fdd((int64_t)u) {}
+
+    template<class T, std::enable_if_t<detail::fp::is_native_arithmetic_scalar_v<T>, int> = 0>
+    constexpr fdd(T x) noexcept : fdd_s{}
+    {
+        static_cast<fdd_s&>(*this) = x;
+    }
+
     constexpr fdd(const fdd_s& f) noexcept : fdd_s{ f.hi, f.lo } {}
 
     using fdd_s::operator=;
 
     [[nodiscard]] constexpr operator fqd_s() const noexcept;
     [[nodiscard]] constexpr operator fqd() const noexcept;
-    [[nodiscard]] explicit constexpr operator double() const noexcept { return hi + lo; }
-    [[nodiscard]] explicit constexpr operator float() const noexcept { return (float)(hi + lo); }
+
+    [[nodiscard]] static constexpr fdd eps() noexcept { return fdd{ fdd_s::eps() }; }
 };
 
 } // namespace bl

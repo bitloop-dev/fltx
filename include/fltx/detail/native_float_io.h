@@ -14,6 +14,7 @@
 #include <limits>
 
 #include "fltx/aliases.h"
+#include "fltx/static_string.h"
 #include "fltx/detail/common_io.h"
 #include "fltx/detail/native_float_decimal.h"
 

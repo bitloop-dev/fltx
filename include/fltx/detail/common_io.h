@@ -21,7 +21,7 @@
 #include "fltx/detail/common_decimal.h"
 #include "fltx/detail/common_fp.h"
 #include "fltx/detail/format_flags.h"
-#include "fltx/detail/static_string.h"
+#include "fltx/string_options.h"
 
 namespace bl::detail {
 
@@ -1644,6 +1644,26 @@ namespace bl::detail
             return;
 
         text.replace(collapse_begin, collapse_end - collapse_begin, "...");
+    }
+
+    BL_FORCE_INLINE void apply_trailing_zero_policy(std::string& text, trailing_zero_policy policy)
+    {
+        if (policy != trailing_zero_policy::strip)
+            return;
+
+        const std::size_t exponent = text.find_first_of("eEpP");
+        const std::size_t mantissa_end = exponent == std::string::npos ? text.size() : exponent;
+        const std::size_t period = text.find('.');
+        if (period == std::string::npos || period >= mantissa_end)
+            return;
+
+        std::size_t trim_begin = mantissa_end;
+        while (trim_begin > period + 1 && text[trim_begin - 1] == '0')
+            --trim_begin;
+        if (trim_begin == period + 1)
+            --trim_begin;
+
+        text.erase(trim_begin, mantissa_end - trim_begin);
     }
 
     template<class Traits>

@@ -190,6 +190,9 @@ Individual headers are also available when you want a smaller include surface.
 | [`fltx/f32_math.h`](include/fltx/f32_math.h)<br>[`fltx/f64_math.h`](include/fltx/f64_math.h)<br>[`fltx/fdd_math.h`](include/fltx/fdd_math.h)<br>[`fltx/fqd_math.h`](include/fltx/fqd_math.h) | Math APIs for individual floating-point types |
 | [`fltx/fdd_io.h`](include/fltx/fdd_io.h)<br>[`fltx/fqd_io.h`](include/fltx/fqd_io.h) | Extended-type string conversion, stream output, and `_dd` / `_qd` literals |
 | [`fltx/charconv.h`](include/fltx/charconv.h) | `bl::to_chars`, `bl::from_chars`, `bl::parse<T>`, `bl::parse<T>(text, fallback)`, and `bl::try_parse<T>` for `f32`, `f64`, `fdd`,  and `fqd` |
+| [`fltx/string.h`](include/fltx/string.h) | String conversion for all floating-point families, including the supporting result types and formatting options |
+| [`fltx/static_string.h`](include/fltx/static_string.h) | `bl::static_string<N>` and the fixed-capacity string aliases returned by `bl::to_static_string` |
+| [`fltx/string_options.h`](include/fltx/string_options.h) | `bl::precision_info` and `bl::trailing_zero_policy` formatting options |
 | [`fltx/aliases.h`](include/fltx/aliases.h) | Fundamental aliases such as `f32`, `f64`, `fdd`, and `fqd` |
 | [`fltx/traits.h`](include/fltx/traits.h) | Concepts, type traits, `FloatType` enum, and `bl::to_string(FloatType)` |
 | [`fltx/format.h`](include/fltx/format.h) | Optional `std::formatter` specializations when `<format>` is available |
@@ -231,6 +234,10 @@ bl::fltx_fqd<T>              // matches the bl::fqd or bl::fqd_s
 bl::fltx_extended_float<T>   // matches the fdd or fqd family
 bl::fltx_float<T>            // matches the f32, f64, fdd, or fqd family
 bl::fltx_arithmetic<T>       // matches a native arithmetic or extended fltx type
+bl::fltx_expression<T>       // matches an internal deferred arithmetic result
+
+bl::fltx_expression_value_t<T>   // unwraps a deferred result to its scalar value type
+bl::fltx_expression_storage_t<T> // unwraps a deferred result to its eager aggregate type
 
 // Boolean variable templates
 bl::is_f32_v<T>
