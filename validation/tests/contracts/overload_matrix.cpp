@@ -7,6 +7,9 @@
 
 namespace
 {
+    using qd_expression = decltype(std::declval<bl::fqd>() * std::declval<bl::fqd>());
+    using qd_sum_expression = decltype(std::declval<qd_expression>() + std::declval<bl::fqd>());
+
 #define FLTX_EXPECT_UNARY(NAME, ARGUMENT, RESULT) \
     static_assert(std::same_as< \
         decltype(bl::NAME(std::declval<ARGUMENT>())), RESULT>)
@@ -31,7 +34,9 @@ namespace
     FLTX_EXPECT_UNARY(NAME, bl::fdd_s, bl::fdd); \
     FLTX_EXPECT_UNARY(NAME, bl::fdd, bl::fdd); \
     FLTX_EXPECT_UNARY(NAME, bl::fqd_s, bl::fqd); \
-    FLTX_EXPECT_UNARY(NAME, bl::fqd, bl::fqd)
+    FLTX_EXPECT_UNARY(NAME, bl::fqd, bl::fqd); \
+    FLTX_EXPECT_UNARY(NAME, qd_expression&, bl::fqd); \
+    FLTX_EXPECT_UNARY(NAME, const qd_sum_expression&, bl::fqd)
 
 #define FLTX_BOOLEAN_UNARY_MATRIX(NAME) \
     FLTX_EXPECT_UNARY(NAME, float, bool); \
@@ -40,7 +45,8 @@ namespace
     FLTX_EXPECT_UNARY(NAME, bl::fdd_s, bool); \
     FLTX_EXPECT_UNARY(NAME, bl::fdd, bool); \
     FLTX_EXPECT_UNARY(NAME, bl::fqd_s, bool); \
-    FLTX_EXPECT_UNARY(NAME, bl::fqd, bool)
+    FLTX_EXPECT_UNARY(NAME, bl::fqd, bool); \
+    FLTX_EXPECT_UNARY(NAME, const qd_expression&, bool)
 
 #define FLTX_INTEGER_UNARY_MATRIX(NAME, RESULT) \
     FLTX_EXPECT_UNARY(NAME, float, RESULT); \
@@ -49,7 +55,8 @@ namespace
     FLTX_EXPECT_UNARY(NAME, bl::fdd_s, RESULT); \
     FLTX_EXPECT_UNARY(NAME, bl::fdd, RESULT); \
     FLTX_EXPECT_UNARY(NAME, bl::fqd_s, RESULT); \
-    FLTX_EXPECT_UNARY(NAME, bl::fqd, RESULT)
+    FLTX_EXPECT_UNARY(NAME, bl::fqd, RESULT); \
+    FLTX_EXPECT_UNARY(NAME, const qd_expression&, RESULT)
 
 #define FLTX_NUMERIC_BINARY_MATRIX(NAME) \
     FLTX_EXPECT_BINARY(NAME, float, float, bl::f32); \
@@ -61,7 +68,12 @@ namespace
     FLTX_EXPECT_BINARY(NAME, bl::fdd, bl::fdd_s, bl::fdd); \
     FLTX_EXPECT_BINARY(NAME, bl::fqd_s, float, bl::fqd); \
     FLTX_EXPECT_BINARY(NAME, bl::fdd, bl::fqd_s, bl::fqd); \
-    FLTX_EXPECT_BINARY(NAME, bl::fqd, double, bl::fqd)
+    FLTX_EXPECT_BINARY(NAME, bl::fqd, double, bl::fqd); \
+    FLTX_EXPECT_BINARY(NAME, qd_expression&, std::uint64_t, bl::fqd); \
+    FLTX_EXPECT_BINARY(NAME, unsigned char, const qd_expression&, bl::fqd); \
+    FLTX_EXPECT_BINARY(NAME, const qd_expression&, bl::fdd_s, bl::fqd); \
+    FLTX_EXPECT_BINARY(NAME, bl::fdd, const qd_expression&, bl::fqd); \
+    FLTX_EXPECT_BINARY(NAME, const qd_expression&, const qd_sum_expression&, bl::fqd)
 
 #define FLTX_BOOLEAN_BINARY_MATRIX(NAME) \
     FLTX_EXPECT_BINARY(NAME, float, float, bool); \
@@ -73,7 +85,10 @@ namespace
     FLTX_EXPECT_BINARY(NAME, bl::fdd, bl::fdd_s, bool); \
     FLTX_EXPECT_BINARY(NAME, bl::fqd_s, float, bool); \
     FLTX_EXPECT_BINARY(NAME, bl::fdd, bl::fqd_s, bool); \
-    FLTX_EXPECT_BINARY(NAME, bl::fqd, double, bool)
+    FLTX_EXPECT_BINARY(NAME, bl::fqd, double, bool); \
+    FLTX_EXPECT_BINARY(NAME, const qd_expression&, int, bool); \
+    FLTX_EXPECT_BINARY(NAME, bl::fdd, const qd_expression&, bool); \
+    FLTX_EXPECT_BINARY(NAME, const qd_expression&, const qd_sum_expression&, bool)
 
     static_assert(bl::fltx_precision_rank_v<float> == 1);
     static_assert(bl::fltx_precision_rank_v<int> == 2);
@@ -82,6 +97,11 @@ namespace
     static_assert(bl::fltx_precision_rank_v<long double> == 3);
     static_assert(bl::fltx_precision_rank_v<const bl::fdd_s&> == 4);
     static_assert(bl::fltx_precision_rank_v<volatile bl::fqd> == 5);
+    static_assert(bl::fltx_precision_rank_v<qd_expression&> == 5);
+    static_assert(bl::fltx_precision_rank_v<const qd_sum_expression&> == 5);
+    static_assert(std::same_as<bl::common_float_type_t<const qd_expression&, long double>, bl::fqd>);
+    static_assert(std::same_as<bl::common_float_type_t<bl::fdd_s, qd_expression&>, bl::fqd>);
+    static_assert(std::same_as<bl::common_float_type_t<qd_expression, qd_sum_expression>, bl::fqd>);
 
     static_assert(std::same_as<bl::common_float_type_t<float>, bl::f32>);
     static_assert(std::same_as<bl::common_float_type_t<int>, bl::f64>);
@@ -98,6 +118,8 @@ namespace
     static_assert(std::same_as<bl::detail::math::promoted_t<bl::fdd>, bl::fdd_s>);
     static_assert(std::same_as<bl::detail::math::promoted_t<bl::fqd>, bl::fqd_s>);
     static_assert(!bl::detail::math::promoted_math_arg<long double>);
+    static_assert(bl::detail::math::promoted_math_arg<const qd_expression&>);
+    static_assert(std::same_as<bl::detail::math::promoted_t<const qd_expression&, int>, bl::fqd_s>);
 
     FLTX_EXPECT_UNARY(abs, float, bl::f32);
     FLTX_EXPECT_UNARY(abs, double, bl::f64);
@@ -106,6 +128,7 @@ namespace
     FLTX_EXPECT_UNARY(abs, bl::fdd, bl::fdd);
     FLTX_EXPECT_UNARY(abs, bl::fqd_s, bl::fqd);
     FLTX_EXPECT_UNARY(abs, bl::fqd, bl::fqd);
+    FLTX_EXPECT_UNARY(abs, const qd_expression&, bl::fqd);
     FLTX_NUMERIC_UNARY_MATRIX(fabs);
     FLTX_NUMERIC_UNARY_MATRIX(floor);
     FLTX_NUMERIC_UNARY_MATRIX(ceil);
@@ -176,6 +199,7 @@ namespace
     FLTX_EXPECT_TERNARY(fma, bl::fdd_s, float, int, bl::fdd);
     FLTX_EXPECT_TERNARY(fma, bl::fdd, bl::fqd_s, double, bl::fqd);
     FLTX_EXPECT_TERNARY(fma, bl::fqd, double, float, bl::fqd);
+    FLTX_EXPECT_TERNARY(fma, const qd_expression&, int, const qd_sum_expression&, bl::fqd);
 
     FLTX_EXPECT_TERNARY(clamp, float, float, float, bl::f32);
     FLTX_EXPECT_TERNARY(clamp, double, double, double, bl::f64);
@@ -235,6 +259,11 @@ namespace
     static_assert(std::same_as<
         decltype(bl::pow(bl::fqd{}, bl::fdd{})), bl::fqd>);
     static_assert(std::same_as<decltype(bl::pow(bl::fqd{}, 3)), bl::fqd>);
+    FLTX_EXPECT_BINARY(pow, const qd_expression&, int, bl::fqd);
+    FLTX_EXPECT_BINARY(pow, bl::fdd, const qd_expression&, bl::fqd);
+    FLTX_EXPECT_BINARY(pow, const qd_expression&, const qd_sum_expression&, bl::fqd);
+    FLTX_EXPECT_BINARY(nexttoward, const qd_expression&, long double, bl::fqd);
+    FLTX_EXPECT_BINARY(nexttoward, bl::fdd, const qd_expression&, bl::fqd);
 
     static_assert(std::same_as<decltype(bl::ipow(2, 3)), int>);
     static_assert(std::same_as<decltype(bl::ipow(2.0f, 3)), bl::f32>);
@@ -288,6 +317,7 @@ namespace
     static_assert(!can_pow<float, long double>);
     static_assert(!can_pow<bl::fdd, long double>);
     static_assert(!can_pow<bl::fqd, long double>);
+    static_assert(!can_pow<qd_expression, long double>);
     static_assert(!can_sin<long double>);
 
     static_assert(noexcept(bl::isfinite(std::declval<const bl::fdd_s&>())));

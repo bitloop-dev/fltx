@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <concepts>
@@ -13,6 +14,31 @@
 
 namespace
 {
+    template<class T>
+    constexpr auto twice(const T& x)
+    {
+        return x + x;
+    }
+
+    constexpr bl::fqd add_pair(const auto& x, const auto& y)
+    {
+        return x + y;
+    }
+
+    template<class T>
+    constexpr auto adl_sqrt(const T& x)
+    {
+        using std::sqrt;
+        return sqrt(x);
+    }
+
+    template<class X, class Y>
+    constexpr auto adl_hypot(const X& x, const Y& y)
+    {
+        using std::hypot;
+        return hypot(x, y);
+    }
+
     constexpr bl::fqd expression_x{
         0x1.2000000000000p+0,
         0x1.09d8792fb4c49p-113,
@@ -194,11 +220,43 @@ consteval bool all_expression_nodes_publish_their_value_type(std::tuple<Expr...>
              std::same_as<bl::fltx_expression_storage_t<Expr>, bl::fqd_s>) && ...);
 }
 
+template<class Expr>
+concept has_const_expression_arithmetic = requires(Expr& mutable_expr, const Expr& expr, bl::fqd& value)
+{
+    mutable_expr + mutable_expr;
+    expr + expr;
+    expr - expr;
+    expr * expr;
+    expr / expr;
+    std::move(expr) + std::move(expr);
+    expr + value;
+    value + expr;
+    expr + 1;
+    1 + expr;
+    expr * 0.5;
+    0.5 * expr;
+    { value = expr } -> std::same_as<bl::fqd&>;
+    { adl_sqrt(expr) } -> std::same_as<bl::fqd>;
+};
+
+template<class... Expr>
+consteval bool all_expression_nodes_support_const_arithmetic(std::tuple<Expr...>*)
+{
+    return (has_const_expression_arithmetic<Expr> && ...);
+}
+
 static_assert(std::constructible_from<bl::fqd, product_expression&&>);
 static_assert(std::constructible_from<bl::fqd, product_expression&>);
+static_assert(std::constructible_from<bl::fqd, const product_expression&>);
 static_assert(std::constructible_from<bl::fqd, const product_expression&&>);
 static_assert(all_expression_nodes_have_direct_conversions(static_cast<qd_expression_nodes*>(nullptr)));
 static_assert(all_expression_nodes_publish_their_value_type(static_cast<qd_expression_nodes*>(nullptr)));
+static_assert(all_expression_nodes_support_const_arithmetic(static_cast<qd_expression_nodes*>(nullptr)));
+static_assert(std::same_as<decltype(twice(std::declval<const product_expression&>())),
+                          decltype(std::declval<product_expression>() + std::declval<product_expression>())>);
+static_assert(sizeof(qd_leaf_expression) == sizeof(bl::fqd_s));
+static_assert(sizeof(product_expression) == 2 * sizeof(bl::fqd_s));
+static_assert(std::is_trivially_copyable_v<product_expression>);
 static_assert(std::same_as<bl::fltx_expression_value_t<double>, double>);
 static_assert(std::same_as<bl::fltx_expression_value_t<bl::fdd>, bl::fdd>);
 static_assert(std::same_as<bl::fltx_expression_storage_t<double>, double>);
@@ -256,6 +314,71 @@ TEST_CASE("delayed fqd expressions own math temporaries and storage members",
     require_same_limbs(delayed_storage, immediate_storage);
 }
 
+TEST_CASE("named fqd expressions retain fusion and own copied operands",
+          "[contracts][expressions][fusion]")
+{
+    auto left = expression_x * expression_y;
+    const auto right = expression_c * expression_x + expression_y;
+    const bl::fqd expected = expression_x * expression_y + (expression_c * expression_x + expression_y);
+    require_same_limbs(add_pair(left, right), expected);
+    require_same_limbs(add_pair(expression_x * expression_y, expression_c * expression_x + expression_y), expected);
+    require_same_limbs(twice(left), expression_x * expression_y + expression_x * expression_y);
+
+    const auto combined = left + right;
+    left = bl::fqd{ 2.0 } * bl::fqd{ 3.0 };
+    clobber_stack();
+    require_same_limbs(combined, expected);
+
+    bl::fqd assigned{};
+    assigned = combined;
+    require_same_limbs(assigned, expected);
+    bl::fqd_s stored{};
+    stored = combined;
+    require_same_limbs(stored, expected);
+
+    const auto returned = [] {
+        const auto x = expression_x * expression_y;
+        const auto y = expression_c * expression_x + expression_y;
+        return x + y;
+    }();
+    clobber_stack();
+    require_same_limbs(returned, expected);
+}
+
+TEST_CASE("fqd expressions participate in ADL and mixed math promotion",
+          "[contracts][expressions][promotion]")
+{
+    const bl::fqd a{ 1.5 };
+    const auto three = a * bl::fqd{ 2.0 };
+    const auto four = a * bl::fqd{ 2.0 } + 1.0;
+    const bl::fqd eager_three = three;
+    const bl::fqd eager_four = four;
+
+    using std::abs;
+    using std::isfinite;
+    CHECK(abs(three) == eager_three);
+    CHECK(isfinite(three));
+    require_same_limbs(adl_sqrt(four), bl::fqd{ 2.0 });
+    require_same_limbs(adl_hypot(three, std::size_t{ 4 }), bl::fqd{ 5.0 });
+    require_same_limbs(adl_hypot(static_cast<unsigned char>(4), three), bl::fqd{ 5.0 });
+    require_same_limbs(bl::hypot(three, four), bl::fqd{ 5.0 });
+    require_same_limbs(bl::atan2(three, bl::fdd{ 4.0 }), bl::atan2(eager_three, bl::fdd{ 4.0 }));
+    require_same_limbs(bl::fma(three, 2, four), bl::fma(eager_three, 2, eager_four));
+    require_same_limbs(bl::pow(three, 2), bl::fqd{ 9.0 });
+    require_same_limbs(bl::ldexp(three, 2), bl::fqd{ 12.0 });
+
+    const auto six = a * bl::fqd{ 4.0 };
+    require_same_limbs(std::min(three, six), eager_three);
+    CHECK(three < four);
+
+    int exponent = 0;
+    require_same_limbs(bl::frexp(three, &exponent), bl::fqd{ 0.75 });
+    CHECK(exponent == 2);
+    bl::fqd_s integer{};
+    require_same_limbs(bl::modf(three, &integer), bl::fqd{ 0.0 });
+    require_same_limbs(integer, eager_three);
+}
+
 TEST_CASE("owning fqd expressions convert directly to value and narrower scalar types",
           "[contracts][expressions][conversion]")
 {
@@ -304,6 +427,9 @@ TEST_CASE("fqd multiplication remains fused with a following subtraction",
     };
 
     const bl::fqd residual = expression_x * expression_y - rounded_product;
+    const auto product = expression_x * expression_y;
+    const bl::fqd named_residual = product - rounded_product;
+    require_same_limbs(named_residual, residual);
     const bl::fqd error = bl::abs(residual - independently_rounded_residual);
     const bl::fqd tolerance =
         bl::abs(independently_rounded_residual) * bl::fqd{ 0x1p-50 };

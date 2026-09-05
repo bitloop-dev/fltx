@@ -574,18 +574,22 @@ namespace detail::_qd_expr
     [[nodiscard]] BL_FORCE_INLINE constexpr T convert_expression(const Expr& expr) noexcept;
 
     // expression nodes
-    struct leaf_expr
+    template<class Storage>
+    struct value_expr
     {
         using fltx_expression_value_type = fqd;
-        using fltx_expression_storage_type = fqd_s;
+        using fltx_expression_storage_type = Storage;
 
-        fqd_s value;
+        Storage value;
 
         BL_FORCE_INLINE constexpr operator fqd() const noexcept { return fqd{ value }; }
 
         template<class T, std::enable_if_t<is_direct_conversion_target_v<T>, int> = 0>
         [[nodiscard]] explicit constexpr operator T() const noexcept { return convert_expression<T>(*this); }
     };
+
+    // The storage template argument associates every expression tree with bl for ADL.
+    using leaf_expr = value_expr<fqd_s>;
 
     template<class L>
     struct mul_double_expr
@@ -809,17 +813,15 @@ namespace detail::_qd_expr
     template<class T> inline constexpr bool is_qd_value_v         = std::is_same_v<clean_t<T>, fqd>;
     template<class T> inline constexpr bool is_leaf_v               = std::is_same_v<clean_t<T>, leaf_expr>;
     template<class T> inline constexpr bool is_expr_v               = is_expr<clean_t<T>>::value;
-    template<class T> inline constexpr bool is_consumable_expr_v    = is_expr_v<T> && !std::is_lvalue_reference_v<T> && !std::is_const_v<std::remove_reference_t<T>>;
     template<class T> inline constexpr bool is_operand_v            = is_expr_v<T> || is_qd_value_v<T>;
-    template<class T> inline constexpr bool is_consumable_operand_v = is_qd_value_v<T> || is_consumable_expr_v<T>;
     template<class T> inline constexpr bool is_integer_scalar_v     = detail::_qd::is_integer_scalar_v<clean_t<T>>;
 
     template<bool Condition> using enable_when = std::enable_if_t<Condition, int>;
-    template<class L, class R> using enable_expr_pair    = enable_when<is_consumable_expr_v<L> && is_consumable_expr_v<R>>;
-    template<class T> using enable_expr = enable_when<is_consumable_expr_v<T>>;
-    template<class L, class T> using enable_expr_integer = enable_when<is_consumable_expr_v<L> && is_integer_scalar_v<T>>;
-    template<class T, class R> using enable_integer_expr = enable_when<is_integer_scalar_v<T> && is_consumable_expr_v<R>>;
-    template<class L, class R> using pub_operand         = enable_when<is_consumable_operand_v<L> && is_consumable_operand_v<R> && (is_qd_value_v<L> || is_qd_value_v<R>)>;
+    template<class L, class R> using enable_expr_pair    = enable_when<is_expr_v<L> && is_expr_v<R>>;
+    template<class T> using enable_expr = enable_when<is_expr_v<T>>;
+    template<class L, class T> using enable_expr_integer = enable_when<is_expr_v<L> && is_integer_scalar_v<T>>;
+    template<class T, class R> using enable_integer_expr = enable_when<is_integer_scalar_v<T> && is_expr_v<R>>;
+    template<class L, class R> using pub_operand         = enable_when<is_operand_v<L> && is_operand_v<R> && (is_qd_value_v<L> || is_qd_value_v<R>)>;
     template<class T> using pub_qd = enable_when<is_qd_value_v<T>>;
     template<class L, class T> using pub_qd_int        = enable_when<is_qd_value_v<L> && is_integer_scalar_v<T>>;
     template<class T, class R> using pub_int_qd        = enable_when<is_integer_scalar_v<T> && is_qd_value_v<R>>;

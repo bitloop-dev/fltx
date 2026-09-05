@@ -366,13 +366,13 @@ struct fqd : public fqd_s
     constexpr fqd(fdd_s f) noexcept;
     constexpr fqd(const fqd_s& f) noexcept : fqd_s{ f.x0, f.x1, f.x2, f.x3 } {}
 
-    template<class Expr, std::enable_if_t<detail::_qd_expr::is_expr<std::remove_cv_t<std::remove_reference_t<Expr>>>::value && !std::is_lvalue_reference_v<Expr> && !std::is_const_v<std::remove_reference_t<Expr>>, int> = 0>
-    BL_FORCE_INLINE constexpr fqd(Expr&& expr) noexcept : fqd_s{ detail::_qd_expr::eval_to_qd_s(expr) } {}
+    template<class Expr, std::enable_if_t<detail::_qd_expr::is_expr<Expr>::value, int> = 0>
+    BL_FORCE_INLINE constexpr fqd(const Expr& expr) noexcept : fqd_s{ detail::_qd_expr::eval_to_qd_s(expr) } {}
 
     using fqd_s::operator=;
 
-    template<class Expr, std::enable_if_t<detail::_qd_expr::is_expr<std::remove_cv_t<std::remove_reference_t<Expr>>>::value && !std::is_lvalue_reference_v<Expr> && !std::is_const_v<std::remove_reference_t<Expr>>, int> = 0>
-    BL_FORCE_INLINE constexpr fqd& operator=(Expr&& expr) noexcept
+    template<class Expr, std::enable_if_t<detail::_qd_expr::is_expr<Expr>::value, int> = 0>
+    BL_FORCE_INLINE constexpr fqd& operator=(const Expr& expr) noexcept
     {
         static_cast<fqd_s&>(*this) = detail::_qd_expr::eval_to_qd_s(expr);
         return *this;

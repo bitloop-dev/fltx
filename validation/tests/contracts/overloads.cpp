@@ -92,6 +92,22 @@ namespace
         return ((assignment_returns_left<bl::fdd_s, T> &&
                  assignment_returns_left<bl::fqd_s, T>) && ...);
     }
+
+    template<class Left, class Right>
+    concept qd_hypot = requires(const Left& left, const Right& right)
+    {
+        { bl::hypot(left, right) } -> std::same_as<bl::fqd>;
+    };
+
+    template<class... T>
+    consteval bool native_scalars_promote_with_expressions(type_list<T...>*)
+    {
+        using Expr = decltype(std::declval<bl::fqd>() * std::declval<bl::fqd>());
+        return ((std::same_as<bl::common_float_type_t<const Expr&, T>, bl::fqd> &&
+                 std::same_as<bl::common_float_type_t<T, const Expr&>, bl::fqd> &&
+                 (std::same_as<T, long double> ||
+                  (qd_hypot<Expr, T> && qd_hypot<T, Expr>))) && ...);
+    }
 }
 
 static_assert(arithmetic_returns<bl::fdd_s, bl::fdd_s, bl::fdd_s>());
@@ -132,6 +148,7 @@ static_assert(std::constructible_from<bl::fqd, bl::fdd_s>);
 static_assert(std::constructible_from<bl::fqd, bl::fqd_s>);
 static_assert(native_scalars_implicitly_construct_values(static_cast<native_arithmetic_types*>(nullptr)));
 static_assert(native_scalars_assign_to_storage(static_cast<native_arithmetic_types*>(nullptr)));
+static_assert(native_scalars_promote_with_expressions(static_cast<native_arithmetic_types*>(nullptr)));
 static_assert(extended_value_has_explicit_native_casts<bl::fdd_s>(static_cast<native_arithmetic_types*>(nullptr)));
 static_assert(extended_value_has_explicit_native_casts<bl::fdd>(static_cast<native_arithmetic_types*>(nullptr)));
 static_assert(extended_value_has_explicit_native_casts<bl::fqd_s>(static_cast<native_arithmetic_types*>(nullptr)));

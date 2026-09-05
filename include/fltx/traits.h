@@ -66,20 +66,18 @@ namespace bl
     template<class T> inline constexpr bool is_arithmetic_v     = fltx_arithmetic<T>;
     template<class T> inline constexpr bool is_integral_v       = std::is_integral_v<T>;
 
+    // Promotion uses an expression's value type, not its node representation.
     template<class T>
     inline constexpr int fltx_precision_rank_v =
-        fltx_fqd<std::remove_cvref_t<T>>                  ? 5 :
-        fltx_fdd<std::remove_cvref_t<T>>                  ? 4 :
-        std::same_as<std::remove_cvref_t<T>, long double> ? 3 :
-        (std::same_as<std::remove_cvref_t<T>, f64> ||
-         std::is_integral_v<std::remove_cvref_t<T>>)      ? 2 :
-        std::same_as<std::remove_cvref_t<T>, f32>         ? 1 : 0;
+        fltx_fqd<fltx_expression_value_t<T>>                  ? 5 :
+        fltx_fdd<fltx_expression_value_t<T>>                  ? 4 :
+        std::same_as<fltx_expression_value_t<T>, long double> ? 3 :
+        (std::same_as<fltx_expression_value_t<T>, f64> ||
+         std::is_integral_v<fltx_expression_value_t<T>>)      ? 2 :
+        std::same_as<fltx_expression_value_t<T>, f32>         ? 1 : 0;
 
     namespace detail::traits
     {
-        template<class T>
-        using clean_t = std::remove_cvref_t<T>;
-
         template<class... Ts>
         [[nodiscard]] consteval int max_precision_rank() noexcept
         {
@@ -93,7 +91,7 @@ namespace bl
         {
             static_assert(sizeof...(Ts) > 0,
                 "bl::common_float_type_t requires at least one type.");
-            static_assert((fltx_arithmetic<clean_t<Ts>> && ...),
+            static_assert((fltx_arithmetic<fltx_expression_value_t<Ts>> && ...),
                 "bl::common_float_type_t requires arithmetic or fltx extended floating-point types.");
             static_assert(((fltx_precision_rank_v<Ts> != 0) && ...),
                 "bl::common_float_type_t does not support one of these arithmetic types.");

@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <cmath>
 #include <cstddef>
 #include <ios>
 #include <limits>
@@ -10,6 +11,41 @@
 
 namespace
 {
+    constexpr bl::fqd add_expression_pair(const auto& x, const auto& y)
+    {
+        return x + y;
+    }
+
+    constexpr bool expression_transparency_is_constant_evaluated()
+    {
+        using namespace bl::literals;
+        constexpr bl::fqd a = 1_qd / 3_qd;
+        constexpr bl::fqd b = 2_qd / 3_qd;
+        constexpr bl::fqd c = a + b;
+        constexpr bl::fqd d = bl::atan2(a, b);
+        constexpr bl::fqd e = 5_qd;
+        auto left = a * b;
+        const auto right = c * d + e;
+        const auto combined = left + right;
+        const bl::fqd expected = a * b + (c * d + e);
+        bl::fqd assigned{};
+        assigned = combined;
+        left = bl::fqd{ 2.0 } * bl::fqd{ 3.0 };
+
+        const auto three = bl::fqd{ 1.5 } * bl::fqd{ 2.0 };
+        const auto four = bl::fqd{ 1.5 } * bl::fqd{ 2.0 } + 1.0;
+        using std::sqrt;
+        using std::hypot;
+        using std::abs;
+        return add_expression_pair(a * b, c * d + e) == expected &&
+               bl::fqd{ combined } == expected && assigned == expected &&
+               sqrt(four) == bl::fqd{ 2.0 } &&
+               hypot(three, std::size_t{ 4 }) == bl::fqd{ 5.0 } &&
+               abs(three) == bl::fqd{ 3.0 } &&
+               bl::pow(three, 2) == bl::fqd{ 9.0 } &&
+               bl::fma(three, 2, four) == bl::fqd{ 10.0 };
+    }
+
     template<class T>
     constexpr bool within_roundoff(const T& a, const T& b)
     {
@@ -428,6 +464,7 @@ TEST_CASE("genuine constant evaluation covers representative heavy paths", "[con
 
     CHECK(qd_sqrt == bl::sqrt(bl::fqd{ 4.0 }));
     STATIC_CHECK(expression_conversions_are_constant_evaluated());
+    STATIC_CHECK(expression_transparency_is_constant_evaluated());
     STATIC_CHECK(native_conversions_preserve_expansion_value());
     CHECK(qd_exp_log == bl::exp(bl::log(qd_input)));
     CHECK(within_roundoff(qd_sincos.s, bl::sin(qd_input)));

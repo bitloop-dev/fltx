@@ -29,9 +29,9 @@ namespace bl::detail::math
 
     template<class T>
     concept promoted_math_arg =
-        fltx_arithmetic<clean_t<T>> &&
+        fltx_arithmetic<fltx_expression_value_t<T>> &&
         fltx_precision_rank_v<T> != 0 &&
-        !std::same_as<clean_t<T>, long double>;
+        !std::same_as<fltx_expression_value_t<T>, long double>;
 
     template<class T>
     struct promoted_call_type
