@@ -709,7 +709,7 @@ namespace detail::_qd // primitives and kernels
         fill_mul_products_dekker(a, b, products);
     }
 
-    #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+    #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
     // Fills qd product terms with range-safe Dekker splitting.
     BL_FORCE_INLINE constexpr void fill_mul_products_range_safe_dekker(
         const fqd_s& a,
@@ -796,7 +796,7 @@ namespace detail::_qd // primitives and kernels
         return finish_mul_product_inline(a, b, products);
     }
 
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
     // Forms and renormalizes a qd product through the range-safe product path.
     [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s mul_product_range_safe_inline(
         const fqd_s& a,
@@ -824,7 +824,7 @@ namespace detail::_qd // primitives and kernels
     // Multiplies qd values with range protection and canonical special handling.
     [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s mul_canonical_inline(const fqd_s& a, const fqd_s& b) noexcept
     {
-        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         if (detail::fp::dekker_product_needs_scaling(a.x0, b.x0)) [[unlikely]]
             return finish_mul_canonical_inline(a, b, mul_product_range_safe_inline(a, b));
         #endif
@@ -837,7 +837,7 @@ namespace detail::_qd // primitives and kernels
         const fqd_s& a,
         const fqd_s& b) noexcept
     {
-        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         return detail::fp::dekker_product_needs_scaling(a.x0, b.x0)
             ? mul_product_range_safe_inline(a, b)
             : mul_product_inline(a, b);
@@ -849,7 +849,7 @@ namespace detail::_qd // primitives and kernels
     // Multiplies qd values with range-safe Dekker formation and canonical finalization.
     [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s mul_dekker_range_safe_canonical_inline(const fqd_s& a, const fqd_s& b) noexcept
     {
-        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         return finish_mul_canonical_inline(a, b, mul_product_range_safe_inline(a, b));
         #else
         return mul_canonical_inline(a, b);
@@ -898,7 +898,7 @@ namespace detail::_qd // primitives and kernels
         return renorm5(s0, s1, s2, s3, s4);
     }
 
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
     // Forms a qd-by-double product with range-safe Dekker splitting.
     [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s mul_double_product_range_safe_inline(const fqd_s& a, double b) noexcept
     {
@@ -933,7 +933,7 @@ namespace detail::_qd // primitives and kernels
     // Multiplies qd by a double with range protection and canonical special handling.
     [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s mul_double_canonical_inline(const fqd_s& a, double b) noexcept
     {
-        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         const fqd_s out = detail::fp::dekker_product_needs_scaling(a.x0, b)
             ? mul_double_product_range_safe_inline(a, b)
             : mul_double_product_inline(a, b);
@@ -953,7 +953,7 @@ namespace detail::_qd // primitives and kernels
         const fqd_s& a,
         double b) noexcept
     {
-        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         return detail::fp::dekker_product_needs_scaling(a.x0, b)
             ? mul_double_product_range_safe_inline(a, b)
             : mul_double_product_inline(a, b);
@@ -1057,7 +1057,7 @@ namespace detail::_qd // primitives and kernels
         double a,
         double b) noexcept
     {
-        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         return detail::fp::dekker_product_needs_scaling(a, b);
         #else
         (void)a;
@@ -1073,7 +1073,7 @@ namespace detail::_qd // primitives and kernels
         double& p,
         double& e) noexcept
     {
-        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         detail::fp::two_prod_precise_range_safe(a, b, p, e);
         #else
         detail::fp::two_prod_precise(a, b, p, e);

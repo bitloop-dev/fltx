@@ -496,11 +496,13 @@ namespace detail::_f64_impl
         // otherwise consume the final few bits of the constexpr pow result.
         double product{};
         double product_error{};
+        #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         detail::fp::two_prod_precise_dekker_range_safe(
-            exponent,
-            logarithm,
-            product,
-            product_error);
+            exponent, logarithm, product, product_error);
+        #else
+        detail::fp::two_prod_precise_dekker(
+            exponent, logarithm, product, product_error);
+        #endif
 
         const double leading = exp(product);
         if (!isfinite(leading) || leading == 0.0 || product_error == 0.0)
@@ -984,7 +986,7 @@ namespace detail::_f64_impl
         const auto accumulate = [&](double factor) constexpr {
             double next_hi{};
             double product_error{};
-            #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+            #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
             detail::fp::two_prod_precise_dekker_range_safe(
                 product_hi, factor, next_hi, product_error);
             #else
@@ -1023,7 +1025,7 @@ namespace detail::_f64_impl
 
         double result_hi{};
         double result_error{};
-        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         detail::fp::two_prod_precise_dekker_range_safe(
             local, product_hi, result_hi, result_error);
         #else

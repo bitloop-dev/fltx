@@ -381,6 +381,23 @@ struct fqd : public fqd_s
     [[nodiscard]] static constexpr fqd eps() noexcept { return fqd{ fqd_s::eps() }; }
 };
 
+#if !defined(FLTX_ENABLE_FQD_EXPRESSIONS) || !FLTX_ENABLE_FQD_EXPRESSIONS
+
+// Keep the value type's definition independent of the consumer's operator policy.
+template<class T> requires std::is_same_v<T, fqd>
+[[nodiscard]] BL_FORCE_INLINE constexpr fqd operator+(const T& value) noexcept
+{
+    return value;
+}
+
+template<class T> requires std::is_same_v<T, fqd>
+[[nodiscard]] BL_FORCE_INLINE constexpr fqd operator-(const T& value) noexcept
+{
+    return static_cast<const fqd_s&>(value).operator-();
+}
+
+#endif
+
 } // namespace bl
 
 #endif

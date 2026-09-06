@@ -20,7 +20,14 @@ runner. It exercises the constexpr algorithms with the same deterministic
 domains, special values, and thresholds as normal runtime accuracy. Cross-path
 bit identity is intentionally not a contract.
 
-Every public header has an **H** probe through `fltx_compile_contract`.
+Every public header has an **H** probe through `fltx_compile_contract`, with
+`FLTX_ENABLE_FQD_EXPRESSIONS` both undefined and set to `1`.
+The representative C++20 surface also compiles with
+`FLTX_DISABLE_MATH_USES_CHECKED_DEKKER`, checking the opt-out and constexpr native `pow`.
+C++20/C++23 probes check both expression modes, including eager unary/binary
+return types, mixed arithmetic and same-type generic deduction. With
+`FLTX_VALIDATION_FQD_EXPRESSIONS=OFF`, `contracts/expressions.cpp` checks eager
+generic boundaries and storage-kernel parity; the suites otherwise opt in.
 The `native.h`, `native_math.h`, and `native_string.h` probes additionally
 require the fdd/fqd value and storage types to remain incomplete, enforcing the
 native-only include boundary.
@@ -36,14 +43,14 @@ public call and return-type contracts.
 | fdd/fqd storage and value construction, assignment, scalar/integer and cross-precision conversion | fdd/fqd | `contracts/core.cpp` | CE: `constexpr/core.cpp`; O: `contracts/overloads.cpp`, `contracts/overload_matrix.cpp` | — | Covers every fundamental arithmetic type, explicit narrowing, implicit widening, exact 64-bit boundaries, low-limb integer truncation, signed zero, `long double`, aggregate storage, and both cross-precision directions |
 | unary, binary and compound `+ - * /` | fdd/fqd | `contracts/core.cpp` | CE: `constexpr/core.cpp`, `constexpr/accuracy.cpp`; CA: all; O: `contracts/overloads.cpp` | A: f32/f64/fdd/fqd; B: fdd/fqd | Every distinct scalar category and cross-precision route is instantiated; runtime fast-math waives NaN, infinity, and signed-zero guarantees for basic fdd/fqd arithmetic while genuine constant evaluation remains checked |
 | comparison, `<=>`, unordered NaN behaviour | fdd/fqd | `contracts/core.cpp` | CE: `constexpr/core.cpp` | B: six fdd/fqd relational operators | |
-| `approx_eq` and parity tolerances | same-precision f32/f64/fdd/fqd | `contracts/approx_comparison.cpp` | CE: default and custom relative-threshold cases; O: accepted same-precision and rejected mixed/four-argument calls | — | Covers named defaults, native runtime/constexpr math parity, scaling, signed zero, infinities, NaNs, invalid tolerances, symmetry, and exact threshold boundaries |
+| `approx_eq` and parity tolerances | same-precision f32/f64/fdd/fqd, including fqd expressions | `contracts/approx_comparison.cpp` | CE: default and custom relative-threshold cases; O: accepted same-precision and rejected mixed/four-argument calls | — | Covers named defaults, native runtime/constexpr math parity, scaling, signed zero, infinities, NaNs, invalid tolerances, symmetry, exact threshold boundaries, and mixed expression shapes |
 | classification, signed zero, subnormals, infinities and NaNs | all | `contracts/core.cpp` | CE: `constexpr/core.cpp` for fdd/fqd | — | Includes unordered comparisons |
 | `abs`, `fabs`, `sqr`, `clamp`, `recip` | fdd/fqd | `contracts/math.cpp` | CE: `abs`, `clamp`, `recip`; CA: all except `clamp`; O: complete type matrix | A: all except `clamp`; B: fdd/fqd helpers | `fabs` and `sqr` are instantiated as constexpr-capable APIs |
 | aliases, concepts, rank, `common_float_type_t`, `FloatType` | all | `contracts/core.cpp` | O: `contracts/overloads.cpp`, `contracts/overload_matrix.cpp` | — | Includes cv/ref normalization and every precision-rank boundary |
 | `numeric_limits`, `eps`, `highest`, `std::numbers` | fdd/fqd storage/value | `contracts/core.cpp` | compile-time forwarding assertions | — | Covers nominal 106/212-bit epsilon, normal/subnormal range, exponent metadata, finite extrema, denormal policy, and constants; sparse arithmetic storage remains unrestricted |
 | `std::hash` | fdd/fqd storage/value | `contracts/core.cpp` | — | — | Signed zero, every limb, storage/value agreement, unordered containers, and deterministic infinity/NaN hashing |
 | runtime/template dispatch helpers | all | `contracts/dispatch.cpp` | — | — | Covers type tags, raw/sparse enums, free/member/callable tables, multiple dimensions, invocation, counts, domain sizes and reports |
-| installed `find_package` consumers | fdd/fqd | `package/consumer.cpp` | strict, fast-math, injected-no-FMA AUTO variants | — | Includes FMA and cancellation/EFT-sensitive products |
+| installed `find_package` consumers | fdd/fqd | `package/consumer.cpp` | strict, fast-math, injected-no-FMA AUTO, expression-enabled and explicit-`0` variants | — | One library serves every consumer; includes constexpr/runtime expression boundaries, value layout, FMA and cancellation/EFT-sensitive products |
 
 ## Math
 
@@ -90,6 +97,7 @@ ownership.
 | Public family | C | CE | CA | O | A | B |
 |---|---|---|---|---|---|---|
 | `abs`, `fabs`, `sqr`, `recip`, `fmin`, `fmax`, `fdim`, `copysign`, `clamp` | `contracts/math.cpp` (all types) | `abs`, `clamp`, `recip` | all except `clamp` | complete matrix | all except `clamp` | fdd/fqd helpers |
+| `min`, `max`, `minmax`, mixed `clamp`, `lerp`, `midpoint` | `contracts/math.cpp`, `contracts/expressions.cpp`: ties, NaNs, finite extremes, subnormals, interpolation bounds/monotonicity, exact 64-bit selection/midpoints; `min`/`max` initializer lists including mixed expression shapes and owning results | `constexpr/core.cpp`: expression calls, initializer lists, exact values, extremes/subnormals | — | mixed native/storage/value/expression return types, including `min`/`max` lists | — | — |
 | `floor`, `ceil`, `trunc`, `round`, `roundeven` | `contracts/math.cpp` (all types) | yes | all types | complete matrix | all types | fdd/fqd |
 | `lround`, `llround` | `contracts/math.cpp` | yes | all types | complete matrix | all types | fdd/fqd |
 | `round_decimals`, `round_significant` | `contracts/math.cpp` | yes | all types | complete matrix | all types | fdd/fqd |
@@ -109,6 +117,9 @@ ownership.
 Accuracy domains are assigned explicitly in `accuracy/fdd.cpp`,
 `accuracy/fqd.cpp`, and `accuracy/native.cpp`. The table deliberately does not
 claim domains for operations without rows.
+
+The new selection/interpolation helpers have behavioural and genuine-constexpr
+contracts, but no standalone MPFR accuracy or benchmark rows yet.
 
 The lack of standalone accuracy rows for `clamp`, `nextafter`, `nexttoward`,
 `sincos`, and `log_as_double` is explicit. `clamp` and stepping currently use
@@ -164,13 +175,13 @@ gating failures rather than threshold exceptions.
 | `precision_info`, `trailing_zero_policy`, `static_string<N>`, `f32_io_string`, `f64_io_string`, `fdd_io_string`, `fqd_io_string` | `contracts/io.cpp` | construction, mutation, capacity and returned alias types | Focused public string-surface contract rather than exhaustive `std::string` emulation |
 | `_dd`, `_qd`, integer literals | `contracts/io.cpp`, `contracts/core.cpp` | decimal and hex literal assertions | |
 | stream insertion/extraction | `contracts/io.cpp` | runtime only | |
-| `std::formatter` | `contracts/io.cpp` when available, plus header probe | formatter parsing is compile-time through the library | General/fixed/scientific/hex, signs, alternate form, zero fill, alignment, special values, invalid specs, and long fqd precision; platform-dependent availability |
+| `std::formatter` | `contracts/io.cpp` when available, plus header probe | formatter parsing is compile-time through the library | General/fixed/scientific/hex, signs, alternate form, zero fill, alignment, special values, invalid specs, long fqd precision, and expression/value formatting parity; platform-dependent availability |
 | deterministic formatter/parser round trip | `contracts/io.cpp` | sparse fdd and finite-extreme fqd cases in `constexpr/core.cpp` | Defaults use the normalized-expansion `max_digits10` values of 34/67 digits. General-format coverage includes a sparse-tail fdd regression; 10,000 independently constructed, bounded-spacing raw-limb values per type round-trip exactly in scientific format at those precision settings, including signed zero, mixed-sign tails, and extreme boundaries |
 | `seed_seq`, `mt19937`, `mt19937_64` | `contracts/random.cpp` | `mt19937_64` through array generation | Constructors, seed/generate/param, min/max, discard, comparison, valid/malformed streams and standard-engine equivalence |
 | `random_device` | `contracts/random.cpp` | runtime only | |
 | `uniform_int_distribution`, `generate_canonical` | `contracts/random.cpp` | fdd/fqd canonical generation | Constructors, params, bounds, override calls, equality and streams, including full-width integer ranges |
-| uniform real distribution and array helpers | `contracts/random.cpp` | deterministic fdd/fqd arrays in `constexpr/core.cpp` | Native/fdd/fqd parameters and every engine/seed/default array overload; fdd/fqd distribution benchmark |
-| exponential, normal, lognormal distributions | `contracts/random.cpp` | fdd/fqd samples in `constexpr/core.cpp` | Every accessor, param/reset/override/equality/stream form; native cached-state and extended parameter-only behavior; fdd/fqd normal benchmark |
+| uniform real distribution and array helpers | `contracts/random.cpp` | deterministic fdd/fqd and expression arrays in `constexpr/core.cpp` | Native/fdd/fqd/expression parameters, expression CTAD, and every engine/seed/default array overload; fdd/fqd distribution benchmark |
+| exponential, normal, lognormal distributions | `contracts/random.cpp` | fdd/fqd samples and expression parameters in `constexpr/core.cpp` | Every accessor, param/reset/override/equality/stream form; expression CTAD and normal-array parity; native cached-state and extended parameter-only behavior; fdd/fqd normal benchmark |
 | fqd expression lifetime, routing and materialization | `contracts/expressions.cpp`, `contracts/overload_matrix.cpp` | conversions, const/lvalue composition, ADL and mixed math promotion in `constexpr/core.cpp` | Covers delayed temporaries and storage members, every node shape, owning copies through generic helpers, explicit conversion to all fundamental arithmetic targets, promotion by value type, independent expected values, and a fusion-sensitive residual |
 | numerical edge cases | `contracts/edge_cases.cpp`, fmod `quotient_reduction` accuracy domain | boundary stepping also checked in CE | Covers large expansion limbs, deep-limb and huge-quotient remainder reduction, exact half ties, normal/subnormal stepping, and fdd FMA with an overflowing leading product |
 

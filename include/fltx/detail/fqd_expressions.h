@@ -554,6 +554,8 @@ namespace detail::_qd // primitives and kernels
 
 } // namespace detail::_qd
 
+#if defined(FLTX_ENABLE_FQD_EXPRESSIONS) && FLTX_ENABLE_FQD_EXPRESSIONS
+
 namespace detail::_qd_expr
 {
     // expression traits
@@ -3030,6 +3032,8 @@ template<class T, class R, detail::_qd_expr::pub_int_qd<T, R> = 0> [[nodiscard]]
 {
     return detail::_qd_expr::integer_div_expr(a, std::forward<R>(b));
 }
+
+#endif // FLTX_ENABLE_FQD_EXPRESSIONS
 
 } // namespace bl
 

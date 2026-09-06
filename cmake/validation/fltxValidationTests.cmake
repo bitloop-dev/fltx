@@ -113,11 +113,16 @@ foreach(header IN LISTS FLTX_TESTS_PUBLIC_HEADERS)
     list(APPEND FLTX_TESTS_HEADER_PROBE_SOURCES "${source}")
 endforeach()
 
-add_library(fltx_header_contract OBJECT EXCLUDE_FROM_ALL
-    ${FLTX_TESTS_HEADER_PROBE_SOURCES}
+foreach(target fltx_header_contract fltx_expression_header_contract)
+    add_library(${target} OBJECT EXCLUDE_FROM_ALL
+        ${FLTX_TESTS_HEADER_PROBE_SOURCES}
+    )
+    target_link_libraries(${target} PRIVATE fltx::fltx)
+    target_compile_features(${target} PRIVATE cxx_std_20)
+endforeach()
+target_compile_definitions(fltx_expression_header_contract PRIVATE
+    FLTX_ENABLE_FQD_EXPRESSIONS=1
 )
-target_link_libraries(fltx_header_contract PRIVATE fltx::fltx)
-target_compile_features(fltx_header_contract PRIVATE cxx_std_20)
 
 function(fltx_tests_add_cxx_standard_contract target standard)
     add_library(${target} OBJECT EXCLUDE_FROM_ALL
@@ -142,3 +147,15 @@ endfunction()
 
 fltx_tests_add_cxx_standard_contract(fltx_cxx20_contract 20)
 fltx_tests_add_cxx_standard_contract(fltx_cxx23_contract 23)
+
+fltx_tests_add_cxx_standard_contract(fltx_math_dekker_disabled_contract 20)
+target_compile_definitions(fltx_math_dekker_disabled_contract PRIVATE
+    FLTX_DISABLE_MATH_USES_CHECKED_DEKKER
+)
+
+foreach(standard 20 23)
+    fltx_tests_add_cxx_standard_contract(fltx_cxx${standard}_expressions_contract ${standard})
+    target_compile_definitions(fltx_cxx${standard}_expressions_contract PRIVATE
+        FLTX_ENABLE_FQD_EXPRESSIONS=1
+    )
+endforeach()

@@ -1564,13 +1564,10 @@ namespace detail::random
 {
     struct infer_real_type {};
 
-    template<class T>
-    using clean_t = std::remove_cvref_t<T>;
-
     template<class RealType, class Arg>
     concept real_distribution_arg_for =
         supported_real<RealType> &&
-        bl::fltx_arithmetic<clean_t<Arg>> &&
+        bl::fltx_arithmetic<bl::fltx_expression_value_t<Arg>> &&
         requires(Arg value)
         {
             static_cast<RealType>(value);
@@ -1578,8 +1575,8 @@ namespace detail::random
 
     template<class A, class B>
     concept inferred_real_distribution_args =
-        bl::fltx_arithmetic<clean_t<A>> &&
-        bl::fltx_arithmetic<clean_t<B>> &&
+        bl::fltx_arithmetic<bl::fltx_expression_value_t<A>> &&
+        bl::fltx_arithmetic<bl::fltx_expression_value_t<B>> &&
         supported_real<bl::common_float_type_t<A, B>>;
 
     template<class RealType, class A, class B>
@@ -1602,6 +1599,40 @@ namespace detail::random
     template<class RealType, class A, class B>
     using real_distribution_result_t = typename real_distribution_result<RealType, A, B>::type;
 }
+
+    // Mixed arguments share the arrays' promotion policy. Existing same-type
+    // real deduction (including aggregate storage) remains with the constructors.
+    template<class A, class B>
+    requires detail::random::inferred_real_distribution_args<A, B>
+    uniform_real_distribution(A, B) -> uniform_real_distribution<common_float_type_t<A, B>>;
+
+    template<class T>
+    requires (!detail::random::supported_real<T> &&
+              detail::random::inferred_real_distribution_args<T, T>)
+    uniform_real_distribution(T) -> uniform_real_distribution<common_float_type_t<T>>;
+
+    template<class A, class B>
+    requires detail::random::inferred_real_distribution_args<A, B>
+    normal_distribution(A, B) -> normal_distribution<common_float_type_t<A, B>>;
+
+    template<class T>
+    requires (!detail::random::supported_real<T> &&
+              detail::random::inferred_real_distribution_args<T, T>)
+    normal_distribution(T) -> normal_distribution<common_float_type_t<T>>;
+
+    template<class T>
+    requires (!detail::random::supported_real<T> &&
+              detail::random::inferred_real_distribution_args<T, T>)
+    exponential_distribution(T) -> exponential_distribution<common_float_type_t<T>>;
+
+    template<class A, class B>
+    requires detail::random::inferred_real_distribution_args<A, B>
+    lognormal_distribution(A, B) -> lognormal_distribution<common_float_type_t<A, B>>;
+
+    template<class T>
+    requires (!detail::random::supported_real<T> &&
+              detail::random::inferred_real_distribution_args<T, T>)
+    lognormal_distribution(T) -> lognormal_distribution<common_float_type_t<T>>;
 
     template<
         std::size_t Count,

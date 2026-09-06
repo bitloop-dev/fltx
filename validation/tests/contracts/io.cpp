@@ -861,6 +861,23 @@ TEST_CASE("default decimal output round trips the nominal value model",
 }
 
 #if FLTX_HAS_STD_FORMAT
+TEST_CASE("std format materializes fqd expressions with the existing value formatter",
+          "[contracts][io][format][expressions]")
+{
+    const bl::fqd a{ 1.25, 0x1p-60, -0x1p-120, 0x1p-180 };
+    const auto product = a * a;
+    const auto sum = product + bl::fqd{ 0.5 };
+    CHECK(std::format("{}", a * a) == std::format("{}", bl::fqd{ product }));
+    CHECK(std::format("{}", product) == std::format("{}", bl::fqd{ product }));
+    CHECK(std::format("{:>80.60f}", sum) == std::format("{:>80.60f}", bl::fqd{ sum }));
+    CHECK(std::format("{:+.55E}", sum) == std::format("{:+.55E}", bl::fqd{ sum }));
+    CHECK(std::format("{:#.64g}", product) == std::format("{:#.64g}", bl::fqd{ product }));
+    CHECK(std::format("{:+a}", sum) == std::format("{:+a}", bl::fqd{ sum }));
+    #if !defined(__EMSCRIPTEN__)
+    CHECK_THROWS_AS(std::vformat("{:x}", std::make_format_args(sum)), std::format_error);
+    #endif
+}
+
 TEST_CASE("std format integration supports familiar numeric specifications", "[contracts][io][format]")
 {
     CHECK(std::format("{}", bl::fdd{ 1.25 }) == "1.25");

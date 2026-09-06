@@ -269,7 +269,7 @@ namespace detail::_dd // primitives and kernels
         e += a.lo * b.lo;
     }
 
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
     // Forms an unrenormalized dd product with range-safe Dekker splitting.
     BL_FORCE_INLINE constexpr void mul_expansion_range_safe_inline(const fdd_s& a, const fdd_s& b, double& p, double& e) noexcept
     {
@@ -299,7 +299,7 @@ namespace detail::_dd // primitives and kernels
         return { p, e };
     }
 
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
     // Forms and renormalizes a dd product with range-safe Dekker splitting.
     [[nodiscard]] BL_FORCE_INLINE constexpr fdd_s mul_product_range_safe_inline(const fdd_s& a, const fdd_s& b) noexcept
     {
@@ -348,7 +348,7 @@ namespace detail::_dd // primitives and kernels
             value_is_zero(a) || value_is_zero(b)) [[unlikely]]
             return mul_special(a, b);
 
-        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         if (detail::fp::dekker_product_needs_scaling(a.hi, b.hi)) [[unlikely]]
             return finish_mul_canonical_inline(a, b, mul_product_range_safe_inline(a, b));
         #endif
@@ -391,7 +391,7 @@ namespace detail::_dd // primitives and kernels
     // Multiplies finite dd values while retaining Dekker range protection.
     [[nodiscard]] BL_FORCE_INLINE constexpr fdd_s mul_finite_inline(const fdd_s& a, const fdd_s& b) noexcept
     {
-        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         return detail::fp::dekker_product_needs_scaling(a.hi, b.hi)
             ? mul_product_range_safe_inline(a, b)
             : mul_product_inline(a, b);
@@ -403,7 +403,7 @@ namespace detail::_dd // primitives and kernels
     // Multiplies dd values with range-safe Dekker formation and canonical finalization.
     [[nodiscard]] BL_FORCE_INLINE constexpr fdd_s mul_dekker_range_safe_canonical_inline(const fdd_s& a, const fdd_s& b) noexcept
     {
-        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         return finish_mul_canonical_inline(a, b, mul_product_range_safe_inline(a, b));
         #else
         return mul_canonical_inline(a, b);
@@ -438,7 +438,7 @@ namespace detail::_dd // primitives and kernels
     // Squares dd with range-safe Dekker formation and canonical finalization.
     [[nodiscard]] BL_FORCE_INLINE constexpr fdd_s sqr_dekker_range_safe_canonical_inline(const fdd_s& a) noexcept
     {
-        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         double p{}, e{};
         detail::fp::two_prod_precise_range_safe(a.hi, a.hi, p, e);
         e += (a.hi + a.hi) * a.lo;
@@ -460,7 +460,7 @@ namespace detail::_dd // primitives and kernels
         return renorm(p, e);
     }
 
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
     // Forms a dd-by-double product with range-safe Dekker splitting.
     [[nodiscard]] BL_FORCE_INLINE constexpr fdd_s mul_double_product_range_safe_inline(const fdd_s& a, double b) noexcept
     {
@@ -475,7 +475,7 @@ namespace detail::_dd // primitives and kernels
     // Multiplies dd by a double with range protection and canonical special handling.
     [[nodiscard]] BL_FORCE_INLINE constexpr fdd_s mul_double_canonical_inline(const fdd_s& a, double b) noexcept
     {
-        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         const fdd_s out = detail::fp::dekker_product_needs_scaling(a.hi, b)
             ? mul_double_product_range_safe_inline(a, b)
             : mul_double_product_inline(a, b);
@@ -495,7 +495,7 @@ namespace detail::_dd // primitives and kernels
         const fdd_s& a,
         double b) noexcept
     {
-        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         return detail::fp::dekker_product_needs_scaling(a.hi, b)
             ? mul_double_product_range_safe_inline(a, b)
             : mul_double_product_inline(a, b);
@@ -603,7 +603,7 @@ namespace detail::_dd // primitives and kernels
 #endif
     }
 
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
     // Divides prechecked dd values with a range-safe Dekker residual product.
     [[nodiscard]] BL_FORCE_INLINE constexpr fdd_s div_prechecked_range_safe_inline(const fdd_s& a, const fdd_s& b) noexcept
     {
@@ -777,7 +777,7 @@ namespace detail::_dd // primitives and kernels
         return renorm(s, t);
     }
 
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
     // Computes (a * b + c) with range-safe Dekker product formation.
     [[nodiscard]] BL_FORCE_INLINE constexpr fdd_s mul_add_range_safe_inline(const fdd_s& a, const fdd_s& b, const fdd_s& c) noexcept
     {

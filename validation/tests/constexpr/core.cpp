@@ -43,7 +43,62 @@ namespace
                hypot(three, std::size_t{ 4 }) == bl::fqd{ 5.0 } &&
                abs(three) == bl::fqd{ 3.0 } &&
                bl::pow(three, 2) == bl::fqd{ 9.0 } &&
+               bl::sqr(three) == bl::fqd{ 9.0 } &&
+               bl::ipow(four, -2) == bl::fqd{ 0.0625 } &&
+               bl::approx_eq(three, bl::fqd{ 3.0 }) &&
+               bl::approx_eq(three, four - 1.0) &&
+               bl::min(three, four) == bl::fqd{ 3.0 } &&
+               bl::max(2, three) == bl::fqd{ 3.0 } &&
+               bl::min({ four, three, bl::fqd{ 5.0 } }) == bl::fqd{ 3.0 } &&
+               bl::max({ bl::fqd{ 2.0 }, three, four }) == bl::fqd{ 4.0 } &&
+               bl::min({ three, four }) == bl::fqd{ 3.0 } &&
+               bl::max({ three, four }) == bl::fqd{ 4.0 } &&
+               bl::min({ three, three }) == bl::fqd{ 3.0 } &&
+               bl::max({ four }) == bl::fqd{ 4.0 } &&
+               bl::min({ four, bl::fdd_s{ 2.0, 0.0 }, 5 }) == bl::fqd{ 2.0 } &&
+               bl::max<bl::fqd>({ 2, three, four }) == bl::fqd{ 4.0 } &&
+               bl::minmax(four, three).second == bl::fqd{ 4.0 } &&
+               bl::clamp(three, 0, 1) == bl::fqd{ 1.0 } &&
+               bl::clamp(three, three, three) == bl::fqd{ 3.0 } &&
+               bl::lerp(three, four, bl::fqd{ 0.5 } * bl::fqd{ 0.5 }) == bl::fqd{ 3.25 } &&
+               bl::midpoint(three, four) == bl::fqd{ 3.5 } &&
                bl::fma(three, 2, four) == bl::fqd{ 10.0 };
+    }
+
+    template<class T>
+    constexpr bool interpolation_is_constant_evaluated()
+    {
+        constexpr T maximum = std::numeric_limits<T>::max();
+        constexpr T tiny = std::numeric_limits<T>::denorm_min();
+        constexpr std::uint64_t largest = std::numeric_limits<std::uint64_t>::max();
+        return bl::midpoint(maximum, maximum) == maximum &&
+               bl::midpoint(T{ -maximum }, maximum) == T{ 0.0 } &&
+               bl::midpoint(tiny, tiny) == tiny &&
+               bl::midpoint(tiny, T{ 0.0 }) == T{ 0.0 } &&
+               bl::lerp(T{ -maximum }, maximum, T{ 0.5 }) == T{ 0.0 } &&
+               bl::lerp(maximum, maximum, T{ 0.75 }) == maximum &&
+               bl::lerp(T{ 3.0 }, T{ 4.0 }, T{ 0.25 }) == T{ 3.25 } &&
+               bl::min(largest, largest - 1) == largest - 1 &&
+               bl::min({ largest, largest - 1, largest - 2 }) == largest - 2 &&
+               bl::max({ largest - 2, largest - 1, largest }) == largest &&
+               bl::min({ T{ 3.0 }, T{ 1.0 }, T{ 4.0 }, T{ 2.0 } }) == T{ 1.0 } &&
+               bl::max({ T{ 3.0 }, T{ 1.0 }, T{ 4.0 }, T{ 2.0 } }) == T{ 4.0 } &&
+               bl::midpoint(largest, largest - 1) == largest;
+    }
+
+    constexpr bool expression_random_is_constant_evaluated()
+    {
+        const auto half = bl::fqd{ 0.25 } * bl::fqd{ 2.0 };
+        const auto one = half + bl::fqd{ 0.5 };
+        bl::normal_distribution normal{ one, half };
+        bl::exponential_distribution exponential{ half };
+        bl::lognormal_distribution lognormal{ one, half };
+        return bl::uniform_real_array<2>(half, one, 17u) ==
+                   bl::random_array<2>(bl::mt19937_64{ 17u }, bl::uniform_real_distribution{ half, one }) &&
+               bl::normal_array<2>(one, half, 29u) ==
+                   bl::random_array<2>(bl::mt19937_64{ 29u }, normal) &&
+               exponential.lambda() == bl::fqd{ 0.5 } &&
+               lognormal.m() == bl::fqd{ 1.0 } && lognormal.s() == bl::fqd{ 0.5 };
     }
 
     template<class T>
@@ -465,6 +520,14 @@ TEST_CASE("genuine constant evaluation covers representative heavy paths", "[con
     CHECK(qd_sqrt == bl::sqrt(bl::fqd{ 4.0 }));
     STATIC_CHECK(expression_conversions_are_constant_evaluated());
     STATIC_CHECK(expression_transparency_is_constant_evaluated());
+    STATIC_CHECK(expression_random_is_constant_evaluated());
+    // Native numerical constant evaluation follows the strict-only corpus policy.
+    #if !defined(FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH) || !FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH
+    STATIC_CHECK(interpolation_is_constant_evaluated<bl::f32>());
+    STATIC_CHECK(interpolation_is_constant_evaluated<bl::f64>());
+    #endif
+    STATIC_CHECK(interpolation_is_constant_evaluated<bl::fdd>());
+    STATIC_CHECK(interpolation_is_constant_evaluated<bl::fqd>());
     STATIC_CHECK(native_conversions_preserve_expansion_value());
     CHECK(qd_exp_log == bl::exp(bl::log(qd_input)));
     CHECK(within_roundoff(qd_sincos.s, bl::sin(qd_input)));

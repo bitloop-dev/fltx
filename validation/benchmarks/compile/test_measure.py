@@ -33,6 +33,8 @@ class CompileProbeTests(unittest.TestCase):
         expression = source_for(Probe("expression-shape", "mul_add", "expression", 2))
         self.assertIn("bl::fqd_s eager_mul_add_0", eager)
         self.assertIn("bl::fqd expression_mul_add_0", expression)
+        self.assertIn("#define FLTX_ENABLE_FQD_EXPRESSIONS 1", eager)
+        self.assertIn("#define FLTX_ENABLE_FQD_EXPRESSIONS 1", expression)
         self.assertEqual(eager.count("return a * b + c;"), 2)
         self.assertEqual(expression.count("return a * b + c;"), 2)
 

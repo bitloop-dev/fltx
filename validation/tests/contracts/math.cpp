@@ -14,6 +14,102 @@
 
 namespace
 {
+    template<class T>
+    void check_selection_and_interpolation()
+    {
+        CAPTURE(sizeof(T), std::numeric_limits<T>::digits);
+        const T zero{ 0.0 }, negative_zero{ -0.0 }, one{ 1.0 };
+        const T maximum = std::numeric_limits<T>::max();
+        const T tiny = std::numeric_limits<T>::denorm_min();
+        const T nan = std::numeric_limits<T>::quiet_NaN();
+        const T infinity = std::numeric_limits<T>::infinity();
+        CHECK(bl::min(T{ 3.0 }, T{ 4.0 }) == T{ 3.0 });
+        CHECK(bl::max(T{ 3.0 }, T{ 4.0 }) == T{ 4.0 });
+        CHECK(bl::clamp(T{ 3.0 }, 0, 2) == T{ 2.0 });
+        CHECK(bl::clamp(T{ -3.0 }, 0.0, 2.0) == zero);
+        CHECK(bl::signbit(bl::min(negative_zero, zero)));
+        CHECK_FALSE(bl::signbit(bl::min(zero, negative_zero)));
+        CHECK(bl::signbit(bl::max(negative_zero, zero)));
+        CHECK_FALSE(bl::signbit(bl::max(zero, negative_zero)));
+        CHECK(bl::isnan(bl::min(nan, one)));
+        CHECK(bl::isnan(bl::max(nan, one)));
+        CHECK(bl::min(one, nan) == one);
+        CHECK(bl::max(one, nan) == one);
+        CHECK(bl::min({ one }) == one);
+        CHECK(bl::max({ one }) == one);
+        const std::initializer_list<T> values{ T{ 3.0 }, one, T{ 4.0 }, T{ 2.0 } };
+        CHECK(bl::min(values) == one);
+        CHECK(bl::max(values) == T{ 4.0 });
+        CHECK(bl::signbit(bl::min({ negative_zero, zero })));
+        CHECK_FALSE(bl::signbit(bl::min({ zero, negative_zero })));
+        CHECK(bl::signbit(bl::max({ negative_zero, zero })));
+        CHECK_FALSE(bl::signbit(bl::max({ zero, negative_zero })));
+        CHECK(bl::isnan(bl::min({ nan, one, zero })));
+        CHECK(bl::isnan(bl::max({ nan, one, zero })));
+        CHECK(bl::min({ one, nan, zero }) == zero);
+        CHECK(bl::max({ zero, nan, one }) == one);
+        CHECK(bl::min({ infinity, one, T{ -infinity } }) == T{ -infinity });
+        CHECK(bl::max({ T{ -infinity }, one, infinity }) == infinity);
+        CHECK(bl::isnan(bl::clamp(nan, zero, one)));
+        CHECK(bl::signbit(bl::clamp(negative_zero, zero, one)));
+        CHECK(bl::signbit(bl::clamp(negative_zero, T{ -1.0 }, zero)));
+        CHECK_FALSE(bl::signbit(bl::clamp(zero, negative_zero, negative_zero)));
+        const auto ties = bl::minmax(negative_zero, zero);
+        CHECK(bl::signbit(ties.first));
+        CHECK_FALSE(bl::signbit(ties.second));
+
+        CHECK(bl::midpoint(T{ 3.0 }, T{ 4.0 }) == T{ 3.5 });
+        CHECK(bl::midpoint(maximum, maximum) == maximum);
+        CHECK(bl::midpoint(T{ -maximum }, maximum) == zero);
+        CHECK(bl::midpoint(tiny, tiny) == tiny);
+        CHECK(bl::midpoint(zero, tiny) == zero);
+        CHECK(bl::midpoint(tiny, maximum) == T{ maximum * T{ 0.5 } });
+        CHECK(bl::midpoint(maximum, tiny) == T{ maximum * T{ 0.5 } });
+        CHECK(bl::isnan(bl::midpoint(nan, one)));
+        CHECK(bl::midpoint(infinity, infinity) == infinity);
+
+        CHECK(bl::lerp(T{ 3.0 }, T{ 4.0 }, T{ 0.25 }) == T{ 3.25 });
+        CHECK(bl::lerp(T{ 3.0 }, T{ 4.0 }, T{ -1.0 }) == T{ 2.0 });
+        CHECK(bl::lerp(T{ 3.0 }, T{ 4.0 }, T{ 2.0 }) == T{ 5.0 });
+        CHECK(bl::lerp(maximum, maximum, maximum) == maximum);
+        CHECK(bl::lerp(T{ -maximum }, maximum, T{ 0.5 }) == zero);
+        CHECK(bl::signbit(bl::lerp(negative_zero, one, zero)));
+        CHECK(bl::signbit(bl::lerp(one, negative_zero, one)));
+        CHECK(bl::isnan(bl::lerp(one, T{ 2.0 }, nan)));
+        CHECK(bl::lerp(zero, one, infinity) == infinity);
+        CHECK(bl::lerp(zero, one, T{ -infinity }) == T{ -infinity });
+
+        if constexpr (bl::fltx_extended_float<T>)
+        {
+            const T a = one + T{ 0x1p-60 };
+            const T b = one + T{ 0x1p-58 };
+            const T center = one + T{ 0x1.4p-59 };
+            const T quarter = one + T{ 0x1.cp-60 };
+            CHECK(bl::midpoint(a, b) == center);
+            CHECK(bl::lerp(a, b, T{ 0.25 }) == quarter);
+        }
+
+        const std::array<T, 7> endpoints{ T{ -maximum }, T{ -1.0 }, T{ -tiny }, zero, tiny, one, maximum };
+        for (const T& a : endpoints)
+        {
+            for (const T& b : endpoints)
+            {
+                CHECK(bl::lerp(a, b, zero) == a);
+                CHECK(bl::lerp(a, b, one) == b);
+                T previous = a;
+                for (const T& weight : std::array<T, 3>{ T{ 0.25 }, T{ 0.5 }, T{ 0.75 } })
+                {
+                    const T value = bl::lerp(a, b, weight);
+                    CHECK(bl::isfinite(value));
+                    CHECK(value >= bl::min(a, b));
+                    CHECK(value <= bl::max(a, b));
+                    CHECK((a < b ? value >= previous : value <= previous));
+                    previous = value;
+                }
+            }
+        }
+    }
+
     [[nodiscard]] bool nonoverlapping(double high, double low) noexcept
     {
         if (low == 0.0)
@@ -570,6 +666,31 @@ namespace
         CHECK(bl::round_significant(
             tie_up, 2) == rounded_up);
     }
+}
+
+TEST_CASE("selection and interpolation preserve ordering and finite range",
+          "[contracts][math][selection]")
+{
+    check_selection_and_interpolation<bl::f32>();
+    check_selection_and_interpolation<bl::f64>();
+    check_selection_and_interpolation<bl::fdd>();
+    check_selection_and_interpolation<bl::fqd>();
+    const std::uint64_t largest = std::numeric_limits<std::uint64_t>::max();
+    CHECK(bl::min(largest, largest - 1) == largest - 1);
+    CHECK(bl::max(largest, largest - 1) == largest);
+    CHECK(bl::min({ largest, largest - 1, largest - 2 }) == largest - 2);
+    CHECK(bl::max({ largest - 2, largest - 1, largest }) == largest);
+    CHECK(bl::min<int>({ 3, 1, 4, 2 }) == 1);
+    CHECK(bl::max<double>({ 3, 1.5, 4, 2.0 }) == 4.0);
+    CHECK(bl::clamp(largest, largest - 2, largest - 1) == largest - 1);
+    CHECK(bl::midpoint(largest, largest - 1) == largest);
+    CHECK(bl::midpoint(largest - 1, largest) == largest - 1);
+    CHECK(bl::midpoint(largest, std::uint64_t{ 0 }) == (largest / 2 + 1));
+    CHECK(bl::midpoint(std::numeric_limits<std::int64_t>::min(),
+                       std::numeric_limits<std::int64_t>::max()) == -1);
+    CHECK(bl::midpoint(std::numeric_limits<std::int64_t>::max(),
+                       std::numeric_limits<std::int64_t>::min()) == 0);
+    CHECK(bl::clamp(std::string_view{ "b" }, std::string_view{ "a" }, std::string_view{ "c" }) == "b");
 }
 
 TEST_CASE("exact math contracts hold for both expansion types", "[contracts][math]")

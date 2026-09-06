@@ -148,6 +148,17 @@ namespace bl {
     return detail::_qd_impl::fmax(a, b);
 }
 
+// A fixed element type lets mixed values and expression shapes materialize together.
+[[nodiscard]] BL_FORCE_INLINE constexpr fqd min(std::initializer_list<fqd> values) noexcept
+{
+    return bl::min<fqd>(values);
+}
+
+[[nodiscard]] BL_FORCE_INLINE constexpr fqd max(std::initializer_list<fqd> values) noexcept
+{
+    return bl::max<fqd>(values);
+}
+
 [[nodiscard]] BL_FORCE_INLINE constexpr fqd fdim(const fqd_s& x, const fqd_s& y)
 {
     return detail::_qd_impl::fdim(x, y);

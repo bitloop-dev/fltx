@@ -15,8 +15,12 @@ include("${PROJECT_SOURCE_DIR}/cmake/validation/fltxValidationRunners.cmake")
 add_custom_target(fltx_compile_contract
     DEPENDS
         fltx_header_contract
+        fltx_expression_header_contract
         fltx_cxx20_contract
         fltx_cxx23_contract
+        fltx_math_dekker_disabled_contract
+        fltx_cxx20_expressions_contract
+        fltx_cxx23_expressions_contract
         fltx_contract_tests
         fltx_contract_tests_fastmath
         fltx_constexpr_tests

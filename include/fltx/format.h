@@ -355,6 +355,17 @@ struct std::formatter<bl::fqd, char>
     }
 };
 
+template<bl::fltx_expression Expr>
+struct std::formatter<Expr, char> : std::formatter<bl::fltx_expression_value_t<Expr>, char>
+{
+    template<class FormatContext>
+    auto format(const Expr& value, FormatContext& ctx) const
+    {
+        using Value = bl::fltx_expression_value_t<Expr>;
+        return std::formatter<Value, char>::format(Value{ value }, ctx);
+    }
+};
+
 #endif
 
 #endif

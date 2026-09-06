@@ -70,12 +70,21 @@ separately verifies its C++ `Quad`/`Octuple` headers and a compiled C-ABI
 symbol.
 
 `fltx_compile_contract` builds every public header in isolation and compiles
-the representative constexpr/runtime surface explicitly as both C++20 and
-C++23. Comparison-library smoke executables are owned separately by
+the representative constexpr/runtime surface as both C++20 and C++23, with
+`FLTX_ENABLE_FQD_EXPRESSIONS` both undefined and set to `1`. A separate C++20
+probe defines `FLTX_DISABLE_MATH_USES_CHECKED_DEKKER`.
+Validation suites and runtime/size benchmarks opt into expressions by default.
+Configuring with `FLTX_VALIDATION_FQD_EXPRESSIONS=OFF` runs those consumers with
+eager scalar arithmetic; the expression contract owner then checks eager value
+types and storage-kernel parity. This option neither rebuilds the compiled
+library nor changes its exported target. Dedicated expression compile benchmarks
+always opt in and compare `fqd` expressions with eager `fqd_s` arithmetic.
+Comparison-library smoke executables are owned separately by
 `fltx_metrics_compile_contract`; they are metrics integration checks, not FLTX
 compile contracts.
-`fltx_package_tests` installs fltx and builds strict, fast-math, and
-injected-no-FMA consumers through `find_package`. Its dedicated install and
+`fltx_package_tests` installs fltx once and builds strict, fast-math,
+injected-no-FMA, expression-enabled, and explicit-`0` expression-policy consumers
+through `find_package`, all against that same library. Its dedicated install and
 nested-build directories are recreated for every invocation, so stale
 installed headers or CMake state cannot make the fixture pass.
 

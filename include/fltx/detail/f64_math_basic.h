@@ -553,7 +553,7 @@ namespace detail::_f64_impl
 
         double product{};
         double product_error{};
-        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         detail::fp::two_prod_precise_dekker_range_safe(x, y, product, product_error);
         #else
         detail::fp::two_prod_precise_dekker(x, y, product, product_error);

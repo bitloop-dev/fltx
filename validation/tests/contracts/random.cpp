@@ -370,6 +370,61 @@ TEST_CASE("array helpers cover engine, seed, explicit, and default overloads",
     CHECK(constants == std::array{ 5, 5, 5, 5 });
 }
 
+TEST_CASE("random helpers deduce owning values from expression parameters",
+          "[contracts][random][expressions]")
+{
+    const auto half = bl::fqd{ 0.25 } * bl::fqd{ 2.0 };
+    const auto one = half + bl::fqd{ 0.5 };
+    const auto two = bl::fqd{ 4.0 } * bl::fqd{ 0.5 };
+    bl::uniform_real_distribution uniform{ half, one };
+    bl::normal_distribution normal{ one, half };
+    bl::exponential_distribution exponential{ two };
+    bl::lognormal_distribution lognormal{ one, half };
+    STATIC_CHECK(std::same_as<decltype(uniform), bl::uniform_real_distribution<bl::fqd>>);
+    STATIC_CHECK(std::same_as<decltype(normal), bl::normal_distribution<bl::fqd>>);
+    STATIC_CHECK(std::same_as<decltype(exponential), bl::exponential_distribution<bl::fqd>>);
+    STATIC_CHECK(std::same_as<decltype(lognormal), bl::lognormal_distribution<bl::fqd>>);
+    STATIC_CHECK(std::same_as<decltype(bl::uniform_real_distribution{ 0, 1 }), bl::uniform_real_distribution<double>>);
+    STATIC_CHECK(std::same_as<decltype(bl::uniform_real_distribution{ 0.0f, 1.0f }), bl::uniform_real_distribution<float>>);
+    STATIC_CHECK(std::same_as<decltype(bl::normal_distribution{ 1.0f, 0.5 }), bl::normal_distribution<double>>);
+    STATIC_CHECK(std::same_as<decltype(bl::exponential_distribution{ 2 }), bl::exponential_distribution<double>>);
+    STATIC_CHECK(std::same_as<decltype(bl::normal_distribution{ bl::fdd_s{ 1.0 }, bl::fdd_s{ 0.5 } }), bl::normal_distribution<bl::fdd_s>>);
+    STATIC_CHECK(std::same_as<decltype(bl::exponential_distribution{ bl::fqd_s{ 2.0 } }), bl::exponential_distribution<bl::fqd_s>>);
+    STATIC_CHECK(std::same_as<decltype(bl::lognormal_distribution{ bl::fdd{ 1.0 }, bl::fqd{ 0.5 } }), bl::lognormal_distribution<bl::fqd>>);
+    CHECK(bl::uniform_real_distribution{ 0, bl::fqd{ one } } == bl::uniform_real_distribution{ 0, one });
+    CHECK(bl::normal_distribution{ bl::fdd{ 1.0 }, bl::fqd{ half } } == normal);
+    CHECK(uniform == bl::uniform_real_distribution<bl::fqd>{ bl::fqd{ 0.5 }, bl::fqd{ 1.0 } });
+    CHECK(normal == bl::normal_distribution<bl::fqd>{ bl::fqd{ 1.0 }, bl::fqd{ 0.5 } });
+    CHECK(exponential == bl::exponential_distribution<bl::fqd>{ bl::fqd{ 2.0 } });
+    CHECK(lognormal == bl::lognormal_distribution<bl::fqd>{ bl::fqd{ 1.0 }, bl::fqd{ 0.5 } });
+    CHECK(bl::uniform_real_distribution{ half } == bl::uniform_real_distribution<bl::fqd>{ bl::fqd{ 0.5 } });
+    CHECK(bl::normal_distribution{ one } == bl::normal_distribution<bl::fqd>{ bl::fqd{ 1.0 } });
+    CHECK(bl::lognormal_distribution{ one } == bl::lognormal_distribution<bl::fqd>{ bl::fqd{ 1.0 } });
+    CHECK(bl::uniform_real_distribution{ half, two } == bl::uniform_real_distribution<bl::fqd>{ bl::fqd{ 0.5 }, bl::fqd{ 2.0 } });
+    CHECK(bl::uniform_real_distribution{ 0, one } == bl::uniform_real_distribution<bl::fqd>{ bl::fqd{ 0.0 }, bl::fqd{ 1.0 } });
+    CHECK(bl::normal_distribution{ bl::fdd{ 1.0 }, half } == normal);
+    CHECK(bl::lognormal_distribution{ one, 0.5 } == lognormal);
+
+    const auto uniform_values = bl::uniform_real_array<4>(half, one, 17u);
+    STATIC_CHECK(std::same_as<typename decltype(uniform_values)::value_type, bl::fqd>);
+    CHECK(uniform_values == bl::uniform_real_array<4>(bl::fqd{ 0.5 }, bl::fqd{ 1.0 }, 17u));
+    CHECK(uniform_values == bl::uniform_real_array<4, bl::fqd>(half, one, bl::mt19937_64{ 17u }));
+    CHECK(bl::uniform_real_array<4>(0, one, 17u) ==
+          bl::uniform_real_array<4>(bl::fqd{ 0.0 }, bl::fqd{ 1.0 }, 17u));
+    CHECK(bl::normal_array<4>(one, half, bl::mt19937_64{ 29u }) ==
+          bl::normal_array<4>(bl::fqd{ 1.0 }, bl::fqd{ 0.5 }, 29u));
+    CHECK(bl::normal_array<4, bl::fqd>(one, half, 29u) ==
+          bl::normal_array<4>(bl::fqd{ 1.0 }, bl::fqd{ 0.5 }, 29u));
+    CHECK(bl::normal_array<4, bl::fdd>(one, half, 29u) ==
+          bl::normal_array<4>(bl::fdd{ 1.0 }, bl::fdd{ 0.5 }, 29u));
+
+    bl::mt19937_64 actual_engine{ 71u }, expected_engine{ 71u };
+    CHECK(uniform(actual_engine) == bl::uniform_real_distribution<bl::fqd>{ bl::fqd{ 0.5 }, bl::fqd{ 1.0 } }(expected_engine));
+    CHECK(normal(actual_engine) == bl::normal_distribution<bl::fqd>{ bl::fqd{ 1.0 }, bl::fqd{ 0.5 } }(expected_engine));
+    CHECK(exponential(actual_engine) == bl::exponential_distribution<bl::fqd>{ bl::fqd{ 2.0 } }(expected_engine));
+    CHECK(lognormal(actual_engine) == bl::lognormal_distribution<bl::fqd>{ bl::fqd{ 1.0 }, bl::fqd{ 0.5 } }(expected_engine));
+}
+
 TEST_CASE("stateful distributions reset cached samples", "[contracts][random]")
 {
     using normal = bl::normal_distribution<double>;

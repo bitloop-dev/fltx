@@ -3,6 +3,7 @@ function(fltx_add_size_probe target precision case_name repeats)
     target_link_libraries(${target} PRIVATE fltx::fltx)
     target_compile_features(${target} PRIVATE cxx_std_20)
     target_compile_definitions(${target} PRIVATE
+        FLTX_ENABLE_FQD_EXPRESSIONS=$<BOOL:${FLTX_VALIDATION_FQD_EXPRESSIONS}>
         FLTX_BENCHMARK_SIZE_PRECISION=${precision}
         FLTX_BENCHMARK_SIZE_CASE=${case_name}
         FLTX_BENCHMARK_SIZE_REPEATS=${repeats}

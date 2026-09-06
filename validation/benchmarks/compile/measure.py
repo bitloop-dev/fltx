@@ -68,6 +68,7 @@ def source_for(probe: Probe) -> str:
     value_type = "bl::fqd" if probe.style == "expression" else "bl::fqd_s"
     safe_case = probe.case.replace("-", "_")
     lines = [
+        "#define FLTX_ENABLE_FQD_EXPRESSIONS 1",
         "#include <fltx/fqd.h>",
         "#if defined(_MSC_VER)",
         "#define FLTX_COMPILE_NOINLINE __declspec(noinline)",

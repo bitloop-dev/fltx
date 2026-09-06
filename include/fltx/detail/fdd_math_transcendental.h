@@ -212,7 +212,7 @@ namespace detail::_dd // primitives and kernels
             binary_scale = -upward_scale;
         }
 #endif
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         const bool checked_product = detail::fp::exp_scale_needs_checked_product(n);
 #endif
 
@@ -220,7 +220,7 @@ namespace detail::_dd // primitives and kernels
         {
             if ((exponent & 1u) != 0)
             {
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
                 factor = checked_product ? mul_product_range_safe_inline(factor, table[i]) : mul_product_inline(factor, table[i]);
 #else
                 factor = mul_product_inline(factor, table[i]);
@@ -280,7 +280,7 @@ namespace detail::_dd // primitives and kernels
 
         int factor_scale = 0;
         const fdd_s factor = exp_integer_factor(n, factor_scale);
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         const fdd_s scaled = detail::fp::exp_scale_needs_checked_product(n)
             ? mul_add_range_safe_inline(factor, e, factor)
             : mul_add_inline(factor, e, factor);
@@ -1451,7 +1451,7 @@ namespace detail::_dd // primitives and kernels
         fdd_s local_lgamma{};
         try_lgamma_near_one_or_two(y, local_lgamma);
         const fdd_s local_gamma = detail::_dd_impl::exp(local_lgamma);
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         return shifted_up ? div_prechecked_range_safe_inline(local_gamma, product) : mul_product_inline(local_gamma, product);
 #else
         return shifted_up ? div_prechecked_inline(local_gamma, product) : mul_product_inline(local_gamma, product);
@@ -1495,7 +1495,7 @@ namespace detail::_dd // primitives and kernels
         int product_scale2 = 0;
         positive_recurrence_product(x, asymptotic_min, z, product, product_scale2);
 
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         fdd_s out = (product == fdd_s{ 1.0 })
             ? detail::_dd_impl::exp(lgamma_stirling_asymptotic(z))
             : div_prechecked_inline(detail::_dd_impl::exp(lgamma_stirling_asymptotic(z)), product);
@@ -2053,7 +2053,7 @@ namespace detail::_dd
 
     if (ax >= ay)
     {
-        #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+        #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         const fdd_s ratio = detail::fp::dekker_product_needs_scaling(y.hi, x.hi)
             ? detail::_dd::div_prechecked_range_safe_inline(y, x)
             : detail::_dd::div_prechecked_inline(y, x);
@@ -2067,7 +2067,7 @@ namespace detail::_dd
         return a;
     }
 
-    #if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+    #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
     const fdd_s ratio = detail::fp::dekker_product_needs_scaling(x.hi, y.hi)
         ? detail::_dd::div_prechecked_range_safe_inline(x, y)
         : detail::_dd::div_prechecked_inline(x, y);
@@ -2096,7 +2096,7 @@ namespace detail::_dd
     }
 
     const fdd_s ex = detail::_dd_impl::exp(ax);
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
     fdd_s out = detail::fp::exp_inverse_is_negligible(ax.hi)
         ? mul_pwr2_inline(ex, 0.5)
         : mul_double_product_inline(sub_finite_inline(ex, div_double_prechecked_inline(1.0, ex)), 0.5);
@@ -2119,7 +2119,7 @@ namespace detail::_dd
 
     const fdd_s ax = detail::_dd::mag(x);
     const fdd_s ex = detail::_dd_impl::exp(ax);
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
     if (detail::fp::exp_inverse_is_negligible(ax.hi))
         return mul_pwr2_inline(ex, 0.5);
 #endif

@@ -27,6 +27,31 @@ namespace
             std::declval<THIRD>())), \
         RESULT>)
 
+#define FLTX_EXPECT_LIST(NAME, LEFT, RIGHT, RESULT) \
+    static_assert(std::same_as< \
+        decltype(bl::NAME({ std::declval<LEFT>(), std::declval<RIGHT>() })), \
+        RESULT>)
+
+#define FLTX_SELECTION_LIST_MATRIX(NAME) \
+    FLTX_EXPECT_LIST(NAME, int, int, int); \
+    FLTX_EXPECT_LIST(NAME, std::uint64_t, std::uint64_t, std::uint64_t); \
+    FLTX_EXPECT_LIST(NAME, unsigned char, unsigned char, unsigned char); \
+    FLTX_EXPECT_LIST(NAME, float, float, float); \
+    FLTX_EXPECT_LIST(NAME, double, double, double); \
+    FLTX_EXPECT_LIST(NAME, long double, long double, long double); \
+    FLTX_EXPECT_LIST(NAME, bl::fdd_s, bl::fdd_s, bl::fdd); \
+    FLTX_EXPECT_LIST(NAME, bl::fdd, bl::fdd, bl::fdd); \
+    FLTX_EXPECT_LIST(NAME, bl::fqd_s, bl::fqd_s, bl::fqd); \
+    FLTX_EXPECT_LIST(NAME, bl::fqd, bl::fqd, bl::fqd); \
+    FLTX_EXPECT_LIST(NAME, qd_expression, qd_expression, bl::fqd); \
+    FLTX_EXPECT_LIST(NAME, qd_expression&, const qd_sum_expression&, bl::fqd); \
+    FLTX_EXPECT_LIST(NAME, bl::fqd, qd_expression, bl::fqd); \
+    FLTX_EXPECT_LIST(NAME, const qd_expression&, bl::fqd_s, bl::fqd); \
+    FLTX_EXPECT_LIST(NAME, bl::fdd_s, const qd_expression&, bl::fqd); \
+    FLTX_EXPECT_LIST(NAME, const qd_expression&, unsigned char, bl::fqd); \
+    FLTX_EXPECT_LIST(NAME, std::uint64_t, qd_expression, bl::fqd); \
+    FLTX_EXPECT_LIST(NAME, qd_expression, long double, bl::fqd)
+
 #define FLTX_NUMERIC_UNARY_MATRIX(NAME) \
     FLTX_EXPECT_UNARY(NAME, float, bl::f32); \
     FLTX_EXPECT_UNARY(NAME, double, bl::f64); \
@@ -181,6 +206,18 @@ namespace
     FLTX_NUMERIC_BINARY_MATRIX(remainder);
     FLTX_NUMERIC_BINARY_MATRIX(fmin);
     FLTX_NUMERIC_BINARY_MATRIX(fmax);
+    FLTX_NUMERIC_BINARY_MATRIX(min);
+    FLTX_NUMERIC_BINARY_MATRIX(max);
+    FLTX_NUMERIC_BINARY_MATRIX(midpoint);
+    FLTX_EXPECT_BINARY(min, std::uint64_t, std::uint64_t, std::uint64_t);
+    FLTX_EXPECT_BINARY(max, unsigned char, unsigned char, unsigned char);
+    FLTX_SELECTION_LIST_MATRIX(min);
+    FLTX_SELECTION_LIST_MATRIX(max);
+    FLTX_EXPECT_BINARY(midpoint, int, int, int);
+    FLTX_EXPECT_BINARY(midpoint, long double, double, long double);
+    using qd_pair = std::pair<bl::fqd, bl::fqd>;
+    FLTX_EXPECT_BINARY(minmax, const qd_expression&, const qd_sum_expression&, qd_pair);
+    FLTX_EXPECT_BINARY(minmax, bl::fqd_s, bl::fdd_s, qd_pair);
     FLTX_NUMERIC_BINARY_MATRIX(fdim);
     FLTX_NUMERIC_BINARY_MATRIX(copysign);
     FLTX_NUMERIC_BINARY_MATRIX(hypot);
@@ -207,6 +244,18 @@ namespace
     FLTX_EXPECT_TERNARY(clamp, bl::fdd, bl::fdd, bl::fdd, bl::fdd);
     FLTX_EXPECT_TERNARY(clamp, bl::fqd_s, bl::fqd_s, bl::fqd_s, bl::fqd);
     FLTX_EXPECT_TERNARY(clamp, bl::fqd, bl::fqd, bl::fqd, bl::fqd);
+    FLTX_EXPECT_TERNARY(clamp, int, int, int, int);
+    FLTX_EXPECT_TERNARY(clamp, bl::fdd, int, double, bl::fdd);
+    FLTX_EXPECT_TERNARY(clamp, bl::fqd_s, int, float, bl::fqd);
+    FLTX_EXPECT_TERNARY(clamp, const qd_expression&, int, double, bl::fqd);
+    FLTX_EXPECT_TERNARY(clamp, const qd_expression&, const qd_expression&, const qd_expression&, bl::fqd);
+    FLTX_EXPECT_TERNARY(clamp, bl::fdd_s, const qd_expression&, const qd_sum_expression&, bl::fqd);
+    FLTX_EXPECT_TERNARY(lerp, float, float, float, float);
+    FLTX_EXPECT_TERNARY(lerp, int, int, int, double);
+    FLTX_EXPECT_TERNARY(lerp, double, long double, float, long double);
+    FLTX_EXPECT_TERNARY(lerp, bl::fdd_s, float, int, bl::fdd);
+    FLTX_EXPECT_TERNARY(lerp, const qd_expression&, bl::fdd_s, float, bl::fqd);
+    FLTX_EXPECT_TERNARY(lerp, bl::fqd, bl::fdd, const qd_expression&, bl::fqd);
 
     static_assert(std::same_as<decltype(bl::remquo(1.0f, 2.0f, nullptr)), bl::f32>);
     static_assert(std::same_as<decltype(bl::remquo(1, 2.0f, nullptr)), bl::f64>);
@@ -270,11 +319,15 @@ namespace
     static_assert(std::same_as<decltype(bl::ipow(2.0, 3)), bl::f64>);
     static_assert(std::same_as<decltype(bl::ipow(bl::fdd{}, 3)), bl::fdd>);
     static_assert(std::same_as<decltype(bl::ipow(bl::fqd{}, 3)), bl::fqd>);
+    FLTX_EXPECT_BINARY(ipow, const qd_expression&, int, bl::fqd);
+    FLTX_EXPECT_BINARY(ipow, const qd_sum_expression&, std::uint64_t, bl::fqd);
 
     FLTX_EXPECT_UNARY(sqr, float, bl::f32);
     FLTX_EXPECT_UNARY(sqr, double, bl::f64);
     FLTX_EXPECT_UNARY(sqr, bl::fdd, bl::fdd);
     FLTX_EXPECT_UNARY(sqr, bl::fqd, bl::fqd);
+    FLTX_EXPECT_UNARY(sqr, const qd_expression&, bl::fqd);
+    FLTX_EXPECT_UNARY(sqr, const qd_sum_expression&, bl::fqd);
     FLTX_EXPECT_UNARY(recip, float, bl::f32);
     FLTX_EXPECT_UNARY(recip, double, bl::f64);
     FLTX_EXPECT_UNARY(recip, bl::fdd_s, bl::fdd);
@@ -337,6 +390,8 @@ namespace
 #undef FLTX_BOOLEAN_UNARY_MATRIX
 #undef FLTX_NUMERIC_UNARY_MATRIX
 #undef FLTX_EXPECT_TERNARY
+#undef FLTX_SELECTION_LIST_MATRIX
+#undef FLTX_EXPECT_LIST
 #undef FLTX_EXPECT_BINARY
 #undef FLTX_EXPECT_UNARY
 }

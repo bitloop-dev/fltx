@@ -466,11 +466,6 @@ static_assert(std::numeric_limits<double>::is_iec559 &&
   #define BL_POP_PRECISE
 #endif
 
-// Improves pow/cosh/sinh/lgamma domain scores with minimal overhead (default on)
-#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER) && !defined(FLTX_MATH_USES_CHECKED_DEKKER)
-#define FLTX_MATH_USES_CHECKED_DEKKER
-#endif
-
 namespace bl
 {
     namespace detail

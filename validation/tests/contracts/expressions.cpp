@@ -12,6 +12,69 @@
 
 #include <fltx.h>
 
+#if !defined(FLTX_ENABLE_FQD_EXPRESSIONS) || !FLTX_ENABLE_FQD_EXPRESSIONS
+
+namespace
+{
+    template<class T>
+    constexpr bl::fqd add_pair(const T& x, const T& y) { return x + y; }
+
+    void require_same_limbs(const bl::fqd& actual, const bl::fqd_s& expected)
+    {
+        CHECK(actual.x0 == expected.x0);
+        CHECK(actual.x1 == expected.x1);
+        CHECK(actual.x2 == expected.x2);
+        CHECK(actual.x3 == expected.x3);
+    }
+}
+
+TEST_CASE("eager fqd arithmetic preserves values at generic boundaries", "[contracts][expressions][eager]")
+{
+    const bl::fqd a{ 2.0 }, b{ 3.0 }, c{ 4.0 };
+    auto product = a * b;
+    STATIC_REQUIRE(std::same_as<decltype(product), bl::fqd>);
+    CHECK(std::max(a, b * c) == bl::fqd{ 12.0 });
+    CHECK(std::min({ a, b * c, a * b + c }) == a);
+    CHECK(add_pair(a * b, b * c + a) == bl::fqd{ 20.0 });
+    CHECK(bl::max(a, b * c) == std::max(a, b * c));
+    CHECK(bl::sqrt(b * b) == b);
+
+    product += c;
+    CHECK(product == bl::fqd{ 10.0 });
+}
+
+TEST_CASE("eager fqd arithmetic reuses storage kernels", "[contracts][expressions][eager]")
+{
+    const bl::fqd a{ 1.25, 0x1p-60, -0x1p-120, 0x1p-180 };
+    const bl::fqd b{ -0.75, -0x1p-60, 0x1p-120, -0x1p-180 };
+    const bl::fqd_s sa = a, sb = b;
+    const auto check_operand = [&]<class T>(const T& value)
+    {
+        require_same_limbs(a + value, sa + value);
+        require_same_limbs(value + a, value + sa);
+        require_same_limbs(a - value, sa - value);
+        require_same_limbs(value - a, value - sa);
+        require_same_limbs(a * value, sa * value);
+        require_same_limbs(value * a, value * sa);
+        require_same_limbs(a / value, sa / value);
+        require_same_limbs(value / a, value / sa);
+    };
+    check_operand(sb);
+    check_operand(bl::fdd{ 0.75, 0x1p-60 });
+    check_operand(bl::fdd_s{ 0.75, 0x1p-60 });
+    check_operand(0.75);
+    check_operand(0.75f);
+    check_operand(std::numeric_limits<std::uint64_t>::max());
+    check_operand(std::numeric_limits<std::int64_t>::min());
+    check_operand(static_cast<unsigned char>(3));
+    check_operand(true);
+    require_same_limbs(a * b + a, sa * sb + sa);
+    require_same_limbs(a / b - b, sa / sb - sb);
+    require_same_limbs(-a, -sa);
+}
+
+#else
+
 namespace
 {
     template<class T>
@@ -410,6 +473,65 @@ TEST_CASE("owning fqd expressions convert directly to value and narrower scalar 
     CHECK(static_cast<bool>(expression) == static_cast<bool>(expected));
 }
 
+TEST_CASE("numeric helpers materialize mixed fqd expressions without manual casts",
+          "[contracts][expressions][math]")
+{
+    const auto three = bl::fqd{ 1.5 } * bl::fqd{ 2.0 };
+    const auto four = three + bl::fqd{ 1.0 };
+    const auto fraction = bl::fqd{ 0.5 } * bl::fqd{ 0.5 };
+    require_same_limbs(bl::sqr(three), bl::fqd{ 9.0 });
+    require_same_limbs(bl::sqr(four), bl::fqd{ 16.0 });
+    require_same_limbs(bl::ipow(four, -2), bl::fqd{ 0.0625 });
+    require_same_limbs(bl::ipow(three, std::size_t{ 3 }), bl::fqd{ 27.0 });
+    require_same_limbs(bl::ipow(three, 0), bl::fqd{ 1.0 });
+    const auto precise = expression_x * expression_c + expression_y;
+    require_same_limbs(bl::sqr(precise), bl::sqr(bl::fqd{ precise }));
+    require_same_limbs(bl::ipow(precise, 3), bl::ipow(bl::fqd{ precise }, 3));
+
+    require_same_limbs(bl::min(three, four), bl::fqd{ 3.0 });
+    require_same_limbs(bl::max(bl::fdd_s{ 2.0, 0.0 }, three), bl::fqd{ 3.0 });
+    require_same_limbs(bl::min(three, static_cast<unsigned char>(2)), bl::fqd{ 2.0 });
+    require_same_limbs(bl::max(std::size_t{ 5 }, four), bl::fqd{ 5.0 });
+    require_same_limbs(bl::min({ four, three, bl::fqd{ 5.0 } }), bl::fqd{ 3.0 });
+    require_same_limbs(bl::max({ bl::fqd{ 2.0 }, three, four }), bl::fqd{ 4.0 });
+    require_same_limbs(bl::min({ three, four }), bl::fqd{ 3.0 });
+    require_same_limbs(bl::max({ three, four }), bl::fqd{ 4.0 });
+    require_same_limbs(bl::min({ three, three }), bl::fqd{ 3.0 });
+    require_same_limbs(bl::max({ four }), bl::fqd{ 4.0 });
+    require_same_limbs(bl::min({ four, bl::fdd_s{ 2.0, 0.0 }, std::size_t{ 5 } }), bl::fqd{ 2.0 });
+    require_same_limbs(bl::max({ three, 5.0f, static_cast<unsigned char>(2) }), bl::fqd{ 5.0 });
+    require_same_limbs(bl::min<bl::fqd>({ four, three, 5 }), bl::fqd{ 3.0 });
+    require_same_limbs(bl::max<bl::fqd>({ 2, three, four }), bl::fqd{ 4.0 });
+    require_same_limbs(bl::min({ precise, expression_x / expression_c }),
+                       std::min(bl::fqd{ precise }, bl::fqd{ expression_x / expression_c }));
+    require_same_limbs(bl::max({ precise, expression_x / expression_c }),
+                       std::max(bl::fqd{ precise }, bl::fqd{ expression_x / expression_c }));
+    const auto bounds = bl::minmax(four, three);
+    require_same_limbs(bounds.first, bl::fqd{ 3.0 });
+    require_same_limbs(bounds.second, bl::fqd{ 4.0 });
+    require_same_limbs(bl::clamp(three, 0, 1), bl::fqd{ 1.0 });
+    require_same_limbs(bl::clamp(four, 0.0, 5.0), bl::fqd{ 4.0 });
+    require_same_limbs(bl::clamp(three, three, three), bl::fqd{ 3.0 });
+    require_same_limbs(bl::clamp(bl::fdd{ 2.0 }, three, four), bl::fqd{ 3.0 });
+    require_same_limbs(bl::lerp(three, four, fraction), bl::fqd{ 3.25 });
+    require_same_limbs(bl::midpoint(three, four), bl::fqd{ 3.5 });
+
+    const auto owned = [] {
+        const bl::fqd x{ 1.5 };
+        return bl::minmax(x * x, x * x + 1.0);
+    }();
+    const auto owned_list = [] {
+        const bl::fqd x{ 1.5 };
+        return std::pair{ bl::min({ x * x, x * x + 1.0 }),
+                          bl::max({ x * x, x * x + 1.0 }) };
+    }();
+    clobber_stack();
+    require_same_limbs(owned.first, bl::fqd{ 2.25 });
+    require_same_limbs(owned.second, bl::fqd{ 3.25 });
+    require_same_limbs(owned_list.first, bl::fqd{ 2.25 });
+    require_same_limbs(owned_list.second, bl::fqd{ 3.25 });
+}
+
 TEST_CASE("fqd multiplication remains fused with a following subtraction",
           "[contracts][expressions]")
 {
@@ -572,3 +694,5 @@ TEST_CASE("fqd expression assignment materializes into fqd_s", "[contracts][expr
     CHECK(storage.x2 == value.x2);
     CHECK(storage.x3 == value.x3);
 }
+
+#endif // FLTX_ENABLE_FQD_EXPRESSIONS

@@ -39,6 +39,15 @@
       }
     },
     {
+      "name": "windows-x64-msvc-debug",
+      "displayName": "Windows x64 / MSVC / Debug",
+      "inherits": "windows-x64-msvc-release",
+      "binaryDir": "${sourceDir}/build/windows-x64-msvc-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
       "name": "windows-x64-clangcl-release",
       "displayName": "Windows x64 / clang-cl / Release",
       "inherits": "_windows-ninja-release",
@@ -231,6 +240,7 @@
 
   "buildPresets": [
     {"name": "windows-x64-msvc-release", "configurePreset": "windows-x64-msvc-release"},
+    {"name": "windows-x64-msvc-debug", "configurePreset": "windows-x64-msvc-debug"},
     {"name": "windows-x64-clangcl-release", "configurePreset": "windows-x64-clangcl-release"},
     {"name": "windows-x64-mingw-release", "configurePreset": "windows-x64-mingw-release"},
     {"name": "windows-arm64-msvc-release", "configurePreset": "windows-arm64-msvc-release"},

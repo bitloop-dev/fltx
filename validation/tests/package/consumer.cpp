@@ -2,6 +2,7 @@
 
 #include "../../support/config_banner.hpp"
 
+#include <algorithm>
 #include <bit>
 #include <cstdlib>
 #include <cstdint>
@@ -12,9 +13,39 @@
 static_assert(std::is_same_v<bl::common_float_type_t<bl::fdd, bl::fqd>, bl::fqd>);
 static_assert(std::numeric_limits<bl::fdd>::digits == 106);
 static_assert(std::numeric_limits<bl::fqd>::digits == 212);
+static_assert(sizeof(bl::fqd) == 4 * sizeof(double));
+static_assert(std::is_trivially_copyable_v<bl::fqd>);
+static_assert(std::is_aggregate_v<bl::fqd_s>);
+
+using qd_product = decltype(bl::fqd{} * bl::fqd{});
+#if defined(FLTX_ENABLE_FQD_EXPRESSIONS) && FLTX_ENABLE_FQD_EXPRESSIONS
+static_assert(bl::fltx_expression<qd_product>);
+#else
+static_assert(std::is_same_v<qd_product, bl::fqd>);
+#endif
 
 namespace
 {
+    constexpr bl::fqd add_pair(const auto& x, const auto& y) { return x + y; }
+
+    constexpr bool expression_policy_contract(bl::fqd a, bl::fqd b, bl::fqd c)
+    {
+        const auto product = a * b;
+        const auto sum = b * c + a;
+        if (add_pair(product, sum) != bl::fqd{ 20.0 } ||
+            bl::min({ a, product, sum }) != a ||
+            bl::sqrt(product * product) != bl::fqd{ 6.0 })
+            return false;
+
+        #if defined(FLTX_ENABLE_FQD_EXPRESSIONS) && FLTX_ENABLE_FQD_EXPRESSIONS
+        return std::max<bl::fqd>(a, b * c) == bl::fqd{ 12.0 };
+        #else
+        return std::max(a, b * c) == bl::fqd{ 12.0 };
+        #endif
+    }
+
+    static_assert(expression_policy_contract(bl::fqd{ 2.0 }, bl::fqd{ 3.0 }, bl::fqd{ 4.0 }));
+
     int fail(const char* message)
     {
         std::cerr << "fltx package consumer failed: " << message << '\n';
@@ -101,6 +132,9 @@ int main()
         return fail("fqd fused-cancellation contract");
     if (!product_cancellation_contract<bl::fqd>())
         return fail("fqd product-cancellation contract");
+    if (!expression_policy_contract(
+            bl::parse<bl::fqd>("2"), bl::parse<bl::fqd>("3"), bl::parse<bl::fqd>("4")))
+        return fail("fqd expression-policy contract");
 
     std::cout << "fltx package consumer passed\n";
     return EXIT_SUCCESS;

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <ios>
 #include <limits>
 #include <string_view>
@@ -10,6 +11,12 @@
 #endif
 
 static_assert(BL_CXX_LANGUAGE_VERSION >= 202002L);
+
+#if defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
+static_assert(!bl::detail::fp::dekker_product_needs_scaling(0x1p1000, 0.5));
+#else
+static_assert(bl::detail::fp::dekker_product_needs_scaling(0x1p1000, 0.5));
+#endif
 
 #if FLTX_CXX_STANDARD_CONTRACT >= 23
   #if !BL_HAS_IF_CONSTEVAL
@@ -33,6 +40,52 @@ static_assert(BL_CXX_LANGUAGE_VERSION >= 202002L);
 
 namespace
 {
+    using qd_product = decltype(std::declval<bl::fqd>() * std::declval<bl::fqd>());
+
+    #if !defined(FLTX_ENABLE_FQD_EXPRESSIONS) || !FLTX_ENABLE_FQD_EXPRESSIONS
+    static_assert(std::is_same_v<qd_product, bl::fqd>);
+    static_assert(std::is_same_v<decltype(+std::declval<bl::fqd>()), bl::fqd>);
+    static_assert(std::is_same_v<decltype(-std::declval<bl::fqd>()), bl::fqd>);
+    static_assert(std::is_same_v<decltype(std::declval<bl::fqd_s>() * std::declval<bl::fqd_s>()), bl::fqd_s>);
+
+    template<class T>
+    constexpr bl::fqd add_same_type_pair(const T& x, const T& y) { return x + y; }
+
+    template<class... T>
+    consteval bool eager_arithmetic_preserves_value_type()
+    {
+        return (requires(bl::fqd a, const bl::fqd c, T b)
+        {
+            { +a } -> std::same_as<bl::fqd>;
+            { -a } -> std::same_as<bl::fqd>;
+            { +c } -> std::same_as<bl::fqd>;
+            { -c } -> std::same_as<bl::fqd>;
+            { a + b } -> std::same_as<bl::fqd>;
+            { b + c } -> std::same_as<bl::fqd>;
+            { a - b } -> std::same_as<bl::fqd>;
+            { b - c } -> std::same_as<bl::fqd>;
+            { a * b } -> std::same_as<bl::fqd>;
+            { b * c } -> std::same_as<bl::fqd>;
+            { a / b } -> std::same_as<bl::fqd>;
+            { b / c } -> std::same_as<bl::fqd>;
+        } && ...);
+    }
+
+    static_assert(eager_arithmetic_preserves_value_type<
+        bl::fqd, bl::fqd_s, bl::fdd, bl::fdd_s, float, double,
+        bool, char, signed char, unsigned char, wchar_t, char8_t, char16_t, char32_t,
+        short, unsigned short, int, unsigned int, long, unsigned long,
+        long long, unsigned long long>());
+
+    constexpr bl::fqd eager_a{ 2.0 }, eager_b{ 3.0 }, eager_c{ 4.0 };
+    static_assert(std::max(eager_a, eager_b * eager_c) == bl::fqd{ 12.0 });
+    static_assert(std::min({ eager_a, eager_b * eager_c, eager_a * eager_b + eager_c }) == eager_a);
+    static_assert(add_same_type_pair(eager_a * eager_b, eager_b * eager_c + eager_a) == bl::fqd{ 20.0 });
+    static_assert(bl::fqd{ 1.0 } + UINT64_C(9007199254740993) == bl::fqd{ 9007199254740994.0 });
+    #else
+    static_assert(bl::fltx_expression<qd_product>);
+    #endif
+
     template<class T>
     consteval bool core_is_constant_evaluated()
     {
@@ -77,6 +130,15 @@ namespace
                mantissa == T{ 0.5 } && exponent == 4 &&
                remainder == T{ 1.0 } && quotient != 0 &&
                bl::ipow(T{ 2.0 }, 10) == T{ 1024.0 } &&
+               bl::sqr(T{ 2.0 } * T{ 2.0 }) == T{ 16.0 } &&
+               bl::ipow(T{ 2.0 } * T{ 2.0 }, -1) == T{ 0.25 } &&
+               bl::approx_eq(T{ 2.0 } * T{ 2.0 }, T{ 4.0 }) &&
+               bl::min(T{ 2.0 } * T{ 2.0 }, 5) == T{ 4.0 } &&
+               bl::max(5, T{ 2.0 } * T{ 2.0 }) == T{ 5.0 } &&
+               bl::minmax(T{ 2.0 } * T{ 2.0 }, T{ 5.0 }).second == T{ 5.0 } &&
+               bl::clamp(T{ 2.0 } * T{ 2.0 }, 0, 3) == T{ 3.0 } &&
+               bl::lerp(T{ 2.0 } * T{ 2.0 }, T{ 5.0 }, 0.5) == T{ 4.5 } &&
+               bl::midpoint(T{ 2.0 } * T{ 2.0 }, T{ 5.0 }) == T{ 4.5 } &&
                sincos_ok && sine == T{ 0.0 } && cosine == T{ 1.0 };
     }
 
@@ -100,13 +162,15 @@ namespace
     template<class T>
     consteval bool random_is_constant_evaluated()
     {
+        const auto low = T{ -1.0 } * T{ 2.0 };
+        const auto high = T{ 1.0 } * T{ 2.0 } + T{ 1.0 };
         const auto first = bl::uniform_real_array<4>(
-            T{ -2.0 },
-            T{ 3.0 },
+            low,
+            high,
             bl::mt19937_64{ 0x1020304050607080ull });
         const auto second = bl::random_array<4>(
             bl::mt19937_64{ 0x1020304050607080ull },
-            bl::uniform_real_distribution<T>{ T{ -2.0 }, T{ 3.0 } });
+            bl::uniform_real_distribution<T>{ low, high });
 
         bl::mt19937_64 distribution_engine{ 777u };
         bl::exponential_distribution<T> exponential{ T{ 0.75 } };
@@ -128,13 +192,23 @@ namespace
 
     constexpr bl::fdd dd_literal = "1.25"_dd;
     constexpr bl::fqd qd_literal = "1.25"_qd;
+    constexpr double native_pow = bl::pow(4.0, 1.5);
     constexpr bl::fqd expression_value{
         qd_literal * bl::fqd{ 2.0 } + bl::fqd{ 0.5 }
     };
+    constexpr auto expression_distribution = bl::uniform_real_distribution{
+        qd_literal * bl::fqd{ 2.0 }, qd_literal * bl::fqd{ 2.0 } + bl::fqd{ 1.0 } };
 
     static_assert(dd_literal == bl::fdd{ 1.25 });
     static_assert(qd_literal == bl::fqd{ 1.25 });
+    static_assert(native_pow > 7.999999999999 && native_pow < 8.000000000001);
     static_assert(expression_value == bl::fqd{ 3.0 });
+    static_assert(bl::min({ qd_literal, qd_literal * qd_literal,
+                           qd_literal * qd_literal + 1.0 }) == qd_literal);
+    static_assert(bl::max({ qd_literal, qd_literal * qd_literal,
+                           qd_literal * qd_literal + 1.0 }) == bl::fqd{ 2.5625 });
+    static_assert(expression_distribution.a() == bl::fqd{ 2.5 });
+    static_assert(expression_distribution.b() == bl::fqd{ 3.5 });
     static_assert(core_is_constant_evaluated<bl::fdd>());
     static_assert(core_is_constant_evaluated<bl::fqd>());
     static_assert(math_is_constant_evaluated<bl::fdd>());
@@ -168,5 +242,8 @@ namespace
         // implementations when they are not constant-evaluated.
         (void)bl::sin(dd);
         (void)bl::sin(qd);
+        #if FLTX_HAS_STD_FORMAT
+        (void)std::format("{:.20g}", qd * qd + qd);
+        #endif
     }
 }

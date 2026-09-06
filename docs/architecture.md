@@ -55,8 +55,16 @@ The extended types have two public forms:
 - `fdd_s` and `fqd_s` are trivial storage forms containing two and four
   `double` limbs respectively;
 - `fdd` and `fqd` are scalar value forms built on those storage layouts;
-- `fqd` additionally participates in the bounded expression-fusion system in
-  `detail/fqd_expressions.h`, while `fqd_s` remains the eager storage form.
+- `fqd` uses eager scalar operators in `fqd_arithmetic.h` by default. Consumers
+  can define `FLTX_ENABLE_FQD_EXPRESSIONS=1` to select the bounded expression
+  system in `detail/fqd_expressions.h`; `fqd_s` remains eager in either mode.
+
+The expression policy belongs to consumer translation units, not the compiled
+library or its exported CMake target. The value-type definitions and compiled
+kernel interface are policy-independent, and shared constexpr fused kernels
+remain available in either mode. Consumers must use a consistent policy for
+shared inline definitions and template instantiations. Validation selects its
+consumer policy through `FLTX_VALIDATION_FQD_EXPRESSIONS`, enabled by default.
 
 `aliases.h` supplies the type names, `traits.h` owns concepts and promotion
 traits, and the per-precision `*_type.h`, `*_limits.h`, `*_conversions.h`,

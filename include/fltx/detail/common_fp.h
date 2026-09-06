@@ -885,7 +885,7 @@ BL_FORCE_INLINE constexpr void two_prod_precise_dekker(double a, double b, doubl
     err = ((a_hi * b_hi - p) + a_hi * b_lo + a_lo * b_hi) + a_lo * b_lo;
 }
 
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
 inline constexpr double dekker_split_overflow_threshold = 0x1p996;
 inline constexpr double dekker_split_underflow_threshold = 0x1p-968;
 
@@ -1125,7 +1125,7 @@ BL_FORCE_INLINE constexpr void two_prod_precise(double a, double b, double& p, d
     #endif
 }
 
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
 // Selects the available exact-product implementation with Dekker range protection.
 BL_FORCE_INLINE constexpr void two_prod_precise_range_safe(double a, double b, double& p, double& err) noexcept
 {

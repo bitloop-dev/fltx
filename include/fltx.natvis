@@ -41,4 +41,114 @@
     </Expand>
   </Type>
 
+  <!-- Show the captured tree, not an evaluated approximation of its result.
+       Keep summaries shallow so nested expressions remain readable. -->
+  <Type Name="bl::detail::_qd_expr::value_expr&lt;bl::fqd_s&gt;">
+    <DisplayString>fqd operand snapshot: {value}</DisplayString>
+    <Expand>
+      <Item Name="value">value</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="bl::detail::_qd_expr::mul_expr&lt;*,*&gt;">
+    <AlternativeType Name="bl::detail::_qd_expr::mul_double_expr&lt;*&gt;" />
+    <DisplayString>fqd expression (not materialized): left * right</DisplayString>
+    <Expand>
+      <Item Name="left">left</Item>
+      <Item Name="right">right</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="bl::detail::_qd_expr::add_expr&lt;*,*&gt;">
+    <AlternativeType Name="bl::detail::_qd_expr::add_double_expr&lt;*&gt;" />
+    <AlternativeType Name="bl::detail::_qd_expr::prod_pair_expr&lt;*,*,1&gt;" />
+    <DisplayString>fqd expression (not materialized): left + right</DisplayString>
+    <Expand>
+      <Item Name="left">left</Item>
+      <Item Name="right">right</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="bl::detail::_qd_expr::sub_expr&lt;*,*&gt;">
+    <AlternativeType Name="bl::detail::_qd_expr::double_sub_expr&lt;*&gt;" />
+    <AlternativeType Name="bl::detail::_qd_expr::prod_pair_expr&lt;*,*,-1&gt;" />
+    <DisplayString>fqd expression (not materialized): left - right</DisplayString>
+    <Expand>
+      <Item Name="left">left</Item>
+      <Item Name="right">right</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="bl::detail::_qd_expr::div_expr&lt;*,*&gt;">
+    <AlternativeType Name="bl::detail::_qd_expr::div_double_expr&lt;*&gt;" />
+    <AlternativeType Name="bl::detail::_qd_expr::double_div_expr&lt;*&gt;" />
+    <DisplayString>fqd expression (not materialized): left / right</DisplayString>
+    <Expand>
+      <Item Name="left">left</Item>
+      <Item Name="right">right</Item>
+    </Expand>
+  </Type>
+
+  <!-- Match signs in the type name: this also works without static-member symbols. -->
+  <Type Name="bl::detail::_qd_expr::prod_value_expr&lt;*,*,1&gt;">
+    <DisplayString>fqd expression (not materialized): product + value</DisplayString>
+    <Expand>
+      <Item Name="product">prod</Item>
+      <Item Name="value">value</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="bl::detail::_qd_expr::prod_value_expr&lt;*,*,-1&gt;">
+    <DisplayString>fqd expression (not materialized): product - value</DisplayString>
+    <Expand>
+      <Item Name="product">prod</Item>
+      <Item Name="value">value</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="bl::detail::_qd_expr::prod_pair_value_expr&lt;*,*,*,1,1&gt;">
+    <DisplayString>fqd expression (not materialized): left + right + value</DisplayString>
+    <Expand>
+      <Item Name="left">left</Item>
+      <Item Name="right">right</Item>
+      <Item Name="value">value</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="bl::detail::_qd_expr::prod_pair_value_expr&lt;*,*,*,1,-1&gt;">
+    <DisplayString>fqd expression (not materialized): left + right - value</DisplayString>
+    <Expand>
+      <Item Name="left">left</Item>
+      <Item Name="right">right</Item>
+      <Item Name="value">value</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="bl::detail::_qd_expr::prod_pair_value_expr&lt;*,*,*,-1,1&gt;">
+    <DisplayString>fqd expression (not materialized): left - right + value</DisplayString>
+    <Expand>
+      <Item Name="left">left</Item>
+      <Item Name="right">right</Item>
+      <Item Name="value">value</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="bl::detail::_qd_expr::prod_pair_value_expr&lt;*,*,*,-1,-1&gt;">
+    <DisplayString>fqd expression (not materialized): left - right - value</DisplayString>
+    <Expand>
+      <Item Name="left">left</Item>
+      <Item Name="right">right</Item>
+      <Item Name="value">value</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="bl::detail::_qd_expr::prod_triple_add_expr&lt;*,*,*&gt;">
+    <DisplayString>fqd expression (not materialized): first + second + third</DisplayString>
+    <Expand>
+      <Item Name="first">first</Item>
+      <Item Name="second">second</Item>
+      <Item Name="third">third</Item>
+    </Expand>
+  </Type>
+
 </AutoVisualizer>

@@ -38,6 +38,12 @@ namespace
     static_assert(!has_default_approx_eq<bl::fqd, double>);
     static_assert(!has_default_approx_eq<bl::fdd, bl::fqd>);
     static_assert(!has_default_approx_eq<bl::fqd, bl::fdd>);
+    using qd_expression = decltype(bl::fqd{} * bl::fqd{});
+    static_assert(has_default_approx_eq<qd_expression, bl::fqd_s>);
+    static_assert(has_default_approx_eq<bl::fqd, qd_expression>);
+    static_assert(has_default_approx_eq<qd_expression, qd_expression>);
+    static_assert(!has_default_approx_eq<qd_expression, bl::fdd>);
+    static_assert(!has_default_approx_eq<qd_expression, double>);
     static_assert(!has_two_tolerances<bl::f32, bl::f32, bl::f32>);
     static_assert(!has_two_tolerances<bl::f64, bl::f64, bl::f64>);
     static_assert(!has_two_tolerances<bl::fdd, bl::fdd, bl::fdd>);
@@ -127,6 +133,20 @@ TEST_CASE("approx_eq applies relative tolerances", "[contracts][comparison]")
 
     CHECK_FALSE(bl::approx_eq(bl::fdd{ 0.0 }, bl::fdd{ 0x1p-900 }));
     CHECK_FALSE(bl::approx_eq(bl::fqd{ 0.0 }, bl::fqd{ 0x1p-900 }));
+}
+
+TEST_CASE("approx_eq accepts expressions at the same value precision",
+          "[contracts][comparison][expressions]")
+{
+    const auto one = qd_one * qd_one;
+    const auto near = one + bl::fqd{ 0x1p-188 };
+    const auto far = one + bl::fqd{ 0x1p-187 };
+    CHECK(bl::approx_eq(one, qd_one));
+    CHECK(bl::approx_eq(qd_one, near));
+    CHECK(bl::approx_eq(one, near));
+    CHECK_FALSE(bl::approx_eq(one, far));
+    CHECK(bl::approx_eq(one, far, bl::fqd{ 0x1p-186 } * qd_one));
+    CHECK_FALSE(bl::approx_eq(one, std::numeric_limits<bl::fqd>::quiet_NaN() * qd_one));
 }
 
 TEST_CASE("approx_eq compares native runtime and constexpr math results", "[contracts][comparison]")

@@ -8,6 +8,7 @@ endif()
 function(fltx_add_example example_name)
     add_executable(${example_name} ${ARGN})
     target_link_libraries(${example_name} PRIVATE fltx::fltx)
+    target_compile_definitions(${example_name} PRIVATE FLTX_ENABLE_FQD_EXPRESSIONS=1)
 
     target_compile_options(${example_name} PRIVATE
         $<$<CXX_COMPILER_ID:MSVC>:/constexpr:steps10000000>

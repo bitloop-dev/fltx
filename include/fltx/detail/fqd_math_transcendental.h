@@ -177,14 +177,14 @@ namespace detail::_qd // primitives and kernels
         std::uint32_t exponent = static_cast<std::uint32_t>(negative ? -n : n);
         fqd_s factor{ 1.0 };
         const fqd_s* table = negative ? exp_integer_inv_table : exp_integer_table;
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         const bool checked_product = detail::fp::exp_scale_needs_checked_product(n);
 #endif
         for (std::size_t i = 0; exponent != 0 && i < (sizeof(exp_integer_table) / sizeof(exp_integer_table[0])); ++i)
         {
             if ((exponent & 1u) != 0)
             {
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
                 factor = checked_product ? mul_product_range_safe_inline(factor, table[i]) : mul_product_inline(factor, table[i]);
 #else
                 factor = mul_product_inline(factor, table[i]);
@@ -256,7 +256,7 @@ namespace detail::_qd // primitives and kernels
             return sub_one ? e : add_scalar_precise(e, 1.0);
 
         const fqd_s factor = exp_integer_factor(n);
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         const fqd_s scaled = detail::fp::exp_scale_needs_checked_product(n)
             ? add_finite_inline(factor, mul_product_range_safe_inline(factor, e))
             : mul_add_inline(factor, e, factor);
@@ -283,7 +283,7 @@ namespace detail::_qd // primitives and kernels
             return sub_one ? e : add_scalar_precise(e, 1.0);
 
         const fqd_s factor = exp_integer_factor(n);
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         const fqd_s scaled = detail::fp::exp_scale_needs_checked_product(n)
             ? add_finite_inline(factor, mul_product_range_safe_inline(factor, e))
             : mul_add_inline(factor, e, factor);
@@ -2287,7 +2287,7 @@ namespace detail::_qd
     }
 
     const fqd_s ex     = _exp(ax);
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
     fqd_s out = detail::fp::exp_inverse_is_negligible(ax.x0)
         ? _ldexp(ex, -1)
         : mul_double_product_inline(sub_finite_inline(ex, div_refined_once(1.0, ex)), 0.5);
@@ -2309,7 +2309,7 @@ namespace detail::_qd
 
     const fqd_s ax     = detail::_qd::mag(x);
     const fqd_s ex     = _exp(ax);
-#if defined(FLTX_MATH_USES_CHECKED_DEKKER)
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
     if (detail::fp::exp_inverse_is_negligible(ax.x0))
         return _ldexp(ex, -1);
 #endif

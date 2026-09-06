@@ -32,6 +32,7 @@ Accuracy:
 
 - Accuracy validated against [Boost.Multiprecision's MPFR backend](https://www.boost.org/doc/libs/latest/libs/multiprecision/doc/html/boost_multiprecision/tut/floats/mpfr_float.html)
 - Correct handling of infinities, NaNs and signed zeros (non-fast-math builds)
+- Extreme-range arithmetic follows a deliberate [range/performance policy](#range-and-performance-policy)
 
 Performance:
 
@@ -165,8 +166,16 @@ Performance controls:
 | `FLTX_FMA_MODE=AUTO\|OFF\|ASSUME` | `AUTO` | Safely detect x86 FMA at runtime, disable hardware FMA, or let the consumer guarantee FMA support. `ASSUME` exports `-mfma` where GNU-style compilers require it and performs no runtime feature check. |
 | `FLTX_SIMD=ON\|OFF` | `ON` | Enable supported SIMD paths. Emscripten `ON` supplies `-msimd128` to both the library and consuming translation units. |
 
-
 Normal build-type optimization flags remain controlled by the selected CMake configuration and toolchain.
+
+To opt into [fqd expression templates](#expression-templates) for your target:
+
+```cmake
+target_compile_definitions(main PRIVATE FLTX_ENABLE_FQD_EXPRESSIONS=1)
+```
+
+This is a consumer setting, not a FLTX build option; it also works with vcpkg
+without rebuilding the installed library.
 
 ## Public Headers
 
@@ -273,10 +282,11 @@ All listed functions support constant evaluation.
 
 | Category | Functions |
 |---|---|
-| Arithmetic | `abs`, `fabs`, `fma` |
+| Arithmetic | `abs`, `fabs`, `sqr`, `fma` |
 | Rounding | `floor`, `ceil`, `trunc`, `round`, `lround`, `llround`, `round_decimals`, `round_significant`, `roundeven` |
 | Remainders | `fmod`, `remainder`, `remquo` |
 | Min / max / sign | `fmin`, `fmax`, `fdim`, `copysign`, `signbit` |
+| Selection / interpolation | `min`, `max`, `minmax`, `clamp`, `lerp`, `midpoint` |
 | Roots / powers | `sqrt`, `cbrt`, `hypot`, `pow`, `ipow` |
 | Exp / log | `exp`, `exp2`, `expm1`, `log`, `log2`, `log10`, `log1p`, `logb`, `ilogb` |
 | Trigonometry | `sin`, `cos`, `tan`, `sincos`, `asin`, `acos`, `atan`, `atan2` |
@@ -286,6 +296,19 @@ All listed functions support constant evaluation.
 | Scaling / layout | `ldexp`, `scalbn`, `scalbln`, `frexp`, `modf`, `nextafter`, `nexttoward` |
 
 For an example of the library-wide constexpr capabilities, see [`example_consteval_library_sweep.cpp`](examples/example_consteval_library_sweep.cpp).
+
+The two-argument `min`, `max`, and `minmax`, and the three-argument `clamp`,
+accept mixed numeric types and expressions. Each input is materialized once;
+results are owning values (`minmax` returns a pair), never references or nodes.
+Floating inputs follow `common_float_type_t`; integer-only selection and
+`midpoint` use `std::common_type_t` without going through floating point
+(including its usual signed/unsigned conversion rules). `min` and `max` use
+`<` and keep the first argument on ties, unlike the NaN-skipping `fmin`/`fmax`.
+`clamp` requires ordered bounds, `low <= high`.
+
+`lerp(a, b, t)` interpolates or extrapolates in the common floating type;
+`midpoint(a, b)` avoids overflow in the half-sum and rounds integer ties toward
+`a`. These are numeric helpers, not iterator/range or comparator overloads.
 
 ## IO and Literals
 
@@ -372,7 +395,7 @@ For buffer-oriented code, [`fltx/charconv.h`](include/fltx/charconv.h) provides:
 
 ### std::format:
 
-Include [`fltx/format.h`](include/fltx/format.h) when you want `std::format` support for `fdd`/`fqd`.
+Include [`fltx/format.h`](include/fltx/format.h) when you want `std::format` support for `fdd`/`fqd`, including fqd expressions such as `std::format("{}", a * b)`.
 
 The formatter supports common numeric presentation options such as precision, fixed/scientific/general notation, sign, width, alignment, fill, alternate form, and uppercase output.
 
@@ -724,11 +747,54 @@ _Compared with reference libraries_
 
 ---
 
-## Expression Fusion
+## Expression Templates
 
-[`bl::fqd`](include/fltx/fqd.h) recognises a set of common arithmetic expression patterns, including sums of products, dot products with a bias term, and scaled linear combinations.
+With expression templates enabled, [`bl::fqd`](include/fltx/fqd.h) recognises a set of common arithmetic expression patterns, including sums of products, dot products with a bias term, and scaled linear combinations.
 
 These expressions are represented as small compile-time nodes and lowered to highly optimised fused implementations. Delaying intermediate normalisation reduces rounding and avoids temporary values.
+
+Expression templates are opt-in: define `FLTX_ENABLE_FQD_EXPRESSIONS=1` for your
+target (or before any FLTX headers). Undefined or `0` selects eager arithmetic
+returning `fqd` values. Both modes use the same compiled library; `fdd` and the
+storage forms remain eager. Repository examples and runtime benchmarks opt in.
+
+Use a consistent setting wherever inline functions or template instantiations
+are shared. If your library's public headers depend on this policy, propagate
+the definition with `PUBLIC` rather than `PRIVATE`.
+
+> [!WARNING]
+> Expressions have distinct types, so C++ template deduction rules mean functions requiring matching argument types (such as std::max) may need an explicit value type or conversion, e.g.
+> ```cpp
+> std::max<fqd>(a, b * c); // Specify the value type
+> std::max(a, fqd{b * c}); // Manually materialize the expression
+> ```
+> Alternatively, use the corresponding expression-aware ```bl::``` functions to avoid explicit conversion, e.g.
+> ```cpp
+> bl::max(a, b * c);
+> ```
+> This expression-template limitation also motivates [P3398R0 (decays_to)](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3398r0.pdf), illustrated with matrix arithmetic. It proposes automatic value-type deduction, but has not been adopted into C++.
+
+### Range and performance policy
+
+Hot low-level kernels deliberately avoid unconditional range checks. This keeps ordinary arithmetic inexpensive; it is an intentional
+performance trade-off, not a guarantee that every operation supports the full
+representable exponent range of `fdd` or `fqd`.
+
+In particular, some fused kernels use unchecked Dekker splitting when hardware
+FMA is not used. Splitting multiplies a binary64 limb by `2^27 + 1`, so an
+intermediate can overflow even when the inputs and mathematical result are
+finite. The affected paths include constant evaluation (which uses Dekker) and
+non-FMA runtime execution. This limitation also applies in non-fast-math builds.
+
+For example, with `m = std::numeric_limits<bl::fqd>::max()`, the fused expression
+`m * 0.5 + m * 0.5` can fail on the Dekker path even though its mathematical
+result is `m`. Hardware FMA avoids this particular splitting overflow; it is
+not a general promise of overflow-safe fusion.
+
+For extreme-range work, scale or reformulate the calculation, or use a helper
+with appropriate range handling, such as `bl::midpoint(a, b)` for averaging.
+Range protection is applied where an operation requires it, rather than being
+imposed on every hot primitive.
 
 ## License
 

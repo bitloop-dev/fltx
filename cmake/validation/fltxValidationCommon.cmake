@@ -1,5 +1,10 @@
 # Shared configuration for validation executables and libraries.
 
+option(FLTX_VALIDATION_FQD_EXPRESSIONS
+    "Enable fqd expression templates in validation suites and runtime/size benchmarks."
+    ON
+)
+
 set(FLTX_VALIDATION_EXPECTED_ARCHITECTURE "" CACHE STRING
     "Expected validation target architecture (x86_64, arm64, or wasm32)."
 )
@@ -26,6 +31,7 @@ function(fltx_tests_build_configuration_identity config output_hash output_optim
         "compiler=${CMAKE_CXX_COMPILER}|id=${CMAKE_CXX_COMPILER_ID}|"
         "version=${CMAKE_CXX_COMPILER_VERSION}|generator=${CMAKE_GENERATOR}|"
         "config=${config}|cxx=${compile_flags}|link=${link_flags}|"
+        "fqd-expressions=${FLTX_VALIDATION_FQD_EXPRESSIONS}|"
         "ipo=${CMAKE_INTERPROCEDURAL_OPTIMIZATION_${config_upper}}"
     )
     string(SHA256 flags_hash "${identity}")
@@ -97,6 +103,9 @@ endfunction()
 
 function(fltx_tests_prepare_target target)
     target_compile_features(${target} PRIVATE cxx_std_20)
+    target_compile_definitions(${target} PRIVATE
+        FLTX_ENABLE_FQD_EXPRESSIONS=$<BOOL:${FLTX_VALIDATION_FQD_EXPRESSIONS}>
+    )
     fltx_tests_add_build_identity(${target})
 
     if(MSVC)
