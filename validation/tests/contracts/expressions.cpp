@@ -279,8 +279,12 @@ template<class... Expr>
 consteval bool all_expression_nodes_publish_their_value_type(std::tuple<Expr...>*)
 {
     return ((bl::fltx_expression<Expr> &&
-             std::same_as<bl::fltx_expression_value_t<Expr>, bl::fqd> &&
-             std::same_as<bl::fltx_expression_storage_t<Expr>, bl::fqd_s>) && ...);
+             std::same_as<bl::value_t<Expr>, bl::fqd> &&
+             std::same_as<bl::storage_t<Expr>, bl::fqd_s> &&
+             std::same_as<bl::value_t<const Expr&>, bl::fqd> &&
+             std::same_as<bl::storage_t<const volatile Expr&&>, bl::fqd_s> &&
+             std::same_as<bl::value_t<bl::storage_t<Expr>>, bl::fqd> &&
+             std::same_as<bl::storage_t<bl::value_t<Expr>>, bl::fqd_s>) && ...);
 }
 
 template<class Expr>
@@ -320,10 +324,10 @@ static_assert(std::same_as<decltype(twice(std::declval<const product_expression&
 static_assert(sizeof(qd_leaf_expression) == sizeof(bl::fqd_s));
 static_assert(sizeof(product_expression) == 2 * sizeof(bl::fqd_s));
 static_assert(std::is_trivially_copyable_v<product_expression>);
-static_assert(std::same_as<bl::fltx_expression_value_t<double>, double>);
-static_assert(std::same_as<bl::fltx_expression_value_t<bl::fdd>, bl::fdd>);
-static_assert(std::same_as<bl::fltx_expression_storage_t<double>, double>);
-static_assert(std::same_as<bl::fltx_expression_storage_t<bl::fdd>, bl::fdd>);
+static_assert(std::same_as<bl::value_t<double>, double>);
+static_assert(std::same_as<bl::value_t<bl::fdd>, bl::fdd>);
+static_assert(std::same_as<bl::storage_t<double>, double>);
+static_assert(std::same_as<bl::storage_t<bl::fdd>, bl::fdd_s>);
 static_assert(!std::convertible_to<product_expression&&, double>);
 static_assert(has_lvalue_double_conversion<product_expression>);
 static_assert(has_const_rvalue_double_conversion<product_expression>);

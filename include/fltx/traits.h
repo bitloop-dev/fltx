@@ -38,12 +38,6 @@ namespace bl
     template<class T>
     concept fltx_expression = fltx_expression_traits<T>::is_expression;
 
-    template<class T>
-    using fltx_expression_value_t = typename fltx_expression_traits<T>::value_type;
-
-    template<class T>
-    using fltx_expression_storage_t = typename fltx_expression_traits<T>::storage_type;
-
     template<class T> concept fltx_f32 = std::same_as<std::remove_cv_t<T>, f32>;
     template<class T> concept fltx_f64 = std::same_as<std::remove_cv_t<T>, f64>;
     template<class T> concept fltx_fdd = std::same_as<std::remove_cv_t<T>, fdd_s> ||
@@ -54,6 +48,16 @@ namespace bl
     template<class T> concept fltx_extended_float = fltx_fdd<T> || fltx_fqd<T>;
     template<class T> concept fltx_float          = fltx_f32<T> || fltx_f64<T> || fltx_extended_float<T>;
     template<class T> concept fltx_arithmetic     = std::is_arithmetic_v<T>    || fltx_extended_float<T>;
+
+    // Normalize representations and deferred expressions, stripping cv/ref qualifiers.
+    template<class T>
+    using value_t = std::conditional_t<fltx_fdd<typename fltx_expression_traits<T>::value_type>, fdd,
+                    std::conditional_t<fltx_fqd<typename fltx_expression_traits<T>::value_type>, fqd,
+                    typename fltx_expression_traits<T>::value_type>>;
+
+    template<class T>
+    using storage_t = std::conditional_t<fltx_fdd<value_t<T>>, fdd_s,
+                      std::conditional_t<fltx_fqd<value_t<T>>, fqd_s, value_t<T>>>;
 
     template<class T> inline constexpr bool is_f32_v = fltx_f32<T>;
     template<class T> inline constexpr bool is_f64_v = fltx_f64<T>;
@@ -69,12 +73,12 @@ namespace bl
     // Promotion uses an expression's value type, not its node representation.
     template<class T>
     inline constexpr int fltx_precision_rank_v =
-        fltx_fqd<fltx_expression_value_t<T>>                  ? 5 :
-        fltx_fdd<fltx_expression_value_t<T>>                  ? 4 :
-        std::same_as<fltx_expression_value_t<T>, long double> ? 3 :
-        (std::same_as<fltx_expression_value_t<T>, f64> ||
-         std::is_integral_v<fltx_expression_value_t<T>>)      ? 2 :
-        std::same_as<fltx_expression_value_t<T>, f32>         ? 1 : 0;
+        fltx_fqd<value_t<T>>                  ? 5 :
+        fltx_fdd<value_t<T>>                  ? 4 :
+        std::same_as<value_t<T>, long double> ? 3 :
+        (std::same_as<value_t<T>, f64> ||
+         std::is_integral_v<value_t<T>>)      ? 2 :
+        std::same_as<value_t<T>, f32>         ? 1 : 0;
 
     namespace detail::traits
     {
@@ -91,7 +95,7 @@ namespace bl
         {
             static_assert(sizeof...(Ts) > 0,
                 "bl::common_float_type_t requires at least one type.");
-            static_assert((fltx_arithmetic<fltx_expression_value_t<Ts>> && ...),
+            static_assert((fltx_arithmetic<value_t<Ts>> && ...),
                 "bl::common_float_type_t requires arithmetic or fltx extended floating-point types.");
             static_assert(((fltx_precision_rank_v<Ts> != 0) && ...),
                 "bl::common_float_type_t does not support one of these arithmetic types.");

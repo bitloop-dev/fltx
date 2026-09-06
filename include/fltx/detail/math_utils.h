@@ -25,15 +25,15 @@
 namespace bl::detail::fp
 {
     template<class... Ts>
-    concept arithmetic_args = (fltx_arithmetic<fltx_expression_value_t<Ts>> && ...);
+    concept arithmetic_args = (fltx_arithmetic<value_t<Ts>> && ...);
 
     // Selection preserves integer-only inputs; floating inputs use the math ladder.
     template<class... Ts>
     struct selection_result : common_float_type<Ts...> {};
 
     template<class... Ts>
-    requires (std::integral<fltx_expression_value_t<Ts>> && ...)
-    struct selection_result<Ts...> : std::common_type<fltx_expression_value_t<Ts>...> {};
+    requires (std::integral<value_t<Ts>> && ...)
+    struct selection_result<Ts...> : std::common_type<value_t<Ts>...> {};
 
     template<class... Ts>
     using selection_result_t = typename selection_result<Ts...>::type;
@@ -469,10 +469,10 @@ namespace bl::detail::fp
 namespace bl
 {
     template<class T>
-    [[nodiscard]] constexpr fltx_expression_value_t<T> sqr(T x) noexcept(noexcept(x * x))
+    [[nodiscard]] constexpr value_t<T> sqr(T x) noexcept(noexcept(x * x))
     {
         if constexpr (fltx_expression<T>)
-            return sqr(fltx_expression_value_t<T>{ x });
+            return sqr(value_t<T>{ x });
         else
             return x * x;
     }
@@ -590,8 +590,8 @@ namespace bl
 
     template<class A, class B>
     requires (detail::fp::arithmetic_args<A, B> &&
-              !std::same_as<fltx_expression_value_t<A>, bool> &&
-              !std::same_as<fltx_expression_value_t<B>, bool>)
+              !std::same_as<value_t<A>, bool> &&
+              !std::same_as<value_t<B>, bool>)
     [[nodiscard]] constexpr auto midpoint(const A& a, const B& b) noexcept
     {
         using R = detail::fp::selection_result_t<A, B>;
@@ -619,7 +619,7 @@ namespace bl
     template<class T, class Exp>
     requires (
         !std::integral<std::remove_cvref_t<T>> &&
-        !fltx_extended_float<fltx_expression_value_t<T>> &&
+        !fltx_extended_float<value_t<T>> &&
         detail::fp::non_bool_integral<Exp>)
     [[nodiscard]] constexpr std::remove_cvref_t<T> ipow(T base, Exp exp)
     {

@@ -1567,7 +1567,7 @@ namespace detail::random
     template<class RealType, class Arg>
     concept real_distribution_arg_for =
         supported_real<RealType> &&
-        bl::fltx_arithmetic<bl::fltx_expression_value_t<Arg>> &&
+        bl::fltx_arithmetic<bl::value_t<Arg>> &&
         requires(Arg value)
         {
             static_cast<RealType>(value);
@@ -1575,8 +1575,8 @@ namespace detail::random
 
     template<class A, class B>
     concept inferred_real_distribution_args =
-        bl::fltx_arithmetic<bl::fltx_expression_value_t<A>> &&
-        bl::fltx_arithmetic<bl::fltx_expression_value_t<B>> &&
+        bl::fltx_arithmetic<bl::value_t<A>> &&
+        bl::fltx_arithmetic<bl::value_t<B>> &&
         supported_real<bl::common_float_type_t<A, B>>;
 
     template<class RealType, class A, class B>

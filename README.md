@@ -247,8 +247,8 @@ bl::fltx_float<T>            // matches the f32, f64, fdd, or fqd family
 bl::fltx_arithmetic<T>       // matches a native arithmetic or extended fltx type
 bl::fltx_expression<T>       // matches an internal deferred arithmetic result
 
-bl::fltx_expression_value_t<T>   // unwraps a deferred result to its scalar value type
-bl::fltx_expression_storage_t<T> // unwraps a deferred result to its eager aggregate type
+bl::value_t<T>              // canonical scalar value type
+bl::storage_t<T>            // aggregate storage type
 
 // Boolean variable templates
 bl::is_f32_v<T>

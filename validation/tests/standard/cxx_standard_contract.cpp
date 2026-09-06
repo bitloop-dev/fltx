@@ -4,6 +4,42 @@
 #include <string_view>
 #include <type_traits>
 
+#include <fltx/traits.h>
+
+namespace
+{
+    template<class T, class Value, class Storage>
+    consteval bool representation_types_match()
+    {
+        return std::same_as<bl::value_t<T>, Value> &&
+               std::same_as<bl::storage_t<T>, Storage> &&
+               std::same_as<bl::value_t<const volatile T&>, Value> &&
+               std::same_as<bl::storage_t<const volatile T&>, Storage> &&
+               std::same_as<bl::value_t<T&&>, Value> &&
+               std::same_as<bl::storage_t<T&&>, Storage> &&
+               std::same_as<bl::value_t<bl::value_t<T>>, Value> &&
+               std::same_as<bl::storage_t<bl::storage_t<T>>, Storage> &&
+               std::same_as<bl::value_t<bl::storage_t<T>>, Value> &&
+               std::same_as<bl::storage_t<bl::value_t<T>>, Storage>;
+    }
+
+    // The traits must work before the scalar definitions are included.
+    static_assert(representation_types_match<bl::fdd, bl::fdd, bl::fdd_s>());
+    static_assert(representation_types_match<bl::fdd_s, bl::fdd, bl::fdd_s>());
+    static_assert(representation_types_match<bl::fqd, bl::fqd, bl::fqd_s>());
+    static_assert(representation_types_match<bl::fqd_s, bl::fqd, bl::fqd_s>());
+    static_assert(representation_types_match<float, float, float>());
+    static_assert(representation_types_match<double, double, double>());
+    static_assert(representation_types_match<long double, long double, long double>());
+    static_assert(representation_types_match<int, int, int>());
+    static_assert(representation_types_match<bool, bool, bool>());
+    struct unrelated_type;
+    static_assert(representation_types_match<unrelated_type, unrelated_type, unrelated_type>());
+    static_assert(representation_types_match<const bl::fdd*, const bl::fdd*, const bl::fdd*>());
+    static_assert(std::same_as<bl::value_t<const void>, void>);
+    static_assert(std::same_as<bl::storage_t<const void>, void>);
+}
+
 #include <fltx.h>
 
 #ifndef FLTX_CXX_STANDARD_CONTRACT
@@ -41,6 +77,9 @@ static_assert(bl::detail::fp::dekker_product_needs_scaling(0x1p1000, 0.5));
 namespace
 {
     using qd_product = decltype(std::declval<bl::fqd>() * std::declval<bl::fqd>());
+
+    static_assert(representation_types_match<qd_product, bl::fqd, bl::fqd_s>());
+    static_assert(representation_types_match<decltype(std::declval<bl::fdd>() + 1.0), bl::fdd, bl::fdd_s>());
 
     static_assert(std::is_same_v<decltype(std::declval<bl::fqd_s>() * std::declval<bl::fqd_s>()), bl::fqd_s>);
 

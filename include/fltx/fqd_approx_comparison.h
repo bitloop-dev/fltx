@@ -22,8 +22,8 @@ namespace bl
     };
 
     template<class Value, class Expected>
-    requires (fltx_fqd<fltx_expression_value_t<Value>> &&
-              fltx_fqd<fltx_expression_value_t<Expected>>)
+    requires (fltx_fqd<value_t<Value>> &&
+              fltx_fqd<value_t<Expected>>)
     [[nodiscard]] BL_FORCE_INLINE constexpr bool approx_eq(
         const Value& value,
         const Expected& expected,
