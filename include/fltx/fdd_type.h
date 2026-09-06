@@ -103,13 +103,13 @@ struct fdd_s
     BL_FORCE_INLINE constexpr fdd_s& operator=(uint64_t u) noexcept;
     BL_FORCE_INLINE constexpr fdd_s& operator=(int64_t v) noexcept;
 
-    template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_signed_v<T> && (sizeof(T) < 8), int> = 0>
+    template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_signed_v<T> && (sizeof(T) <= 8), int> = 0>
     BL_FORCE_INLINE constexpr fdd_s& operator=(T v) noexcept
     {
         return (*this = static_cast<int64_t>(v));
     }
 
-    template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_unsigned_v<T> && (sizeof(T) < 8), int> = 0>
+    template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_unsigned_v<T> && (sizeof(T) <= 8), int> = 0>
     BL_FORCE_INLINE constexpr fdd_s& operator=(T v) noexcept
     {
         return (*this = static_cast<uint64_t>(v));
@@ -200,49 +200,49 @@ struct fdd_s
         return *this;
     }
 
-    template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_signed_v<T> && (sizeof(T) < 8), int> = 0>
+    template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_signed_v<T> && (sizeof(T) <= 8), int> = 0>
     BL_FORCE_INLINE constexpr fdd_s& operator+=(T rhs) noexcept
     {
         return (*this += static_cast<int64_t>(rhs));
     }
 
-    template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_signed_v<T> && (sizeof(T) < 8), int> = 0>
+    template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_signed_v<T> && (sizeof(T) <= 8), int> = 0>
     BL_FORCE_INLINE constexpr fdd_s& operator-=(T rhs) noexcept
     {
         return (*this -= static_cast<int64_t>(rhs));
     }
 
-    template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_signed_v<T> && (sizeof(T) < 8), int> = 0>
+    template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_signed_v<T> && (sizeof(T) <= 8), int> = 0>
     BL_FORCE_INLINE constexpr fdd_s& operator*=(T rhs) noexcept
     {
         return (*this *= static_cast<int64_t>(rhs));
     }
 
-    template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_signed_v<T> && (sizeof(T) < 8), int> = 0>
+    template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_signed_v<T> && (sizeof(T) <= 8), int> = 0>
     BL_FORCE_INLINE constexpr fdd_s& operator/=(T rhs) noexcept
     {
         return (*this /= static_cast<int64_t>(rhs));
     }
 
-    template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_unsigned_v<T> && (sizeof(T) < 8), int> = 0>
+    template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_unsigned_v<T> && (sizeof(T) <= 8), int> = 0>
     BL_FORCE_INLINE constexpr fdd_s& operator+=(T rhs) noexcept
     {
         return (*this += static_cast<uint64_t>(rhs));
     }
 
-    template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_unsigned_v<T> && (sizeof(T) < 8), int> = 0>
+    template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_unsigned_v<T> && (sizeof(T) <= 8), int> = 0>
     BL_FORCE_INLINE constexpr fdd_s& operator-=(T rhs) noexcept
     {
         return (*this -= static_cast<uint64_t>(rhs));
     }
 
-    template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_unsigned_v<T> && (sizeof(T) < 8), int> = 0>
+    template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_unsigned_v<T> && (sizeof(T) <= 8), int> = 0>
     BL_FORCE_INLINE constexpr fdd_s& operator*=(T rhs) noexcept
     {
         return (*this *= static_cast<uint64_t>(rhs));
     }
 
-    template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_unsigned_v<T> && (sizeof(T) < 8), int> = 0>
+    template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_unsigned_v<T> && (sizeof(T) <= 8), int> = 0>
     BL_FORCE_INLINE constexpr fdd_s& operator/=(T rhs) noexcept
     {
         return (*this /= static_cast<uint64_t>(rhs));

@@ -47,6 +47,57 @@ namespace
     template<class T>
     constexpr T add_same_type_pair(const T& x, const T& y) { return x + y; }
 
+    template<class Value, class Integer>
+    consteval bool integer_assignment_is_exact()
+    {
+        constexpr Integer integer = std::numeric_limits<Integer>::max();
+        Value value{};
+        value = integer;
+        if (static_cast<Integer>(value) != integer) return false;
+        // Exercise each spelling's compound overload with exact small operands;
+        // the runtime core contract owns wide-integer compound arithmetic.
+        constexpr Integer two = 2;
+        value = two;
+        value -= two;
+        if (value != Value{ 0.0 }) return false;
+        value += two;
+        value /= two;
+        if (value != Value{ 1.0 }) return false;
+        value *= two;
+        return value == Value{ 2.0 };
+    }
+
+    template<class Value>
+    consteval bool integer_spellings_are_supported()
+    {
+        return integer_assignment_is_exact<Value, long>() &&
+               integer_assignment_is_exact<Value, unsigned long>() &&
+               integer_assignment_is_exact<Value, long long>() &&
+               integer_assignment_is_exact<Value, unsigned long long>();
+    }
+
+    static_assert(integer_spellings_are_supported<bl::fdd_s>());
+    static_assert(integer_spellings_are_supported<bl::fdd>());
+    static_assert(integer_spellings_are_supported<bl::fqd_s>());
+    static_assert(integer_spellings_are_supported<bl::fqd>());
+
+    template<class T>
+    consteval bool midpoint_extremes_are_constant_evaluated()
+    {
+        constexpr T maximum = std::numeric_limits<T>::max();
+        constexpr T tiny = std::numeric_limits<T>::denorm_min();
+        const T half = bl::ldexp(maximum, -1);
+        return bl::midpoint(maximum, maximum) == maximum &&
+               bl::midpoint(T{ -maximum }, maximum) == T{ 0.0 } &&
+               bl::midpoint(tiny, maximum) == half &&
+               bl::midpoint(maximum, tiny) == half &&
+               bl::midpoint(tiny, tiny) == tiny &&
+               bl::midpoint(T{ 0.0 }, tiny) == T{ 0.0 };
+    }
+
+    static_assert(midpoint_extremes_are_constant_evaluated<bl::fdd>());
+    static_assert(midpoint_extremes_are_constant_evaluated<bl::fqd>());
+
     template<class Value, class... T>
     consteval bool eager_arithmetic_preserves_value_type()
     {

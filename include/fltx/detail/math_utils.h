@@ -588,16 +588,18 @@ namespace bl
             return std::midpoint(x, y);
         else
         {
-            const R hi = std::numeric_limits<R>::max() * 0.5;
-            const R lo = std::numeric_limits<R>::min() * 2.0;
+            // Use exact binary scaling; general multiplication can overflow
+            // the unchecked Dekker splitter even when the result is finite.
+            const R hi = ldexp(std::numeric_limits<R>::max(), -1);
+            const R lo = ldexp(std::numeric_limits<R>::min(), 1);
             const R ax = x < R{ 0 } ? R{ -x } : x;
             const R ay = y < R{ 0 } ? R{ -y } : y;
-            if (ax <= hi && ay <= hi) return R{ (x + y) * 0.5 };
+            if (ax <= hi && ay <= hi) return R{ ldexp(R{ x + y }, -1) };
             // Avoid halving a tiny operand when the other must be scaled first.
-            if (ax < lo) return R{ x + y * 0.5 };
-            if (ay < lo) return R{ x * 0.5 + y };
+            if (ax < lo) return R{ x + ldexp(y, -1) };
+            if (ay < lo) return R{ ldexp(x, -1) + y };
             // Materialize exact scaling before addition, including at the range limit.
-            const R half_x = x * 0.5, half_y = y * 0.5;
+            const R half_x = ldexp(x, -1), half_y = ldexp(y, -1);
             return R{ half_x + half_y };
         }
     }
