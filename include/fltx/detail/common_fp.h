@@ -641,7 +641,8 @@ template<class T, class... Tail>
     static_assert(is_native_arithmetic_scalar_v<target_type>);
 
     if constexpr (std::is_same_v<target_type, bool>)
-        return leading != 0.0 || ((tail != 0.0) || ...);
+        return ((std::bit_cast<std::uint64_t>(leading) | ... |
+                 std::bit_cast<std::uint64_t>(tail)) & 0x7fffffffffffffffULL) != 0;
     else if constexpr (std::is_integral_v<target_type>)
         return conversion::expansion_to_integer<target_type>(leading, tail...);
     else

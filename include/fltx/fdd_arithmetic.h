@@ -234,6 +234,48 @@ template<class T, std::enable_if_t<detail::fp::is_integer_scalar_v<T>, int> = 0>
     return detail::_dd::integer_to_dd(a) / b;
 }
 
+namespace detail::_dd
+{
+    template<class T>
+    concept eager_operand = std::is_same_v<T, fdd> || std::is_same_v<T, fdd_s> ||
+                            std::is_same_v<T, float> || std::is_same_v<T, double> ||
+                            detail::fp::is_integer_scalar_v<T>;
+
+    template<class L, class R>
+    concept eager_pair = eager_operand<L> && eager_operand<R> &&
+                         (std::is_same_v<L, fdd> || std::is_same_v<R, fdd>);
+
+    template<class T>
+    [[nodiscard]] BL_FORCE_INLINE constexpr const T& eager_value(const T& value) noexcept { return value; }
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr const fdd_s& eager_value(const fdd& value) noexcept { return value; }
+}
+
+// Preserve the value form without changing storage or specialized scalar arithmetic.
+template<class L, class R> requires detail::_dd::eager_pair<L, R>
+[[nodiscard]] BL_FORCE_INLINE constexpr fdd operator+(const L& a, const R& b) noexcept
+{
+    return detail::_dd::eager_value(a) + detail::_dd::eager_value(b);
+}
+
+template<class L, class R> requires detail::_dd::eager_pair<L, R>
+[[nodiscard]] BL_FORCE_INLINE constexpr fdd operator-(const L& a, const R& b) noexcept
+{
+    return detail::_dd::eager_value(a) - detail::_dd::eager_value(b);
+}
+
+template<class L, class R> requires detail::_dd::eager_pair<L, R>
+[[nodiscard]] BL_FORCE_INLINE constexpr fdd operator*(const L& a, const R& b) noexcept
+{
+    return detail::_dd::eager_value(a) * detail::_dd::eager_value(b);
+}
+
+template<class L, class R> requires detail::_dd::eager_pair<L, R>
+[[nodiscard]] BL_FORCE_INLINE constexpr fdd operator/(const L& a, const R& b) noexcept
+{
+    return detail::_dd::eager_value(a) / detail::_dd::eager_value(b);
+}
+
 } // namespace bl
 
 #endif

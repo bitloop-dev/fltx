@@ -18,6 +18,29 @@
 
 namespace
 {
+    template<class T>
+    constexpr bool boolean_conversions_preserve_nonzero()
+    {
+        if (static_cast<bool>(T{ 0.0 }) || static_cast<bool>(T{ -0.0 }))
+            return false;
+
+        for (double value : { 1.0, -1.0, std::numeric_limits<double>::denorm_min(),
+                              -std::numeric_limits<double>::denorm_min(),
+                              std::numeric_limits<double>::infinity(),
+                              -std::numeric_limits<double>::infinity(),
+                              std::numeric_limits<double>::quiet_NaN() })
+        {
+            if (!T{ value })
+                return false;
+            T tail{};
+            if constexpr (bl::fltx_fdd<T>) tail.lo = value;
+            else tail.x3 = value;
+            if (!static_cast<bool>(tail))
+                return false;
+        }
+        return true;
+    }
+
     template<class T, class Scalar>
     void check_scalar_arithmetic(Scalar scalar)
     {
@@ -71,6 +94,23 @@ namespace
         CHECK(value == exact);
         value /= integer;
         CHECK(value == one);
+    }
+
+    template<class L, class R, class SL, class SR>
+    constexpr bool arithmetic_matches_storage(const L& a, const R& b, const SL& sa, const SR& sb)
+    {
+        using Storage = decltype(sa + sb);
+        const auto same_limbs = [](const Storage& x, const Storage& y)
+        {
+            if constexpr (std::same_as<Storage, bl::fdd_s>)
+                return x.hi == y.hi && x.lo == y.lo;
+            else
+                return x.x0 == y.x0 && x.x1 == y.x1 && x.x2 == y.x2 && x.x3 == y.x3;
+        };
+        return same_limbs(a + b, sa + sb) && same_limbs(b + a, sb + sa) &&
+               same_limbs(a - b, sa - sb) && same_limbs(b - a, sb - sa) &&
+               same_limbs(a * b, sa * sb) && same_limbs(b * a, sb * sa) &&
+               same_limbs(a / b, sa / sb) && same_limbs(b / a, sb / sa);
     }
 
     template<class T>
@@ -440,6 +480,17 @@ TEST_CASE("extended types preserve arithmetic and conversion contracts", "[contr
           std::numeric_limits<std::int64_t>::lowest());
     CHECK(!static_cast<bool>(bl::fdd_s{ -0.0 }));
     CHECK(static_cast<bool>(std::numeric_limits<bl::fqd>::quiet_NaN()));
+    STATIC_REQUIRE(boolean_conversions_preserve_nonzero<bl::fdd_s>());
+    STATIC_REQUIRE(boolean_conversions_preserve_nonzero<bl::fdd>());
+    STATIC_REQUIRE(boolean_conversions_preserve_nonzero<bl::fqd_s>());
+    STATIC_REQUIRE(boolean_conversions_preserve_nonzero<bl::fqd>());
+    CHECK(boolean_conversions_preserve_nonzero<bl::fdd_s>());
+    CHECK(boolean_conversions_preserve_nonzero<bl::fdd>());
+    CHECK(boolean_conversions_preserve_nonzero<bl::fqd_s>());
+    CHECK(boolean_conversions_preserve_nonzero<bl::fqd>());
+    CHECK(!static_cast<bool>(bl::fqd_s{ -0.0, -0.0, -0.0, -0.0 }));
+    CHECK(static_cast<bool>(bl::fqd_s{ 0.0, 0x1p-60, 0.0, 0.0 }));
+    CHECK(static_cast<bool>(bl::fqd_s{ 0.0, 0.0, 0x1p-120, 0.0 }));
     CHECK(std::signbit(static_cast<float>(bl::fdd_s{ -0.0 })));
     CHECK(std::signbit(static_cast<double>(bl::fqd_s{ -0.0 })));
     CHECK(std::signbit(static_cast<long double>(bl::fqd_s{ -0.0 })));
@@ -480,6 +531,10 @@ TEST_CASE("scalar and cross-precision arithmetic exercise each overload family",
     check_scalar_arithmetic<bl::fdd_s>(2.0);
     check_scalar_arithmetic<bl::fdd_s>(std::int32_t{ 2 });
     check_scalar_arithmetic<bl::fdd_s>(std::uint64_t{ 2 });
+    check_scalar_arithmetic<bl::fdd>(2.0f);
+    check_scalar_arithmetic<bl::fdd>(2.0);
+    check_scalar_arithmetic<bl::fdd>(bl::fdd_s{ 2.0 });
+    check_scalar_arithmetic<bl::fdd>(bl::fdd{ 2.0 });
     check_scalar_arithmetic<bl::fdd>(std::int64_t{ 2 });
 
     check_scalar_arithmetic<bl::fqd_s>(2.0f);
@@ -487,6 +542,10 @@ TEST_CASE("scalar and cross-precision arithmetic exercise each overload family",
     check_scalar_arithmetic<bl::fqd_s>(std::int32_t{ 2 });
     check_scalar_arithmetic<bl::fqd_s>(std::uint64_t{ 2 });
     check_scalar_arithmetic<bl::fqd>(std::int64_t{ 2 });
+    check_scalar_arithmetic<bl::fqd>(bl::fdd{ 2.0 });
+    check_scalar_arithmetic<bl::fqd>(bl::fdd_s{ 2.0 });
+    check_scalar_arithmetic<bl::fqd>(bl::fqd_s{ 2.0 });
+    check_scalar_arithmetic<bl::fqd_s>(bl::fdd{ 2.0 });
 
     constexpr std::int64_t signed_wide = (std::int64_t{ 1 } << 60) + 3;
     constexpr std::uint64_t unsigned_wide = (std::uint64_t{ 1 } << 63) + 5;
@@ -494,6 +553,10 @@ TEST_CASE("scalar and cross-precision arithmetic exercise each overload family",
     check_wide_integer_arithmetic<bl::fdd_s>(unsigned_wide);
     check_wide_integer_arithmetic<bl::fqd_s>(signed_wide);
     check_wide_integer_arithmetic<bl::fqd_s>(unsigned_wide);
+    check_wide_integer_arithmetic<bl::fdd>(signed_wide);
+    check_wide_integer_arithmetic<bl::fdd>(unsigned_wide);
+    check_wide_integer_arithmetic<bl::fqd>(signed_wide);
+    check_wide_integer_arithmetic<bl::fqd>(unsigned_wide);
 
     const bl::fdd_s narrow{ 2.0 };
     const bl::fqd_s wide{ 6.0 };
@@ -515,6 +578,34 @@ TEST_CASE("scalar and cross-precision arithmetic exercise each overload family",
     CHECK(compound == bl::fqd_s{ 12.0 });
     CHECK(&(compound /= narrow) == &compound);
     CHECK(compound == bl::fqd_s{ 6.0 });
+}
+
+TEST_CASE("full-value arithmetic preserves storage-kernel results", "[contracts][core]")
+{
+    constexpr bl::fdd_s ds{ 1.25, 0x1p-60 }, dt{ 0.75, -0x1p-60 };
+    constexpr bl::fqd_s qs{ 1.5, 0x1p-60, -0x1p-120, 0x1p-180 };
+    constexpr bl::fdd d{ ds }, t{ dt };
+    constexpr bl::fqd q{ qs };
+    constexpr auto product = q * q;
+    constexpr bl::fqd_s product_value = bl::fqd{ product };
+
+    STATIC_REQUIRE(arithmetic_matches_storage(d, t, ds, dt));
+    STATIC_REQUIRE(arithmetic_matches_storage(d, dt, ds, dt));
+    STATIC_REQUIRE(arithmetic_matches_storage(q, d, qs, ds));
+    STATIC_REQUIRE(arithmetic_matches_storage(q, ds, qs, ds));
+    STATIC_REQUIRE(arithmetic_matches_storage(d, qs, ds, qs));
+    STATIC_REQUIRE(arithmetic_matches_storage(q, qs, qs, qs));
+    STATIC_REQUIRE(arithmetic_matches_storage(product, d, product_value, ds));
+    STATIC_REQUIRE(arithmetic_matches_storage(product, qs, product_value, qs));
+
+    CHECK(arithmetic_matches_storage(d, t, ds, dt));
+    CHECK(arithmetic_matches_storage(d, dt, ds, dt));
+    CHECK(arithmetic_matches_storage(q, d, qs, ds));
+    CHECK(arithmetic_matches_storage(q, ds, qs, ds));
+    CHECK(arithmetic_matches_storage(d, qs, ds, qs));
+    CHECK(arithmetic_matches_storage(q, qs, qs, qs));
+    CHECK(arithmetic_matches_storage(product, d, product_value, ds));
+    CHECK(arithmetic_matches_storage(product, qs, product_value, qs));
 }
 
 TEST_CASE("classification and ordering handle IEEE special values", "[contracts][core]")

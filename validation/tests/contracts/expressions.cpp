@@ -471,6 +471,15 @@ TEST_CASE("owning fqd expressions convert directly to value and narrower scalar 
     CHECK(static_cast<std::size_t>(expression) == static_cast<std::size_t>(expected));
     CHECK(static_cast<unsigned char>(expression) == static_cast<unsigned char>(expected));
     CHECK(static_cast<bool>(expression) == static_cast<bool>(expected));
+
+    // Exercise conversion directly, without depending on fast-math arithmetic's
+    // handling of special values while forming an expression.
+    using leaf = bl::detail::_qd_expr::leaf_expr;
+    STATIC_REQUIRE(static_cast<bool>(leaf{ std::numeric_limits<bl::fqd_s>::quiet_NaN() }));
+    CHECK(static_cast<bool>(leaf{ std::numeric_limits<bl::fqd_s>::quiet_NaN() }));
+    CHECK(static_cast<bool>(leaf{ std::numeric_limits<bl::fqd_s>::infinity() }));
+    CHECK(static_cast<bool>(leaf{ bl::fqd_s{ 0.0, 0.0, 0.0, 0x1p-1074 } }));
+    CHECK(!static_cast<bool>(leaf{ bl::fqd_s{ -0.0, -0.0, -0.0, -0.0 } }));
 }
 
 TEST_CASE("numeric helpers materialize mixed fqd expressions without manual casts",

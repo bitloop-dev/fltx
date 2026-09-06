@@ -24,8 +24,9 @@ Every public header has an **H** probe through `fltx_compile_contract`, with
 `FLTX_ENABLE_FQD_EXPRESSIONS` both undefined and set to `1`.
 The representative C++20 surface also compiles with
 `FLTX_DISABLE_MATH_USES_CHECKED_DEKKER`, checking the opt-out and constexpr native `pow`.
-C++20/C++23 probes check both expression modes, including eager unary/binary
-return types, mixed arithmetic and same-type generic deduction. With
+C++20/C++23 probes check both expression modes, including full-value unary/binary
+return types, mixed arithmetic and same-type generic deduction. Storage-only
+arithmetic retains its storage return types. With
 `FLTX_VALIDATION_FQD_EXPRESSIONS=OFF`, `contracts/expressions.cpp` checks eager
 generic boundaries and storage-kernel parity; the suites otherwise opt in.
 The `native.h`, `native_math.h`, and `native_string.h` probes additionally
@@ -40,7 +41,7 @@ public call and return-type contracts.
 
 | Public family | Types exercised | C | CE / CA / O | A / B | Notes |
 |---|---|---|---|---|---|
-| fdd/fqd storage and value construction, assignment, scalar/integer and cross-precision conversion | fdd/fqd | `contracts/core.cpp` | CE: `constexpr/core.cpp`; O: `contracts/overloads.cpp`, `contracts/overload_matrix.cpp` | — | Covers every fundamental arithmetic type, explicit narrowing, implicit widening, exact 64-bit boundaries, low-limb integer truncation, signed zero, `long double`, aggregate storage, and both cross-precision directions |
+| fdd/fqd storage and value construction, assignment, scalar/integer and cross-precision conversion | fdd/fqd | `contracts/core.cpp` | CE: `constexpr/core.cpp`, Boolean assertions in `contracts/core.cpp`; O: `contracts/overloads.cpp`, `contracts/overload_matrix.cpp` | — | Covers every fundamental arithmetic type, explicit narrowing, implicit widening, exact 64-bit boundaries, low-limb integer truncation, signed zero, `long double`, aggregate storage, both cross-precision directions, and bitwise Boolean conversion of zeros, subnormals, infinities and NaNs in strict/fast-math modes |
 | unary, binary and compound `+ - * /` | fdd/fqd | `contracts/core.cpp` | CE: `constexpr/core.cpp`, `constexpr/accuracy.cpp`; CA: all; O: `contracts/overloads.cpp` | A: f32/f64/fdd/fqd; B: fdd/fqd | Every distinct scalar category and cross-precision route is instantiated; runtime fast-math waives NaN, infinity, and signed-zero guarantees for basic fdd/fqd arithmetic while genuine constant evaluation remains checked |
 | comparison, `<=>`, unordered NaN behaviour | fdd/fqd | `contracts/core.cpp` | CE: `constexpr/core.cpp` | B: six fdd/fqd relational operators | |
 | `approx_eq` and parity tolerances | same-precision f32/f64/fdd/fqd, including fqd expressions | `contracts/approx_comparison.cpp` | CE: default and custom relative-threshold cases; O: accepted same-precision and rejected mixed/four-argument calls | — | Covers named defaults, native runtime/constexpr math parity, scaling, signed zero, infinities, NaNs, invalid tolerances, symmetry, exact threshold boundaries, and mixed expression shapes |

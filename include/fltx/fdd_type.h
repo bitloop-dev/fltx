@@ -274,9 +274,12 @@ struct fdd : public fdd_s
         static_cast<fdd_s&>(*this) = x;
     }
 
-    constexpr fdd(const fdd_s& f) noexcept : fdd_s{ f.hi, f.lo } {}
+    BL_FORCE_INLINE constexpr fdd(const fdd_s& f) noexcept : fdd_s{ f.hi, f.lo } {}
 
     using fdd_s::operator=;
+
+    [[nodiscard]] constexpr fdd operator+() const noexcept { return *this; }
+    [[nodiscard]] constexpr fdd operator-() const noexcept { return { -hi, -lo }; }
 
     [[nodiscard]] constexpr operator fqd_s() const noexcept;
     [[nodiscard]] constexpr operator fqd() const noexcept;

@@ -223,6 +223,8 @@ bl::fqd_s  // aggregate storage form (no fused-expression support)
 
 The aggregate storage forms are useful when an API requires aggregate storage or an eager representation without expression fusion. Each converts directly to and from its corresponding fdd or fqd value type.
 
+Non-mutating arithmetic involving `fdd`/`fqd` returns a value type (or an enabled `fqd` expression); storage-only arithmetic returns storage types.
+
 ```cpp
 bl::fdd_s a { 5.0 };
 bl::fdd   b = 5.0f;
@@ -749,14 +751,22 @@ _Compared with reference libraries_
 
 ## Expression Templates
 
+Expression templates are opt-in. To use expression templates, define `FLTX_ENABLE_FQD_EXPRESSIONS=1` (or before any `fltx` headers), e.g.
+
+```cmake
+target_compile_definitions(myapp PRIVATE FLTX_ENABLE_FQD_EXPRESSIONS=1)
+```
+
+or
+
+```cpp
+#define FLTX_ENABLE_FQD_EXPRESSIONS 1
+#include <fltx.h>
+```
+
 With expression templates enabled, [`bl::fqd`](include/fltx/fqd.h) recognises a set of common arithmetic expression patterns, including sums of products, dot products with a bias term, and scaled linear combinations.
 
 These expressions are represented as small compile-time nodes and lowered to highly optimised fused implementations. Delaying intermediate normalisation reduces rounding and avoids temporary values.
-
-Expression templates are opt-in: define `FLTX_ENABLE_FQD_EXPRESSIONS=1` for your
-target (or before any FLTX headers). Undefined or `0` selects eager arithmetic
-returning `fqd` values. Both modes use the same compiled library; `fdd` and the
-storage forms remain eager. Repository examples and runtime benchmarks opt in.
 
 Use a consistent setting wherever inline functions or template instantiations
 are shared. If your library's public headers depend on this policy, propagate
@@ -776,25 +786,7 @@ the definition with `PUBLIC` rather than `PRIVATE`.
 
 ### Range and performance policy
 
-Hot low-level kernels deliberately avoid unconditional range checks. This keeps ordinary arithmetic inexpensive; it is an intentional
-performance trade-off, not a guarantee that every operation supports the full
-representable exponent range of `fdd` or `fqd`.
-
-In particular, some fused kernels use unchecked Dekker splitting when hardware
-FMA is not used. Splitting multiplies a binary64 limb by `2^27 + 1`, so an
-intermediate can overflow even when the inputs and mathematical result are
-finite. The affected paths include constant evaluation (which uses Dekker) and
-non-FMA runtime execution. This limitation also applies in non-fast-math builds.
-
-For example, with `m = std::numeric_limits<bl::fqd>::max()`, the fused expression
-`m * 0.5 + m * 0.5` can fail on the Dekker path even though its mathematical
-result is `m`. Hardware FMA avoids this particular splitting overflow; it is
-not a general promise of overflow-safe fusion.
-
-For extreme-range work, scale or reformulate the calculation, or use a helper
-with appropriate range handling, such as `bl::midpoint(a, b)` for averaging.
-Range protection is applied where an operation requires it, rather than being
-imposed on every hot primitive.
+Hot low-level kernels deliberately avoid unconditional range checks when hardware FMA is not used or unavailable (e.g. during constant evaluation). This keeps ordinary arithmetic inexpensive; it is an intentional performance trade-off.
 
 ## License
 

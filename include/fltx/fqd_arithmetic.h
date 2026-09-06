@@ -257,26 +257,34 @@ template<class T, std::enable_if_t<detail::fp::is_integer_scalar_v<T>, int> = 0>
     return detail::_qd::div_dd(detail::_qd::integer_to_double_double(a), b);
 }
 
-#if !defined(FLTX_ENABLE_FQD_EXPRESSIONS) || !FLTX_ENABLE_FQD_EXPRESSIONS
-
 namespace detail::_qd
 {
+    // Operands paired eagerly with fqd; leave expression-capable pairs to the frontend.
     template<class T>
-    concept eager_operand = std::is_same_v<T, fqd> || std::is_same_v<T, fqd_s> ||
-                            std::is_same_v<T, fdd> || std::is_same_v<T, fdd_s> ||
-                            std::is_same_v<T, float> || std::is_same_v<T, double> ||
-                            detail::fp::is_integer_scalar_v<T>;
+    concept eager_operand = std::is_same_v<T, fqd_s> ||
+                            std::is_same_v<T, fdd> || std::is_same_v<T, fdd_s>
+    #if !defined(FLTX_ENABLE_FQD_EXPRESSIONS) || !FLTX_ENABLE_FQD_EXPRESSIONS
+                         || std::is_same_v<T, fqd> || std::is_same_v<T, float> ||
+                            std::is_same_v<T, double> || detail::fp::is_integer_scalar_v<T>
+    #endif
+                         ;
 
     template<class L, class R>
-    concept eager_pair = eager_operand<L> && eager_operand<R> &&
-                         (std::is_same_v<L, fqd> || std::is_same_v<R, fqd>);
+    concept eager_pair = ((std::is_same_v<L, fqd> || detail::_qd_expr::is_expr<L>::value) && eager_operand<R>) ||
+                         ((std::is_same_v<R, fqd> || detail::_qd_expr::is_expr<R>::value) && eager_operand<L>) ||
+                         (std::is_same_v<L, fdd> && std::is_same_v<R, fqd_s>) ||
+                         (std::is_same_v<R, fdd> && std::is_same_v<L, fqd_s>);
 
     // Strip only the scalar wrapper; retain native operands for their existing
     // specialized arithmetic, including exact wide-integer handling.
     template<class T>
-    [[nodiscard]] BL_FORCE_INLINE constexpr const T& eager_value(const T& value) noexcept { return value; }
-
-    [[nodiscard]] BL_FORCE_INLINE constexpr const fqd_s& eager_value(const fqd& value) noexcept { return value; }
+    [[nodiscard]] BL_FORCE_INLINE constexpr decltype(auto) eager_value(const T& value) noexcept
+    {
+        if constexpr (detail::_qd_expr::is_expr<T>::value) return detail::_qd_expr::eval_to_qd_s(value);
+        else if constexpr (std::is_same_v<T, fqd>) return static_cast<const fqd_s&>(value);
+        else if constexpr (std::is_same_v<T, fdd>) return static_cast<const fdd_s&>(value);
+        else return (value);
+    }
 }
 
 template<class L, class R> requires detail::_qd::eager_pair<L, R>
@@ -302,8 +310,6 @@ template<class L, class R> requires detail::_qd::eager_pair<L, R>
 {
     return detail::_qd::eager_value(a) / detail::_qd::eager_value(b);
 }
-
-#endif // eager fqd operators
 
 } // namespace bl
 

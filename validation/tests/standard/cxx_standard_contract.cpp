@@ -42,36 +42,49 @@ namespace
 {
     using qd_product = decltype(std::declval<bl::fqd>() * std::declval<bl::fqd>());
 
-    #if !defined(FLTX_ENABLE_FQD_EXPRESSIONS) || !FLTX_ENABLE_FQD_EXPRESSIONS
-    static_assert(std::is_same_v<qd_product, bl::fqd>);
-    static_assert(std::is_same_v<decltype(+std::declval<bl::fqd>()), bl::fqd>);
-    static_assert(std::is_same_v<decltype(-std::declval<bl::fqd>()), bl::fqd>);
     static_assert(std::is_same_v<decltype(std::declval<bl::fqd_s>() * std::declval<bl::fqd_s>()), bl::fqd_s>);
 
     template<class T>
-    constexpr bl::fqd add_same_type_pair(const T& x, const T& y) { return x + y; }
+    constexpr T add_same_type_pair(const T& x, const T& y) { return x + y; }
 
-    template<class... T>
+    template<class Value, class... T>
     consteval bool eager_arithmetic_preserves_value_type()
     {
-        return (requires(bl::fqd a, const bl::fqd c, T b)
+        return (requires(Value a, const Value c, T b)
         {
-            { +a } -> std::same_as<bl::fqd>;
-            { -a } -> std::same_as<bl::fqd>;
-            { +c } -> std::same_as<bl::fqd>;
-            { -c } -> std::same_as<bl::fqd>;
-            { a + b } -> std::same_as<bl::fqd>;
-            { b + c } -> std::same_as<bl::fqd>;
-            { a - b } -> std::same_as<bl::fqd>;
-            { b - c } -> std::same_as<bl::fqd>;
-            { a * b } -> std::same_as<bl::fqd>;
-            { b * c } -> std::same_as<bl::fqd>;
-            { a / b } -> std::same_as<bl::fqd>;
-            { b / c } -> std::same_as<bl::fqd>;
+            { +a } -> std::same_as<Value>;
+            { -a } -> std::same_as<Value>;
+            { +c } -> std::same_as<Value>;
+            { -c } -> std::same_as<Value>;
+            { a + b } -> std::same_as<Value>;
+            { b + c } -> std::same_as<Value>;
+            { a - b } -> std::same_as<Value>;
+            { b - c } -> std::same_as<Value>;
+            { a * b } -> std::same_as<Value>;
+            { b * c } -> std::same_as<Value>;
+            { a / b } -> std::same_as<Value>;
+            { b / c } -> std::same_as<Value>;
         } && ...);
     }
 
     static_assert(eager_arithmetic_preserves_value_type<
+        bl::fdd, bl::fdd, bl::fdd_s, float, double,
+        bool, char, signed char, unsigned char, wchar_t, char8_t, char16_t, char32_t,
+        short, unsigned short, int, unsigned int, long, unsigned long,
+        long long, unsigned long long>());
+    static_assert(eager_arithmetic_preserves_value_type<bl::fqd, bl::fqd_s, bl::fdd, bl::fdd_s>());
+
+    constexpr bl::fdd dd_a{ 2.0 }, dd_b{ 3.0 }, dd_c{ 4.0 };
+    static_assert(std::max(dd_a, dd_b * dd_c) == bl::fdd{ 12.0 });
+    static_assert(add_same_type_pair(dd_a * dd_b, dd_b * dd_c + dd_a) == bl::fdd{ 20.0 });
+    static_assert(bl::fdd{ 1.0 } + UINT64_C(9007199254740993) == bl::fdd{ 9007199254740994.0 });
+    static_assert(bl::fqd{ 1.0 } - bl::fdd{ 1.0, 0x1p-60 } == bl::fqd{ -0x1p-60 });
+    static_assert(bl::fdd{ 1.0, 0x1p-60 } - bl::fqd_s{ 1.0 } == bl::fqd{ 0x1p-60 });
+
+    #if !defined(FLTX_ENABLE_FQD_EXPRESSIONS) || !FLTX_ENABLE_FQD_EXPRESSIONS
+    static_assert(std::is_same_v<qd_product, bl::fqd>);
+    static_assert(eager_arithmetic_preserves_value_type<
+        bl::fqd,
         bl::fqd, bl::fqd_s, bl::fdd, bl::fdd_s, float, double,
         bool, char, signed char, unsigned char, wchar_t, char8_t, char16_t, char32_t,
         short, unsigned short, int, unsigned int, long, unsigned long,
