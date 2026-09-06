@@ -79,6 +79,16 @@ namespace
         CHECK(bl::lerp(zero, one, infinity) == infinity);
         CHECK(bl::lerp(zero, one, T{ -infinity }) == T{ -infinity });
 
+        if constexpr (std::floating_point<T>)
+        {
+            CHECK(bl::isnan(bl::lerp(zero, one, nan)));
+            CHECK(bl::isnan(bl::lerp(one, zero, nan)));
+            CHECK(bl::lerp(one, zero, infinity) == T{ -infinity });
+            CHECK(bl::lerp(one, zero, T{ -infinity }) == infinity);
+            CHECK(bl::lerp(T{ -maximum }, maximum, infinity) == infinity);
+            CHECK(bl::lerp(maximum, T{ -maximum }, infinity) == T{ -infinity });
+        }
+
         if constexpr (bl::fltx_extended_float<T>)
         {
             const T a = one + T{ 0x1p-60 };

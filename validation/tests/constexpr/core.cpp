@@ -71,6 +71,16 @@ namespace
         constexpr T maximum = std::numeric_limits<T>::max();
         constexpr T tiny = std::numeric_limits<T>::denorm_min();
         constexpr std::uint64_t largest = std::numeric_limits<std::uint64_t>::max();
+        if constexpr (std::floating_point<T>)
+        {
+            constexpr T infinity = std::numeric_limits<T>::infinity();
+            constexpr T nan = std::numeric_limits<T>::quiet_NaN();
+            if (!bl::isnan(bl::lerp(T{ 1.0 }, T{ 2.0 }, nan)) ||
+                bl::lerp(T{ 0.0 }, T{ 1.0 }, infinity) != infinity ||
+                bl::lerp(T{ 0.0 }, T{ 1.0 }, -infinity) != -infinity ||
+                bl::lerp(maximum, -maximum, infinity) != -infinity)
+                return false;
+        }
         return bl::midpoint(maximum, maximum) == maximum &&
                bl::midpoint(T{ -maximum }, maximum) == T{ 0.0 } &&
                bl::midpoint(tiny, tiny) == tiny &&

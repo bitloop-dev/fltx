@@ -563,7 +563,19 @@ namespace bl
         if (weight == R{ 0 }) return x;
         if (weight == R{ 1 }) return y;
         if constexpr (std::floating_point<R>)
+        {
+            constexpr R largest = std::numeric_limits<R>::max();
+            if (!(weight >= -largest && weight <= largest)) [[unlikely]]
+            {
+                if (weight != weight) return weight;
+                // Avoid infinity * zero in std::lerp's weighted-endpoint path.
+                // Compare endpoints directly so their difference cannot overflow.
+                if (x >= -largest && x <= largest &&
+                    y >= -largest && y <= largest && x != y)
+                    return y > x ? weight : -weight;
+            }
             return std::lerp(x, y, weight);
+        }
         else
         {
             // Opposite signs require weighted endpoints to avoid overflowing y - x.
