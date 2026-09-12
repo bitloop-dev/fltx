@@ -19,6 +19,37 @@
 namespace
 {
     template<class T>
+    constexpr bool comparisons_cover_special_values_and_tails(double unit = 1.0)
+    {
+        T tail{ unit };
+        if constexpr (bl::fltx_fdd<T>) tail.lo = 0x1p-80;
+        else tail.x1 = 0x1p-80;
+        const double infinity = std::numeric_limits<double>::infinity();
+        std::array<T, 10> values{
+            T{ -infinity }, T{ -2.0 * unit }, T{ -unit }, T{ -0.0 }, T{ 0.0 },
+            T{ unit }, tail, T{ 2.0 * unit }, T{ infinity },
+            T{ std::numeric_limits<double>::quiet_NaN() }
+        };
+        for (std::size_t i = 0; i < values.size(); ++i)
+        {
+            for (std::size_t j = 0; j < values.size(); ++j)
+            {
+                const bool ordered = i != 9 && j != 9;
+                const auto left_rank = i > 3 ? i - 1 : i;
+                const auto right_rank = j > 3 ? j - 1 : j;
+                if ((values[i] == values[j]) != (ordered && left_rank == right_rank) ||
+                    (values[i] != values[j]) != (!ordered || left_rank != right_rank) ||
+                    (values[i] < values[j]) != (ordered && left_rank < right_rank) ||
+                    (values[i] <= values[j]) != (ordered && left_rank <= right_rank) ||
+                    (values[i] > values[j]) != (ordered && left_rank > right_rank) ||
+                    (values[i] >= values[j]) != (ordered && left_rank >= right_rank))
+                    return false;
+            }
+        }
+        return true;
+    }
+
+    template<class T>
     constexpr bool boolean_conversions_preserve_nonzero()
     {
         if (static_cast<bool>(T{ 0.0 }) || static_cast<bool>(T{ -0.0 }))
@@ -610,6 +641,11 @@ TEST_CASE("full-value arithmetic preserves storage-kernel results", "[contracts]
 
 TEST_CASE("classification and ordering handle IEEE special values", "[contracts][core]")
 {
+    STATIC_CHECK(comparisons_cover_special_values_and_tails<bl::fdd>());
+    STATIC_CHECK(comparisons_cover_special_values_and_tails<bl::fqd>());
+    volatile double unit = 1.0;
+    CHECK(comparisons_cover_special_values_and_tails<bl::fdd>(unit));
+    CHECK(comparisons_cover_special_values_and_tails<bl::fqd>(unit));
     check_classification<bl::f32>();
     check_classification<bl::f64>();
     check_classification<bl::fdd>();

@@ -337,39 +337,22 @@ namespace detail::_dd_impl
     [[nodiscard]] BL_FORCE_INLINE fdd_s round_nearest_away_from_zero_runtime(
         const fdd_s& a) noexcept
     {
-        #if defined(__EMSCRIPTEN__)
-        if (detail::fp::isinf_or_nan(a.hi)) [[unlikely]]
-            return a;
-
-        if (detail::_dd::absd(a.hi) < detail::fp::double_integer_threshold)
-        {
-            double rounded = static_cast<double>(static_cast<long long>(detail::fp::absd(a.hi) + 0.5));
-            if (detail::fp::signbit(a.hi))
-                rounded = -rounded;
-
-            if (rounded == a.hi && a.lo != 0.0)
-                return round_nearest_away_from_zero_integral_head(a);
-
-            const double delta = rounded - a.hi;
-            if ((delta == 0.5 && a.lo < 0.0) || (delta == -0.5 && a.lo > 0.0))
-                rounded += (rounded < 0.0) ? 1.0 : -1.0;
-
-            if (rounded == 0.0)
-                return detail::_dd::signed_zero(bl::signbit(a));
-            return fdd_s{ rounded, 0.0 };
-        }
-        #endif
-
         double rounded = detail::fp::round_nearest_away_from_zero(a.hi);
         if (rounded == a.hi)
         {
-            if (a.lo != 0.0)
+            // A tail smaller than one half cannot change a nonzero integral head.
+            // Retain the expansion fallback for larger tails and zero heads.
+            if (a.lo != 0.0 && !(detail::fp::absd(a.lo) < 0.5 && a.hi != 0.0)) [[unlikely]]
                 return round_nearest_away_from_zero_integral_head(a);
             return fdd_s{ rounded, 0.0 };
         }
 
         const double delta = rounded - a.hi;
+        #if defined(__APPLE__) && defined(__aarch64__)
+        if (((delta == 0.5) & (a.lo < 0.0)) | ((delta == -0.5) & (a.lo > 0.0)))
+        #else
         if ((delta == 0.5 && a.lo < 0.0) || (delta == -0.5 && a.lo > 0.0))
+        #endif
             rounded += (rounded < 0.0) ? 1.0 : -1.0;
 
         if (rounded == 0.0)
@@ -507,23 +490,32 @@ namespace detail::_dd_impl
     double hi = detail::_dd_impl::ceil_limb(a.hi);
     double lo = 0.0;
 
-    if (!detail::fp::isfinite(hi))
-        return fdd_s{ hi, 0.0 };
-
     if (hi == a.hi)
     {
+        if (!detail::fp::isfinite(hi))
+            return fdd_s{ hi, 0.0 };
         lo = detail::_dd_impl::ceil_limb(a.lo);
         const fdd_s out = detail::_dd::renorm(hi, lo);
         return out.hi == 0.0 ? detail::_dd::signed_zero(detail::fp::signbit(a.hi)) : out;
     }
 
-    return hi == 0.0 ? detail::_dd::signed_zero(detail::fp::signbit(a.hi)) : fdd_s{ hi, 0.0 };
+    return fdd_s{ detail::fp::copysign(hi, a.hi), 0.0 };
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr fdd_s detail::_dd_impl::trunc(const fdd_s& a)
 {
     if (detail::fp::iszero_or_inf_or_nan(a.hi)) [[unlikely]]
         return a;
+
+#if FLTX_ARM64_TARGET || defined(__EMSCRIPTEN__)
+    if (!bl::detail::is_constant_evaluated())
+    {
+        const double hi = std::trunc(a.hi);
+        if (hi != a.hi)
+            return fdd_s{ detail::fp::copysign(hi, a.hi), 0.0 };
+        return signbit(a) ? detail::_dd_impl::ceil(a) : detail::_dd_impl::floor(a);
+    }
+#endif
 
     if (detail::_dd::absd(a.hi) < detail::fp::double_integer_threshold)
     {

@@ -25,28 +25,55 @@ namespace detail::_dd // primitives and kernels
          std::is_same_v<std::remove_cvref_t<T>, double> ||
          detail::fp::is_integer_scalar_v<std::remove_cvref_t<T>>);
 
+    // Strict runtime comparisons reject NaNs. Constant evaluation needs an
+    // explicit guard on MSVC, as do consumers that allow finite-only assumptions.
     BL_FORCE_INLINE constexpr bool compare_less(double ahi, double alo, double bhi, double blo) noexcept
     {
-        if (detail::fp::isnan(ahi) || detail::fp::isnan(bhi))
-            return false;
+#if !defined(FLTX_FAST_MATH)
+        if (bl::detail::is_constant_evaluated())
+#endif
+        {
+            if (detail::fp::isnan(ahi) || detail::fp::isnan(bhi))
+                return false;
+        }
 
+#if defined(__APPLE__) && defined(__aarch64__) && !defined(FLTX_FAST_MATH)
+        // AppleClang otherwise branches on the high limb, which is costly for
+        // randomly ordered inputs. Boolean bitwise operators keep this branchless.
+        return (ahi < bhi) | ((ahi == bhi) & (alo < blo));
+#else
         return (ahi < bhi) || (ahi == bhi && alo < blo);
+#endif
     }
 
     BL_FORCE_INLINE constexpr bool compare_less_equal(double ahi, double alo, double bhi, double blo) noexcept
     {
-        if (detail::fp::isnan(ahi) || detail::fp::isnan(bhi))
-            return false;
+#if !defined(FLTX_FAST_MATH)
+        if (bl::detail::is_constant_evaluated())
+#endif
+        {
+            if (detail::fp::isnan(ahi) || detail::fp::isnan(bhi))
+                return false;
+        }
 
+#if defined(__APPLE__) && defined(__aarch64__) && !defined(FLTX_FAST_MATH)
+        return (ahi < bhi) | ((ahi == bhi) & (alo <= blo));
+#else
         return (ahi < bhi) || (ahi == bhi && alo <= blo);
+#endif
     }
 
     BL_FORCE_INLINE constexpr bool compare_equal(double ahi, double alo, double bhi, double blo) noexcept
     {
+#if defined(__clang__) && !defined(FLTX_FAST_MATH)
+        return (ahi == bhi) & (alo == blo);
+#else
+        // Removing this guard helps Clang but inhibits GCC's loop
+        // optimization. Retain the established path on other targets.
         if (detail::fp::isnan(ahi) || detail::fp::isnan(bhi))
             return false;
-
         return ahi == bhi && alo == blo;
+#endif
     }
 
     BL_FORCE_INLINE constexpr bool compare_unordered(double ahi, double alo, double bhi, double blo) noexcept

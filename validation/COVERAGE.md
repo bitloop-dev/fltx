@@ -43,10 +43,10 @@ public call and return-type contracts.
 |---|---|---|---|---|---|
 | fdd/fqd storage and value construction, assignment, scalar/integer and cross-precision conversion | fdd/fqd | `contracts/core.cpp` | CE: `constexpr/core.cpp`, Boolean assertions in `contracts/core.cpp`; O: `contracts/overloads.cpp`, `contracts/overload_matrix.cpp` | — | Covers every fundamental arithmetic type, explicit narrowing, implicit widening, exact 64-bit boundaries, low-limb integer truncation, signed zero, `long double`, aggregate storage, both cross-precision directions, and bitwise Boolean conversion of zeros, subnormals, infinities and NaNs in strict/fast-math modes |
 | unary, binary and compound `+ - * /` | fdd/fqd | `contracts/core.cpp` | CE: `constexpr/core.cpp`, `constexpr/accuracy.cpp`; CA: all; O: `contracts/overloads.cpp` | A: f32/f64/fdd/fqd; B: fdd/fqd | Every distinct scalar category and cross-precision route is instantiated; runtime fast-math waives NaN, infinity, and signed-zero guarantees for basic fdd/fqd arithmetic while genuine constant evaluation remains checked |
-| comparison, `<=>`, unordered NaN behaviour | fdd/fqd | `contracts/core.cpp` | CE: `constexpr/core.cpp` | B: six fdd/fqd relational operators | |
+| comparison, `<=>`, unordered NaN behaviour | fdd/fqd | `contracts/core.cpp` | CE: `constexpr/core.cpp`, six-operator matrix in `contracts/core.cpp` | B: six fdd/fqd relational operators | Runtime and constexpr pairwise ordering includes signed zeros, infinities, NaNs, and equal heads with distinct tails |
 | `approx_eq` and parity tolerances | same-precision f32/f64/fdd/fqd, including fqd expressions | `contracts/approx_comparison.cpp` | CE: default and custom relative-threshold cases; O: accepted same-precision and rejected mixed/four-argument calls | — | Covers named defaults, native runtime/constexpr math parity, scaling, signed zero, infinities, NaNs, invalid tolerances, symmetry, exact threshold boundaries, and mixed expression shapes |
 | classification, signed zero, subnormals, infinities and NaNs | all | `contracts/core.cpp` | CE: `constexpr/core.cpp` for fdd/fqd | — | Includes unordered comparisons |
-| `abs`, `fabs`, `sqr`, `clamp`, `recip` | fdd/fqd | `contracts/math.cpp` | CE: `abs`, `clamp`, `recip`; CA: all except `clamp`; O: complete type matrix | A: all except `clamp`; B: fdd/fqd helpers | `fabs` and `sqr` are instantiated as constexpr-capable APIs |
+| `abs`, `fabs`, `sqr`, `clamp`, `recip` | fdd/fqd | `contracts/math.cpp` | CE: `abs`, `clamp`, `recip`; CA: all except `clamp`; O: complete type matrix | A: all except `clamp`; B: fdd/fqd helpers | `fabs` and `sqr` are instantiated as constexpr-capable APIs; dd reciprocal exact-power contracts include exponents ±1000 |
 | aliases, concepts, `value_t`, `storage_t`, rank, `common_float_type_t`, `FloatType` | all | `contracts/core.cpp` | O: `contracts/overloads.cpp`, `contracts/overload_matrix.cpp`, `standard/cxx_standard_contract.cpp`, `contracts/expressions.cpp` | — | Includes cv/ref normalization, value/storage mappings before scalar definitions, idempotence and cross-normalization, unrelated-type passthrough, every fqd expression node, both expression policies in C++20/C++23, and every precision-rank boundary |
 | `numeric_limits`, `eps`, `highest`, `std::numbers` | fdd/fqd storage/value | `contracts/core.cpp` | compile-time forwarding assertions | — | Covers nominal 106/212-bit epsilon, normal/subnormal range, exponent metadata, finite extrema, denormal policy, and constants; sparse arithmetic storage remains unrestricted |
 | `std::hash` | fdd/fqd storage/value | `contracts/core.cpp` | — | — | Signed zero, every limb, storage/value agreement, unordered containers, and deterministic infinity/NaN hashing |
@@ -99,7 +99,7 @@ ownership.
 |---|---|---|---|---|---|---|
 | `abs`, `fabs`, `sqr`, `recip`, `fmin`, `fmax`, `fdim`, `copysign`, `clamp` | `contracts/math.cpp` (all types) | `abs`, `clamp`, `recip` | all except `clamp` | complete matrix | all except `clamp` | fdd/fqd helpers |
 | `min`, `max`, `minmax`, mixed `clamp`, `lerp`, `midpoint` | `contracts/math.cpp`, `contracts/expressions.cpp`: ties, NaNs, finite extremes, subnormals, interpolation bounds/monotonicity, exact 64-bit selection/midpoints; `min`/`max` initializer lists including mixed expression shapes and owning results | `constexpr/core.cpp`: expression calls, initializer lists, exact values, extremes/subnormals | — | mixed native/storage/value/expression return types, including `min`/`max` lists | — | — |
-| `floor`, `ceil`, `trunc`, `round`, `roundeven` | `contracts/math.cpp` (all types) | yes | all types | complete matrix | all types | fdd/fqd |
+| `floor`, `ceil`, `trunc`, `round`, `roundeven` | `contracts/math.cpp` (all types), including runtime/constexpr tails around positive and negative `round` ties, integral heads, large heads and signed zero | yes | all types | complete matrix | all types | fdd/fqd |
 | `lround`, `llround` | `contracts/math.cpp` | yes | all types | complete matrix | all types | fdd/fqd |
 | `round_decimals`, `round_significant` | `contracts/math.cpp` | yes | all types | complete matrix | all types | fdd/fqd |
 | `fma` | `contracts/math.cpp`, `contracts/edge_cases.cpp`, `package/consumer.cpp` | arithmetic corpus | all types | complete mixed-rank matrix | all types | yes |
@@ -237,6 +237,12 @@ Accuracy uses the same samples, domains, seed, and 400-digit MPFR result for
 every registered implementation. It records 127 FLTX and 118 Boost rows per
 precision and, when enabled, 87 fdd or 91 fqd qdpp rows and 107 TLFloat
 rows. These counts are asserted by the internal metrics manifest.
+
+`metrics/_internal/test_tools.py` also owns operation-filter orchestration:
+exact selections preserve each operation's domain and implementation manifest,
+isolate reusable evidence, reject filtered publication, and pass through both
+consumer modes and native baselines. The same host matrix includes all twelve
+release presets; executable performance coverage depends on native host access.
 Parse accuracy uses the original exact decimal value rather than a
 format-rounded surrogate. Matched bits therefore retain the same numerical
 meaning across expansion and IEEE representations; exact-sample ceilings and

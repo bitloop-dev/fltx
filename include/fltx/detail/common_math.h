@@ -81,6 +81,12 @@ BL_FORCE_INLINE constexpr double log1p(double x) noexcept
 
 BL_FORCE_INLINE constexpr double round_nearest_away_from_zero(double x) noexcept
 {
+#if !defined(__MINGW32__) || !defined(__GNUC__) || defined(__clang__)
+    // MinGW GCC is faster with the portable scalar rounding below.
+    if (!bl::detail::is_constant_evaluated())
+        return std::round(x);
+#endif
+
     if (iszero_or_inf_or_nan(x))
         return x;
 
@@ -265,6 +271,33 @@ template<typename SignedInt> BL_FORCE_INLINE constexpr SignedInt to_signed_integ
         return 0;
 
     return static_cast<SignedInt>(x);
+}
+
+// Seed with the first selected power, avoiding a multiplication by one.
+// Callers supply their existing range and special-value policies.
+template<auto Square, auto Multiply, class Value, class Unsigned>
+BL_FORCE_INLINE constexpr Value powi_nonnegative(
+    Value base, Unsigned exp) noexcept
+{
+    if (exp == Unsigned{ 0 })
+        return Value{ 1.0 };
+    if (exp == Unsigned{ 3 })
+        return Multiply(Square(base), base);
+
+    while ((exp & Unsigned{ 1 }) == Unsigned{ 0 })
+    {
+        base = Square(base);
+        exp >>= 1;
+    }
+
+    Value result = base;
+    while ((exp >>= 1) != Unsigned{ 0 })
+    {
+        base = Square(base);
+        if ((exp & Unsigned{ 1 }) != Unsigned{ 0 })
+            result = Multiply(result, base);
+    }
+    return result;
 }
 
 template<class Value> BL_FORCE_INLINE constexpr Value powi_by_squaring(Value base, std::int64_t exp)

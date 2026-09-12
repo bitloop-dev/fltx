@@ -48,6 +48,7 @@ __pycache__/
 validation/metrics/**/.staging/
 validation/metrics/**/*.lock
 validation/metrics/_unversioned/
+validation/metrics/benchmark_hosts.local.json
 
 # project
 .vs

@@ -62,7 +62,7 @@ namespace bl {
 
 [[nodiscard]] BL_FORCE_INLINE constexpr fdd round(const fdd_s& a)
 {
-#if defined(_MSC_VER) && !defined(__clang__)
+#if (defined(_MSC_VER) && !defined(__clang__)) || (defined(__APPLE__) && defined(__aarch64__))
     return detail::_dd_impl::round_nearest_away_from_zero(a);
 #else
     BL_CONSTEXPR_RUNTIME_DISPATCH(

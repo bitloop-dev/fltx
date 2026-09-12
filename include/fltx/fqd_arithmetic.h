@@ -166,8 +166,8 @@ namespace bl {
 [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s sqr(const fqd_s& a) noexcept
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
-        detail::_qd::mul_canonical_inline(a, a),
-        detail::_qd_runtime::mul_canonical(a, a)
+        detail::_qd::sqr_canonical_inline(a),
+        detail::_qd_runtime::sqr_canonical(a)
     );
 }
 

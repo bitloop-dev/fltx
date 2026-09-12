@@ -277,6 +277,69 @@ class SourceFingerprintTests(unittest.TestCase):
 
 
 class ManifestTests(unittest.TestCase):
+    def test_operation_selection_normalizes_order_and_duplicates(self) -> None:
+        for empty in (None, (), []):
+            self.assertEqual(manifest.normalize_operations(empty), ())
+        self.assertEqual(
+            manifest.normalize_operations(iter(("sin", "add", "sin", "sincos"))),
+            ("add", "sin", "sincos"),
+        )
+
+    def test_operation_names_are_exact_and_unknown_names_are_rejected(self) -> None:
+        for unknown in ("SIN", "si", "sin*", " sin", "sin ", "arithmetic", ""):
+            with self.subTest(unknown=unknown), self.assertRaisesRegex(
+                ValueError, "unknown metrics operations",
+            ):
+                manifest.normalize_operations(("add", unknown))
+
+    def test_selected_manifests_keep_every_domain_and_supported_implementation(self) -> None:
+        expected = frozenset({
+            ("arithmetic", "add", "general"),
+            ("arithmetic", "add", "subnormal"),
+            ("trigonometric", "sin", "moderate"),
+            ("trigonometric", "sin", "argument_reduction"),
+            ("trigonometric", "sin", "quadrant_boundaries"),
+            ("io", "to_chars", "moderate"),
+            ("io", "to_chars", "wide_exponent"),
+        })
+        for precision in ("dd", "qd"):
+            accuracy = manifest.accuracy_manifest(precision, qdpp=True, tlfloat=True)
+            benchmark = manifest.benchmark_manifest(precision, qdpp=True, tlfloat=True)
+            for implementation, rows in accuracy.items():
+                with self.subTest(precision=precision, implementation=implementation):
+                    selected = expected if implementation in ("fltx", "qdpp") else frozenset(
+                        row for row in expected if row[1] != "to_chars"
+                    )
+                    self.assertEqual(
+                        manifest.select_operations(rows, ("sin", "to_chars", "add", "sin")),
+                        selected,
+                    )
+                    self.assertEqual(
+                        manifest.select_operations(benchmark[implementation], ("sin", "to_chars", "add")),
+                        frozenset(row[:2] for row in selected),
+                    )
+                    self.assertEqual(manifest.select_operations(iter(rows)), rows)
+            self.assertEqual(
+                manifest.select_operations(accuracy["fltx"], ("nextafter", "sincos")),
+                frozenset(),
+            )
+            self.assertEqual(
+                manifest.select_operations(benchmark["qdpp"], ("nextafter",)),
+                frozenset(),
+            )
+
+    def test_operation_keys_are_stable_bounded_and_selection_specific(self) -> None:
+        self.assertEqual(manifest.operation_key(("sin", "add", "sin")), "add+sin")
+        self.assertNotEqual(manifest.operation_key(("sin",)), manifest.operation_key(("sincos",)))
+        all_names = tuple(sorted({name for _, name in manifest.EXPECTED_BENCHMARK["dd"]}))
+        first = manifest.operation_key(all_names)
+        second = manifest.operation_key(all_names[:-1])
+        self.assertEqual(first, manifest.operation_key(tuple(reversed(all_names)) + all_names))
+        self.assertLessEqual(len(first), 64)
+        self.assertLessEqual(len(second), 64)
+        self.assertEqual(first[:32], second[:32])
+        self.assertNotEqual(first, second)
+
     def test_operation_families_match_the_public_metrics_taxonomy(self) -> None:
         operations = manifest.EXPECTED_BENCHMARK["dd"]
         arithmetic = {
@@ -613,6 +676,7 @@ class ValidationTests(unittest.TestCase):
             "--output-root PATH",
             "--force-rerun",
             "--consumer-mode {strict,fastmath,all}",
+            "--operation NAME",
         ):
             self.assertIn(expected, help_text)
         self.assertNotIn("--sample-mode", help_text)
@@ -633,6 +697,7 @@ class ValidationTests(unittest.TestCase):
             "--output-root PATH",
             "--force-rerun",
             "--consumer-mode {strict,fastmath,all}",
+            "--operation NAME",
         ):
             self.assertIn(expected, help_text)
         self.assertNotIn("--sample-mode", help_text)
@@ -941,6 +1006,7 @@ class ValidationTests(unittest.TestCase):
             publish=True,
             force_rerun=False,
             consumer_mode="all",
+            operations=(),
         )
 
     def test_compatible_evidence_handoff_reuses_the_existing_run(self) -> None:
@@ -1238,6 +1304,602 @@ class ValidationTests(unittest.TestCase):
                 ]
                 counts = [first_positions.count(index) for index in range(count)]
                 self.assertLessEqual(max(counts) - min(counts), 1)
+
+
+class OperationFilterTests(unittest.TestCase):
+    def test_filtered_report_rebuild_cannot_write_outside_build(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            result, _, _ = self.run_filtered_metrics(root, ("cos", "sin"))
+            target = build_tables.Target("windows", "x86_64", "MSVC")
+            with mock.patch.object(
+                report_pipeline, "__file__",
+                str(root / "validation/metrics/_internal/report_pipeline.py"),
+            ):
+                for output in (root / "validation/metrics/generated", root / "reports"):
+                    with self.subTest(output=output), self.assertRaisesRegex(
+                        run_metrics.MetricsError, "filtered reports must stay under build",
+                    ):
+                        report_pipeline.rebuild(Path(result["input_root"]), output, (target,))
+                    self.assertFalse(output.exists())
+                output = root / "build/reports"
+                reports = report_pipeline.rebuild(Path(result["input_root"]), output, (target,))
+                self.assertTrue(reports)
+                self.assertTrue(all(path.is_relative_to(output) and path.is_file() for path in reports))
+
+    @staticmethod
+    def write_rows(path, fields, rows) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", newline="", encoding="utf-8") as stream:
+            writer = csv.DictWriter(stream, fieldnames=fields)
+            writer.writeheader()
+            writer.writerows(rows)
+
+    @staticmethod
+    def selected_rows(
+        precision, operations, *, consumer_mode="strict", qdpp=True, tlfloat=True,
+    ):
+        """Build evidence from the full manifests, independently of select_operations."""
+        accuracy, benchmark = [], []
+        implementations = manifest.enabled_implementations(precision, qdpp=qdpp, tlfloat=tlfloat)
+        accuracy_manifest = manifest.accuracy_manifest(precision, qdpp=qdpp, tlfloat=tlfloat)
+        benchmark_manifest = manifest.benchmark_manifest(precision, qdpp=qdpp, tlfloat=tlfloat)
+        for identity in implementations:
+            if consumer_mode == "fastmath" and identity.id != "fltx":
+                continue
+            fields = {
+                "precision": precision,
+                "implementation": identity.id,
+                "implementation_short": identity.short_label,
+                "implementation_label": identity.label,
+            }
+            for group, operation, domain in sorted(accuracy_manifest[identity.id]):
+                if operation in operations:
+                    accuracy.append({
+                        **accuracy_row(
+                            "fltx" if identity.id == "fltx" else "cppdd",
+                            group=group, operation=operation, domain=domain,
+                        ),
+                        **fields,
+                    })
+            for group, operation in sorted(benchmark_manifest[identity.id]):
+                if operation in operations:
+                    benchmark.append({
+                        **benchmark_row(
+                            group=group, operation=operation,
+                            ns=30 if identity.id == "fltx" else 60,
+                            ratio=None if identity.id == "fltx" else 2,
+                        ),
+                        **fields,
+                    })
+        order = {identity.id: index for index, identity in enumerate(implementations)}
+        # Runners emit each operation's implementations together. A competitor
+        # unsupported by the first operation can first appear much later.
+        benchmark.sort(key=lambda row: (row["group"], row["operation"], order[row["implementation"]]))
+        return accuracy, benchmark
+
+    def run_filtered_metrics(
+        self, root, operations, *, consumer_mode="strict", compiler="MSVC", output_root=None,
+    ):
+        """Run the real merge, transaction, and metadata paths with fake C++ output."""
+        selected = tuple(sorted(set(operations)))
+        configuration = ValidationTests.configuration_banner()
+        configuration["harness"] = {"qdpp": "on", "tlfloat": "on"}
+        configuration["consumer"]["fast-math"] = "on" if consumer_mode == "fastmath" else "off"
+        if compiler == "ClangCL":
+            configuration["build"]["compiler-id"] = "Clang"
+        identity = source_fingerprint.SourceIdentity(revision="rev", fingerprint=FINGERPRINT)
+        result_file = root / "build" / "result.json"
+        calls = []
+
+        def fake_run(command, runner_name, **kwargs):
+            precision = command[command.index("--precision") + 1]
+            calls.append((runner_name, precision))
+            self.assertEqual(
+                [command[index + 1] for index, value in enumerate(command) if value == "--operation"],
+                list(selected),
+            )
+            accuracy, benchmark = self.selected_rows(precision, selected, consumer_mode=consumer_mode)
+            rows = accuracy if runner_name == "accuracy" else benchmark
+            for row in rows:
+                row["run_id"] = command[command.index("--run-id") + 1]
+            self.write_rows(
+                Path(command[command.index("--output") + 1]),
+                run_metrics.ACCURACY_FIELDS if runner_name == "accuracy" else run_metrics.BENCHMARK_FIELDS,
+                rows,
+            )
+            return configuration, 0
+
+        with (
+            mock.patch.object(run_metrics, "__file__", str(root / "validation/metrics/_internal/run_metrics.py")),
+            mock.patch.object(run_metrics, "source_identity", return_value=identity),
+            mock.patch.object(run_metrics, "_run_provenance", return_value={"host": {}, "executables": {}}),
+            mock.patch.object(run_metrics, "_preflight_runners", return_value=configuration),
+            mock.patch.object(run_metrics, "_run", side_effect=fake_run),
+            mock.patch.object(run_metrics, "merge_precision", wraps=run_metrics.merge_precision) as merge,
+            redirect_stdout(io.StringIO()),
+            redirect_stderr(io.StringIO()) as errors,
+        ):
+            status = run_metrics.main([
+                "--accuracy", "accuracy.exe", "--benchmark", "benchmark.exe",
+                "--consumer-mode", consumer_mode, "--sample-mode", "standard",
+                "--result-file", str(result_file),
+                *(["--output-root", str(output_root)] if output_root else []),
+                *(value for operation in operations for value in ("--operation", operation)),
+            ])
+        self.assertEqual(status, 0, errors.getvalue())
+        self.assertEqual(merge.call_count, 2)
+        for call in merge.call_args_list:
+            self.assertEqual(call.kwargs["operations"], selected)
+        result = json.loads(result_file.read_text(encoding="utf-8"))
+        self.assertEqual(result["operations"], list(selected))
+        return result, configuration, calls
+
+    def test_repeatable_runner_arguments_are_normalized(self) -> None:
+        for module in (run_metrics, run_native_accuracy):
+            with self.subTest(module=module.__name__):
+                args = module.parse_args([
+                    "--accuracy", "accuracy.exe", "--operation", "sin",
+                    "--operation", "add", "--operation", "sin",
+                ])
+                self.assertEqual(args.operations, ("add", "sin"))
+                self.assertEqual(module.parse_args(["--accuracy", "accuracy.exe"]).operations, ())
+
+    def test_unknown_public_operations_fail_before_preset_resolution_or_build(self) -> None:
+        for operation in ("sine", "SIN", "si", "sin*", " sin"):
+            with (
+                self.subTest(operation=operation),
+                mock.patch.object(preset_pipeline, "resolve_preset") as resolve,
+                mock.patch.object(preset_pipeline, "existing_runner_artifacts") as artifacts,
+                mock.patch.object(preset_pipeline, "_run") as run,
+                redirect_stderr(io.StringIO()) as errors,
+            ):
+                status = preset_pipeline.main(Path("source"), [
+                    "--preset", "native-release", "--operation", "add", "--operation", operation,
+                ])
+                self.assertEqual(status, 1)
+                self.assertIn("unknown metrics operations", errors.getvalue())
+                resolve.assert_not_called()
+                artifacts.assert_not_called()
+                run.assert_not_called()
+
+    def test_unknown_runner_operations_fail_before_preflight(self) -> None:
+        for module in (run_metrics, run_native_accuracy):
+            with (
+                self.subTest(module=module.__name__),
+                mock.patch.object(module, "_preflight_runners") as preflight,
+                mock.patch.object(module, "_run") as run,
+                redirect_stderr(io.StringIO()) as errors,
+                self.assertRaises(SystemExit) as exit_status,
+            ):
+                module.main(["--accuracy", "accuracy.exe", "--operation", "sin*"])
+            self.assertEqual(exit_status.exception.code, 2)
+            self.assertIn("unknown metrics operations", errors.getvalue())
+            preflight.assert_not_called()
+            run.assert_not_called()
+
+    def test_public_harness_baseline_selection_is_rejected_before_build(self) -> None:
+        for operations in (("mt19937_64",), ("sin", "mt19937_64")):
+            with (
+                self.subTest(operations=operations),
+                mock.patch.object(preset_pipeline, "resolve_preset") as resolve,
+                mock.patch.object(preset_pipeline, "_run") as run,
+                redirect_stderr(io.StringIO()) as errors,
+            ):
+                status = preset_pipeline.main(Path("source"), [
+                    "--preset", "native-release", "--consumer-mode", "all",
+                    *(value for operation in operations for value in ("--operation", operation)),
+                ])
+                self.assertEqual(status, 1)
+                self.assertIn("harness baseline excluded from reports", errors.getvalue())
+                self.assertIn("internal run_metrics.py", errors.getvalue())
+                resolve.assert_not_called()
+                run.assert_not_called()
+        args = run_metrics.parse_args(["--benchmark", "benchmark.exe", "--operation", "mt19937_64"])
+        self.assertEqual(args.operations, ("mt19937_64",))
+
+    def test_accuracy_only_runners_reject_benchmark_only_selection_before_preflight(self) -> None:
+        for module in (run_metrics, run_native_accuracy):
+            for operations in (("nextafter",), ("sincos",), ("nextafter", "sincos")):
+                with (
+                    self.subTest(module=module.__name__, operations=operations),
+                    mock.patch.object(module, "_preflight_runners") as preflight,
+                    mock.patch.object(module, "_run") as run,
+                    redirect_stderr(io.StringIO()) as errors,
+                    self.assertRaises(SystemExit) as exit_status,
+                ):
+                    module.main([
+                        "--accuracy", "accuracy.exe",
+                        *(value for operation in operations for value in ("--operation", operation)),
+                    ])
+                self.assertEqual(exit_status.exception.code, 2)
+                self.assertRegex(errors.getvalue(), "no (native )?accuracy coverage")
+                preflight.assert_not_called()
+                run.assert_not_called()
+
+    def test_filtered_runner_output_guards_reject_paths_outside_build(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for module in (run_metrics, run_native_accuracy):
+                for output in (root / "validation/metrics/data", root / "build-other", root / "build/../outside"):
+                    with (
+                        self.subTest(module=module.__name__, output=output),
+                        mock.patch.object(module, "__file__", str(root / "validation/metrics/_internal" / f"{module.__name__}.py")),
+                        mock.patch.object(module, "source_identity", return_value=source_fingerprint.SourceIdentity(revision="rev", fingerprint=FINGERPRINT)),
+                        mock.patch.object(module, "_preflight_runners") as preflight,
+                        mock.patch.object(module, "_run") as run,
+                        redirect_stderr(io.StringIO()) as errors,
+                    ):
+                        status = module.main([
+                            "--accuracy", "accuracy.exe", "--operation", "sin", "--output-root", str(output),
+                        ])
+                        self.assertEqual(status, 1)
+                        self.assertIn("must stay under build/", errors.getvalue())
+                        preflight.assert_not_called()
+                        run.assert_not_called()
+                        self.assertFalse(output.exists())
+
+    def test_filtered_publication_fails_before_build_for_every_profile(self) -> None:
+        for profile in ("--quick", "--standard", "--full"):
+            with (
+                self.subTest(profile=profile),
+                mock.patch.object(preset_pipeline, "resolve_preset") as resolve,
+                mock.patch.object(preset_pipeline, "_run") as run,
+                redirect_stderr(io.StringIO()) as errors,
+            ):
+                status = preset_pipeline.main(Path("source"), [
+                    "--preset", "native-release", profile, "--publish", "--operation", "sin",
+                ])
+                self.assertEqual(status, 1)
+                self.assertIn("--publish cannot be combined with --operation", errors.getvalue())
+                resolve.assert_not_called()
+                run.assert_not_called()
+        with redirect_stderr(io.StringIO()) as errors, self.assertRaises(SystemExit):
+            run_metrics.parse_args([
+                "--accuracy", "accuracy.exe", "--benchmark", "benchmark.exe",
+                "--canonical-publication", "--operation", "sin",
+            ])
+        self.assertIn("operation-filtered runs cannot be published", errors.getvalue())
+
+    def test_public_filtered_paths_isolate_selections_beneath_build(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            for workflow in ("quick", "standard", "full"):
+                for custom in (None, root / "build" / "custom"):
+                    with self.subTest(workflow=workflow, custom=custom):
+                        paths = preset_pipeline.metrics_paths(root, workflow, custom, operations=("sin", "add", "sin"))
+                        expected = (custom or root / "build" / "metrics" / workflow) / "operations" / "add+sin"
+                        self.assertEqual(paths, preset_pipeline.MetricsPaths(expected / "data", expected / "generated"))
+                        self.assertEqual(paths, preset_pipeline.metrics_paths(root, workflow, custom, operations=("add", "sin")))
+                        self.assertNotEqual(paths, preset_pipeline.metrics_paths(root, workflow, custom, operations=("cos", "sin")))
+                        self.assertNotEqual(paths, preset_pipeline.metrics_paths(root, workflow, custom))
+                for outside in (root / "validation/metrics", root / "staging", root / "build-other", root / "build/../outside"):
+                    with self.subTest(workflow=workflow, outside=outside), self.assertRaisesRegex(
+                        preset_pipeline.PipelineError, "must stay under build/",
+                    ):
+                        preset_pipeline.metrics_paths(root, workflow, outside, operations=("sin",))
+
+    def test_selected_completeness_requires_every_domain_and_implementation(self) -> None:
+        operations = ("add", "fmod", "sin", "to_chars")
+        for precision in ("dd", "qd"):
+            for mode in ("strict", "fastmath"):
+                for qdpp, tlfloat in ((False, False), (True, False), (False, True), (True, True)):
+                    accuracy, benchmark = self.selected_rows(precision, operations, consumer_mode=mode, qdpp=qdpp, tlfloat=tlfloat)
+                    kwargs = dict(
+                        precision=precision, accuracy_path=Path("accuracy.csv"), benchmark_path=Path("benchmark.csv"),
+                        qdpp_enabled=qdpp, tlfloat_enabled=tlfloat, consumer_mode=mode, operations=operations,
+                    )
+                    run_metrics._validate_completeness(accuracy, benchmark, **kwargs)
+                    for phase, rows in (("accuracy", accuracy), ("benchmark", benchmark)):
+                        for index, row in enumerate(rows):
+                            with self.subTest(precision=precision, mode=mode, qdpp=qdpp, tlfloat=tlfloat, phase=phase, missing=row):
+                                reduced = rows[:index] + rows[index + 1:]
+                                with self.assertRaisesRegex(run_metrics.MetricsError, "manifest"):
+                                    run_metrics._validate_completeness(
+                                        reduced if phase == "accuracy" else accuracy,
+                                        reduced if phase == "benchmark" else benchmark,
+                                        **kwargs,
+                                    )
+
+    def test_selected_completeness_rejects_extra_operations_domains_and_implementations(self) -> None:
+        operations = ("add", "sin")
+        for precision in ("dd", "qd"):
+            accuracy, benchmark = self.selected_rows(precision, operations)
+            for phase, rows in (("accuracy", accuracy), ("benchmark", benchmark)):
+                changes = [{"group": "trigonometric", "operation": "cos"}, {"implementation": "unknown"}]
+                if phase == "accuracy":
+                    changes.append({"domain": "invented_domain"})
+                for change in changes:
+                    with self.subTest(precision=precision, phase=phase, change=change), self.assertRaisesRegex(
+                        run_metrics.MetricsError, "manifest",
+                    ):
+                        extended = [*rows, {**rows[0], **change}]
+                        run_metrics._validate_completeness(
+                            extended if phase == "accuracy" else accuracy,
+                            extended if phase == "benchmark" else benchmark,
+                            precision=precision, accuracy_path=Path("accuracy.csv"), benchmark_path=Path("benchmark.csv"),
+                            qdpp_enabled=True, tlfloat_enabled=True, operations=operations,
+                        )
+
+    def test_filtered_metrics_main_forwards_both_phases_and_writes_selected_metadata(self) -> None:
+        for mode in ("strict", "fastmath"):
+            for operations in (("sin", "add", "sin"), ("to_chars",)):
+                with self.subTest(mode=mode, operations=operations), tempfile.TemporaryDirectory() as temporary:
+                    result, _, calls = self.run_filtered_metrics(Path(temporary), operations, consumer_mode=mode)
+                    self.assertCountEqual(calls, [(phase, precision) for phase in ("accuracy", "benchmark") for precision in ("dd", "qd")])
+                    self.assertEqual([phase for phase, _ in calls], ["accuracy", "accuracy", "benchmark", "benchmark"])
+                    metadata = json.loads(Path(result["metadata"]).read_text(encoding="utf-8"))
+                    self.assertEqual(metadata["operations"], sorted(set(operations)))
+                    dataset = build_tables.load(Path(result["input_root"]), [build_tables.Target("windows", "x86_64", "MSVC")], mode)
+                    self.assertEqual({key[3] for key in dataset.canonical}, set(operations))
+                    for precision in ("dd", "qd"):
+                        expected = ["fltx"] if mode == "fastmath" else ["fltx", "qdpp"] if operations == ("to_chars",) else [item.id for item in manifest.IMPLEMENTATIONS[precision]]
+                        self.assertEqual([item["id"] for item in metadata["implementations"][precision]], expected)
+
+    def test_benchmark_only_metrics_skip_accuracy_and_load_selected_reports(self) -> None:
+        for mode in ("strict", "fastmath"):
+            for operations in (("nextafter",), ("sincos",), ("sincos", "nextafter", "sincos")):
+                with self.subTest(mode=mode, operations=operations), tempfile.TemporaryDirectory() as temporary:
+                    result, _, calls = self.run_filtered_metrics(Path(temporary), operations, consumer_mode=mode)
+                    self.assertEqual(calls, [("benchmark", "dd"), ("benchmark", "qd")])
+                    input_root = Path(result["input_root"])
+                    target = build_tables.Target("windows", "x86_64", "MSVC")
+                    dataset = build_tables.load(input_root, [target], mode)
+                    self.assertEqual(dataset.accuracy, {})
+                    self.assertEqual({key[3] for key in dataset.canonical}, set(operations))
+                    for row in dataset.canonical.values():
+                        self.assertEqual(row["worst_bits"], "")
+                        self.assertEqual(row["domains_total"], "")
+                        self.assertEqual(row["special_support"], "-")
+                    if mode == "strict" and len(set(operations)) == 2:
+                        for precision in ("dd", "qd"):
+                            benchmark_path = input_root / "windows/x86_64/detail" / f"MSVC_{precision}_benchmark.csv"
+                            rows = run_metrics._read_csv(benchmark_path, run_metrics.BENCHMARK_FIELDS)
+                            self.assertEqual(list(dict.fromkeys(row["implementation"] for row in rows)), ["fltx", "cppdd" if precision == "dd" else "mpfr64", "tlfloat", "qdpp"])
+                            self.assertEqual(dataset.implementations[(target, precision)], tuple(item.id for item in manifest.IMPLEMENTATIONS[precision]))
+
+    def test_empty_accuracy_requires_the_exact_benchmark_only_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            accuracy_path, benchmark_path, output = (root / name for name in ("accuracy.csv", "benchmark.csv", "summary.csv"))
+            self.write_rows(accuracy_path, run_metrics.ACCURACY_FIELDS, [])
+            _, benchmark = self.selected_rows("dd", ("nextafter", "sincos"))
+            self.write_rows(benchmark_path, run_metrics.BENCHMARK_FIELDS, benchmark)
+            kwargs = dict(run_id="run", revision="rev", fingerprint=FINGERPRINT, precision="dd", qdpp_enabled=True, tlfloat_enabled=True, require_complete=False)
+            run_metrics.merge_precision(accuracy_path, benchmark_path, output, operations=("nextafter", "sincos"), **kwargs)
+            for operations in ((), ("nextafter",), ("sincos",), ("add", "nextafter", "sincos")):
+                with self.subTest(operations=operations), self.assertRaisesRegex(run_metrics.MetricsError, "no rows|manifest"):
+                    run_metrics.merge_precision(accuracy_path, benchmark_path, output, operations=operations, **kwargs)
+            for altered in (benchmark[:-1], [*benchmark, {**benchmark[0], "operation": "nexttoward"}]):
+                self.write_rows(benchmark_path, run_metrics.BENCHMARK_FIELDS, altered)
+                with self.assertRaisesRegex(run_metrics.MetricsError, "manifest"):
+                    run_metrics.merge_precision(accuracy_path, benchmark_path, output, operations=("nextafter", "sincos"), **kwargs)
+
+    def test_filtered_merge_enforces_accuracy_manifest_without_require_complete(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            accuracy_path, benchmark_path, output = (root / name for name in ("accuracy.csv", "benchmark.csv", "summary.csv"))
+            accuracy, benchmark = self.selected_rows("dd", ("add", "sin"))
+            self.write_rows(benchmark_path, run_metrics.BENCHMARK_FIELDS, benchmark)
+            for changed in (accuracy[:-1], [*accuracy, {**accuracy[0], "domain": "invented_domain"}]):
+                self.write_rows(accuracy_path, run_metrics.ACCURACY_FIELDS, changed)
+                with self.assertRaisesRegex(run_metrics.MetricsError, "manifest"):
+                    run_metrics.merge_precision(
+                        accuracy_path, benchmark_path, output,
+                        run_id="run", revision="rev", fingerprint=FINGERPRINT, precision="dd",
+                        qdpp_enabled=True, tlfloat_enabled=True, operations=("add", "sin"),
+                    )
+                self.assertFalse(output.exists())
+
+    def test_selected_cache_is_reusable_only_for_the_same_selection(self) -> None:
+        for operations in (("add", "sin"), ("nextafter", "sincos")):
+            with self.subTest(operations=operations), tempfile.TemporaryDirectory() as temporary:
+                result, configuration, _ = self.run_filtered_metrics(Path(temporary), operations)
+                kwargs = dict(sample_mode="standard", platform="windows", architecture="x86_64", compiler="MSVC", fingerprint=FINGERPRINT, configuration=configuration, host={})
+                metadata_path = Path(result["metadata"])
+                self.assertEqual(run_metrics._validate_reusable_candidate(metadata_path, operations=operations, **kwargs), result)
+                for requested in ((), ("cos",), (*operations, "cos")):
+                    with self.subTest(requested=requested), self.assertRaisesRegex(run_metrics.MetricsError, "operation selection changed"):
+                        run_metrics._validate_reusable_candidate(metadata_path, operations=requested, **kwargs)
+                metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+                metadata.pop("operations")
+                metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+                with self.assertRaisesRegex(run_metrics.MetricsError, "operation selection changed"):
+                    run_metrics._validate_reusable_candidate(metadata_path, operations=operations, **kwargs)
+                with self.assertRaisesRegex(run_metrics.MetricsError, "no rows|manifest"):
+                    run_metrics._validate_reusable_candidate(metadata_path, **kwargs)
+
+    def test_report_validation_uses_selected_metadata_and_rejects_wrong_selection(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            result, _, _ = self.run_filtered_metrics(Path(temporary), ("add", "sin"))
+            metadata_path = Path(result["metadata"])
+            original = json.loads(metadata_path.read_text(encoding="utf-8"))
+            target = build_tables.Target("windows", "x86_64", "MSVC")
+            for operations in (["sin", "add", "sin"], None, [], ["add"], ["cos"], ["sin*"], [1], "sin"):
+                metadata = copy.deepcopy(original)
+                if operations is None:
+                    metadata.pop("operations")
+                else:
+                    metadata["operations"] = operations
+                metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+                with self.subTest(operations=operations):
+                    if operations == ["sin", "add", "sin"]:
+                        dataset = build_tables.load(Path(result["input_root"]), [target])
+                        self.assertEqual({key[3] for key in dataset.canonical}, {"add", "sin"})
+                    else:
+                        with self.assertRaisesRegex(run_metrics.MetricsError, "manifest|invalid operation selection"):
+                            build_tables.load(Path(result["input_root"]), [target])
+
+    def test_reports_reject_targets_with_different_operation_selections(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "build" / "combined"
+            self.run_filtered_metrics(root, ("add",), output_root=output)
+            self.run_filtered_metrics(root, ("sin",), compiler="ClangCL", output_root=output)
+            targets = [build_tables.Target("windows", "x86_64", compiler) for compiler in ("MSVC", "ClangCL")]
+            with self.assertRaisesRegex(run_metrics.MetricsError, "different operation selections"):
+                build_tables.load(output, targets)
+
+    def test_selected_report_rejects_missing_extra_or_reordered_implementation_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            result, _, _ = self.run_filtered_metrics(Path(temporary), ("nextafter", "sincos"))
+            metadata_path = Path(result["metadata"])
+            original = json.loads(metadata_path.read_text(encoding="utf-8"))
+            declared = original["implementations"]["dd"]
+            for changed in (declared[:-1], [*declared, {"id": "unknown"}], [declared[0], declared[2], declared[3], declared[1]]):
+                metadata = copy.deepcopy(original)
+                metadata["implementations"]["dd"] = changed
+                metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+                with self.subTest(changed=changed), self.assertRaisesRegex(run_metrics.MetricsError, "implementation order does not match"):
+                    build_tables.load(Path(result["input_root"]), [build_tables.Target("windows", "x86_64", "MSVC")])
+
+    @staticmethod
+    def native_rows(precision, operations):
+        return [
+            {
+                **accuracy_row(group=group, operation=operation, domain=domain),
+                "precision": precision,
+                "implementation": "native",
+                "implementation_short": "float" if precision == "f32" else "double",
+                "implementation_label": "native float" if precision == "f32" else "native double",
+            }
+            for group, operation, domain in sorted(manifest.EXPECTED_ACCURACY[precision])
+            if operation in operations
+        ]
+
+    def run_filtered_native(self, root, operations, *, consumer_mode="strict"):
+        configuration = ValidationTests.configuration_banner()
+        configuration["consumer"]["fast-math"] = "on" if consumer_mode == "fastmath" else "off"
+        provenance = {
+            "host": {field: "fixture" for field in run_metrics.HOST_FIELDS},
+            "executables": {"accuracy": {"path": "accuracy.exe", "sha256": FINGERPRINT, "wasm-sha256": "not-present"}},
+        }
+        result_file = root / "native_result.json"
+        commands = []
+
+        def fake_run(command, runner_name, **kwargs):
+            commands.append(command)
+            self.assertEqual(runner_name, "accuracy")
+            precision = command[command.index("--precision") + 1]
+            rows = self.native_rows(precision, operations)
+            for row in rows:
+                row["run_id"] = command[command.index("--run-id") + 1]
+            self.write_rows(Path(command[command.index("--output") + 1]), run_metrics.ACCURACY_FIELDS, rows)
+            return configuration, 0
+
+        with (
+            mock.patch.object(run_native_accuracy, "__file__", str(root / "validation/metrics/_internal/run_native_accuracy.py")),
+            mock.patch.object(run_native_accuracy, "source_identity", return_value=source_fingerprint.SourceIdentity(revision="rev", fingerprint=FINGERPRINT)),
+            mock.patch.object(run_native_accuracy, "_run_provenance", return_value=provenance),
+            mock.patch.object(run_native_accuracy, "_preflight_runners", return_value=configuration),
+            mock.patch.object(run_native_accuracy, "_run", side_effect=fake_run),
+            redirect_stdout(io.StringIO()),
+            redirect_stderr(io.StringIO()) as errors,
+        ):
+            status = run_native_accuracy.main([
+                "--accuracy", "accuracy.exe", "--sample-mode", "standard",
+                "--consumer-mode", consumer_mode, "--result-file", str(result_file),
+                *(value for operation in operations for value in ("--operation", operation)),
+            ])
+        self.assertEqual(status, 0, errors.getvalue())
+        result = json.loads(result_file.read_text(encoding="utf-8"))
+        return result, configuration, provenance, commands
+
+    def test_native_filtered_main_forwards_only_covered_names_and_records_the_full_selection(self) -> None:
+        operations = ("sin", "nextafter", "add", "to_chars", "sin")
+        for mode in ("strict", "fastmath"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                result, _, _, commands = self.run_filtered_native(root, operations, consumer_mode=mode)
+                self.assertEqual(len(commands), 2)
+                self.assertEqual([command[command.index("--precision") + 1] for command in commands], ["f32", "f64"])
+                for command in commands:
+                    self.assertEqual([command[index + 1] for index, value in enumerate(command) if value == "--operation"], ["add", "sin"])
+                    self.assertIn("--advisory", command)
+                self.assertEqual(result["operations"], ["add", "nextafter", "sin", "to_chars"])
+                self.assertTrue(Path(result["run_directory"]).is_relative_to((root / "build").resolve()))
+                metadata = json.loads(Path(result["metadata"]).read_text(encoding="utf-8"))
+                self.assertEqual(metadata["operations"], result["operations"])
+                self.assertEqual(set(metadata["outputs"]), {"f32_accuracy.csv", "f64_accuracy.csv"})
+
+    def test_native_selected_evidence_requires_every_native_domain(self) -> None:
+        operations = ("add", "sin")
+        expected_domains = {
+            ("arithmetic", "add", domain)
+            for domain in ("near_one", "moderate", "wide_exponent", "extreme_finite", "subnormal")
+        } | {("trigonometric", "sin", domain) for domain in ("moderate", "argument_reduction")}
+        with tempfile.TemporaryDirectory() as temporary:
+            evidence = Path(temporary) / "native.csv"
+            for precision in ("f32", "f64"):
+                rows = self.native_rows(precision, operations)
+                self.assertEqual({(row["group"], row["operation"], row["domain"]) for row in rows}, expected_domains)
+                kwargs = dict(precision=precision, run_id="run", revision="rev", fingerprint=FINGERPRINT, operations=operations)
+                self.write_rows(evidence, run_metrics.ACCURACY_FIELDS, rows)
+                run_native_accuracy._validate_accuracy_evidence(evidence, **kwargs)
+                for index in range(len(rows)):
+                    self.write_rows(evidence, run_metrics.ACCURACY_FIELDS, rows[:index] + rows[index + 1:])
+                    with self.subTest(precision=precision, missing=rows[index]), self.assertRaisesRegex(run_metrics.MetricsError, "native accuracy manifest mismatch"):
+                        run_native_accuracy._validate_accuracy_evidence(evidence, **kwargs)
+                for change in ({"domain": "general"}, {"group": "trigonometric", "operation": "cos"}):
+                    self.write_rows(evidence, run_metrics.ACCURACY_FIELDS, [*rows, {**rows[0], **change}])
+                    with self.subTest(precision=precision, extra=change), self.assertRaisesRegex(run_metrics.MetricsError, "native accuracy manifest mismatch"):
+                        run_native_accuracy._validate_accuracy_evidence(evidence, **kwargs)
+                self.write_rows(evidence, run_metrics.ACCURACY_FIELDS, [*rows, rows[0]])
+                with self.assertRaisesRegex(run_metrics.MetricsError, "duplicate"):
+                    run_native_accuracy._validate_accuracy_evidence(evidence, **kwargs)
+
+    def test_native_subset_cache_cannot_satisfy_full_or_different_selections(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            result, configuration, provenance, _ = self.run_filtered_native(Path(temporary), ("add", "sin"))
+            metadata_path = Path(result["metadata"])
+            kwargs = dict(sample_mode="standard", consumer_mode="strict", platform="windows", architecture="x86_64", compiler="MSVC", fingerprint=FINGERPRINT, configuration=configuration, host=provenance["host"])
+            output_root = Path(result["run_directory"]).parent
+            reusable, rejection = run_native_accuracy._find_reusable_run(output_root, operations=("add", "sin"), **kwargs)
+            self.assertEqual(reusable, result)
+            self.assertEqual(rejection, "")
+            for operations in ((), ("add",), ("cos", "sin"), ("add", "sin", "nextafter")):
+                with self.subTest(operations=operations):
+                    reusable, rejection = run_native_accuracy._find_reusable_run(output_root, operations=operations, **kwargs)
+                    self.assertIsNone(reusable)
+                    self.assertIn("operations mismatch", rejection)
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            metadata.pop("operations")
+            metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+            with self.assertRaisesRegex(run_metrics.MetricsError, "operations mismatch"):
+                run_native_accuracy._validate_reusable_candidate(metadata_path, operations=("add", "sin"), **kwargs)
+            with self.assertRaisesRegex(run_metrics.MetricsError, "native accuracy manifest mismatch"):
+                run_native_accuracy._validate_reusable_candidate(metadata_path, **kwargs)
+
+    def test_reordered_duplicate_selection_reuses_metrics_and_native_without_running(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            metrics, configuration, _ = self.run_filtered_metrics(root, ("add", "sin"))
+            native, native_configuration, provenance, _ = self.run_filtered_native(root, ("add", "sin"))
+            for module, result, config, run_provenance in (
+                (run_metrics, metrics, configuration, {"host": {}, "executables": {}}),
+                (run_native_accuracy, native, native_configuration, provenance),
+            ):
+                result_file = root / "reused.json"
+                with (
+                    self.subTest(module=module.__name__),
+                    mock.patch.object(module, "__file__", str(root / "validation/metrics/_internal" / f"{module.__name__}.py")),
+                    mock.patch.object(module, "source_identity", return_value=source_fingerprint.SourceIdentity(revision="rev", fingerprint=FINGERPRINT)),
+                    mock.patch.object(module, "_run_provenance", return_value=run_provenance),
+                    mock.patch.object(module, "_preflight_runners", return_value=config),
+                    mock.patch.object(module, "_run", side_effect=AssertionError("compatible evidence must skip runners")) as run,
+                    redirect_stdout(io.StringIO()) as output,
+                    redirect_stderr(io.StringIO()) as errors,
+                ):
+                    status = module.main([
+                        "--accuracy", "accuracy.exe",
+                        *(["--benchmark", "benchmark.exe"] if module is run_metrics else []),
+                        "--sample-mode", "standard", "--reuse-compatible", "--result-file", str(result_file),
+                        "--operation", "sin", "--operation", "add", "--operation", "sin",
+                    ])
+                    self.assertEqual(status, 0, errors.getvalue())
+                    run.assert_not_called()
+                    self.assertIn("reusing compatible", output.getvalue())
+                    self.assertEqual(json.loads(result_file.read_text(encoding="utf-8")), result)
 
 
 class RenderingTests(unittest.TestCase):
@@ -2841,7 +3503,11 @@ class PresetPipelineTests(unittest.TestCase):
             for value in presets["configurePresets"]
             if not value.get("hidden", False)
         }
-        self.assertEqual(configure, matrix | {"vs2026", "xcode"})
+        self.assertEqual(
+            configure,
+            matrix | {"vs2026", "xcode", "windows-x64-msvc-debug"},
+        )
+        self.assertTrue(all(name.endswith("-release") for name in matrix))
         build = {value["name"] for value in presets["buildPresets"]}
         tests = {value["name"] for value in presets["testPresets"]}
         self.assertTrue(matrix.issubset(build))
@@ -2883,28 +3549,44 @@ class PresetPipelineTests(unittest.TestCase):
             )
 
     def test_supported_presets_are_selected_by_host_and_architecture(self) -> None:
-        self.assertEqual(
-            supported_preset_pipeline.supported_presets("Windows", "AMD64"),
-            (
+        expected = {
+            ("Windows", "x86_64"): (
                 "windows-x64-msvc-release",
                 "windows-x64-clangcl-release",
                 "windows-x64-mingw-release",
                 "wasm32-emscripten-release",
             ),
-        )
-        self.assertEqual(
-            supported_preset_pipeline.supported_presets("Linux", "aarch64"),
-            (
+            ("Windows", "arm64"): (
+                "windows-arm64-msvc-release",
+                "windows-arm64-clangcl-release",
+            ),
+            ("Linux", "x86_64"): (
+                "linux-x64-gcc-release",
+                "linux-x64-clang-release",
+            ),
+            ("Linux", "arm64"): (
                 "linux-arm64-gcc-release",
                 "linux-arm64-clang-release",
             ),
-        )
-        self.assertEqual(
-            supported_preset_pipeline.supported_presets("Darwin", "arm64"),
-            (
+            ("Darwin", "x86_64"): (
+                "macos-x64-appleclang-release",
+            ),
+            ("Darwin", "arm64"): (
                 "macos-arm64-appleclang-release",
             ),
-        )
+        }
+        aliases = {
+            "x86_64": ("x86_64", "AMD64", "x64"),
+            "arm64": ("arm64", "ARM64", "aarch64"),
+        }
+        self.assertEqual(set(supported_preset_pipeline.SUPPORTED_PRESETS), set(expected))
+        for (system, architecture), presets in expected.items():
+            for machine in aliases[architecture]:
+                with self.subTest(system=system, machine=machine):
+                    self.assertEqual(
+                        supported_preset_pipeline.supported_presets(system, machine),
+                        presets,
+                    )
 
     def test_supported_presets_reject_an_unknown_host(self) -> None:
         with self.assertRaisesRegex(
@@ -2951,6 +3633,7 @@ class PresetPipelineTests(unittest.TestCase):
                     publish=False,
                     force_rerun=True,
                     consumer_mode="all",
+                    operations=(),
                 ),
                 mock.call(
                     root,
@@ -2960,6 +3643,7 @@ class PresetPipelineTests(unittest.TestCase):
                     publish=False,
                     force_rerun=True,
                     consumer_mode="all",
+                    operations=(),
                 ),
             ],
         )
@@ -2993,6 +3677,7 @@ class PresetPipelineTests(unittest.TestCase):
             publish=True,
             force_rerun=False,
             consumer_mode="strict",
+            operations=(),
         )
 
     def test_all_supported_pipeline_does_not_accept_a_preset(self) -> None:
@@ -3068,7 +3753,7 @@ class PresetPipelineTests(unittest.TestCase):
                 mock.patch.object(
                     report_pipeline.build_tables,
                     "load",
-                    return_value=mock.sentinel.dataset,
+                    return_value=mock.Mock(operations=()),
                 ),
                 mock.patch.object(
                     report_pipeline.build_overview,
@@ -3101,9 +3786,23 @@ class PresetPipelineTests(unittest.TestCase):
         self.assertEqual(all_modes.consumer_mode, "all")
 
     def test_pipeline_all_generates_both_local_layouts(self) -> None:
+        self.assert_pipeline_all()
+
+    def test_filtered_pipeline_all_forwards_selection_to_metrics_and_native(self) -> None:
+        self.assert_pipeline_all(("sin", "add", "sin"))
+
+    def test_benchmark_only_pipeline_all_skips_native(self) -> None:
+        self.assert_pipeline_all(("sincos", "nextafter", "sincos"), native=False)
+
+    def assert_pipeline_all(self, operations=(), *, native=True) -> None:
+        selected = sorted(set(operations))
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            input_root = root / "evidence"
+            expected_root = (
+                root.resolve() / "build" / "metrics" / "standard" / "operations" / "+".join(selected)
+                if selected else root.resolve() / "validation" / "metrics" / "_unversioned" / "standard"
+            )
+            input_root = expected_root / "data"
             commands: list[list[str]] = []
             environments: list[dict[str, str]] = []
             selection = preset_pipeline.PresetSelection(
@@ -3137,6 +3836,7 @@ class PresetPipelineTests(unittest.TestCase):
                             "target": "windows/x86_64/MSVC",
                             "input_root": str(input_root),
                             "metadata": "metadata.json",
+                            **({"operations": selected} if selected else {}),
                         }),
                         encoding="utf-8",
                     )
@@ -3168,6 +3868,7 @@ class PresetPipelineTests(unittest.TestCase):
                             "target": "windows/x86_64/MSVC",
                             "run_directory": str(run_directory),
                             "metadata": str(metadata),
+                            **({"operations": selected} if selected else {}),
                         }),
                         encoding="utf-8",
                     )
@@ -3224,10 +3925,12 @@ class PresetPipelineTests(unittest.TestCase):
                     side_effect=fake_run,
                 ),
             ):
-                outputs = preset_pipeline.run_pipeline(
-                    root,
-                    "native-release",
-                    consumer_mode="all",
+                args = preset_pipeline.parse_args([
+                    "--preset", "native-release", "--consumer-mode", "all",
+                    *(value for operation in operations for value in ("--operation", operation)),
+                ])
+                outputs = preset_pipeline.run_pipeline_from_args(
+                    root, args.preset, args,
                 )
 
         metrics_command = commands[0]
@@ -3237,14 +3940,9 @@ class PresetPipelineTests(unittest.TestCase):
         )
         self.assertEqual(
             Path(metrics_command[metrics_command.index("--output-root") + 1]),
-            root.resolve()
-            / "validation"
-            / "metrics"
-            / "_unversioned"
-            / "standard"
-            / "data",
+            expected_root / "data",
         )
-        self.assertEqual(len(commands), 7)
+        self.assertEqual(len(commands), 7 if native else 5)
         self.assertEqual(
             environments,
             [dict(selection.environment)] * len(commands),
@@ -3253,10 +3951,10 @@ class PresetPipelineTests(unittest.TestCase):
             [Path(command[1]).name for command in commands],
             [
                 "run_metrics.py",
-                "run_native_accuracy.py",
+                *(["run_native_accuracy.py"] if native else []),
                 "rebuild_tables.py",
                 "run_metrics.py",
-                "run_native_accuracy.py",
+                *(["run_native_accuracy.py"] if native else []),
                 "rebuild_tables.py",
                 "build_profile_comparison.py",
             ],
@@ -3266,22 +3964,22 @@ class PresetPipelineTests(unittest.TestCase):
             for command in commands
             if Path(command[1]).name == "run_native_accuracy.py"
         ))
+        for command in commands:
+            if Path(command[1]).name in ("run_metrics.py", "run_native_accuracy.py"):
+                self.assertEqual(
+                    [command[index + 1] for index, value in enumerate(command) if value == "--operation"],
+                    selected,
+                )
+                self.assertTrue(Path(command[command.index("--output-root") + 1]).is_relative_to(expected_root))
         self.assertEqual(
             [
                 command[command.index("--consumer-mode") + 1]
-                for command in commands[:6]
+                for command in commands[:-1]
             ],
-            ["strict", "strict", "strict", "fastmath", "fastmath", "fastmath"],
+            ["strict"] * (3 if native else 2) + ["fastmath"] * (3 if native else 2),
         )
         self.assertEqual(len(outputs), 16)
-        generated_root = (
-            root.resolve()
-            / "validation"
-            / "metrics"
-            / "_unversioned"
-            / "standard"
-            / "generated"
-        )
+        generated_root = expected_root / "generated"
         self.assertTrue(all(
             generated_root in path.parents
             for path in outputs

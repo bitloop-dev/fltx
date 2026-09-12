@@ -1242,8 +1242,10 @@ namespace detail::_dd // primitives and kernels
         const fdd_s abs_frac = mag(frac);
         std::int64_t rounded = base;
 
-        if (abs_frac > fdd_s{ 0.5 } || (!ties_to_even && abs_frac == fdd_s{ 0.5 }) ||
-            (ties_to_even && abs_frac == fdd_s{ 0.5 } && (base & 1ll) != 0))
+        const bool increment = ties_to_even
+            ? abs_frac > fdd_s{ 0.5 } || (abs_frac == fdd_s{ 0.5 } && (base & 1ll) != 0)
+            : abs_frac >= fdd_s{ 0.5 };
+        if (increment)
         {
             rounded += bl::signbit(frac) ? -1 : 1;
         }

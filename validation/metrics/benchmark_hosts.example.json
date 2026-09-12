@@ -1,0 +1,33 @@
+[
+  {
+    "name": "windows",
+    "root": ".",
+    "python": "python",
+    "targets": [
+      { "preset": "windows-x64-msvc-release", "strict": "build/windows-x64-msvc-release/validation/fltx_benchmark.exe", "fastmath": "build/windows-x64-msvc-release/validation/fltx_benchmark_fastmath.exe" },
+      { "preset": "windows-x64-clangcl-release", "strict": "build/windows-x64-clangcl-release/validation/fltx_benchmark.exe", "fastmath": "build/windows-x64-clangcl-release/validation/fltx_benchmark_fastmath.exe" },
+      { "preset": "windows-x64-mingw-release", "strict": "build/windows-x64-mingw-release/validation/fltx_benchmark.exe", "fastmath": "build/windows-x64-mingw-release/validation/fltx_benchmark_fastmath.exe" },
+      { "preset": "wasm32-emscripten-release", "strict": "build/wasm32-emscripten-release/validation/fltx_benchmark.js", "fastmath": "build/wasm32-emscripten-release/validation/fltx_benchmark_fastmath.js" }
+    ]
+  },
+  {
+    "name": "linux",
+    "address": "user@linux-host",
+    "root": "/path/to/fltx",
+    "python": "python3",
+    "targets": [
+      { "preset": "linux-x64-gcc-release", "strict": "build/linux-x64-gcc-release/validation/fltx_benchmark", "fastmath": "build/linux-x64-gcc-release/validation/fltx_benchmark_fastmath" },
+      { "preset": "linux-x64-clang-release", "strict": "build/linux-x64-clang-release/validation/fltx_benchmark", "fastmath": "build/linux-x64-clang-release/validation/fltx_benchmark_fastmath" }
+    ]
+  },
+  {
+    "name": "macos",
+    "address": "user@mac-host",
+    "root": "/path/to/fltx",
+    "python": "python3",
+    "pathPrepend": ["/opt/homebrew/bin", "/opt/homebrew/sbin"],
+    "targets": [
+      { "preset": "macos-arm64-appleclang-release", "strict": "build/macos-arm64-appleclang-release/validation/fltx_benchmark", "fastmath": "build/macos-arm64-appleclang-release/validation/fltx_benchmark_fastmath" }
+    ]
+  }
+]

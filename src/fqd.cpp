@@ -446,6 +446,11 @@ namespace bl::detail::_qd_runtime
         return detail::_qd::sqr_inline(a);
     }
 
+    fqd_s sqr_canonical(const fqd_s& a) noexcept
+    {
+        return detail::_qd::sqr_canonical_inline(a);
+    }
+
     // Multiplies qd by a double with an exact power-of-two fast path.
     fqd_s mul_pow2_or_double(const fqd_s& a, double b) noexcept
     {

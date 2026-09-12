@@ -54,9 +54,13 @@ namespace detail::_qd // primitives and kernels
 
 [[nodiscard]] BL_FORCE_INLINE constexpr fqd abs(const fqd_s& a) noexcept
 {
-    if (a.x0 < 0.0)
-        return -a;
-    return (a.x0 == 0.0 && signbit(a)) ? -a : a;
+    const std::uint64_t sign = std::bit_cast<std::uint64_t>(a.x0) & (UINT64_C(1) << 63);
+    return fqd_s{
+        std::bit_cast<double>(std::bit_cast<std::uint64_t>(a.x0) ^ sign),
+        std::bit_cast<double>(std::bit_cast<std::uint64_t>(a.x1) ^ sign),
+        std::bit_cast<double>(std::bit_cast<std::uint64_t>(a.x2) ^ sign),
+        std::bit_cast<double>(std::bit_cast<std::uint64_t>(a.x3) ^ sign)
+    };
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr fqd clamp(const fqd_s& v, const fqd_s& lo, const fqd_s& hi) noexcept

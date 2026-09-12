@@ -11,6 +11,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
+from manifest import enabled_implementations, normalize_operations
 
 from run_metrics import (
     ACCURACY_FIELDS,
@@ -201,6 +202,7 @@ class Dataset:
     fingerprints: set[str]
     runs: dict[Target, str]
     consumer_mode: str = "strict"
+    operations: tuple[str, ...] = ()
 
 
 def _target(value: str) -> Target:
@@ -219,7 +221,7 @@ def _target(value: str) -> Target:
         raise argparse.ArgumentTypeError(str(error)) from error
 
 
-def _read(path: Path, fields: tuple[str, ...]) -> list[dict[str, str]]:
+def _read(path: Path, fields: tuple[str, ...], *, allow_empty: bool = False) -> list[dict[str, str]]:
     try:
         with path.open(newline="", encoding="utf-8") as stream:
             reader = csv.DictReader(stream)
@@ -228,7 +230,7 @@ def _read(path: Path, fields: tuple[str, ...]) -> list[dict[str, str]]:
             rows = list(reader)
     except OSError as error:
         raise MetricsError(f"cannot read {path}: {error}") from error
-    if not rows:
+    if not rows and not allow_empty:
         raise MetricsError(f"{path}: contains no rows")
     if any(None in row or any(value is None for value in row.values()) for row in rows):
         raise MetricsError(f"{path}: malformed row width")
@@ -288,6 +290,7 @@ def load(
     revisions: set[str] = set()
     fingerprints: set[str] = set()
     runs: dict[Target, str] = {}
+    selections: set[tuple[str, ...]] = set()
 
     for target in targets:
         detail = input_root / target.platform / target.architecture / "detail"
@@ -295,6 +298,11 @@ def load(
             f"{run_metadata_stem(target.compiler, consumer_mode)}.json"
         )
         metadata = _metadata(metadata_path, target)
+        try:
+            operations = normalize_operations(metadata.get("operations", []))
+        except (ValueError, TypeError) as error:
+            raise MetricsError(f"{metadata_path}: invalid operation selection: {error}") from error
+        selections.add(operations)
         configuration = require_consumer_mode(
             metadata["configuration"],
             consumer_mode,
@@ -318,7 +326,7 @@ def load(
             accuracy_path = detail / f"{stem}_accuracy.csv"
             benchmark_path = detail / f"{stem}_benchmark.csv"
             canonical_rows = _read(canonical_path, CANONICAL_FIELDS)
-            accuracy_rows = _read(accuracy_path, ACCURACY_FIELDS)
+            accuracy_rows = _read(accuracy_path, ACCURACY_FIELDS, allow_empty=bool(operations))
             benchmark_rows = _read(benchmark_path, BENCHMARK_FIELDS)
             for rows, path in (
                 (accuracy_rows, accuracy_path),
@@ -336,6 +344,7 @@ def load(
                 qdpp_enabled=qdpp_enabled,
                 tlfloat_enabled=tlfloat_enabled,
                 consumer_mode=consumer_mode,
+                operations=operations,
             )
             _validate_implementations(
                 benchmark_rows, precision=precision,
@@ -354,10 +363,16 @@ def load(
                 raise MetricsError(
                     f"{metadata_path}: invalid implementation metadata"
                 ) from error
-            observed_order = tuple(dict.fromkeys(
+            observed_implementations = {
                 row["implementation"] for row in benchmark_rows
-            ))
-            if declared != observed_order or not declared or declared[0] != "fltx":
+            }
+            expected_order = tuple(
+                item.id for item in enabled_implementations(
+                    precision, qdpp=qdpp_enabled, tlfloat=tlfloat_enabled,
+                )
+                if item.id in observed_implementations
+            )
+            if declared != expected_order or not declared or declared[0] != "fltx":
                 raise MetricsError(
                     f"{metadata_path}: implementation order does not match rows"
                 )
@@ -397,6 +412,8 @@ def load(
                 ).items()
             })
 
+    if len(selections) != 1:
+        raise MetricsError("requested targets have different operation selections")
     if len(revisions) != 1 or len(fingerprints) != 1:
         raise MetricsError("requested targets were not built from the same source")
     return Dataset(
@@ -407,6 +424,7 @@ def load(
         fingerprints,
         runs,
         consumer_mode,
+        operations,
     )
 
 

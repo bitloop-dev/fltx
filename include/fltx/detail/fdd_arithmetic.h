@@ -935,20 +935,36 @@ namespace detail::_dd // primitives and kernels
 // reciprocal helpers
 [[nodiscard]] BL_FORCE_INLINE constexpr fdd recip(fdd_s b) noexcept
 {
+#if defined(FLTX_FAST_MATH)
+    // Keep the protected arithmetic path for fast-math consumers: reassociation
+    // of the division kernel's residual can otherwise lose the low word.
     if (iszero(b)) [[unlikely]]
         return detail::_dd::signed_infinity(signbit(b));
     if (isinf(b)) [[unlikely]]
         return detail::_dd::signed_zero(signbit(b));
 
-    constexpr fdd_s one = fdd_s{ 1.0 };
-    fdd_s y = fdd_s{ 1.0 / b.hi };
+    constexpr fdd_s one{ 1.0 };
+    fdd_s y{ 1.0 / b.hi };
     fdd_s e = one - b * y;
-
     y += y * e;
     e = one - b * y;
     y += y * e;
-
     return y;
+#else
+    // The compensated quotient already provides a full double-double reciprocal
+    // and the required zero/Inf/NaN handling, without two Newton corrections.
+    constexpr fdd_s one{ 1.0 };
+    if (detail::fp::iszero_or_inf_or_nan(b.hi)) [[unlikely]]
+        return detail::_dd::div_special(one, b);
+
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
+    // The quotient and denominator can have opposite extreme exponents. Keep
+    // Dekker's split finite in constant evaluation and on machines without FMA.
+    return detail::_dd::div_prechecked_range_safe_inline(one, b);
+#else
+    return detail::_dd::div_prechecked_inline(one, b);
+#endif
+#endif
 }
 
 } // namespace bl

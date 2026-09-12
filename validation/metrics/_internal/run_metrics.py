@@ -23,9 +23,13 @@ from pathlib import Path
 from typing import Iterable, Mapping
 
 from manifest import (
+    EXPECTED_ACCURACY,
     accuracy_manifest,
     benchmark_manifest,
     enabled_implementations,
+    normalize_operations,
+    operation_key,
+    select_operations,
 )
 from source_fingerprint import source_identity, valid_fingerprint
 
@@ -840,6 +844,7 @@ def _read_csv(
     fields: tuple[str, ...],
     *,
     allow_partial: bool = False,
+    allow_empty: bool = False,
 ) -> list[dict[str, str]]:
     if path.name.endswith(".partial.csv") and not allow_partial:
         raise MetricsError(f"refusing partial file: {path}")
@@ -854,7 +859,7 @@ def _read_csv(
             rows = list(reader)
     except OSError as error:
         raise MetricsError(f"cannot read {path}: {error}") from error
-    if not rows:
+    if not rows and not allow_empty:
         raise MetricsError(f"{path}: contains no rows")
     if any(None in row or any(value is None for value in row.values()) for row in rows):
         raise MetricsError(f"{path}: malformed row width")
@@ -1013,6 +1018,7 @@ def _validate_completeness(
     qdpp_enabled: bool,
     tlfloat_enabled: bool,
     consumer_mode: str = "strict",
+    operations: tuple[str, ...] = (),
 ) -> None:
     for source, expected, rows, domain_field in (
         (
@@ -1034,6 +1040,11 @@ def _validate_completeness(
     ):
         if consumer_mode == "fastmath":
             expected = {"fltx": expected["fltx"]}
+        expected = {
+            implementation: selected
+            for implementation, manifest_rows in expected.items()
+            if (selected := select_operations(manifest_rows, operations))
+        }
         observed: dict[str, set[tuple[str, ...]]] = defaultdict(set)
         for row in rows:
             key = (row["group"], row["operation"])
@@ -1370,8 +1381,9 @@ def merge_precision(
     consumer_mode: str = "strict",
     require_complete: bool = False,
     expected_trials: int | Collection[int] | None = None,
+    operations: tuple[str, ...] = (),
 ) -> None:
-    accuracy = _read_csv(accuracy_path, ACCURACY_FIELDS)
+    accuracy = _read_csv(accuracy_path, ACCURACY_FIELDS, allow_empty=bool(operations))
     benchmark = _read_csv(benchmark_path, BENCHMARK_FIELDS)
     _validate_identity(
         accuracy, accuracy_path,
@@ -1383,7 +1395,7 @@ def merge_precision(
         run_id=run_id, revision=revision, fingerprint=fingerprint,
         precision=precision,
     )
-    if require_complete:
+    if require_complete or operations:
         _validate_completeness(
             accuracy,
             benchmark,
@@ -1393,6 +1405,7 @@ def merge_precision(
             qdpp_enabled=qdpp_enabled,
             tlfloat_enabled=tlfloat_enabled,
             consumer_mode=consumer_mode,
+            operations=operations,
         )
     _validate_implementations(
         benchmark,
@@ -1488,6 +1501,7 @@ def _result_handoff(
     compiler: str,
     input_root: Path,
     metadata: Path,
+    operations: tuple[str, ...] = (),
 ) -> dict[str, object]:
     return {
         "schema_version": 1,
@@ -1500,6 +1514,7 @@ def _result_handoff(
         "target": f"{platform}/{architecture}/{compiler}",
         "input_root": str(input_root.resolve()),
         "metadata": str(metadata.resolve()),
+        **({"operations": list(operations)} if operations else {}),
     }
 
 
@@ -1534,10 +1549,13 @@ def _validate_reusable_candidate(
     fingerprint: str,
     configuration: Mapping[str, Mapping[str, str]],
     host: object,
+    operations: tuple[str, ...] = (),
 ) -> dict[str, object]:
     """Return a handoff for complete evidence matching the freshly built runners."""
 
     metadata = _read_metadata(metadata_path)
+    if metadata.get("operations", []) != list(operations):
+        raise MetricsError(f"{metadata_path}: reusable operation selection changed")
     expected_profile = SAMPLE_PROFILES[sample_mode]
     required = {
         "schema_version": SCHEMA_VERSION,
@@ -1622,7 +1640,7 @@ def _validate_reusable_candidate(
         accuracy_path = target_root / "detail" / f"{stem}_accuracy.csv"
         benchmark_path = target_root / "detail" / f"{stem}_benchmark.csv"
         canonical_path = target_root / f"{stem}.csv"
-        accuracy_rows = _read_csv(accuracy_path, ACCURACY_FIELDS)
+        accuracy_rows = _read_csv(accuracy_path, ACCURACY_FIELDS, allow_empty=bool(operations))
         benchmark_rows = _read_csv(benchmark_path, BENCHMARK_FIELDS)
         canonical_rows = _read_csv(canonical_path, CANONICAL_FIELDS)
         for rows, path in (
@@ -1646,6 +1664,7 @@ def _validate_reusable_candidate(
             qdpp_enabled=qdpp_enabled,
             tlfloat_enabled=tlfloat_enabled,
             consumer_mode=consumer_mode,
+            operations=operations,
         )
         _validate_implementations(
             benchmark_rows,
@@ -1688,6 +1707,7 @@ def _validate_reusable_candidate(
         compiler=compiler,
         input_root=input_root,
         metadata=metadata_path,
+        operations=operations,
     )
 
 
@@ -1703,6 +1723,7 @@ def _find_reusable_run(
     fingerprint: str,
     configuration: Mapping[str, Mapping[str, str]],
     host: object,
+    operations: tuple[str, ...] = (),
 ) -> tuple[dict[str, object] | None, str]:
     if sample_mode in DURABLE_SAMPLE_MODES:
         candidates = [
@@ -1740,6 +1761,7 @@ def _find_reusable_run(
                     fingerprint=fingerprint,
                     configuration=configuration,
                     host=host,
+                    operations=operations,
                 ),
                 "",
             )
@@ -1875,6 +1897,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--compiler", help="File prefix, for example MSVC or Emscripten")
     parser.add_argument("--precision", action="append", choices=PRECISIONS, dest="precisions")
     parser.add_argument(
+        "--operation", action="append", dest="operations", metavar="NAME",
+        help="run an exact operation name; repeat to select several",
+    )
+    parser.add_argument(
         "--sample-mode",
         choices=tuple(SAMPLE_PROFILES),
         default="full",
@@ -1889,8 +1915,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--reuse-compatible", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--canonical-publication", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+    try:
+        args.operations = normalize_operations(args.operations)
+    except ValueError as error:
+        parser.error(str(error))
+    if args.operations and args.canonical_publication:
+        parser.error("operation-filtered runs cannot be published")
     if args.accuracy is None and args.benchmark is None:
         parser.error("at least one of --accuracy or --benchmark is required")
+    if args.benchmark is None and args.operations and not any(
+        select_operations(EXPECTED_ACCURACY[precision], args.operations)
+        for precision in args.precisions or PRECISIONS
+    ):
+        parser.error("requested operations have no accuracy coverage")
     explicit_identity = (args.platform, args.architecture, args.compiler)
     if any(value is not None for value in explicit_identity) and not all(
         value is not None for value in explicit_identity
@@ -1943,6 +1980,7 @@ def main(argv: list[str] | None = None) -> int:
         runner_names == {"accuracy", "benchmark"}
         and args.sample_mode == "full"
         and set(precisions) == set(PRECISIONS)
+        and not args.operations
     )
     complete_suite = (
         runner_names == {"accuracy", "benchmark"}
@@ -1954,8 +1992,13 @@ def main(argv: list[str] | None = None) -> int:
     output_root = (
         args.output_root.resolve()
         if args.output_root is not None
+        else root / "build" / "metrics" / "operations" / operation_key(args.operations) / "data"
+        if args.operations
         else root / "build" / "metrics" / "data"
     )
+    if args.operations and not output_root.is_relative_to(root / "build"):
+        print("metrics failed: operation-filtered output must stay under build/", file=sys.stderr)
+        return 1
     if output_root == canonical_output_root and not args.canonical_publication:
         print(
             "metrics failed: canonical data may only be written by "
@@ -2014,6 +2057,7 @@ def main(argv: list[str] | None = None) -> int:
             fingerprint=fingerprint,
             configuration=configuration,
             host=provenance["host"],
+            operations=args.operations,
         )
         if reusable is not None:
             if args.result_file is not None:
@@ -2069,11 +2113,17 @@ def main(argv: list[str] | None = None) -> int:
                     tlfloat=configuration["harness"]["tlfloat"] == "on",
                 )
                 if args.consumer_mode != "fastmath" or implementation.id == "fltx"
+                if select_operations(benchmark_manifest(
+                    precision,
+                    qdpp=configuration["harness"]["qdpp"] == "on",
+                    tlfloat=configuration["harness"]["tlfloat"] == "on",
+                )[implementation.id], args.operations)
             ]
             for precision in precisions
         },
         "sample_mode": args.sample_mode,
         "consumer_mode": args.consumer_mode,
+        **({"operations": list(args.operations)} if args.operations else {}),
         "phases_requested": sorted(runner_names),
         **profile,
         **provenance,
@@ -2103,10 +2153,31 @@ def main(argv: list[str] | None = None) -> int:
         precision: {} for precision in precisions
     }
     stop_phases = False
+    operation_arguments = [
+        value for operation in args.operations for value in ("--operation", operation)
+    ]
+    accuracy_applicable = any(
+        select_operations(EXPECTED_ACCURACY[precision], args.operations)
+        for precision in precisions
+    )
+    if "accuracy" in runner_names and not accuracy_applicable:
+        # Benchmark-only operations have an explicitly empty accuracy manifest.
+        # Keep a header-only detail file so the ordinary report/transaction path
+        # can verify that no accuracy evidence has been invented for them.
+        for precision in precisions:
+            output = outputs_by_precision[precision]["accuracy"]
+            with output.open("w", newline="", encoding="utf-8") as stream:
+                csv.writer(stream, lineterminator="\n").writerow(ACCURACY_FIELDS)
+            phases[f"{precision}.accuracy"] = {
+                "status": "passed", "output": output.name,
+                "skipped": "selected operations have no accuracy domains",
+            }
+            passed_by_precision[precision]["accuracy"] = True
 
     parallel_accuracy = (
         bool(profile.get("accuracy_parallel", False))
         and "accuracy" in runner_names
+        and accuracy_applicable
         and len(precisions) > 1
     )
     if parallel_accuracy:
@@ -2134,6 +2205,7 @@ def main(argv: list[str] | None = None) -> int:
                     "--samples",
                     str(requested_samples),
                     *accuracy_policy_arguments(args.consumer_mode),
+                    *operation_arguments,
                     "--output",
                     str(output),
                 ],
@@ -2194,6 +2266,8 @@ def main(argv: list[str] | None = None) -> int:
     # accuracy phase must not spend several more minutes producing benchmark
     # evidence that cannot be published with that run.
     for runner_name, executable in runners:
+        if runner_name == "accuracy" and not accuracy_applicable:
+            continue
         if parallel_accuracy and runner_name == "accuracy":
             continue
         if stop_phases:
@@ -2213,6 +2287,7 @@ def main(argv: list[str] | None = None) -> int:
                 revision,
                 "--precision",
                 precision,
+                *operation_arguments,
             ]
             try:
                 requested_samples = profile[f"{runner_name}_samples"]
@@ -2315,6 +2390,7 @@ def main(argv: list[str] | None = None) -> int:
                     ),
                     consumer_mode=args.consumer_mode,
                     require_complete=publishable_run,
+                    operations=args.operations,
                     expected_trials=_expected_benchmark_trials(
                         args.sample_mode, profile,
                     ),
@@ -2386,6 +2462,7 @@ def main(argv: list[str] | None = None) -> int:
                     compiler=compiler,
                     input_root=target.parents[1],
                     metadata=final_metadata,
+                    operations=args.operations,
                 ),
             )
         except OSError as error:

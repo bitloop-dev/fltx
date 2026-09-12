@@ -54,11 +54,11 @@ namespace detail::_dd // primitives and kernels
 
 [[nodiscard]] BL_FORCE_INLINE constexpr fdd abs(const fdd_s& a) noexcept
 {
-    if (a.hi < 0.0)
-        return -a;
-    if (a.hi != 0.0)
-        return a;
-    return signbit(a) ? -a : a;
+    const std::uint64_t sign = std::bit_cast<std::uint64_t>(a.hi) & (UINT64_C(1) << 63);
+    return fdd_s{
+        std::bit_cast<double>(std::bit_cast<std::uint64_t>(a.hi) ^ sign),
+        std::bit_cast<double>(std::bit_cast<std::uint64_t>(a.lo) ^ sign)
+    };
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr fdd clamp(const fdd_s& v, const fdd_s& lo, const fdd_s& hi) noexcept

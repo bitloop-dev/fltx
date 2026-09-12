@@ -698,90 +698,19 @@ namespace detail::_qd // primitives and kernels
     template<class ExpUnsigned>
     [[nodiscard]] BL_MSVC_NOINLINE constexpr fqd_s powi_nonnegative_checked(fqd_s base, ExpUnsigned exp) noexcept
     {
-        if (exp == ExpUnsigned{ 0 })
-            return fqd_s{ 1.0 };
-        if (exp == ExpUnsigned{ 1 })
-            return base;
-        if (exp == ExpUnsigned{ 2 })
-            return pow_sqr_adaptive(base);
-        if (exp == ExpUnsigned{ 3 })
-        {
-            const fqd_s squared = pow_sqr_adaptive(base);
-            return pow_mul_adaptive(squared, base);
-        }
-        if (exp == ExpUnsigned{ 4 })
-        {
-            return pow_sqr_adaptive(pow_sqr_adaptive(base));
-        }
-
-        fqd_s result{ 1.0 };
-        while (exp != ExpUnsigned{ 0 })
-        {
-            if ((exp & ExpUnsigned{ 1 }) != ExpUnsigned{ 0 })
-                result = pow_mul_adaptive(result, base);
-
-            exp >>= 1;
-            if (exp != ExpUnsigned{ 0 })
-                base = pow_sqr_adaptive(base);
-        }
-
-        return result;
+        return detail::fp::powi_nonnegative<pow_sqr_adaptive, pow_mul_adaptive>(base, exp);
     }
 
     template<class ExpUnsigned>
     [[nodiscard]] BL_MSVC_NOINLINE constexpr fqd_s powi_nonnegative(fqd_s base, ExpUnsigned exp) noexcept
     {
-        if (exp == ExpUnsigned{ 0 })
-            return fqd_s{ 1.0 };
-        if (exp == ExpUnsigned{ 1 })
-            return base;
-        if (exp == ExpUnsigned{ 2 })
-            return sqr_inline(base);
-        if (exp == ExpUnsigned{ 3 })
-            return mul_canonical_inline(sqr_inline(base), base);
-        if (exp == ExpUnsigned{ 4 })
-            return sqr_inline(sqr_inline(base));
-
-        fqd_s result{ 1.0 };
-        while (exp != ExpUnsigned{ 0 })
-        {
-            if ((exp & ExpUnsigned{ 1 }) != ExpUnsigned{ 0 })
-                result = mul_canonical_inline(result, base);
-
-            exp >>= 1;
-            if (exp != ExpUnsigned{ 0 })
-                base = sqr_inline(base);
-        }
-
-        return result;
+        return detail::fp::powi_nonnegative<sqr_inline, mul_canonical_inline>(base, exp);
     }
 
     template<class ExpUnsigned>
     [[nodiscard]] BL_MSVC_NOINLINE constexpr fqd_s powi_nonnegative_unchecked(fqd_s base, ExpUnsigned exp) noexcept
     {
-        if (exp == ExpUnsigned{ 0 })
-            return fqd_s{ 1.0 };
-        if (exp == ExpUnsigned{ 1 })
-            return base;
-        if (exp == ExpUnsigned{ 2 })
-            return sqr_inline(base);
-        if (exp == ExpUnsigned{ 3 })
-            return mul_product_inline(sqr_inline(base), base);
-        if (exp == ExpUnsigned{ 4 })
-            return sqr_inline(sqr_inline(base));
-
-        fqd_s result{ 1.0 };
-        while (exp != ExpUnsigned{ 0 })
-        {
-            if ((exp & ExpUnsigned{ 1 }) != ExpUnsigned{ 0 })
-                result = mul_product_inline(result, base);
-
-            exp >>= 1;
-            if (exp != ExpUnsigned{ 0 })
-                base = sqr_inline(base);
-        }
-
-        return result;
+        return detail::fp::powi_nonnegative<sqr_inline, mul_product_inline>(base, exp);
     }
 
     template<class ExpUnsigned>

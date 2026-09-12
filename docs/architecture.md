@@ -208,6 +208,13 @@ preflight, streamed evidence, aggregation, provenance, staging, and atomic
 publication. The `build_*` modules render existing evidence and must not repair
 or reinterpret source rows.
 
+`run_benchmarks.ps1` adds configured local/SSH dispatch for performance-only
+development runs. Its host workers call the same `run_metrics.py` with existing
+executables, collect raw benchmark CSVs and provenance, and print a combined
+table. Machine-specific host paths live in an ignored local JSON configuration.
+This layer owns transport and collection; it does not duplicate preset/toolchain
+resolution, numerical policies, source identity or publication.
+
 By default, quick, standard, and full runs keep profile-separated evidence and
 reports beneath
 `validation/metrics/_unversioned/<workflow>/{data,generated}`. Publication is

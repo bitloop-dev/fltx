@@ -30,6 +30,15 @@ def rebuild(
     if not selected:
         raise MetricsError(f"no complete metrics data found under {input_root}")
 
+    datasets = {
+        target: build_tables.load(input_root, (target,), consumer_mode)
+        for target in selected
+    }
+    if any(dataset.operations for dataset in datasets.values()):
+        build_root = Path(__file__).resolve().parents[3] / "build"
+        if not output.resolve().is_relative_to(build_root):
+            raise MetricsError("operation-filtered reports must stay under build/")
+
     output.mkdir(parents=True, exist_ok=True)
     outputs = list(
         build_tables.build(
@@ -49,8 +58,7 @@ def rebuild(
             )
         )
 
-    for target in selected:
-        dataset = build_tables.load(input_root, (target,), consumer_mode)
+    for target, dataset in datasets.items():
         for layout in ("full", "compact"):
             mode_suffix = consumer_mode_suffix(consumer_mode)
             layout_suffix = "_compact" if layout == "compact" else ""

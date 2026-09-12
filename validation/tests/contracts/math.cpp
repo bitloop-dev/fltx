@@ -14,6 +14,63 @@
 
 namespace
 {
+    constexpr bool reciprocal_keeps_exact_powers_of_two(double unit = 1.0)
+    {
+        for (double input : {0x1p-1000, 0x1p-500, 0.5, 1.0, 2.0, 0x1p500, 0x1p1000})
+        {
+            input *= unit;
+            const auto positive = bl::recip(bl::fdd{ input });
+            const auto negative = bl::recip(bl::fdd{ -input });
+            if (positive.hi != 1.0 / input || positive.lo != 0.0 ||
+                negative.hi != -1.0 / input || negative.lo != 0.0)
+                return false;
+        }
+        return true;
+    }
+
+    template<class T>
+    constexpr bool rounding_keeps_tail_direction(double unit = 1.0)
+    {
+        struct witness { double head, tail, expected; };
+        constexpr witness cases[]{
+            { 2.5, 0x1p-80, 3.0 }, { 2.5, -0x1p-80, 2.0 },
+            { -2.5, 0x1p-80, -2.0 }, { -2.5, -0x1p-80, -3.0 },
+            { 3.0, 0x1p-80, 3.0 }, { 3.0, -0x1p-80, 3.0 },
+            { -3.0, 0x1p-80, -3.0 }, { -3.0, -0x1p-80, -3.0 },
+            { 0.5, -0x1p-80, 0.0 }, { -0.5, 0x1p-80, -0.0 },
+            { 0x1.fffffffffffffp-2, 0.0, 0.0 },
+            { -0x1.fffffffffffffp-2, 0.0, -0.0 },
+            { 0x1p52, 0.5, 0x1p52 + 1.0 },
+            { -0x1p52, -0.5, -0x1p52 - 1.0 }
+        };
+        for (const auto& row : cases)
+        {
+            T input{ row.head * unit };
+            if constexpr (bl::fltx_fdd<T>) input.lo = row.tail;
+            else input.x1 = row.tail;
+            const T rounded = bl::round(input);
+            if (rounded != T{ row.expected } ||
+                (row.expected == 0.0 && bl::signbit(rounded) != bl::signbit(row.expected)))
+                return false;
+        }
+        return true;
+    }
+
+    template<class T>
+    constexpr bool integer_powers_keep_binary_values(double unit = 1.0)
+    {
+        double expected = 1.0;
+        for (unsigned exponent = 0; exponent <= 32; ++exponent)
+        {
+            if (bl::ipow(T{ -0.5 * unit }, exponent) != T{ expected } ||
+                bl::ipow(T{ -2.0 * unit }, -static_cast<int>(exponent)) != T{ expected })
+                return false;
+            expected *= -0.5;
+        }
+        return bl::ipow(T{ -unit }, std::numeric_limits<std::uint64_t>::max()) == T{ -1.0 } &&
+               bl::ipow(T{ -unit }, std::numeric_limits<std::int64_t>::min()) == T{ 1.0 };
+    }
+
     template<class T>
     void check_selection_and_interpolation()
     {
@@ -705,6 +762,9 @@ TEST_CASE("selection and interpolation preserve ordering and finite range",
 
 TEST_CASE("exact math contracts hold for both expansion types", "[contracts][math]")
 {
+    STATIC_CHECK(reciprocal_keeps_exact_powers_of_two());
+    volatile double unit = 1.0;
+    CHECK(reciprocal_keeps_exact_powers_of_two(unit));
     check_exact_math<bl::f32>();
     check_exact_math<bl::f64>();
     check_exact_math<bl::fdd>();
@@ -761,8 +821,39 @@ TEST_CASE("nextafter follows the nominal 106 and 212 bit models",
 #endif
 }
 
+TEST_CASE("integer powers preserve exponent width and expansion tails", "[contracts][math][ipow]")
+{
+    STATIC_CHECK(integer_powers_keep_binary_values<bl::fdd>());
+    STATIC_CHECK(integer_powers_keep_binary_values<bl::fqd>());
+    volatile double unit = 1.0;
+    CHECK(integer_powers_keep_binary_values<bl::fdd>(unit));
+    CHECK(integer_powers_keep_binary_values<bl::fqd>(unit));
+
+    const auto check_tails = [&]<class T>() {
+        T base{ 1.25 * unit };
+        if constexpr (bl::fltx_fdd<T>) base.lo = 0x1p-60;
+        else { base.x1 = 0x1p-60; base.x2 = -0x1p-120; }
+        T repeated{ 1.0 };
+        for (int exponent = 0; exponent <= 16; ++exponent)
+        {
+            CAPTURE(exponent, sizeof(T));
+            const T powered = bl::ipow(base, exponent);
+            const T tolerance = bl::abs(repeated) * std::numeric_limits<T>::epsilon() * 64.0;
+            CHECK(bl::abs(powered - repeated) <= tolerance);
+            repeated *= base;
+        }
+    };
+    check_tails.template operator()<bl::fdd>();
+    check_tails.template operator()<bl::fqd>();
+}
+
 TEST_CASE("rounding and decomposition preserve defined semantics", "[contracts][math]")
 {
+    STATIC_CHECK(rounding_keeps_tail_direction<bl::fdd>());
+    STATIC_CHECK(rounding_keeps_tail_direction<bl::fqd>());
+    volatile double unit = 1.0;
+    CHECK(rounding_keeps_tail_direction<bl::fdd>(unit));
+    CHECK(rounding_keeps_tail_direction<bl::fqd>(unit));
     check_decomposition<bl::f32>();
     check_decomposition<bl::f64>();
     check_decomposition<bl::fdd>();

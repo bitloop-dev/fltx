@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import hashlib
+from collections.abc import Iterable
 from dataclasses import dataclass
+from typing import TypeVar
 
 
 Operation = tuple[str, str]
 AccuracyRow = tuple[str, str, str]
+_Row = TypeVar("_Row", bound=tuple)
 
 
 @dataclass(frozen=True)
@@ -179,6 +183,34 @@ EXPECTED_BENCHMARK = {
     precision: _BENCHMARK_OPERATIONS
     for precision in ("dd", "qd")
 }
+
+
+def normalize_operations(values: Iterable[str] | None) -> tuple[str, ...]:
+    """Validate exact operation names and give equivalent selections one identity."""
+    operations = tuple(sorted(set(values or ())))
+    available = {operation for _, operation in _BENCHMARK_OPERATIONS}
+    unknown = set(operations) - available
+    if unknown:
+        raise ValueError(
+            f"unknown metrics operations: {', '.join(repr(item) for item in sorted(unknown))}; "
+            f"available: {', '.join(sorted(available))}"
+        )
+    return operations
+
+
+def select_operations(
+    rows: Iterable[_Row], operations: Iterable[str] = (),
+) -> frozenset[_Row]:
+    selected = frozenset(operations)
+    return frozenset(row for row in rows if not selected or row[1] in selected)
+
+
+def operation_key(operations: tuple[str, ...]) -> str:
+    """Keep development directory names readable and bounded on Windows."""
+    name = "+".join(normalize_operations(operations))
+    if len(name) > 64:
+        return name[:32] + "-" + hashlib.sha256(name.encode()).hexdigest()[:16]
+    return name
 
 _NO_QDPP = frozenset({
     ("floating_point_utilities", "fma"), ("floating_point_utilities", "fdim"), ("floating_point_utilities", "copysign"),

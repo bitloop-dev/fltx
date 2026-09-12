@@ -55,6 +55,7 @@ namespace fltx::tests::benchmark
         std::string run_id;
         std::string source_revision;
         std::string filter;
+        std::vector<std::string> operations;
         std::string sample_mode = "custom";
         std::size_t samples = 64;
         std::size_t trials = 5;
@@ -739,6 +740,13 @@ namespace fltx::tests::benchmark
 
         [[nodiscard]] bool selected(std::string_view operation) const
         {
+            if (!settings_.operations.empty())
+            {
+                return std::find(
+                    settings_.operations.begin(),
+                    settings_.operations.end(),
+                    operation) != settings_.operations.end();
+            }
             return settings_.filter.empty() ||
                    operation.find(settings_.filter) != std::string_view::npos;
         }

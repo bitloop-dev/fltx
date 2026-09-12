@@ -61,10 +61,16 @@ namespace detail::_qd // primitives and kernels
         double ax0, double ax1, double ax2, double ax3,
         double bx0, double bx1, double bx2, double bx3) noexcept
     {
+#if defined(__clang__) && !defined(FLTX_FAST_MATH)
+        // Independent limb tests produce efficient Clang comparisons.
+        return (ax0 == bx0) & (ax1 == bx1) & (ax2 == bx2) & (ax3 == bx3);
+#else
+        // Keep the established path elsewhere: removing classification or
+        // forcing all limb comparisons regresses GCC's benchmark loops.
         if (isnan(ax0) || isnan(bx0))
             return false;
-
         return ax0 == bx0 && ax1 == bx1 && ax2 == bx2 && ax3 == bx3;
+#endif
     }
 
     BL_FORCE_INLINE constexpr bool compare_unordered(

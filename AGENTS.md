@@ -56,6 +56,51 @@
   `build/`. Publish or overwrite canonical data under `validation/metrics`
   only when the user explicitly requests a complete release run.
 
+## Efficient cross-platform metrics
+
+- Treat the available hosts as session-specific. Use the SSH destination, user,
+  checkout path and other connection details the user provides. For each new or
+  changed host, connect and determine its OS, native architecture, checkout and
+  existing runner paths once. Do not assume an old IP, a fixed host list, or a
+  fixed number of presets. Keep server details in ignored local configuration,
+  never in these instructions or checked-in examples.
+- Use the current supported release matrix behind
+  `validation/metrics/run_all_supported_metrics.py` and
+  `validation/_internal/preset_support.py`, together with the host's actual
+  presets, to configure all applicable targets on every available host. Record
+  missing hosts/toolchains explicitly rather than silently omitting targets.
+  Keep native and emulated execution distinct; follow the matrix's designated
+  WebAssembly host policy rather than duplicating that target unnecessarily.
+- Save the inventory in `validation/metrics/benchmark_hosts.local.json`, using
+  `benchmark_hosts.example.json` as the schema example. Update affected entries
+  when the user supplies replacement hosts or paths. Check transport/tool
+  requirements during onboarding; do not assume every remote OS supports the
+  existing bash transport. Adapt transport around the existing metrics runner
+  if necessary, keeping numerical and preset policies with their current owners.
+- For performance-only requests, invoke the saved command directly:
+  `./validation/metrics/run_benchmarks.ps1 -Operation NAME -Precision dd`.
+  Respect the requested operations, precision, profile and consumer modes.
+  Defaults are DD, standard sampling and both strict/fast-math modes; multiple
+  operations (`-Operation sin,cos`) and `-Precision all` are supported. For an
+  unchanged configured run, do not rediscover executables, re-list presets,
+  reread the pipeline or reconstruct collection commands.
+- Run different physical hosts concurrently, but keep benchmarks sequential
+  within each host. Collect one evidence bundle per remote host and let the
+  coordinator assemble the CSV and table. Avoid per-file SSH/SCP calls and
+  manual CSV assembly. Keep runner freshness and cross-host source-consistency
+  checks enabled. Investigate reported failures or changed configuration only;
+  resolve missing/stale runners through the existing preset/build workflow,
+  preserving unrelated changes. Report setup/build time separately.
+- When accuracy plus performance is requested, use the existing public metrics
+  pipelines on the selected hosts with the requested filters and profiles, and
+  apply the same inventory reuse, host parallelism and batched collection.
+  The benchmark-only shortcut supplies no accuracy evidence. Do not add accuracy
+  runs, test suites or SVG generation to a performance-only request unless
+  requested or needed for a separate implementation change.
+- Return the generated results and total command time, including dispatch and
+  collection, rather than only executable runtime. Keep filtered/development
+  evidence under `build/` and preserve the explicit publication rule above.
+
 ## Documentation maintenance
 
 Update `docs/architecture.md` only when a subsystem is added, removed, moved,

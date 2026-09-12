@@ -26,7 +26,8 @@ from preset_support import (
 )
 
 import build_profile_comparison
-from build_tables import Target
+from build_tables import REPORT_EXCLUDED_OPERATIONS, Target
+from manifest import EXPECTED_ACCURACY, normalize_operations, operation_key, select_operations
 import run_metrics
 
 
@@ -220,6 +221,7 @@ def metrics_paths(
     output_root: Path | None = None,
     *,
     publish: bool = False,
+    operations: tuple[str, ...] = (),
 ) -> MetricsPaths:
     policy = METRICS_WORKFLOWS.get(workflow)
     if policy is None:
@@ -231,6 +233,8 @@ def metrics_paths(
         generated=metrics / "generated",
     )
     if publish:
+        if operations:
+            raise PipelineError("--publish cannot be combined with --operation")
         if output_root is not None:
             raise PipelineError("--publish cannot be combined with --output-root")
         return canonical
@@ -238,8 +242,14 @@ def metrics_paths(
     selected = (
         output_root.resolve()
         if output_root is not None
+        else root.resolve() / "build" / "metrics" / workflow
+        if operations
         else metrics / "_unversioned" / workflow
     )
+    if operations:
+        if not selected.is_relative_to(root.resolve() / "build"):
+            raise PipelineError("operation-filtered output must stay under build/")
+        selected = selected / "operations" / operation_key(operations)
     paths = MetricsPaths(
         data=selected / "data",
         generated=selected / "generated",
@@ -310,8 +320,22 @@ def run_pipeline(
     publish: bool = False,
     force_rerun: bool = False,
     consumer_mode: str = "strict",
+    operations: tuple[str, ...] = (),
 ) -> list[Path]:
     root = root.resolve()
+    try:
+        operations = normalize_operations(operations)
+    except ValueError as error:
+        raise PipelineError(str(error)) from error
+    excluded = {operation for _, operation in REPORT_EXCLUDED_OPERATIONS} & set(operations)
+    if excluded:
+        raise PipelineError(
+            f"{', '.join(sorted(excluded))} is a harness baseline excluded from reports; "
+            "use the internal run_metrics.py command for baseline-only evidence"
+        )
+    operation_arguments = [
+        value for operation in operations for value in ("--operation", operation)
+    ]
     if consumer_mode == "all":
         requested_modes = tuple(RUNNER_SETS)
     elif consumer_mode in RUNNER_SETS:
@@ -327,6 +351,7 @@ def run_pipeline(
         workflow,
         output_root,
         publish=publish,
+        operations=operations,
     )
     selection = resolve_preset(root, preset)
     environment = selection.environment
@@ -427,6 +452,7 @@ def run_pipeline(
                 "--result-file",
                 str(handoff),
                 *([] if force_rerun else ["--reuse-compatible"]),
+                *operation_arguments,
             ],
             root,
             environment,
@@ -444,10 +470,13 @@ def run_pipeline(
             "input_root",
             "metadata",
         }
+        if operations:
+            expected_fields.add("operations")
         if (
             set(result) != expected_fields
             or result.get("sample_mode") != selected_sample_mode
             or result.get("consumer_mode") != mode
+            or result.get("operations", []) != list(operations)
         ):
             raise PipelineError(f"{handoff}: invalid metrics result handoff")
         target = result.get("target")
@@ -472,66 +501,11 @@ def run_pipeline(
                 "consumer modes produced incompatible metrics targets"
             )
 
-        native_handoff = handoff.with_name(f"{mode}_native_result.json")
-        _run(
-            [
-                sys.executable,
-                str(
-                    root
-                    / "validation"
-                    / "metrics"
-                    / "_internal"
-                    / "run_native_accuracy.py"
-                ),
-                "--accuracy",
-                str(artifacts[accuracy_target]),
-                "--consumer-mode",
-                mode,
-                "--sample-mode",
-                selected_sample_mode,
-                "--output-root",
-                str(selected_paths.data / "native" / mode),
-                "--result-file",
-                str(native_handoff),
-                *([] if force_rerun else ["--reuse-compatible"]),
-            ],
-            root,
-            environment,
-        )
-        native_result = read_json(native_handoff)
-        native_fields = {
-            "schema_version",
-            "run_id",
-            "sample_mode",
-            "consumer_mode",
-            "platform",
-            "architecture",
-            "compiler",
-            "target",
-            "run_directory",
-            "metadata",
-        }
-        if (
-            set(native_result) != native_fields
-            or native_result.get("sample_mode") != selected_sample_mode
-            or native_result.get("consumer_mode") != mode
-            or native_result.get("target") != target
-            or native_result.get("platform") != result["platform"]
-            or native_result.get("architecture") != result["architecture"]
-            or native_result.get("compiler") != result["compiler"]
-        ):
-            raise PipelineError(f"{native_handoff}: invalid native result handoff")
-        native_directory = Path(str(native_result["run_directory"]))
-        native_outputs = [
-            Path(str(native_result["metadata"])),
-            *(native_directory / f"{precision}_accuracy.csv"
-              for precision in ("f32", "f64")),
-        ]
-        missing_native = [path for path in native_outputs if not path.is_file()]
-        if missing_native:
-            raise PipelineError(
-                "native baseline did not create complete evidence: "
-                + ", ".join(str(path) for path in missing_native)
+        if select_operations(EXPECTED_ACCURACY["f32"], operations):
+            run_native_baseline(
+                root, artifacts[accuracy_target], selected_paths.data, handoff,
+                result, selected_sample_mode, mode, force_rerun,
+                operations, environment,
             )
 
         _run(
@@ -625,6 +599,85 @@ def run_pipeline(
     return generated
 
 
+def run_native_baseline(
+    root: Path,
+    accuracy: Path,
+    data: Path,
+    handoff: Path,
+    result: Mapping[str, object],
+    sample_mode: str,
+    mode: str,
+    force_rerun: bool,
+    operations: tuple[str, ...],
+    environment: Mapping[str, str],
+) -> None:
+    native_handoff = handoff.with_name(f"{mode}_native_result.json")
+    _run(
+        [
+            sys.executable,
+            str(
+                root
+                / "validation"
+                / "metrics"
+                / "_internal"
+                / "run_native_accuracy.py"
+            ),
+            "--accuracy",
+            str(accuracy),
+            "--consumer-mode",
+            mode,
+            "--sample-mode",
+            sample_mode,
+            "--output-root",
+            str(data / "native" / mode),
+            "--result-file",
+            str(native_handoff),
+            *([] if force_rerun else ["--reuse-compatible"]),
+            *(value for operation in operations for value in ("--operation", operation)),
+        ],
+        root,
+        environment,
+    )
+    native_result = read_json(native_handoff)
+    native_fields = {
+        "schema_version",
+        "run_id",
+        "sample_mode",
+        "consumer_mode",
+        "platform",
+        "architecture",
+        "compiler",
+        "target",
+        "run_directory",
+        "metadata",
+    }
+    if operations:
+        native_fields.add("operations")
+    if (
+        set(native_result) != native_fields
+        or native_result.get("sample_mode") != sample_mode
+        or native_result.get("consumer_mode") != mode
+        or native_result.get("operations", []) != list(operations)
+        or native_result.get("target") != result["target"]
+        or native_result.get("platform") != result["platform"]
+        or native_result.get("architecture") != result["architecture"]
+        or native_result.get("compiler") != result["compiler"]
+    ):
+        raise PipelineError(f"{native_handoff}: invalid native result handoff")
+    native_directory = Path(str(native_result["run_directory"]))
+    native_outputs = [
+        Path(str(native_result["metadata"])),
+        *(native_directory / f"{precision}_accuracy.csv"
+          for precision in ("f32", "f64")),
+    ]
+    missing_native = [path for path in native_outputs if not path.is_file()]
+    if missing_native:
+        raise PipelineError(
+            "native baseline did not create complete evidence: "
+            + ", ".join(str(path) for path in missing_native)
+        )
+
+
 def add_workflow_arguments(parser: argparse.ArgumentParser) -> None:
     """Add the metrics workflow arguments shared by public entry points."""
 
@@ -651,6 +704,10 @@ def add_workflow_arguments(parser: argparse.ArgumentParser) -> None:
         help="run the full profile",
     )
     parser.set_defaults(workflow=DEFAULT_WORKFLOW)
+    parser.add_argument(
+        "--operation", action="append", dest="operations", metavar="NAME",
+        help="run an exact operation name; repeat to select several (development only)",
+    )
     parser.add_argument(
         "--publish",
         action="store_true",
@@ -715,6 +772,7 @@ def run_pipeline_from_args(
         publish=args.publish,
         force_rerun=args.force_rerun,
         consumer_mode=args.consumer_mode,
+        operations=tuple(args.operations or ()),
     )
 
 

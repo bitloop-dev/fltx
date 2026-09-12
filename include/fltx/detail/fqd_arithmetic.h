@@ -94,6 +94,7 @@ namespace detail::_qd_runtime
 
     // fused operations
     [[nodiscard]] BL_NO_INLINE fqd_s               sqr(const fqd_s& a) noexcept;
+    [[nodiscard]] BL_NO_INLINE fqd_s               sqr_canonical(const fqd_s& a) noexcept;
     [[nodiscard]] BL_NO_INLINE fqd_s               mul_pow2_or_double(const fqd_s& a, double b) noexcept;
     [[nodiscard]] BL_NO_INLINE fqd_s BL_VECTORCALL mul_add(const fqd_s& a, const fqd_s& b, const fqd_s& c) noexcept;
     [[nodiscard]] BL_NO_INLINE fqd_s BL_VECTORCALL mul_sub(const fqd_s& a, const fqd_s& b, const fqd_s& c) noexcept;
@@ -1037,6 +1038,14 @@ namespace detail::_qd // primitives and kernels
         t1 += a.x1 * a.x3 + a.x2 * a.x2 + a.x3 * a.x1 + q6 + q7 + q8 + q9 + s2;
 
         return renorm5(p0, p1, s0, t0, t1);
+    }
+
+    // Squares with the symmetric product kernel and public range/special-value policy.
+    [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s sqr_canonical_inline(const fqd_s& a) noexcept
+    {
+        if (detail::fp::dekker_product_needs_scaling(a.x0, a.x0)) [[unlikely]]
+            return mul_canonical_inline(a, a);
+        return finish_mul_canonical_inline(a, a, sqr_inline(a));
     }
 
     // Multiplies qd by double-double through constexpr or compiled canonical dispatch.

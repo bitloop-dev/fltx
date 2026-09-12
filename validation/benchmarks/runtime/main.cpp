@@ -22,6 +22,7 @@ namespace
         bool sample_mode_set = false;
         bool samples_set = false;
         bool trials_set = false;
+        bool filter_set = false;
         for (int i = 1; i < argc; ++i)
         {
             const std::string argument = argv[i];
@@ -40,7 +41,16 @@ namespace
             else if (argument == "--source-revision")
                 out.source_revision = value();
             else if (argument == "--filter")
+            {
                 out.filter = value();
+                filter_set = true;
+            }
+            else if (argument == "--operation")
+            {
+                out.operations.push_back(value());
+                if (out.operations.back().empty())
+                    throw std::runtime_error("--operation requires a non-empty name");
+            }
             else if (argument == "--samples")
             {
                 out.samples = static_cast<std::size_t>(std::stoull(value()));
@@ -67,14 +77,21 @@ namespace
                        "--run-id ID --source-revision REV "
                        "[--sample-mode smoke|small|standard|full] [--samples N] "
                        "[--trials N (maximum for small/standard)] "
-                       "[--filter TEXT]\n"
-                       "fltx_benchmark --describe\n";
+                       "[--filter TEXT | --operation NAME ...]\n"
+                       "fltx_benchmark --describe\n"
+                       "  --filter TEXT     Select operation names containing TEXT.\n"
+                       "  --operation NAME  Select an exact, case-sensitive operation name.\n"
+                       "                    Repeat to select the union of names, with all\n"
+                       "                    enabled implementations.\n"
+                       "                    Cannot be combined with --filter.\n";
                 std::exit(0);
             }
             else
                 throw std::runtime_error("unknown argument: " + argument);
         }
 
+        if (filter_set && !out.operations.empty())
+            throw std::runtime_error("--filter and --operation cannot be combined");
         if (out.precision != "dd" && out.precision != "qd")
             throw std::runtime_error("--precision must be dd or qd");
         if (sample_mode_set)
@@ -175,7 +192,7 @@ int main(int argc, char** argv)
 
         const std::size_t result_rows = output.rows_written() - first_result_row;
         if (result_rows == 0)
-            throw std::runtime_error("benchmark filter matched no operations");
+            throw std::runtime_error("benchmark selection matched no operations");
 
         output.finish();
         return 0;

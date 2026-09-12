@@ -5,6 +5,13 @@ runner, performance benchmarks, metrics publication pipeline, shared support,
 and pinned comparison libraries. Behavioural suites live under `tests`, while
 runtime, compile-time, and binary-size measurements live under `benchmarks`.
 
+The Python tools require Python 3.10 or newer. On Apple silicon macOS, use
+Homebrew's `/opt/homebrew/bin/python3` if `python3 --version` reports Apple's
+Python 3.9. After installing Homebrew Python, refresh the current zsh session
+with `eval "$(/opt/homebrew/bin/brew shellenv)"` and `rehash`, or open a new login
+shell. CMake's Python selection does not change the interpreter used to launch
+the scripts directly.
+
 The validation executables have five roles. Each role has a strict-consumer
 target and a matching `_fastmath` target compiled with the platform's real
 consumer fast-math option (`/fp:fast` or `-ffast-math`):
@@ -132,6 +139,42 @@ and stops at the first failure. It shares CMake preset resolution and automatic
 Visual Studio developer-environment setup with the metrics pipeline, while
 remaining independent of metrics evidence and report generation.
 
+## Benchmarks across configured hosts
+
+For repeated performance-only measurements, use PowerShell 7 from the coordinating
+PC. Configure SSH destinations, checkout paths, Python commands and existing
+benchmark executables once in `metrics/benchmark_hosts.local.json` (ignored by
+Git); `metrics/benchmark_hosts.example.json` shows the seven-target setup.
+
+```powershell
+./validation/metrics/run_benchmarks.ps1 -Operation fmod -Precision dd
+./validation/metrics/run_benchmarks.ps1 -Operation sin,cos -Precision all -ConsumerMode strict
+```
+
+Defaults are DD, the standard profile and both strict/fast-math consumers.
+`-Profile quick|standard|full`, `-Precision dd|qd|all`, `-ConsumerMode
+strict|fastmath|all`, and `-Config PATH` select other settings. PowerShell array
+arguments such as `sin,cos` are passed from a PowerShell prompt. Node must be on
+the coordinating host's PATH for WebAssembly; remote hosts need SSH, bash, tar
+and their existing Python metrics installation. `pathPrepend` in the host
+configuration supplies additional executable directories, such as Homebrew.
+
+The command dispatches hosts concurrently and keeps each host's presets and
+consumer modes sequential. It calls the existing internal `run_metrics.py` in
+benchmark-only mode, preserving operation selection, corpus/timing policy,
+source freshness checks and provenance. Each remote host returns one archive
+containing the selected CSVs and metadata. No accuracy runners, test suites,
+SVG reports, source synchronization or builds run implicitly. Missing or stale
+executables fail with their existing runner diagnostics; prepare/rebuild them
+using the preset workflow below, then repeat the command. Mixed source
+fingerprints across hosts also fail instead of producing a combined comparison.
+
+The table prints directly to the terminal. `build/metrics/benchmarks/<run>/`
+retains `results.csv`, `results.md`, per-host evidence and logs; `latest.json`
+points to the latest successful collection. The reported total includes dispatch,
+execution, download and table assembly. Earlier successful results remain intact
+if any host fails. These are development measurements and cannot be published.
+
 ## Preset metrics pipeline
 
 The development metrics workflow can be run from one CMake build preset:
@@ -153,6 +196,33 @@ python .\validation\metrics\run_all_supported_metrics.py `
     --consumer-mode all --standard --publish
 ```
 
+For a focused optimisation pass, repeat `--operation` with exact operation names:
+
+```powershell
+python .\validation\metrics\run_all_supported_metrics.py `
+    --consumer-mode all --standard --operation sin --operation cos
+```
+
+The single-preset command accepts the same selection. Names are case-sensitive;
+`sin` selects neither `asin`, `sinh` nor `sincos`. Repeated names are deduplicated,
+and order does not matter. Unknown names fail before a build starts. All available
+comparison implementations and every accuracy domain for each selected operation
+are retained, with the ordinary sample and timing policy. Native f32/f64 accuracy
+is limited to the selected operations it covers; it is skipped when none have
+native coverage. Benchmark-only operations such as `sincos` remain selectable.
+The raw `mt19937_64` harness baseline remains excluded from public reports and
+can be selected through the internal runner; use `uniform_real` or `normal` for
+the library's random operations.
+
+Filtered runs use `build/metrics/<profile>/operations/<selection>/{data,generated}`
+(for example `build/metrics/standard/operations/cos+sin/`). A filtered
+`--output-root` must also be under `build/`; the `operations/<selection>` directory
+is added beneath it. Different selections have separate snapshots and cache
+identities. Filtered runs cannot use `--publish`. Reports require the complete
+selected manifest, so a missing domain or comparison row still fails validation.
+Rebuilding filtered evidence with `rebuild_tables.py` also requires an explicit
+`--output` directory under `build/`.
+
 The host matrix is explicit rather than inferred from installed tools:
 
 | Host | Presets |
@@ -161,6 +231,15 @@ The host matrix is explicit rather than inferred from installed tools:
 | Windows ARM64 | MSVC, clang-cl |
 | Linux x64/ARM64 | native GCC and Clang for the host architecture |
 | macOS x64/ARM64 | native AppleClang for the host architecture |
+
+All twelve release presets, including Windows ARM64, Linux ARM64 and macOS x64,
+are already defined in `CMakePresets.json`. This command runs the current host's
+row; it does not dispatch over SSH. Run the same filtered command on each host
+to collect the complete available matrix. Windows x64, Linux x64 and macOS ARM64
+together cover seven presets. The remaining five require matching native hosts
+for representative performance measurements. Cross-compilation alone does not
+provide execution, and translated or emulated timings must be kept separate
+from native performance evidence.
 
 Every selected preset is required and runs in order; a missing toolchain fails
 the command rather than silently producing a partial matrix. The alternate
@@ -177,6 +256,12 @@ File API. It runs strict-consumer metrics by default. Pass
 `--consumer-mode all` to run strict and then fast-math metrics and generate
 both sets of data and reports. The modes retain separate evidence and
 provenance, including the source fingerprint needed for later comparisons.
+External-library comparisons run in strict mode; the fast-math runners measure
+FLTX. Fast-math remains useful for regression checks against an earlier FLTX run
+on the same host, target and sample policy. Keep before/after runs in separate
+`--output-root` directories when changing source, and compare accuracy as well as
+timings. Strict performance is the primary optimisation target, while fast-math
+slowdowns or accuracy losses still need investigation.
 After the requested mode finishes, the pipeline also regenerates strict versus
 fast-math profile comparisons whenever a compatible pair exists. An `all` run
 requires those comparison reports; a focused run simply skips them when the

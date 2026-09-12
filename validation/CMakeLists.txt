@@ -1,5 +1,5 @@
 find_package(Catch2 3 CONFIG REQUIRED)
-find_package(Python3 COMPONENTS Interpreter REQUIRED)
+find_package(Python3 3.10 COMPONENTS Interpreter REQUIRED)
 include(Catch)
 
 set(FLTX_VALIDATION_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")

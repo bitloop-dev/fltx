@@ -567,63 +567,15 @@ namespace detail::_dd // primitives and kernels
     template<bool Checked, class ExpUnsigned>
     [[nodiscard]] BL_FORCE_INLINE constexpr fdd_s powi_nonnegative_impl(fdd_s base, ExpUnsigned exp) noexcept
     {
-        if (exp == ExpUnsigned{ 0 })
-            return fdd_s{ 1.0 };
-        if (exp == ExpUnsigned{ 1 })
-            return base;
-        if (exp == ExpUnsigned{ 2 })
-            return Checked ? pow_sqr_adaptive(base) : sqr_inline(base);
-        if (exp == ExpUnsigned{ 3 })
-        {
-            const fdd_s squared = Checked ? pow_sqr_adaptive(base) : sqr_inline(base);
-            return Checked ? pow_mul_adaptive(squared, base) : mul_canonical_inline(squared, base);
-        }
-        if (exp == ExpUnsigned{ 4 })
-        {
-            const fdd_s squared = Checked ? pow_sqr_adaptive(base) : sqr_inline(base);
-            return Checked ? pow_sqr_adaptive(squared) : sqr_inline(squared);
-        }
-
-        fdd_s result{ 1.0 };
-        while (exp != ExpUnsigned{ 0 })
-        {
-            if ((exp & ExpUnsigned{ 1 }) != ExpUnsigned{ 0 })
-                result = Checked ? pow_mul_adaptive(result, base) : mul_canonical_inline(result, base);
-
-            exp >>= 1;
-            if (exp != ExpUnsigned{ 0 })
-                base = Checked ? pow_sqr_adaptive(base) : sqr_inline(base);
-        }
-
-        return result;
+        return detail::fp::powi_nonnegative<
+            Checked ? pow_sqr_adaptive : sqr_inline,
+            Checked ? pow_mul_adaptive : mul_canonical_inline>(base, exp);
     }
 
     template<class ExpUnsigned>
     [[nodiscard]] BL_FORCE_INLINE constexpr fdd_s powi_nonnegative_unchecked(fdd_s base, ExpUnsigned exp) noexcept
     {
-        if (exp == ExpUnsigned{ 0 })
-            return fdd_s{ 1.0 };
-        if (exp == ExpUnsigned{ 1 })
-            return base;
-        if (exp == ExpUnsigned{ 2 })
-            return sqr_inline(base);
-        if (exp == ExpUnsigned{ 3 })
-            return mul_product_inline(sqr_inline(base), base);
-        if (exp == ExpUnsigned{ 4 })
-            return sqr_inline(sqr_inline(base));
-
-        fdd_s result{ 1.0 };
-        while (exp != ExpUnsigned{ 0 })
-        {
-            if ((exp & ExpUnsigned{ 1 }) != ExpUnsigned{ 0 })
-                result = mul_product_inline(result, base);
-
-            exp >>= 1;
-            if (exp != ExpUnsigned{ 0 })
-                base = sqr_inline(base);
-        }
-
-        return result;
+        return detail::fp::powi_nonnegative<sqr_inline, mul_product_inline>(base, exp);
     }
 
     template<class ExpUnsigned>

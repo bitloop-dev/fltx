@@ -8,7 +8,7 @@ import sys
 import uuid
 from pathlib import Path
 
-from manifest import EXPECTED_ACCURACY
+from manifest import EXPECTED_ACCURACY, normalize_operations, select_operations
 from run_metrics import (
     ACCURACY_FIELDS,
     MetricsError,
@@ -46,6 +46,7 @@ def _validate_accuracy_evidence(
     run_id: str,
     revision: str,
     fingerprint: str,
+    operations: tuple[str, ...] = (),
     allow_partial: bool = False,
 ) -> None:
     rows = _read_csv(
@@ -65,7 +66,7 @@ def _validate_accuracy_evidence(
         (row["group"], row["operation"], row["domain"])
         for row in rows
     }
-    expected = EXPECTED_ACCURACY[precision]
+    expected = select_operations(EXPECTED_ACCURACY[precision], operations)
     if observed != expected:
         missing = sorted(expected - observed)
         extra = sorted(observed - expected)
@@ -87,6 +88,7 @@ def _run_precision(
     fingerprint: str,
     sample_mode: str,
     consumer_mode: str,
+    operations: tuple[str, ...] = (),
 ) -> dict[str, dict[str, str]]:
     command = [
         *_runner_command(executable),
@@ -102,6 +104,20 @@ def _run_precision(
         sample_mode,
         "--advisory",
     ]
+    if operations:
+        native_operations = sorted({
+            operation
+            for _, operation, _ in select_operations(
+                EXPECTED_ACCURACY[precision], operations,
+            )
+        })
+        if not native_operations:
+            raise MetricsError(
+                f"native/{precision}: requested operations have no native "
+                "accuracy coverage"
+            )
+        for operation in native_operations:
+            command.extend(("--operation", operation))
     configuration, return_code = _run(
         command,
         "accuracy",
@@ -124,6 +140,7 @@ def _run_precision(
         run_id=run_id,
         revision=revision,
         fingerprint=fingerprint,
+        operations=operations,
         allow_partial=evidence == partial,
     )
     if return_code:
@@ -141,8 +158,9 @@ def _result_handoff(
     compiler: str,
     run_directory: Path,
     metadata: Path,
+    operations: tuple[str, ...] = (),
 ) -> dict[str, object]:
-    return {
+    result: dict[str, object] = {
         "schema_version": NATIVE_SCHEMA_VERSION,
         "run_id": run_id,
         "sample_mode": sample_mode,
@@ -154,6 +172,9 @@ def _result_handoff(
         "run_directory": str(run_directory.resolve()),
         "metadata": str(metadata.resolve()),
     }
+    if operations:
+        result["operations"] = list(operations)
+    return result
 
 
 def _validate_reusable_candidate(
@@ -167,6 +188,7 @@ def _validate_reusable_candidate(
     fingerprint: str,
     configuration: dict[str, dict[str, str]],
     host: object,
+    operations: tuple[str, ...] = (),
 ) -> dict[str, object]:
     metadata = _read_metadata(metadata_path)
     required = {
@@ -190,6 +212,12 @@ def _validate_reusable_candidate(
                 f"{metadata_path}: reusable {field} mismatch "
                 f"({metadata.get(field)!r} != {expected!r})"
             )
+    recorded_operations = metadata.get("operations", [])
+    if recorded_operations != list(operations):
+        raise MetricsError(
+            f"{metadata_path}: reusable operations mismatch "
+            f"({recorded_operations!r} != {list(operations)!r})"
+        )
     if metadata.get("configuration") != configuration:
         raise MetricsError(
             f"{metadata_path}: reusable build configuration changed"
@@ -233,6 +261,7 @@ def _validate_reusable_candidate(
             run_id=run_id,
             revision=revision,
             fingerprint=fingerprint,
+            operations=operations,
         )
 
     return _result_handoff(
@@ -244,6 +273,7 @@ def _validate_reusable_candidate(
         compiler=compiler,
         run_directory=run_directory,
         metadata=metadata_path,
+        operations=operations,
     )
 
 
@@ -258,6 +288,7 @@ def _find_reusable_run(
     fingerprint: str,
     configuration: dict[str, dict[str, str]],
     host: object,
+    operations: tuple[str, ...] = (),
 ) -> tuple[dict[str, object] | None, str]:
     candidates = list(output_root.glob("*/native_accuracy_run.json"))
     candidates.sort(key=lambda path: path.stat().st_mtime, reverse=True)
@@ -278,6 +309,7 @@ def _find_reusable_run(
                     fingerprint=fingerprint,
                     configuration=configuration,
                     host=host,
+                    operations=operations,
                 ),
                 "",
             )
@@ -306,12 +338,29 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default="strict",
     )
     parser.add_argument(
+        "--operation",
+        dest="operations",
+        action="append",
+        metavar="NAME",
+        help="Select an exact operation name; repeat to run their union.",
+    )
+    parser.add_argument(
         "--reuse-compatible",
         action="store_true",
         help=argparse.SUPPRESS,
     )
     parser.add_argument("--result-file", type=Path)
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    try:
+        args.operations = normalize_operations(args.operations)
+    except ValueError as error:
+        parser.error(str(error))
+    if args.operations and not any(
+        select_operations(EXPECTED_ACCURACY[precision], args.operations)
+        for precision in NATIVE_PRECISIONS
+    ):
+        parser.error("requested operations have no native accuracy coverage")
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -321,6 +370,9 @@ def main(argv: list[str] | None = None) -> int:
     revision = identity.revision
     accuracy = args.accuracy.resolve()
     output_root = args.output_root.resolve()
+    if args.operations and not output_root.is_relative_to(root / "build"):
+        print("native accuracy failed: operation-filtered output must stay under build/", file=sys.stderr)
+        return 1
     try:
         provenance = _run_provenance((("accuracy", accuracy),))
         configuration = _preflight_runners(
@@ -355,6 +407,7 @@ def main(argv: list[str] | None = None) -> int:
             fingerprint=identity.fingerprint,
             configuration=configuration,
             host=provenance["host"],
+            operations=args.operations,
         )
         if reusable is not None:
             if args.result_file is not None:
@@ -389,6 +442,7 @@ def main(argv: list[str] | None = None) -> int:
                 fingerprint=identity.fingerprint,
                 sample_mode=args.sample_mode,
                 consumer_mode=args.consumer_mode,
+                operations=args.operations,
             )
             configuration = _require_matching_configuration(
                 configuration,
@@ -430,6 +484,7 @@ def main(argv: list[str] | None = None) -> int:
             "compiler": compiler,
             "target": f"{platform}/{architecture}/{compiler}",
             "precisions": list(NATIVE_PRECISIONS),
+            "operations": list(args.operations),
             "policy": NATIVE_POLICY,
             "thresholds": "advisory",
             "configuration": configuration,
@@ -450,6 +505,7 @@ def main(argv: list[str] | None = None) -> int:
                 compiler=compiler,
                 run_directory=run_directory,
                 metadata=metadata,
+                operations=args.operations,
             ),
         )
     print(

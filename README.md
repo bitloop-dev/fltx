@@ -487,6 +487,9 @@ int main()
 
 These steps are for contributors who want to build the `fltx` repository itself, including tests and benchmarks. They install the repo-local vcpkg dependencies used by the test suite, such as Catch2, Boost.Multiprecision, GMP, and MPFR.
 
+The validation and metrics tools require Python 3.10 or newer. Use that version
+when invoking the Python scripts directly as well as when configuring CMake.
+
 If you only want to use `fltx` from your own project, you do not need this full setup. Use the vcpkg or CMake installation instructions above instead.
 
 <details>
@@ -522,7 +525,13 @@ echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
 eval "$(/opt/homebrew/bin/brew shellenv)"
 
 # 3. Install tools needed by CMake and vcpkg ports
-brew install cmake python pkg-config autoconf autoconf-archive automake libtool m4
+brew install ninja cmake python pkg-config autoconf autoconf-archive automake libtool m4
+
+# Refresh command lookup after installing Python; expect Homebrew Python 3.10+
+eval "$(/opt/homebrew/bin/brew shellenv)"
+rehash
+command -v python3
+python3 --version
 
 # 4. Clone fltx with submodules
 cd ~/Documents
@@ -542,12 +551,20 @@ cmake --build --preset macos-arm64-appleclang-release --parallel
 For an already-cloned repo:
 
 ```bash
+eval "$(/opt/homebrew/bin/brew shellenv)"
+rehash
+python3 --version # Must be 3.10 or newer
 cd ~/Documents/fltx
 git submodule update --init --recursive
 ./vcpkg/bootstrap-vcpkg.sh
 cmake --preset macos-arm64-appleclang-release
 cmake --build --preset macos-arm64-appleclang-release --parallel
 ```
+
+If `python3` still selects Apple's Python 3.9, use
+`/opt/homebrew/bin/python3` explicitly for validation and metrics commands.
+CMake can find Homebrew Python independently, but scripts launched with
+`python3` use the interpreter selected by your shell, including for subprocesses.
 
 </details>
 

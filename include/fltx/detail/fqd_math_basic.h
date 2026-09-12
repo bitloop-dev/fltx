@@ -54,6 +54,9 @@ namespace detail::_qd_runtime
 {
     [[nodiscard]] BL_FORCE_INLINE double trunc_limb(double x) noexcept
     {
+#if FLTX_ARM64_TARGET
+        return std::trunc(x);
+#else
         if (detail::fp::iszero_or_inf_or_nan(x))
             return x;
 
@@ -63,6 +66,7 @@ namespace detail::_qd_runtime
 
         const double out = static_cast<double>(static_cast<long long>(x));
         return out == 0.0 ? (detail::fp::signbit(x) ? -0.0 : 0.0) : out;
+#endif
     }
 }
 
@@ -108,12 +112,6 @@ namespace detail::_qd
 
 namespace detail::_qd
 {
-    [[nodiscard]] BL_FORCE_INLINE double round_nearest_away_from_zero_limb_finite_small(
-        double x) noexcept
-    {
-        return detail::fp::round_nearest_away_from_zero(x);
-    }
-
     [[nodiscard]] BL_FORCE_INLINE constexpr bool has_negative_tail(double x1, double x2, double x3) noexcept
     {
         return x1 < 0.0 || (x1 == 0.0 && (x2 < 0.0 || (x2 == 0.0 && x3 < 0.0)));
@@ -312,20 +310,18 @@ namespace detail::_qd_impl
         if (detail::fp::isinf_or_nan(a.x0)) [[unlikely]]
             return a;
 
-        if (detail::fp::absd(a.x0) < detail::fp::double_integer_threshold)
+        double x0 = detail::fp::round_nearest_away_from_zero(a.x0);
+        if (x0 == a.x0)
         {
-            if (detail::fp::trunc(a.x0) == a.x0 &&
-                (a.x1 != 0.0 || a.x2 != 0.0 || a.x3 != 0.0))
-            {
+            // Nonoverlapping tails below one half cannot change an integral head.
+            if ((a.x1 != 0.0 || a.x2 != 0.0 || a.x3 != 0.0) &&
+                !(detail::fp::absd(a.x1) < 0.5 && a.x0 != 0.0)) [[unlikely]]
                 return detail::_qd::round_nearest_away_from_zero(a);
-            }
-
-            double x0 = detail::_qd::round_nearest_away_from_zero_limb_finite_small(a.x0);
-            detail::_qd::adjust_rounded_limb_for_tail(x0, a.x0, a.x1, a.x2, a.x3);
-            return x0 == 0.0 ? detail::_qd::signed_zero_like(a) : fqd_s{ x0 };
+            return fqd_s{ x0 };
         }
 
-        return detail::_qd::round_nearest_away_from_zero(a);
+        detail::_qd::adjust_rounded_limb_for_tail(x0, a.x0, a.x1, a.x2, a.x3);
+        return x0 == 0.0 ? detail::_qd::signed_zero_like(a) : fqd_s{ x0 };
     }
 
 }
@@ -422,6 +418,11 @@ namespace detail::_qd_impl
 {
     if (detail::fp::isinf_or_nan(a.x0)) [[unlikely]]
         return a;
+
+#if FLTX_ARM64_TARGET
+    if (!bl::detail::is_constant_evaluated())
+        return detail::_qd::trunc_limbwise(a);
+#endif
 
     return detail::fp::signbit(a.x0) ? detail::_qd::ceil_limbwise(a) : detail::_qd::floor_limbwise(a);
 }

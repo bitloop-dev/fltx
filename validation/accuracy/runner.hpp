@@ -51,6 +51,7 @@ namespace fltx::tests::accuracy
         std::string run_id;
         std::string source_revision;
         std::string filter;
+        std::vector<std::string> operations;
         std::string sample_mode = "custom";
         std::size_t samples = 64;
         bool advisory = false;
@@ -455,8 +456,9 @@ namespace fltx::tests::accuracy
         void require_complete(std::size_t expected_rows) const
         {
             if (fltx_rows_ == 0)
-                throw std::runtime_error("accuracy filter matched no operations");
-            if (settings_.filter.empty() && fltx_rows_ != expected_rows)
+                throw std::runtime_error("accuracy selection matched no operations");
+            if (settings_.filter.empty() && settings_.operations.empty() &&
+                fltx_rows_ != expected_rows)
             {
                 throw std::runtime_error(
                     "accuracy inventory mismatch: expected " +
@@ -1429,6 +1431,13 @@ namespace fltx::tests::accuracy
 
         [[nodiscard]] bool selected(std::string_view operation) const
         {
+            if (!settings_.operations.empty())
+            {
+                return std::find(
+                    settings_.operations.begin(),
+                    settings_.operations.end(),
+                    operation) != settings_.operations.end();
+            }
             return settings_.filter.empty() ||
                    operation.find(settings_.filter) != std::string_view::npos;
         }

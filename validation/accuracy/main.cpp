@@ -148,6 +148,7 @@ namespace
         fltx::tests::accuracy::options out;
         bool sample_mode_set = false;
         bool samples_set = false;
+        bool filter_set = false;
         for (int i = 1; i < argc; ++i)
         {
             const std::string argument = argv[i];
@@ -166,7 +167,16 @@ namespace
             else if (argument == "--source-revision")
                 out.source_revision = value();
             else if (argument == "--filter")
+            {
                 out.filter = value();
+                filter_set = true;
+            }
+            else if (argument == "--operation")
+            {
+                out.operations.push_back(value());
+                if (out.operations.back().empty())
+                    throw std::runtime_error("--operation requires a non-empty name");
+            }
             else if (argument == "--samples")
             {
                 out.samples = static_cast<std::size_t>(std::stoull(value()));
@@ -189,14 +199,21 @@ namespace
                     << "fltx_accuracy --precision f32|f64|dd|qd --output FILE "
                        "--run-id ID --source-revision REV "
                        "[--sample-mode smoke|small|standard|full] [--samples N] "
-                       "[--filter TEXT] [--advisory]\n"
-                       "fltx_accuracy --describe\n";
+                       "[--filter TEXT | --operation NAME ...] [--advisory]\n"
+                       "fltx_accuracy --describe\n"
+                       "  --filter TEXT     Select operation names containing TEXT.\n"
+                       "  --operation NAME  Select an exact, case-sensitive operation name.\n"
+                       "                    Repeat to select the union of names, with all\n"
+                       "                    domains and enabled implementations.\n"
+                       "                    Cannot be combined with --filter.\n";
                 std::exit(0);
             }
             else
                 throw std::runtime_error("unknown argument: " + argument);
         }
 
+        if (filter_set && !out.operations.empty())
+            throw std::runtime_error("--filter and --operation cannot be combined");
         if (out.precision != "f32" && out.precision != "f64" &&
             out.precision != "dd" && out.precision != "qd")
             throw std::runtime_error("--precision must be f32, f64, dd or qd");

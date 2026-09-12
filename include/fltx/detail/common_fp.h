@@ -913,7 +913,9 @@ template<class ExpUnsigned>
 
     const int frexp_exponent = frexp_exponent_limb(magnitude);
     const int bits_per_power = frexp_exponent > 1 ? frexp_exponent : 1;
-    return exp > static_cast<ExpUnsigned>(996 / bits_per_power);
+    // Bound the exponent before multiplying: this is the same range test
+    // without an integer division, and the product cannot overflow unsigned.
+    return exp > 996u || static_cast<unsigned>(exp) * static_cast<unsigned>(bits_per_power) > 996u;
 }
 
 // Forms an exact product after scaling operands into Dekker's safe range.
