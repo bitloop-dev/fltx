@@ -81,8 +81,11 @@ BL_FORCE_INLINE constexpr double log1p(double x) noexcept
 
 BL_FORCE_INLINE constexpr double round_nearest_away_from_zero(double x) noexcept
 {
-#if !defined(__MINGW32__) || !defined(__GNUC__) || defined(__clang__)
+#if (!defined(__MINGW32__) || !defined(__GNUC__) || defined(__clang__)) && \
+    !(defined(__APPLE__) && defined(__apple_build_version__) && defined(__x86_64__))
     // MinGW GCC is faster with the portable scalar rounding below.
+    // AppleClang x64 lowers std::round to an add/truncate sequence whose
+    // addition depends on the process rounding mode. Use the same fallback.
     if (!bl::detail::is_constant_evaluated())
         return std::round(x);
 #endif
