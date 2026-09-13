@@ -882,30 +882,16 @@ namespace detail::_qd // primitives and kernels
         const fqd_s& ax,
         const fqd_s& ay,
         fqd_s& out,
-        std::uint64_t& quotient,
-        bool refine_quotient = true,
-        double quotient_limit = 0x1p53) noexcept
+        std::uint64_t& quotient) noexcept
     {
         if (!(ay.x0 > 0.0) || detail::fp::isinf_or_nan(ay.x0) || !(ax >= ay))
             return false;
 
         const double q = detail::fp::trunc(ax.x0 / ay.x0);
-        if (!(q > 0.0) || q >= quotient_limit)
+        if (!(q > 0.0) || q >= 0x1p53)
             return false;
 
-        if (fmod_try_small_quotient_abs(ax, ay, q, out, quotient))
-            return true;
-
-        if (!refine_quotient)
-            return false;
-
-        const fqd_s q_floor = detail::_qd_impl::trunc(ax / ay);
-        if (q_floor.x1 != 0.0 || q_floor.x2 != 0.0 || q_floor.x3 != 0.0)
-            return false;
-        if (!(q_floor.x0 > 0.0) || q_floor.x0 >= quotient_limit || q_floor.x0 == q)
-            return false;
-
-        return fmod_try_small_quotient_abs(ax, ay, q_floor.x0, out, quotient);
+        return fmod_try_small_quotient_abs(ax, ay, q, out, quotient);
     }
 
     BL_MSVC_NOINLINE constexpr bool fmod_fast_small_quotient_abs(const fqd_s& ax, const fqd_s& ay, fqd_s& out) noexcept
@@ -986,7 +972,7 @@ namespace detail::_qd // primitives and kernels
             return false;
 
         constexpr std::int64_t int64_min = std::numeric_limits<std::int64_t>::lowest();
-        if (xi == detail::_qd_impl::to_qd(int64_min))
+        if (xi == detail::_qd::integer_to_qd(int64_min))
         {
             out = int64_min;
             return true;
@@ -996,11 +982,11 @@ namespace detail::_qd // primitives and kernels
             return false;
 
         const int64_t p0 = static_cast<int64_t>(xi.x0);
-        const fqd_s r0 = sub_finite_inline(xi, detail::_qd_impl::to_qd(p0));
+        const fqd_s r0 = sub_finite_inline(xi, detail::_qd::integer_to_qd(p0));
         const int64_t p1 = static_cast<int64_t>(r0.x0);
-        const fqd_s r1 = sub_finite_inline(r0, detail::_qd_impl::to_qd(p1));
+        const fqd_s r1 = sub_finite_inline(r0, detail::_qd::integer_to_qd(p1));
         const int64_t p2 = static_cast<int64_t>(r1.x0);
-        const fqd_s r2 = sub_finite_inline(r1, detail::_qd_impl::to_qd(p2));
+        const fqd_s r2 = sub_finite_inline(r1, detail::_qd::integer_to_qd(p2));
         const int64_t p3 = static_cast<int64_t>(r2.x0 + r2.x1 + r2.x2 + r2.x3);
 
         out = p0 + p1 + p2 + p3;
@@ -1516,8 +1502,8 @@ namespace detail::_qd // primitives and kernels
 
         constexpr auto lo_i = static_cast<std::int64_t>(std::numeric_limits<SignedInt>::lowest());
         constexpr auto hi_i = static_cast<std::int64_t>(std::numeric_limits<SignedInt>::max());
-        const fqd_s lo = detail::_qd_impl::to_qd(lo_i);
-        const fqd_s hi = detail::_qd_impl::to_qd(hi_i);
+        const fqd_s lo = detail::_qd::integer_to_qd(lo_i);
+        const fqd_s hi = detail::_qd::integer_to_qd(hi_i);
 
         if (x < lo || x > hi)
             return 0;
@@ -1540,7 +1526,7 @@ namespace detail::_qd // primitives and kernels
 
         constexpr auto lo_i = static_cast<std::int64_t>(std::numeric_limits<SignedInt>::lowest());
         constexpr auto hi_i = static_cast<std::int64_t>(std::numeric_limits<SignedInt>::max());
-        if (x < detail::_qd_impl::to_qd(lo_i) || x > detail::_qd_impl::to_qd(hi_i))
+        if (x < detail::_qd::integer_to_qd(lo_i) || x > detail::_qd::integer_to_qd(hi_i))
             return false;
 
         std::int64_t base = static_cast<std::int64_t>(x.x0);

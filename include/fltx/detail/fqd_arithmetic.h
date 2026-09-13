@@ -119,10 +119,6 @@ namespace detail::_qd_runtime
     [[nodiscard]] BL_NO_INLINE fqd_s BL_VECTORCALL add_add_add_sub(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d) noexcept;
     [[nodiscard]] BL_NO_INLINE fqd_s BL_VECTORCALL add_add_sub_sub(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d) noexcept;
     [[nodiscard]] BL_NO_INLINE fqd_s BL_VECTORCALL add_sub_sub_sub(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d) noexcept;
-    [[nodiscard]] BL_NO_INLINE fqd_s BL_VECTORCALL add_scaled_2_1(const fqd_s& a, const fqd_s& b) noexcept;
-    [[nodiscard]] BL_NO_INLINE fqd_s BL_VECTORCALL add_scaled_1_2(const fqd_s& a, const fqd_s& b) noexcept;
-    [[nodiscard]] BL_NO_INLINE fqd_s BL_VECTORCALL add_scaled_2_neg1(const fqd_s& a, const fqd_s& b) noexcept;
-    [[nodiscard]] BL_NO_INLINE fqd_s BL_VECTORCALL add_scaled_1_neg2(const fqd_s& a, const fqd_s& b) noexcept;
     [[nodiscard]] BL_NO_INLINE fqd_s BL_VECTORCALL add_mul_double(const fqd_s& addend, const fqd_s& value, double scalar) noexcept;
     [[nodiscard]] BL_NO_INLINE fqd_s BL_VECTORCALL sub_mul_double(const fqd_s& minuend, const fqd_s& value, double scalar) noexcept;
     [[nodiscard]] BL_NO_INLINE fqd_s BL_VECTORCALL mul_double_sub(const fqd_s& value, double scalar, const fqd_s& subtrahend) noexcept;
@@ -462,6 +458,11 @@ namespace detail::_qd // primitives and kernels
     // Adds qd values and canonicalizes the result.
     [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s add_canonical_inline(const fqd_s& a, const fqd_s& b) noexcept
     {
+        // Constant evaluation cannot form the non-finite EFT residuals that
+        // runtime canonical finalization discards.
+        if (detail::is_constant_evaluated() &&
+            (detail::fp::isinf_or_nan(a.x0) || detail::fp::isinf_or_nan(b.x0)))
+            return add_special(a, b);
         const fqd_s out = add_finite_inline(a, b);
         if (limb_is_zero_or_nonfinite(out.x0)) [[unlikely]]
             return finish_add_canonical(a, b, out.x0);
@@ -472,6 +473,9 @@ namespace detail::_qd // primitives and kernels
     [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s add_double_canonical_inline(const fqd_s& a, double b) noexcept
     {
         const fqd_s rhs{ b, 0.0, 0.0, 0.0 };
+        if (detail::is_constant_evaluated() &&
+            (detail::fp::isinf_or_nan(a.x0) || detail::fp::isinf_or_nan(b)))
+            return add_special(a, rhs);
         const fqd_s out = add_double_finite_inline(a, b);
         if (limb_is_zero_or_nonfinite(out.x0)) [[unlikely]]
             return finish_add_canonical(a, rhs, out.x0);
@@ -546,6 +550,9 @@ namespace detail::_qd // primitives and kernels
     // Subtracts qd values and canonicalizes the result.
     [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s sub_canonical_inline(const fqd_s& a, const fqd_s& b) noexcept
     {
+        if (detail::is_constant_evaluated() &&
+            (detail::fp::isinf_or_nan(a.x0) || detail::fp::isinf_or_nan(b.x0)))
+            return sub_special(a, b);
         const fqd_s out = sub_finite_inline(a, b);
         if (limb_is_zero_or_nonfinite(out.x0)) [[unlikely]]
             return finish_sub_canonical(a, b, out.x0);
@@ -556,6 +563,9 @@ namespace detail::_qd // primitives and kernels
     [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s sub_double_canonical_inline(const fqd_s& a, double b) noexcept
     {
         const fqd_s rhs{ b, 0.0, 0.0, 0.0 };
+        if (detail::is_constant_evaluated() &&
+            (detail::fp::isinf_or_nan(a.x0) || detail::fp::isinf_or_nan(b)))
+            return sub_special(a, rhs);
         const fqd_s out = sub_double_finite_inline(a, b);
         if (limb_is_zero_or_nonfinite(out.x0)) [[unlikely]]
             return finish_sub_canonical(a, rhs, out.x0);
@@ -566,6 +576,9 @@ namespace detail::_qd // primitives and kernels
     [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s sub_double_canonical_inline(double a, const fqd_s& b) noexcept
     {
         const fqd_s lhs{ a, 0.0, 0.0, 0.0 };
+        if (detail::is_constant_evaluated() &&
+            (detail::fp::isinf_or_nan(a) || detail::fp::isinf_or_nan(b.x0)))
+            return sub_special(lhs, b);
         const fqd_s out = sub_double_finite_inline(a, b);
         if (limb_is_zero_or_nonfinite(out.x0)) [[unlikely]]
             return finish_sub_canonical(lhs, b, out.x0);
@@ -825,6 +838,9 @@ namespace detail::_qd // primitives and kernels
     // Multiplies qd values with range protection and canonical special handling.
     [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s mul_canonical_inline(const fqd_s& a, const fqd_s& b) noexcept
     {
+        if (detail::is_constant_evaluated() &&
+            (detail::fp::isinf_or_nan(a.x0) || detail::fp::isinf_or_nan(b.x0)))
+            return mul_special(a, b);
         #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         if (detail::fp::dekker_product_needs_scaling(a.x0, b.x0)) [[unlikely]]
             return finish_mul_canonical_inline(a, b, mul_product_range_safe_inline(a, b));
@@ -934,6 +950,9 @@ namespace detail::_qd // primitives and kernels
     // Multiplies qd by a double with range protection and canonical special handling.
     [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s mul_double_canonical_inline(const fqd_s& a, double b) noexcept
     {
+        if (detail::is_constant_evaluated() &&
+            (detail::fp::isinf_or_nan(a.x0) || detail::fp::isinf_or_nan(b)))
+            return mul_special(a, fqd_s{ b });
         #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
         const fqd_s out = detail::fp::dekker_product_needs_scaling(a.x0, b)
             ? mul_double_product_range_safe_inline(a, b)
@@ -1253,7 +1272,7 @@ namespace detail::_qd // primitives and kernels
     // Divides qd values with exceptional-denominator handling and tiny-divisor scaling.
     [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s div_canonical_inline(const fqd_s& a, const fqd_s& b) noexcept
     {
-        if (detail::fp::iszero_or_inf_or_nan(b.x0)) [[unlikely]]
+        if (detail::fp::isinf_or_nan(a.x0) || detail::fp::iszero_or_inf_or_nan(b.x0)) [[unlikely]]
             return div_special(a, b);
 
         if (detail::fp::absd(b.x0) < 0x1p-500

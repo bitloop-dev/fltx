@@ -18,24 +18,12 @@ namespace bl::detail::_qd_runtime
 
     BL_NO_INLINE fqd_s horner_forward(const fqd_s* coeffs, std::size_t count, const fqd_s& x) noexcept
     {
-        if (count == 0)
-            return {};
-
-        fqd_s p = coeffs[0];
-        for (std::size_t i = 1; i < count; ++i)
-            p = detail::_qd::mul_add_inline(p, x, coeffs[i]);
-        return p;
+        return detail::_qd::horner_forward_inline(coeffs, count, x);
     }
 
     BL_NO_INLINE fqd_s horner_reverse(const fqd_s* coeffs, std::size_t count, const fqd_s& x) noexcept
     {
-        if (count == 0)
-            return {};
-
-        fqd_s p = coeffs[count - 1];
-        for (std::size_t i = count - 1; i > 0; --i)
-            p = detail::_qd::mul_add_inline(p, x, coeffs[i - 1]);
-        return p;
+        return detail::_qd::horner_reverse_inline(coeffs, count, x);
     }
 
     BL_NO_INLINE void horner_pair_forward(
@@ -46,23 +34,7 @@ namespace bl::detail::_qd_runtime
         fqd_s& left_out,
         fqd_s& right_out) noexcept
     {
-        if (count == 0)
-        {
-            left_out = fqd_s{};
-            right_out = fqd_s{};
-            return;
-        }
-
-        fqd_s left  = left_coeffs[0];
-        fqd_s right = right_coeffs[0];
-        for (std::size_t i = 1; i < count; ++i)
-        {
-            left = detail::_qd::mul_add_inline(left, x, left_coeffs[i]);
-            right = detail::_qd::mul_add_inline(right, x, right_coeffs[i]);
-        }
-
-        left_out = left;
-        right_out = right;
+        detail::_qd::horner_pair_forward_inline(left_coeffs, right_coeffs, count, x, left_out, right_out);
     }
 
     BL_NO_INLINE fqd_s cheb_eval(const fqd_s& x, const fqd_s* coeffs, std::size_t count, double shift) noexcept
@@ -115,7 +87,8 @@ namespace bl::detail::_qd_runtime
     BL_NO_INLINE fqd_s cbrt(const fqd_s& x)
     {
 #if BL_FP_BARRIER_ACTIVE
-        if (detail::_qd::has_subnormal_limb(x)) [[unlikely]]
+        if (detail::_qd::has_subnormal_limb(x) &&
+            detail::fp::absd(x.x0) < 0x1p513) [[unlikely]]
         {
             constexpr int input_scale = 510;
             return detail::_qd::scale_terms_guarded(
@@ -154,7 +127,8 @@ namespace bl::detail::_qd_runtime
     BL_NO_INLINE fqd_s log(const fqd_s& a)
     {
 #if BL_FP_BARRIER_ACTIVE
-        if (detail::_qd::has_subnormal_limb(a)) [[unlikely]]
+        if (detail::_qd::has_subnormal_limb(a) &&
+            detail::fp::absd(a.x0) < 0x1p959) [[unlikely]]
         {
             constexpr int input_scale = 64;
             const fqd_s scaled = detail::_qd::scale_terms_guarded(a, input_scale);
@@ -172,7 +146,8 @@ namespace bl::detail::_qd_runtime
     BL_NO_INLINE fqd_s log2(const fqd_s& a)
     {
 #if BL_FP_BARRIER_ACTIVE
-        if (detail::_qd::has_subnormal_limb(a)) [[unlikely]]
+        if (detail::_qd::has_subnormal_limb(a) &&
+            detail::fp::absd(a.x0) < 0x1p959) [[unlikely]]
         {
             constexpr int input_scale = 64;
             return detail::_qd_runtime::sub_double_finite(
@@ -187,7 +162,8 @@ namespace bl::detail::_qd_runtime
     BL_NO_INLINE fqd_s log10(const fqd_s& a)
     {
 #if BL_FP_BARRIER_ACTIVE
-        if (detail::_qd::has_subnormal_limb(a)) [[unlikely]]
+        if (detail::_qd::has_subnormal_limb(a) &&
+            detail::fp::absd(a.x0) < 0x1p959) [[unlikely]]
         {
             constexpr int input_scale = 64;
             const fqd_s log10_two = detail::_qd_runtime::mul_finite(

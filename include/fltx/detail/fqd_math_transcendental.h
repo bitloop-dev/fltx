@@ -271,8 +271,9 @@ namespace detail::_qd // primitives and kernels
         return exp_general_scaled_with_n(x, sub_one, exp_reduction_integer(x));
     }
 
-    BL_MSVC_NOINLINE constexpr fqd_s exp_general_scaled_precise_with_n(const fqd_s& x, bool sub_one, int n) noexcept
+    BL_MSVC_NOINLINE constexpr fqd_s exp_general_scaled_precise(const fqd_s& x) noexcept
     {
+        const int n = exp_reduction_integer(x);
         fqd_s reduced = sub_double_finite_inline(x, static_cast<double>(n));
 
         const fqd_s r = mul_double_product_inline(reduced, 0.0078125);
@@ -280,22 +281,16 @@ namespace detail::_qd // primitives and kernels
         e = double_expm1_argument_twice(e);
 
         if (n == 0)
-            return sub_one ? e : add_scalar_precise(e, 1.0);
+            return add_scalar_precise(e, 1.0);
 
         const fqd_s factor = exp_integer_factor(n);
 #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
-        const fqd_s scaled = detail::fp::exp_scale_needs_checked_product(n)
+        return detail::fp::exp_scale_needs_checked_product(n)
             ? add_finite_inline(factor, mul_product_range_safe_inline(factor, e))
             : mul_add_inline(factor, e, factor);
 #else
-        const fqd_s scaled = mul_add_inline(factor, e, factor);
+        return mul_add_inline(factor, e, factor);
 #endif
-        return sub_one ? add_scalar_precise(scaled, -1.0) : scaled;
-    }
-
-    BL_MSVC_NOINLINE constexpr fqd_s exp_general_scaled_precise(const fqd_s& x, bool sub_one) noexcept
-    {
-        return exp_general_scaled_precise_with_n(x, sub_one, exp_reduction_integer(x));
     }
 
     BL_MSVC_NOINLINE constexpr fqd_s log1p_newton_small(const fqd_s& frac) noexcept
@@ -326,10 +321,9 @@ namespace detail::_qd // primitives and kernels
         return x;
     }
 
-    BL_MSVC_NOINLINE constexpr fqd_s exp_from_reduced_64(const fqd_s& x, bool base2) noexcept
+    BL_MSVC_NOINLINE constexpr fqd_s exp2_from_reduced_64(const fqd_s& x) noexcept
     {
-        const fqd_s t = base2 ? x : mul_product_inline(x, std::numbers::log2e_v<fqd_s>);
-        const int m = static_cast<int>(round_nearest_even_value(t.x0 * 64.0));
+        const int m = static_cast<int>(round_nearest_even_value(x.x0 * 64.0));
         int n = m / 64;
         int j = m - n * 64;
         if (j < 0)
@@ -338,11 +332,9 @@ namespace detail::_qd // primitives and kernels
             --n;
         }
 
-        const fqd_s reduced = base2
-            ? sub_double_finite_inline(x, static_cast<double>(n) + static_cast<double>(j) / 64.0)
-            : sub_finite_inline(x, mul_double_product_inline(std::numbers::ln2_v<fqd_s>, static_cast<double>(n) + static_cast<double>(j) / 64.0));
+        const fqd_s reduced = sub_double_finite_inline(x, static_cast<double>(n) + static_cast<double>(j) / 64.0);
 
-        const fqd_s r = mul_double_product_inline(base2 ? mul_product_inline(reduced, std::numbers::ln2_v<fqd_s>) : reduced, 0.25);
+        const fqd_s r = mul_double_product_inline(mul_product_inline(reduced, std::numbers::ln2_v<fqd_s>), 0.25);
         fqd_s e = expm1_tiny_fast(r);
         e = mul_add_inline(e, e, mul_double_product_inline(e, 2.0));
         e = mul_add_inline(e, e, mul_double_product_inline(e, 2.0));
@@ -449,7 +441,7 @@ namespace detail::_qd // primitives and kernels
         if (iszero(x))
             return fqd_s{ 1.0 };
 
-        return exp_general_scaled_precise(x, false);
+        return exp_general_scaled_precise(x);
     }
 
     BL_MSVC_NOINLINE constexpr fqd_s _exp(const fqd_s& x)
@@ -484,7 +476,7 @@ namespace detail::_qd // primitives and kernels
         if (iszero(x))
             return fqd_s{ 1.0 };
 
-        return exp_from_reduced_64(x, true);
+        return exp2_from_reduced_64(x);
     }
 
     BL_MSVC_NOINLINE constexpr fqd_s _log(const fqd_s& a)
@@ -1080,124 +1072,6 @@ namespace detail::_qd // primitives and kernels
         return true;
     }
 
-    #if FLTX_FQD_ENABLE_SIMD
-    BL_FORCE_INLINE constexpr fqd_s mul_from_two_prod_terms(
-        double p0, double p1, double p2, double p3, double p4, double p5,
-        double p6, double p7, double p8, double p9,
-        double q0, double q1, double q2, double q3, double q4, double q5,
-        double q6, double q7, double q8, double q9,
-        double tail_mul0, double tail_mul1, double tail_mul2) noexcept
-    {
-        double r0{}, r1{};
-        double t0{}, t1{};
-        double s0{}, s1{}, s2{};
-
-        three_sum(p1, p2, q0);
-        three_sum(p2, q1, q2);
-        three_sum(p3, p4, p5);
-
-        two_sum_precise(p2, p3, s0, t0);
-        two_sum_precise(q1, p4, s1, t1);
-        s2 = q2 + p5;
-        two_sum_precise(s1, t0, s1, t0);
-        s2 += (t0 + t1);
-
-        two_sum_precise(q0, q3, q0, q3);
-        two_sum_precise(q4, q5, q4, q5);
-        two_sum_precise(p6, p7, p6, p7);
-        two_sum_precise(p8, p9, p8, p9);
-
-        two_sum_precise(q0, q4, t0, t1);
-        t1 += (q3 + q5);
-
-        two_sum_precise(p6, p8, r0, r1);
-        r1 += (p7 + p9);
-
-        two_sum_precise(t0, r0, q3, q4);
-        q4 += (t1 + r1);
-
-        two_sum_precise(q3, s1, t0, t1);
-        t1 += q4;
-
-        t1 += tail_mul0 + tail_mul1 + tail_mul2
-            + q6 + q7 + q8 + q9 + s2;
-
-        return renorm5(p0, p1, s0, t0, t1);
-    }
-
-    BL_FORCE_INLINE void mul_pair_simd(
-        const fqd_s& a0, const fqd_s& b0,
-        const fqd_s& a1, const fqd_s& b1,
-        fqd_s& out0, fqd_s& out1) noexcept
-    {
-        double p00{}, p10{}, p20{}, p30{}, p40{}, p50{};
-        double q00{}, q10{}, q20{}, q30{}, q40{}, q50{};
-
-        double p01{}, p11{}, p21{}, p31{}, p41{}, p51{};
-        double q01{}, q11{}, q21{}, q31{}, q41{}, q51{};
-
-        two_prod_precise(a0.x0, b0.x0, p00, q00);
-        two_prod_precise(a0.x0, b0.x1, p10, q10);
-        two_prod_precise(a0.x1, b0.x0, p20, q20);
-        two_prod_precise(a0.x0, b0.x2, p30, q30);
-        two_prod_precise(a0.x1, b0.x1, p40, q40);
-        two_prod_precise(a0.x2, b0.x0, p50, q50);
-
-        two_prod_precise(a1.x0, b1.x0, p01, q01);
-        two_prod_precise(a1.x0, b1.x1, p11, q11);
-        two_prod_precise(a1.x1, b1.x0, p21, q21);
-        two_prod_precise(a1.x0, b1.x2, p31, q31);
-        two_prod_precise(a1.x1, b1.x1, p41, q41);
-        two_prod_precise(a1.x2, b1.x0, p51, q51);
-
-        const simd::f64x2 ax0 = simd::f64x2_set(a0.x0, a1.x0);
-        const simd::f64x2 ax1 = simd::f64x2_set(a0.x1, a1.x1);
-        const simd::f64x2 ax2 = simd::f64x2_set(a0.x2, a1.x2);
-        const simd::f64x2 ax3 = simd::f64x2_set(a0.x3, a1.x3);
-
-        const simd::f64x2 bx0 = simd::f64x2_set(b0.x0, b1.x0);
-        const simd::f64x2 bx1 = simd::f64x2_set(b0.x1, b1.x1);
-        const simd::f64x2 bx2 = simd::f64x2_set(b0.x2, b1.x2);
-        const simd::f64x2 bx3 = simd::f64x2_set(b0.x3, b1.x3);
-
-        simd::f64x2 p6{}, p7{}, p8{}, p9{};
-        simd::f64x2 q6{}, q7{}, q8{}, q9{};
-
-        simd::f64x2_two_prod_precise(ax0, bx3, p6, q6);
-        simd::f64x2_two_prod_precise(ax1, bx2, p7, q7);
-        simd::f64x2_two_prod_precise(ax2, bx1, p8, q8);
-        simd::f64x2_two_prod_precise(ax3, bx0, p9, q9);
-
-        alignas(16) double p6v[2], p7v[2], p8v[2], p9v[2];
-        alignas(16) double q6v[2], q7v[2], q8v[2], q9v[2];
-
-        simd::f64x2_store_array(p6, p6v);
-        simd::f64x2_store_array(p7, p7v);
-        simd::f64x2_store_array(p8, p8v);
-        simd::f64x2_store_array(p9, p9v);
-        simd::f64x2_store_array(q6, q6v);
-        simd::f64x2_store_array(q7, q7v);
-        simd::f64x2_store_array(q8, q8v);
-        simd::f64x2_store_array(q9, q9v);
-
-        out0 = mul_from_two_prod_terms(
-            p00, p10, p20, p30, p40, p50,
-            p6v[0], p7v[0], p8v[0], p9v[0],
-            q00, q10, q20, q30, q40, q50,
-            q6v[0], q7v[0], q8v[0], q9v[0],
-            a0.x1 * b0.x3, a0.x2 * b0.x2, a0.x3 * b0.x1
-        );
-
-        out1 = mul_from_two_prod_terms(
-            p01, p11, p21, p31, p41, p51,
-            p6v[1], p7v[1], p8v[1], p9v[1],
-            q01, q11, q21, q31, q41, q51,
-            q6v[1], q7v[1], q8v[1], q9v[1],
-            a1.x1 * b1.x3, a1.x2 * b1.x2, a1.x3 * b1.x1
-        );
-    }
-    #endif
-
     BL_MSVC_NOINLINE constexpr fqd_s sin_kernel_pi4_inline(const fqd_s& r)
     {
         if (detail::fp::absd(r.x0) < 0x1p-107)
@@ -1217,25 +1091,6 @@ namespace detail::_qd // primitives and kernels
         const fqd_s pc = horner_forward_inline(qd_cos_coeffs_pi4, qd_trig_coeff_count_pi4, t);
 
         return mul_add_double_rhs_inline(t, pc, 1.0);
-    }
-
-    BL_MSVC_NOINLINE constexpr void sincos_kernel_pi4_inline(const fqd_s& r, fqd_s& s_out, fqd_s& c_out)
-    {
-        if (detail::fp::absd(r.x0) < 0x1p-107)
-        {
-            s_out = r;
-            c_out = fqd_s{ 1.0 };
-            return;
-        }
-
-        const fqd_s t = sqr_inline(r);
-
-        fqd_s ps{};
-        fqd_s pc{};
-        horner_pair_forward_inline(qd_sin_coeffs_pi4, qd_cos_coeffs_pi4, qd_trig_coeff_count_pi4, t, ps, pc);
-
-        s_out = mul_add_inline(mul_product_inline(r, t), ps, r);
-        c_out = mul_add_double_rhs_inline(t, pc, 1.0);
     }
 
     BL_MSVC_NOINLINE constexpr void sincos_kernel_small(const fqd_s& r, fqd_s& s_out, fqd_s& c_out)
@@ -1565,12 +1420,22 @@ namespace detail::_qd // primitives and kernels
             an_step -= 2.0;
         }
 
+        if (z.x0 > 600.0)
+        {
+            // Delay subnormal rounding until after the continued-fraction product.
+            const fqd_s argument = add_finite_inline(-z, mul_double_product_inline(std::numbers::ln2_v<fqd_s>, 512.0));
+            const fqd_s scaled = mul_product_inline(
+                mul_product_inline(_exp(argument), x),
+                mul_product_inline(std::numbers::inv_sqrtpi_v<fqd_s>, h));
+            return ldexp_terms(scaled, -512);
+        }
+
         return mul_product_inline(
             mul_product_inline(_exp(-z), x),
             mul_product_inline(std::numbers::inv_sqrtpi_v<fqd_s>, h));
     }
 
-    // erfc(13) is below the qd accuracy target, so the tails round to 0/1/2.
+    // erfc(13) cannot affect rounding near one/two; its positive tail is nonzero.
     inline constexpr fqd_s erf_saturation_cutoff{ 13.0 };
 
     // gamma functions
@@ -2215,6 +2080,12 @@ namespace detail::_qd
             mul_double_product_inline(add_scalar_precise(em1, 1.0), 2.0));
     }
 
+    if (exp_overflows(ax)) [[unlikely]]
+    {
+        const fqd_s out = _exp(sub_finite_inline(ax, std::numbers::ln2_v<fqd_s>));
+        return signbit(x) ? -out : out;
+    }
+
     const fqd_s ex     = _exp(ax);
 #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
     fqd_s out = detail::fp::exp_inverse_is_negligible(ax.x0)
@@ -2237,6 +2108,8 @@ namespace detail::_qd
         return std::numeric_limits<fqd_s>::infinity();
 
     const fqd_s ax     = detail::_qd::mag(x);
+    if (exp_overflows(ax)) [[unlikely]]
+        return _exp(sub_finite_inline(ax, std::numbers::ln2_v<fqd_s>));
     const fqd_s ex     = _exp(ax);
 #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
     if (detail::fp::exp_inverse_is_negligible(ax.x0))
@@ -2433,7 +2306,8 @@ namespace detail::_qd
     if (x < fqd_s{ 4.0 })
         return erfc_positive_cheb_3_4(x);
 
-    if (x >= erf_saturation_cutoff)
+    // erfc(28) < exp(-784) < half the minimum double subnormal.
+    if (x >= fqd_s{ 28.0 })
         return fqd_s{ 0.0 };
 
     return erfc_positive_cf(x);

@@ -1,20 +1,11 @@
 {
-  "accuracy_parallel": true,
-  "accuracy_samples": 4096,
+  "accuracy_samples": 65536,
   "architecture": "x86_64",
-  "benchmark_corpus_policy": "adaptive-v1",
-  "benchmark_fast_minimum_trial_ms": 15,
-  "benchmark_fast_threshold_ns": 20,
-  "benchmark_fast_trials": 7,
-  "benchmark_maximum_row_ms": 5000,
-  "benchmark_minimum_trial_ms": 8,
-  "benchmark_ordinary_trials": 3,
-  "benchmark_policy": "adaptive-v2",
+  "benchmark_minimum_trial_ms": 25,
   "benchmark_samples": {
-    "dd": 8192,
-    "qd": 4096
+    "dd": 81920,
+    "qd": 40960
   },
-  "benchmark_slow_threshold_ns": 10000,
   "benchmark_trials": 7,
   "compiler": "MinGW",
   "configuration": {
@@ -23,11 +14,11 @@
       "compiler-id": "GNU",
       "compiler-version": "13.1.0",
       "config": "Release",
-      "flags-hash": "58af7dec3ba5f6621e8a5a7b2fb270d74cd1bcbd3a5216604c9df63e81c05960",
+      "flags-hash": "6c75f23d53f63db311588ce080f0a526f320cd70ee9dbfa4732f1cad9ebe350f",
       "frontend-variant": "GNU",
       "optimized": "1",
       "processor": "AMD64",
-      "source-fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
+      "source-fingerprint": "1908e8ba6c886da6f2ba18b8b720f9dcf8a71e061ccba23011424d3d0f694b2a",
       "system": "Windows"
     },
     "consumer": {
@@ -69,16 +60,16 @@
     }
   },
   "consumer_mode": "fastmath",
-  "created_utc": "2026-09-02T18:27:31.289005+00:00",
+  "created_utc": "2026-09-12T23:06:27.331298+00:00",
   "executables": {
     "accuracy": {
       "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-mingw-release\\validation\\fltx_accuracy_fastmath.exe",
-      "sha256": "ee0a86246f0703cd585ef4c698fc4f913cfda9b87e83a5f640d133d353389842",
+      "sha256": "6013d1ce6dc6997f9a6bad08b0b8e683fbf4a0401cf85abc39c80d2a09f1f9c3",
       "wasm-sha256": "not-present"
     },
     "benchmark": {
       "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-mingw-release\\validation\\fltx_benchmark_fastmath.exe",
-      "sha256": "964cf90a45ec3ac6a6b9e4d69101a2346a39bb996d5712fc88b23f130e7ab5e7",
+      "sha256": "9a39faae8070f87ebeb4bfb279f64a997d75edb29224070e0854b95f540b67ab",
       "wasm-sha256": "not-present"
     }
   },
@@ -107,12 +98,12 @@
     ]
   },
   "outputs": {
-    "MinGW_dd_fastmath.csv": "f958ed0291ca2d94a029733bbae4516a39b125c8752db928a0c7636afdad21d6",
-    "MinGW_qd_fastmath.csv": "2eb7515efa84e61854c5c3693cbb7698f62ad0564359490bb7374e75c46574f2",
-    "detail/MinGW_dd_fastmath_accuracy.csv": "0f0540d4c5595fc1737239bd752867b09d9b763a7b4920cafebf6c9b7378d43c",
-    "detail/MinGW_dd_fastmath_benchmark.csv": "36c3e9e67718b49e36f91f35d1960d45bada26f3b624626acefc2744a542ead7",
-    "detail/MinGW_qd_fastmath_accuracy.csv": "55ae5ef223628416991603eb65e12aa647a387bdd0a721280dc97ce368c580a3",
-    "detail/MinGW_qd_fastmath_benchmark.csv": "f1c743442803604fdc0ebaf58827a9bad750bc200dc9ac4d8276b0729e727b3d"
+    "MinGW_dd_fastmath.csv": "d923e376ab4ef26f2a0d534ffc4639d7151b662bd2e81d96cf57794881d1dcc9",
+    "MinGW_qd_fastmath.csv": "91824e8d7651df1b0c654d545b8d58c842617ccb6a406ece67e3dcf63bdd4cd7",
+    "detail/MinGW_dd_fastmath_accuracy.csv": "c312ae1b00662eebe87675db717bdf588462ef9e814bb9ea97634964f1987ac4",
+    "detail/MinGW_dd_fastmath_benchmark.csv": "4919cb10518084c6b24c63ff21350bcb510c7d6eafd462fb1aa91e2b98caf583",
+    "detail/MinGW_qd_fastmath_accuracy.csv": "9c91c3b5651800c1579bac8f2b43f9138d782b7fe5488ee0f4f635e70d44a3e7",
+    "detail/MinGW_qd_fastmath_benchmark.csv": "7ed34443491074cfe581da7059b7f530efcf990f16ac9a41d6c075a2516cce12"
   },
   "phases": {
     "dd.accuracy": {
@@ -145,10 +136,10 @@
     "dd",
     "qd"
   ],
-  "run_id": "a10549fafcbd47c8b5dec99ce26daab3",
-  "sample_mode": "standard",
+  "run_id": "9496f7e1318845b3b04c87597d485513",
+  "sample_mode": "full",
   "schema_version": "6",
-  "source_fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
-  "source_revision": "882890995f149618f5ad4c950bbb2cd0b8e2f976-dirty-1e2aee00bd57",
+  "source_fingerprint": "1908e8ba6c886da6f2ba18b8b720f9dcf8a71e061ccba23011424d3d0f694b2a",
+  "source_revision": "844436dea5ed7db933d8911410bd3eb2ea484fc2-dirty-1908e8ba6c88",
   "status": "complete"
 }

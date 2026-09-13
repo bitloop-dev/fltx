@@ -25,7 +25,11 @@ def rebuild(
     output: Path,
     targets: tuple[build_tables.Target, ...] | None = None,
     consumer_mode: str = "strict",
+    fixed_constexpr: bool = False,
 ) -> list[Path]:
+    if fixed_constexpr:
+        import build_fixed_constexpr
+        return build_fixed_constexpr.build(input_root, output, targets, consumer_mode)
     selected = targets or _available_targets(input_root, consumer_mode)
     if not selected:
         raise MetricsError(f"no complete metrics data found under {input_root}")
@@ -91,6 +95,7 @@ def parse_args(
     argv: list[str] | None = None,
 ) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--fixed_constexpr", "--fixed-constexpr", action="store_true")
     parser.add_argument(
         "--input",
         type=Path,
@@ -128,6 +133,7 @@ def main(metrics_dir: Path, argv: list[str] | None = None) -> int:
             args.output,
             tuple(args.targets) if args.targets else None,
             args.consumer_mode,
+            **({"fixed_constexpr": True} if args.fixed_constexpr else {}),
         )
     except (MetricsError, OSError, ValueError) as error:
         print(f"table rebuild failed: {error}", file=sys.stderr)

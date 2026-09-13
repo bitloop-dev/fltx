@@ -382,7 +382,7 @@ namespace bl::detail
         requires ((is_dispatch_arg_v<std::remove_cvref_t<Es>> && ...))
     decltype(auto) table_invoke_values(F& func, Es... vs)
     {
-        using Fun = std::decay_t<F>;
+        using Fun = std::remove_reference_t<F>;
         using RetProbe = decltype(func.template operator()<Ts...>(default_constant_t<std::remove_cvref_t<Es>>{}...));
         return step_dispatch<RetProbe, Fun, type_list<Ts...>, type_list<>, std::remove_cvref_t<Es>...>::invoke(
             func,
@@ -455,8 +455,8 @@ namespace bl::detail
 template<typename... Ts, typename F, typename... Args>
 BL_FORCE_INLINE decltype(auto) bl_table_invoke(F&& f, Args... args)
 {
-    using Fun = std::decay_t<F>;
-    Fun& func = const_cast<Fun&>(static_cast<const Fun&>(f));
+    using Fun = std::remove_reference_t<F>;
+    Fun& func = f;
     return bl::detail::table_invoke_parse<Fun, bl::detail::type_list<Ts...>, Args...>::invoke(func, args...);
 }
 

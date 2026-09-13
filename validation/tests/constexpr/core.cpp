@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <bit>
 #include <cmath>
 #include <cstddef>
 #include <ios>
@@ -163,6 +164,31 @@ namespace
                static_cast<long double>(bl::fqd{ extended }) == extended &&
                !static_cast<bool>(negative_zero) &&
                bl::signbit(static_cast<double>(negative_zero));
+    }
+
+    template<class Value>
+    consteval bool integer_construction_preserves_boundary_limbs()
+    {
+        const auto matches = [](const Value& value, double hi, double lo)
+        {
+            if constexpr (bl::fltx_fdd<Value>)
+                return value.hi == hi && std::bit_cast<std::uint64_t>(value.lo) == std::bit_cast<std::uint64_t>(lo);
+            else
+                return value.x0 == hi && std::bit_cast<std::uint64_t>(value.x1) == std::bit_cast<std::uint64_t>(lo) &&
+                       value.x2 == 0.0 && value.x3 == 0.0;
+        };
+        constexpr auto minimum = std::numeric_limits<std::int64_t>::min();
+        constexpr auto maximum = std::numeric_limits<std::int64_t>::max();
+        constexpr auto unsigned_maximum = std::numeric_limits<std::uint64_t>::max();
+        constexpr auto above_binary64 = (std::int64_t{ 1 } << 53) + 1;
+        constexpr double negative_exact_tail = bl::fltx_fdd<Value> ? 0.0 : -0.0;
+        return matches(Value{ unsigned_maximum }, 0x1p64, -1.0) &&
+               matches(Value{ maximum }, 0x1p63, -1.0) &&
+               matches(Value{ minimum }, -0x1p63, negative_exact_tail) &&
+               matches(Value{ minimum + 1 }, -0x1p63, 1.0) &&
+               matches(Value{ above_binary64 }, 0x1p53, 1.0) &&
+               matches(Value{ -above_binary64 }, -0x1p53, -1.0) &&
+               matches(Value{ -1 }, -1.0, negative_exact_tail);
     }
 
     constexpr bl::fdd dd_input{ 1.25 };
@@ -343,6 +369,59 @@ namespace
     }
 
     template<class T>
+    consteval bool scalar_left_subtraction_preserves_zero_signs()
+    {
+        for (double value : { 1.0, -1.0 })
+        {
+            const T from_double = value - T{ value };
+            const T from_float = static_cast<float>(value) - T{ value };
+            const T from_int = static_cast<int>(value) - T{ value };
+            if (!bl::iszero(from_double) || bl::signbit(from_double) ||
+                !bl::iszero(from_float) || bl::signbit(from_float) ||
+                !bl::iszero(from_int) || bl::signbit(from_int))
+                return false;
+        }
+        for (double left : { 0.0, -0.0 })
+            for (double right : { 0.0, -0.0 })
+            {
+                const T result = left - T{ right };
+                if (!bl::iszero(result) ||
+                    bl::signbit(result) != (bl::signbit(left) && !bl::signbit(right)))
+                    return false;
+            }
+        return true;
+    }
+
+    consteval bool expression_division_and_special_values_are_constant_evaluated()
+    {
+        const bl::fqd t{ 0x1p-1024 }, one{ 1.0 }, zero{ 0.0 };
+        const bl::fqd inf = std::numeric_limits<bl::fqd>::infinity();
+        const bl::fqd nan = std::numeric_limits<bl::fqd>::quiet_NaN();
+        const bl::fqd positive = inf * one + one;
+        const bl::fqd negative = one - inf * one;
+        return bl::fqd{ t / (t + 0.0) } == one &&
+               bl::fqd{ t / (t + zero) } == one &&
+               bl::fqd{ t / (t - zero) } == one &&
+               bl::fqd{ t / (0.0 - t) } == -one &&
+               bl::fqd{ (t * one + zero) / t } == one &&
+               bl::fqd{ (t * one - zero) / (t + 0.0) } == one &&
+               bl::fqd{ (t + zero - zero) / (t + 0.0) } == one &&
+               bl::isinf(positive) && !bl::signbit(positive) &&
+               positive.x1 == 0.0 && positive.x2 == 0.0 && positive.x3 == 0.0 &&
+               bl::isinf(negative) && bl::signbit(negative) &&
+               bl::isinf(inf + one + one) &&
+               bl::isinf(one * one + inf * one + one * one) &&
+               bl::isinf(inf * 1.5 + one * 2.5 + one) &&
+               bl::isinf((inf * one + one) / (t + 0.0)) &&
+               bl::iszero(one / (inf + 0.0)) &&
+               bl::isnan(inf * zero + one) &&
+               bl::isnan(inf * one - inf * one) &&
+               bl::isnan(inf + one - inf) &&
+               bl::isnan((one * one + zero) / (nan + 0.0)) &&
+               bl::isnan(nan * one + one);
+    }
+
+    template<class T>
     consteval bool native_fma_signed_zero_is_constant_evaluated()
     {
         constexpr T zero{ 0.0 };
@@ -480,6 +559,8 @@ namespace
     static_assert(qd_sqrt == bl::fqd{ 2.0 });
     static_assert(expression_conversions_are_constant_evaluated());
     static_assert(native_conversions_preserve_expansion_value());
+    static_assert(integer_construction_preserves_boundary_limbs<bl::fdd>());
+    static_assert(integer_construction_preserves_boundary_limbs<bl::fqd>());
     static_assert(dd_exp_log > bl::fdd{ 1.249 });
     static_assert(dd_exp_log < bl::fdd{ 1.251 });
     static_assert(qd_exp_log > bl::fqd{ 1.249 });
@@ -506,6 +587,11 @@ namespace
     static_assert(native_fma_signed_zero_is_constant_evaluated<bl::f64>());
     static_assert(arithmetic_special_values_are_constant_evaluated<bl::fdd>());
     static_assert(arithmetic_special_values_are_constant_evaluated<bl::fqd>());
+    static_assert(scalar_left_subtraction_preserves_zero_signs<bl::fdd_s>());
+    static_assert(scalar_left_subtraction_preserves_zero_signs<bl::fdd>());
+    static_assert(scalar_left_subtraction_preserves_zero_signs<bl::fqd_s>());
+    static_assert(scalar_left_subtraction_preserves_zero_signs<bl::fqd>());
+    static_assert(expression_division_and_special_values_are_constant_evaluated());
     static_assert(exact_math_is_constant_evaluated<bl::fdd>());
     static_assert(exact_math_is_constant_evaluated<bl::fqd>());
     static_assert(nominal_navigation_is_constant_evaluated<bl::fdd>());

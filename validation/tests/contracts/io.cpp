@@ -131,6 +131,115 @@ namespace
         }
     }
 
+    template<int Power>
+    constexpr auto half_subnormal_decimal()
+    {
+        // 2^-Power = 5^Power * 10^-Power, generated independently in base ten.
+        bl::static_string<800> text{ "1" };
+        for (int i = 0; i < Power; ++i)
+        {
+            int carry = 0;
+            for (std::size_t j = text.size(); j-- > 0;)
+            {
+                const int digit = (text[j] - '0') * 5 + carry;
+                text[j] = static_cast<char>('0' + digit % 10);
+                carry = digit / 10;
+            }
+            if (carry != 0)
+                text.insert(0, 1, static_cast<char>('0' + carry));
+        }
+        text.append(Power == 150 ? "e-150" : "e-1075");
+        return text;
+    }
+
+    template<class T>
+    constexpr bool half_subnormal_hex_contract()
+    {
+        constexpr bool native = std::is_floating_point_v<T>;
+        constexpr bool single = std::is_same_v<T, float>;
+        const auto below = bl::try_parse<T>(single ? "0x1.ffffffffp-151" : "0x1.ffffffffp-1076");
+        const auto half = bl::try_parse<T>(single ? "-0x1p-150" : "-0x1p-1075");
+        const auto above = bl::try_parse<T>(single ? "+0x1.8p-150" : "+0x1.8p-1075");
+        const T unit{ single ? static_cast<double>(std::numeric_limits<float>::denorm_min())
+                            : std::numeric_limits<double>::denorm_min() };
+        if (!above || above.value != unit)
+            return false;
+        if constexpr (native)
+            return below.ec == std::errc::result_out_of_range && half.ec == std::errc::result_out_of_range;
+        else
+            return below && half && bl::iszero(below.value) && bl::iszero(half.value) && bl::signbit(half.value);
+    }
+
+    template<class T>
+    void check_subnormal_parsing()
+    {
+        constexpr bool native = std::is_floating_point_v<T>;
+        constexpr bool single = std::is_same_v<T, float>;
+        const T unit{ single ? static_cast<double>(std::numeric_limits<float>::denorm_min())
+                            : std::numeric_limits<double>::denorm_min() };
+        const auto check = [&](std::string_view text, T expected, bool rounded_to_zero,
+                               std::chars_format fmt = std::chars_format::general) {
+            CAPTURE(text);
+            const auto result = bl::try_parse<T>(text, fmt);
+            CHECK(result.consumed == text.size());
+            if (native && rounded_to_zero)
+                CHECK(result.ec == std::errc::result_out_of_range);
+            else
+            {
+                REQUIRE(result);
+                CHECK(result.value == expected);
+                CHECK(bl::signbit(result.value) == (text.front() == '-'));
+            }
+            std::string bounded_text(text);
+            const auto prefix = bounded_text.find("0x");
+            if (prefix != std::string::npos)
+            {
+                bounded_text.erase(prefix, 2);
+                fmt = std::chars_format::hex;
+            }
+            T unchanged{ 7.0 };
+            const auto bounded = bl::from_chars(bounded_text.data(), bounded_text.data() + bounded_text.size(), unchanged, fmt);
+            CHECK(bounded.ptr == bounded_text.data() + bounded_text.size());
+            if (native && rounded_to_zero)
+            {
+                CHECK(bounded.ec == std::errc::result_out_of_range);
+                CHECK(unchanged == T{ 7.0 });
+            }
+            else
+            {
+                CHECK(bounded.ec == std::errc{});
+                CHECK(unchanged == expected);
+                CHECK(bl::signbit(unchanged) == (text.front() == '-'));
+            }
+        };
+        for (const bool negative : { false, true })
+        {
+            const std::string sign = negative ? "-" : "";
+            const T signed_unit = negative ? -unit : unit;
+            const T signed_zero = negative ? -T{ 0.0 } : T{ 0.0 };
+            check(sign + (single ? "0x1.8p-150" : "0x1.8p-1075"), signed_unit, false);
+            check(sign + (single ? "0x1p-150" : "0x1p-1075"), signed_zero, true);
+            check(sign + (single ? "0x1p-151" : "0x1p-1076"), signed_zero, true);
+            check(sign + (single ? "1e-45" : "4e-324"), signed_unit, false);
+            check(sign + (single ? "1e-46" : "2e-324"), signed_zero, true);
+
+            // Far-tail digits must survive both full-precision and grid rounding.
+            check(sign + "1.7" + std::string(80, 'f') + (single ? "p-149" : "p-1074"),
+                  signed_unit, false, std::chars_format::hex);
+            check(sign + "1.8" + std::string(80, '0') + "1" + (single ? "p-149" : "p-1074"),
+                  signed_unit + signed_unit, false, std::chars_format::hex);
+
+            const auto exact_half = half_subnormal_decimal<single ? 150 : 1075>();
+            std::string decimal(exact_half.view());
+            const std::size_t last_digit = decimal.find('e') - 1;
+            check(sign + decimal, signed_zero, true);
+            --decimal[last_digit];
+            check(sign + decimal, signed_zero, true);
+            decimal[last_digit] += 2;
+            check(sign + decimal, signed_unit, false);
+        }
+    }
+
     template<class T>
     void check_extreme_decimal_saturation()
     {
@@ -695,6 +804,181 @@ TEST_CASE("extended parsing preserves hexadecimal precision and range semantics"
     check_extreme_decimal_saturation<bl::fqd>();
 }
 
+TEST_CASE("parsing rounds subnormal boundaries once with ties to even", "[contracts][io][charconv][subnormal]")
+{
+    STATIC_CHECK(half_subnormal_hex_contract<bl::f32>());
+    STATIC_CHECK(half_subnormal_hex_contract<bl::f64>());
+    STATIC_CHECK(half_subnormal_hex_contract<bl::fdd_s>());
+    STATIC_CHECK(half_subnormal_hex_contract<bl::fdd>());
+    STATIC_CHECK(half_subnormal_hex_contract<bl::fqd_s>());
+    STATIC_CHECK(half_subnormal_hex_contract<bl::fqd>());
+    STATIC_CHECK(bl::parse<bl::fdd>("4e-324").hi == std::numeric_limits<double>::denorm_min());
+    STATIC_CHECK(bl::parse<bl::fqd>("-4e-324").x0 == -std::numeric_limits<double>::denorm_min());
+    STATIC_CHECK(bl::parse<bl::f32>("+1e-45") == std::numeric_limits<float>::denorm_min());
+    STATIC_CHECK(bl::parse<bl::f64>("+4e-324") == std::numeric_limits<double>::denorm_min());
+    constexpr auto float_half = half_subnormal_decimal<150>();
+    STATIC_CHECK(bl::try_parse<bl::f32>(float_half.view()).ec == std::errc::result_out_of_range);
+    // Exact 5^1075 * 10^-1075; the runtime generator above independently checks it.
+    constexpr std::string_view double_half =
+        "247032822920623272088284396434110686182529901307162382212792841250337753635104375932649918180817"
+        "996189898282347722858865463328355177969898199387398005390939063150356595155702263922908583924491"
+        "051844359318028499365361525003193704576782492193656236698636584807570015857692699037063119282795"
+        "585513329278343384093519780155312465972635795746227664652728272200563740064854999770965994704540"
+        "208281662262378573934507363390079677619305775067401763246736009689513405355374585166611342237666"
+        "786041621596804619144672918403005300575308490487653917113865916462395249126236538818796362393732"
+        "804238910186723484976682350898633885879256283027559956575244555072551893136908362547791869486679"
+        "94968324049705821028513185451396213837722826145437693412532098591327667236328125"
+        "e-1075";
+    STATIC_CHECK(bl::try_parse<bl::f64>(double_half).ec == std::errc::result_out_of_range);
+    STATIC_CHECK(bl::iszero(bl::parse<bl::fdd>(double_half)));
+    STATIC_CHECK(bl::iszero(bl::parse<bl::fqd>(double_half)));
+    CHECK(half_subnormal_decimal<1075>().view() == double_half);
+    constexpr auto above_half = [double_half] {
+        bl::static_string<800> text{ double_half };
+        ++text[text.view().find('e') - 1];
+        return text;
+    }();
+    STATIC_CHECK(bl::parse<bl::f64>(above_half.view()) == std::numeric_limits<double>::denorm_min());
+    STATIC_CHECK(bl::parse<bl::fdd>(above_half.view()).hi == std::numeric_limits<double>::denorm_min());
+    STATIC_CHECK(bl::parse<bl::fqd>(above_half.view()).x0 == std::numeric_limits<double>::denorm_min());
+    using namespace bl::literals;
+    STATIC_CHECK("0x1.8p-1075"_dd.hi == std::numeric_limits<double>::denorm_min());
+    STATIC_CHECK("0x1.8p-1075"_qd.x0 == std::numeric_limits<double>::denorm_min());
+
+    check_subnormal_parsing<bl::f32>();
+    check_subnormal_parsing<bl::f64>();
+    check_subnormal_parsing<bl::fdd_s>();
+    check_subnormal_parsing<bl::fdd>();
+    check_subnormal_parsing<bl::fqd_s>();
+    check_subnormal_parsing<bl::fqd>();
+}
+
+TEST_CASE("native parse range errors agree across signs formats and evaluation routes", "[contracts][io][charconv]")
+{
+    const auto check = []<class T>() {
+        STATIC_CHECK(bl::try_parse<T>("1e10000").ec == std::errc::result_out_of_range);
+        STATIC_CHECK(bl::try_parse<T>("+1e10000").ec == std::errc::result_out_of_range);
+        STATIC_CHECK(bl::try_parse<T>("-1e-10000").ec == std::errc::result_out_of_range);
+        STATIC_CHECK(bl::try_parse<T>("+0x1p10000").ec == std::errc::result_out_of_range);
+        STATIC_CHECK(bl::try_parse<T>("+0x1p-10000").ec == std::errc::result_out_of_range);
+        STATIC_CHECK(bl::parse<T>("+1e10000", T{ 7.0 }) == T{ 7.0 });
+        STATIC_CHECK(bl::try_parse<T>("-0e10000").ec == std::errc{});
+        STATIC_CHECK(bl::signbit(bl::try_parse<T>("-0x0p-10000").value));
+        for (const std::string_view text : { "1e10000", "+1e10000", "-1e10000", "1e-10000",
+                "+1e-10000", "-1e-10000", "0x1p10000", "+0x1p10000", "-0x1p-10000" })
+        {
+            CAPTURE(text);
+            const auto result = bl::try_parse<T>(text);
+            CHECK(result.ec == std::errc::result_out_of_range);
+            CHECK(result.consumed == text.size());
+            T unchanged{ 7.0 };
+            CHECK_FALSE(bl::try_parse(text, unchanged));
+            CHECK(unchanged == T{ 7.0 });
+            CHECK(bl::parse<T>(text, T{ 7.0 }) == T{ 7.0 });
+            CHECK_THROWS_AS(bl::parse<T>(text), std::out_of_range);
+        }
+        for (const auto fmt : { std::chars_format::general, std::chars_format::hex })
+        {
+            for (const std::string_view text : { "1e10000!", "1e-10000!", "1p10000!", "1p-10000!" })
+            {
+                if ((text[1] == 'p') != (fmt == std::chars_format::hex))
+                    continue;
+                T unchanged{ 7.0 };
+                const auto result = bl::from_chars(text.data(), text.data() + text.size(), unchanged, fmt);
+                CHECK(result.ec == std::errc::result_out_of_range);
+                CHECK(result.ptr == text.data() + text.size() - 1);
+                CHECK(unchanged == T{ 7.0 });
+            }
+        }
+        for (const std::string_view text : { "0e10000", "+0e-10000", "-0e10000", "+0x0p10000", "-0x0p-10000" })
+        {
+            const auto result = bl::try_parse<T>(text);
+            REQUIRE(result);
+            CHECK(bl::iszero(result.value));
+            CHECK(bl::signbit(result.value) == (text.front() == '-'));
+        }
+        CHECK(bl::isinf(bl::parse<T>("+inf")));
+        CHECK(bl::isnan(bl::parse<T>("+nan")));
+    };
+    check.template operator()<bl::f32>();
+    check.template operator()<bl::f64>();
+    STATIC_CHECK(bl::try_parse<bl::fdd>("+1e10000").ec == std::errc{});
+    STATIC_CHECK(bl::try_parse<bl::fqd>("+0x1p-10000").ec == std::errc{});
+    const auto extended_saturation = []<class T>() {
+        for (const std::string_view text : { "+1e10000", "-1e10000", "+0x1p10000", "-0x1p10000" })
+        {
+            const auto result = bl::try_parse<T>(text);
+            REQUIRE(result);
+            CHECK(result.consumed == text.size());
+            CHECK(bl::isinf(result.value));
+            CHECK(bl::signbit(result.value) == (text.front() == '-'));
+        }
+        for (const std::string_view text : { "+1e-10000", "-1e-10000", "+0x1p-10000", "-0x1p-10000" })
+        {
+            const auto result = bl::try_parse<T>(text);
+            REQUIRE(result);
+            CHECK(result.consumed == text.size());
+            CHECK(bl::iszero(result.value));
+            CHECK(bl::signbit(result.value) == (text.front() == '-'));
+        }
+    };
+    extended_saturation.template operator()<bl::fdd_s>();
+    extended_saturation.template operator()<bl::fdd>();
+    extended_saturation.template operator()<bl::fqd_s>();
+    extended_saturation.template operator()<bl::fqd>();
+}
+
+TEST_CASE("hex from_chars respects original bounded input and partial tokens", "[contracts][io][charconv]")
+{
+    const auto check = []<class T>() {
+        const std::array<char, 6> raw{ '1', '.', '8', 'p', '+', '1' };
+        T value{};
+        auto result = bl::from_chars(raw.data(), raw.data() + raw.size(), value, std::chars_format::hex);
+        REQUIRE(result.ec == std::errc{});
+        CHECK(result.ptr == raw.data() + raw.size());
+        CHECK(value == T{ 3.0 });
+        for (const std::size_t zeros : { 1014u, 1015u, 1016u, 2048u })
+        {
+            std::string text = "1." + std::string(zeros, '0') + "p+0tail";
+            const auto parsed = bl::from_chars(text.data(), text.data() + text.size(), value, std::chars_format::hex);
+            REQUIRE(parsed.ec == std::errc{});
+            CHECK(parsed.ptr == text.data() + text.size() - 4);
+            CHECK(value == T{ 1.0 });
+        }
+        for (const std::string_view text : { "1p+", "1p-", "1p!" })
+        {
+            result = bl::from_chars(text.data(), text.data() + text.size(), value, std::chars_format::hex);
+            CHECK(result.ec == std::errc{});
+            CHECK(result.ptr == text.data() + 1);
+            CHECK(value == T{ 1.0 });
+        }
+        for (const std::string_view text : { "+1p0", " 1p0", ".", "-" })
+        {
+            value = T{ 7.0 };
+            result = bl::from_chars(text.data(), text.data() + text.size(), value, std::chars_format::hex);
+            CHECK(result.ec == std::errc::invalid_argument);
+            CHECK(result.ptr == text.data());
+            CHECK(value == T{ 7.0 });
+        }
+        constexpr std::string_view prefixed = "0x1p0";
+        result = bl::from_chars(prefixed.data(), prefixed.data() + prefixed.size(), value, std::chars_format::hex);
+        CHECK(result.ec == std::errc{});
+        CHECK(result.ptr == prefixed.data() + 1);
+        CHECK(bl::iszero(value));
+        for (const std::string_view text : { "inf!", "nan!" })
+        {
+            result = bl::from_chars(text.data(), text.data() + text.size(), value, std::chars_format::hex);
+            CHECK(result.ec == std::errc{});
+            CHECK(result.ptr == text.data() + 3);
+            CHECK((text.front() == 'i' ? bl::isinf(value) : bl::isnan(value)));
+        }
+    };
+    check.template operator()<bl::fdd_s>();
+    check.template operator()<bl::fdd>();
+    check.template operator()<bl::fqd_s>();
+    check.template operator()<bl::fqd>();
+}
+
 TEST_CASE("charconv-shaped helpers expose buffers, errors, and complete parsing", "[contracts][io][charconv]")
 {
     check_public_conversion_surface<bl::f32>();
@@ -805,6 +1089,20 @@ TEST_CASE("fixed-capacity strings provide a conventional constexpr string surfac
     STATIC_CHECK(built.end() - built.begin() == 8);
     STATIC_CHECK(bl::static_string<16>::static_capacity == 16);
 
+    constexpr auto full = [] {
+        bl::static_string<8> value{ "a" };
+        value.append(std::string_view{ "bc" });
+        value.insert(1, std::string_view{ "XY" });
+        value.append(2, '!');
+        value.push_back('?');
+        value.append(0, 'x');
+        value.insert(value.size(), 0, 'y');
+        return value;
+    }();
+    STATIC_CHECK(full.view() == "aXYbc!!?");
+    STATIC_CHECK(full.size() == full.static_capacity);
+    STATIC_CHECK(full.c_str()[full.size()] == '\0');
+
     bl::static_string<8> runtime{ std::string_view{ "one" } };
     runtime = "two";
     CHECK(std::string(runtime) == "two");
@@ -824,6 +1122,41 @@ TEST_CASE("fixed-capacity strings provide a conventional constexpr string surfac
             bl::precision_info{ 8, 2, 2 },
             std::ios_base::fixed) ==
         "1.23...89");
+}
+
+TEST_CASE("fixed-capacity string growth failures preserve the entire string",
+          "[contracts][io][static-string]")
+{
+    bl::static_string<8> value{ "abc" };
+    const auto original = value;
+    const auto check_unchanged = [&] {
+        CHECK(value.size() == original.size());
+        CHECK(value.view() == original.view());
+        for (std::size_t i = 0; i <= value.static_capacity; ++i)
+            CHECK(value.chars[i] == original.chars[i]);
+    };
+
+    for (const std::size_t count : {
+             std::numeric_limits<std::size_t>::max(),
+             std::numeric_limits<std::size_t>::max() - 1,
+             std::size_t{ 6 } })
+    {
+        CAPTURE(count);
+        REQUIRE_THROWS(value.append(count, 'x'));
+        check_unchanged();
+        REQUIRE_THROWS(value.insert(1, count, 'x'));
+        check_unchanged();
+    }
+
+    REQUIRE_THROWS(value.append(std::string_view{ "123456" }));
+    check_unchanged();
+    REQUIRE_THROWS(value.insert(1, std::string_view{ "123456" }));
+    check_unchanged();
+
+    bl::static_string<3> full{ "abc" };
+    REQUIRE_THROWS(full.push_back('x'));
+    CHECK(full.view() == "abc");
+    CHECK(full.c_str()[full.size()] == '\0');
 }
 
 TEST_CASE("deterministic high-volume extended round trips preserve every value",
@@ -909,6 +1242,16 @@ TEST_CASE("std format integration supports familiar numeric specifications", "[c
     CHECK_THROWS_AS(
         std::vformat("{:x}", std::make_format_args(invalid_format_value)),
         std::format_error);
+    const bl::fqd invalid_format_qd{ 1.0 };
+    for (const std::string_view spec : {
+             "{:2147483648}", "{:.2147483648f}",
+             "{:99999999999999999999999999999999999999999999999999}",
+             "{:.99999999999999999999999999999999999999999999999999g}" })
+    {
+        CAPTURE(spec);
+        CHECK_THROWS_AS(std::vformat(spec, std::make_format_args(invalid_format_value)), std::format_error);
+        CHECK_THROWS_AS(std::vformat(spec, std::make_format_args(invalid_format_qd)), std::format_error);
+    }
     #endif
 }
 

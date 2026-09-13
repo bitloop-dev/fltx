@@ -129,43 +129,6 @@ constexpr inline void divmod_bitwise(const biguint& numerator, const biguint& de
     remainder.trim();
 }
 
-constexpr inline void divmod_limited_quotient(
-    const biguint& numerator,
-    const biguint& denominator,
-    int quotient_bits,
-    biguint& quotient,
-    biguint& remainder) noexcept
-{
-    quotient.clear();
-    remainder = numerator;
-
-    if (denominator.is_zero() || quotient_bits <= 0)
-        return;
-
-    const int num_bits = numerator.bit_length();
-    const int den_bits = denominator.bit_length();
-    if (num_bits == 0 || den_bits == 0 || num_bits < den_bits)
-    {
-        remainder.trim();
-        return;
-    }
-
-    int shift = num_bits - den_bits;
-    if (shift >= quotient_bits)
-        shift = quotient_bits - 1;
-
-    for (int i = shift; i >= 0; --i)
-    {
-        if (compare_shifted(remainder, denominator, i) >= 0)
-        {
-            sub_shifted_inplace(remainder, denominator, i);
-            quotient.set_bit(i);
-        }
-    }
-
-    quotient.trim();
-    remainder.trim();
-}
 
 [[nodiscard]] constexpr inline int single_bit_index(const biguint& value) noexcept
 {
@@ -182,66 +145,6 @@ constexpr inline void divmod_limited_quotient(
     return bit;
 }
 
-[[nodiscard]] constexpr inline biguint mul_by_correction_denominator(
-    const biguint& denominator,
-    const biguint& value) noexcept
-{
-    const int shift = single_bit_index(denominator);
-    if (shift >= 0)
-    {
-        biguint out = value;
-        out.shl_bits(shift);
-        return out;
-    }
-
-    if (denominator.size == 1)
-        return mul_small_u64_big(value, denominator.words[0]);
-
-    return mul_big(denominator, value);
-}
-
-[[nodiscard]] constexpr inline bool divmod_from_floor_candidate(
-    const biguint& numerator,
-    const biguint& denominator,
-    const biguint& candidate,
-    int quotient_bits,
-    biguint& quotient,
-    biguint& remainder) noexcept
-{
-    if (denominator.is_zero() || candidate.is_zero())
-        return false;
-
-    if (candidate.bit_length() > quotient_bits + 4)
-        return false;
-
-    quotient = candidate;
-    biguint product = mul_by_correction_denominator(denominator, quotient);
-    int corrections = 0;
-
-    while (product.compare(numerator) > 0)
-    {
-        if (quotient.is_zero())
-            return false;
-
-        quotient.sub_small(1);
-        product.sub_inplace(denominator);
-
-        if (++corrections > 64)
-            return false;
-    }
-
-    remainder = numerator;
-    remainder.sub_inplace(product);
-    while (remainder.compare(denominator) >= 0)
-    {
-        remainder.sub_inplace(denominator);
-        quotient.add_small(1);
-
-        if (++corrections > 64)
-            return false;
-    }
-    return true;
-}
 
 [[nodiscard]] constexpr inline std::uint64_t div_quotient_limited_bitwise(const biguint& numerator, const biguint& denominator, int quotient_bits, biguint& remainder) noexcept
 {
@@ -1111,67 +1014,6 @@ template<class Traits>
     return exact_significant_decimal<Traits>(magnitude, common_exp, significant_figures, coefficient, exp10);
 }
 
-template<class Traits>
-[[nodiscard]] constexpr inline bool exact_significant_decimal_from_floor_candidate(
-    const biguint& magnitude,
-    int common_exp,
-    int significant_figures,
-    const biguint& floor_candidate,
-    int& exp10,
-    biguint& coefficient)
-{
-    const int scale10 = significant_figures - 1 - exp10;
-    biguint num;
-    biguint den;
-    significant_decimal_ratio(magnitude, common_exp, scale10, num, den);
-
-    const biguint limit = pow10_big(significant_figures);
-    const int quotient_bits = limit.bit_length() + 1;
-
-    biguint q;
-    biguint r;
-    if (!divmod_from_floor_candidate(num, den, floor_candidate, quotient_bits, q, r))
-        return false;
-
-    if (!r.is_zero())
-    {
-        const int cmp = -compare_shifted(den, r, 1);
-        if (cmp > 0 || (cmp == 0 && q.is_odd()))
-            q.add_small(1);
-    }
-
-    if (compare(q, limit) >= 0)
-    {
-        q.div_small(10);
-        ++exp10;
-    }
-
-    coefficient = q;
-    return true;
-}
-
-template<class Traits>
-[[nodiscard]] constexpr inline bool exact_significant_decimal_from_floor_candidate(
-    const typename Traits::value_type& x,
-    int significant_figures,
-    const biguint& floor_candidate,
-    int& exp10,
-    biguint& coefficient)
-{
-    biguint magnitude;
-    int common_exp = 0;
-    bool neg = false;
-    if (!exact_binary_components<Traits>(x, magnitude, common_exp, neg) || neg)
-        return false;
-
-    return exact_significant_decimal_from_floor_candidate<Traits>(
-        magnitude,
-        common_exp,
-        significant_figures,
-        floor_candidate,
-        exp10,
-        coefficient);
-}
 
 template<class Traits>
 [[nodiscard]] constexpr inline bool exact_decimal_exponent(
@@ -1319,6 +1161,50 @@ template<class Traits>
 }
 
 template<class Traits>
+[[nodiscard]] constexpr inline int minimum_normal_limb_exponent() noexcept
+{
+    // Extended values share the binary64 subnormal grid of their limbs.
+    constexpr int limb_bits = Traits::significand_bits < 53 ? Traits::significand_bits : 53;
+    return Traits::min_binary_exponent + limb_bits - 1;
+}
+
+template<class Traits>
+[[nodiscard]] constexpr inline typename Traits::value_type pack_subnormal_units(biguint units, bool neg) noexcept
+{
+    if (units.is_zero())
+        return Traits::zero(neg);
+
+    const int bits = units.bit_length();
+    const int e2 = Traits::min_binary_exponent + bits - 1;
+    units.shl_bits(Traits::significand_bits - bits);
+    return Traits::pack_from_significand(units, e2, neg);
+}
+
+template<class Traits>
+[[nodiscard]] constexpr inline typename Traits::value_type rounded_subnormal_ratio(
+    biguint numerator, biguint denominator, int bin_exp, bool neg) noexcept
+{
+    // Round the original ratio once on the representable subnormal grid.
+    // Rounding to full precision first would lose which side of a tie it lies on.
+    const int shift = bin_exp - Traits::min_binary_exponent;
+    if (shift >= 0)
+        numerator.shl_bits(shift);
+    else
+        denominator.shl_bits(-shift);
+
+    biguint remainder;
+    // Callers admit only values below the smallest normal limb. In subnormal
+    // units the ratio is therefore < 2^52 (f32: 2^23); rounding can add one.
+    // Divide over that quotient span, not over every bit of the numerator.
+    constexpr int quotient_bits = minimum_normal_limb_exponent<Traits>() - Traits::min_binary_exponent;
+    biguint units{ div_quotient_limited(numerator, denominator, quotient_bits, remainder) };
+    const int half_comparison = -compare_shifted(denominator, remainder, 1);
+    if (half_comparison > 0 || (half_comparison == 0 && units.is_odd()))
+        units.add_small(1);
+    return pack_subnormal_units<Traits>(units, neg);
+}
+
+template<class Traits>
 constexpr inline bool compact_decimal_to_value(std::uint64_t coeff, int dec_exp, bool neg, typename Traits::value_type& out) noexcept
 {
     if (coeff == 0)
@@ -1357,6 +1243,11 @@ constexpr inline bool compact_decimal_to_value(std::uint64_t coeff, int dec_exp,
     }
 
     const int ratio_exp  = floor_log2_ratio_u64(numerator, denominator);
+    if (bin_exp + ratio_exp < minimum_normal_limb_exponent<Traits>())
+    {
+        out = rounded_subnormal_ratio<Traits>(biguint{ numerator }, biguint{ denominator }, bin_exp, neg);
+        return true;
+    }
     const int conversion_bits = decimal_conversion_significand_bits<Traits>();
     const int scale_bits = conversion_bits - 1 - ratio_exp;
     if (scale_bits < 0)
@@ -1387,8 +1278,6 @@ constexpr inline bool compact_decimal_to_value(std::uint64_t coeff, int dec_exp,
     const int e2 = bin_exp + adjusted_ratio_exp;
     if (e2 > Traits::max_binary_exponent)
         out = Traits::infinity(neg);
-    else if (e2 < Traits::min_binary_exponent)
-        out = Traits::zero(neg);
     else
         out = Traits::pack_from_significand(q, e2, neg);
 
@@ -1421,6 +1310,13 @@ constexpr inline typename Traits::value_type exact_binary_integer_to_value(
         return Traits::zero(neg);
 
     int ratio_exp = q.bit_length() - 1;
+    if (bin_exp + ratio_exp < minimum_normal_limb_exponent<Traits>())
+    {
+        if (bin_exp + ratio_exp < Traits::min_binary_exponent - 1)
+            return Traits::zero(neg);
+        return pack_subnormal_units<Traits>(
+            rounded_decimal_places_shift(q, bin_exp - Traits::min_binary_exponent), neg);
+    }
     if (ratio_exp > conversion_bits - 1)
     {
         const int shift = ratio_exp - (conversion_bits - 1);
@@ -1445,9 +1341,6 @@ constexpr inline typename Traits::value_type exact_binary_integer_to_value(
     const int e2 = bin_exp + ratio_exp;
     if (e2 > Traits::max_binary_exponent)
         return Traits::infinity(neg);
-    if (e2 < Traits::min_binary_exponent)
-        return Traits::zero(neg);
-
     return Traits::pack_from_significand(q, e2, neg);
 }
 
@@ -1481,6 +1374,8 @@ constexpr inline typename Traits::value_type exact_decimal_to_value(const biguin
     biguint denominator = pow5_big(-dec_exp);
 
     int ratio_exp = floor_log2_ratio(numerator, denominator);
+    if (dec_exp + ratio_exp < minimum_normal_limb_exponent<Traits>())
+        return rounded_subnormal_ratio<Traits>(numerator, denominator, dec_exp, neg);
     const int conversion_bits = decimal_conversion_significand_bits<Traits>();
 
     biguint q;
@@ -1507,9 +1402,6 @@ constexpr inline typename Traits::value_type exact_decimal_to_value(const biguin
     const int e2 = dec_exp + ratio_exp;
     if (e2 > Traits::max_binary_exponent)
         return Traits::infinity(neg);
-    if (e2 < Traits::min_binary_exponent)
-        return Traits::zero(neg);
-
     return Traits::pack_from_significand(q, e2, neg);
 }
 

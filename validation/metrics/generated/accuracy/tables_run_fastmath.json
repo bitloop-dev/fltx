@@ -4,12 +4,24 @@
     "accuracy_table_fastmath.svg"
   ],
   "run_ids": {
-    "linux/x86_64/Clang": "3501b22601904cbfa72dd0e2ba76758d"
+    "linux/x86_64/Clang": "88f10b3fefb24044b85628ed00ceb16b",
+    "linux/x86_64/GCC": "27412a6f7a89441e9df31f061e848ce2",
+    "macos/arm64/AppleClang": "768a732e632441418371656f83b9dc25",
+    "webassembly/wasm32/Emscripten": "329f39ef673c425ba6c8571890a23134",
+    "windows/x86_64/ClangCL": "a6140316df61489c9d3698145a4df103",
+    "windows/x86_64/MSVC": "a5dc5b4679c64eaf8e183a02504cb5cd",
+    "windows/x86_64/MinGW": "9496f7e1318845b3b04c87597d485513"
   },
   "schema_version": "6",
-  "source_fingerprint": "e69f86fa5e6a90511ab16666e9d7d3b59c206539b7f5abc006f004f8e3f10241",
-  "source_revision": "918528b7660e94a8698933f74b15e2a0f0f28a7b",
+  "source_fingerprint": "1908e8ba6c886da6f2ba18b8b720f9dcf8a71e061ccba23011424d3d0f694b2a",
+  "source_revision": "844436dea5ed7db933d8911410bd3eb2ea484fc2-dirty-1908e8ba6c88",
   "targets": [
-    "linux/x86_64/Clang"
+    "windows/x86_64/MSVC",
+    "windows/x86_64/ClangCL",
+    "windows/x86_64/MinGW",
+    "linux/x86_64/GCC",
+    "linux/x86_64/Clang",
+    "macos/arm64/AppleClang",
+    "webassembly/wasm32/Emscripten"
   ]
 }

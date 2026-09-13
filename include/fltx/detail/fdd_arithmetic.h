@@ -10,13 +10,19 @@
 #ifndef FDD_DETAIL_ARITHMETIC_INCLUDED
 #define FDD_DETAIL_ARITHMETIC_INCLUDED
 #include "fltx/fdd_classification.h"
-#include "fltx/fdd_conversions.h"
 #include "fltx/fdd_limits.h"
 
 namespace bl {
 
 namespace detail::_dd // primitives and kernels
 {
+    BL_FORCE_INLINE constexpr fdd_s renorm(double hi, double lo)
+    {
+        double s{}, e{};
+        two_sum_precise(hi, lo, s, e);
+        return { s, e };
+    }
+
     // Tests one binary64 limb for either sign of zero without floating-point comparisons.
     [[nodiscard]] BL_FORCE_INLINE constexpr bool limb_is_zero(double value) noexcept
     {
@@ -173,8 +179,6 @@ namespace detail::_dd // primitives and kernels
         return out;
     }
 
-    BL_POP_PRECISE;
-
     // Adds a double to a dd expansion without canonical special-value handling.
     [[nodiscard]] BL_FORCE_INLINE constexpr fdd_s add_double_finite_inline(const fdd_s& a, double b) noexcept
     {
@@ -189,6 +193,8 @@ namespace detail::_dd // primitives and kernels
 #endif
         return renorm(s, e);
     }
+
+    BL_POP_PRECISE;
 
     // Adds a dd expansion to a double through the finite scalar kernel.
     [[nodiscard]] BL_FORCE_INLINE constexpr fdd_s add_double_finite_inline(double a, const fdd_s& b) noexcept

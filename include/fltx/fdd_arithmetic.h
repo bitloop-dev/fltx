@@ -128,7 +128,7 @@ BL_POP_PRECISE;
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr fdd_s operator+(double a, const fdd_s& b) noexcept { return b + a; }
-[[nodiscard]] BL_FORCE_INLINE constexpr fdd_s operator-(double a, const fdd_s& b) noexcept { return -(b - a); }
+[[nodiscard]] BL_FORCE_INLINE constexpr fdd_s operator-(double a, const fdd_s& b) noexcept { return -b + a; }
 [[nodiscard]] BL_FORCE_INLINE constexpr fdd_s operator*(double a, const fdd_s& b) noexcept { return b * a; }
 [[nodiscard]] BL_FORCE_INLINE constexpr fdd_s operator/(double a, const fdd_s& b) noexcept { return fdd_s{ a } / b; }
 

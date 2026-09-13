@@ -12,9 +12,7 @@
 #include <type_traits>
 #include <utility>
 
-#ifndef FQD_INCLUDED
-#include "fltx/fqd.h"
-#endif
+#include "fltx/fqd_arithmetic.h"
 
 namespace bl {
 
@@ -175,6 +173,9 @@ namespace detail::_qd // primitives and kernels
         const fqd_s& a,
         const fqd_s& b) noexcept
     {
+        if (detail::fp::isinf_or_nan(a.x0) || detail::fp::isinf_or_nan(b.x0)) [[unlikely]]
+            return { mul_special(a, b).x0, 0.0, 0.0, 0.0, 0.0 };
+
         if (&a == &b)
             return sqr_raw5_inline(a);
 
@@ -260,6 +261,10 @@ namespace detail::_qd // primitives and kernels
     // raw5 accumulation
     BL_FORCE_INLINE constexpr fqd_s add_raw5_value_inline(qd_raw5 p, const fqd_s& v) noexcept
     {
+        // Preserve the fifth finite limb; only special heads bypass the EFT.
+        if (detail::fp::isinf_or_nan(p.x0) || detail::fp::isinf_or_nan(v.x0)) [[unlikely]]
+            return add_special(fqd_s{ p.x0 }, v);
+
         double s0{}, e0{};
         double s1{}, e1{};
         double s2{}, e2{};
@@ -284,6 +289,9 @@ namespace detail::_qd // primitives and kernels
 
     BL_FORCE_INLINE constexpr fqd_s add_raw5_raw5_inline(qd_raw5 a, qd_raw5 b) noexcept
     {
+        if (detail::fp::isinf_or_nan(a.x0) || detail::fp::isinf_or_nan(b.x0)) [[unlikely]]
+            return add_special(fqd_s{ a.x0 }, fqd_s{ b.x0 });
+
         double s0{}, e0{};
         double s1{}, e1{};
         double s2{}, e2{};
@@ -308,7 +316,7 @@ namespace detail::_qd // primitives and kernels
 
     BL_FORCE_INLINE constexpr fqd_s add_raw5_raw5_value_inline(qd_raw5 a, qd_raw5 b, const fqd_s& v) noexcept
     {
-        return add_finite_inline(add_raw5_raw5_inline(a, b), v);
+        return add_canonical_inline(add_raw5_raw5_inline(a, b), v);
     }
 
     BL_FORCE_INLINE constexpr fqd_s add_raw5_double_inline(qd_raw5 p, double v) noexcept
@@ -413,61 +421,30 @@ namespace detail::_qd // primitives and kernels
 
     BL_FORCE_INLINE constexpr fqd_s add_add_add_inline(const fqd_s& a, const fqd_s& b, const fqd_s& c) noexcept
     {
-        return add_finite_inline(add_finite_inline(a, b), c);
+        return add_canonical_inline(add_canonical_inline(a, b), c);
     }
 
     BL_FORCE_INLINE constexpr fqd_s add_sub_add_inline(const fqd_s& a, const fqd_s& b, const fqd_s& c) noexcept
     {
-        return add_finite_inline(sub_finite_inline(a, b), c);
+        return add_canonical_inline(sub_canonical_inline(a, b), c);
     }
 
     BL_FORCE_INLINE constexpr fqd_s add_add_sub_inline(const fqd_s& a, const fqd_s& b, const fqd_s& c) noexcept
     {
-        return sub_finite_inline(add_finite_inline(a, b), c);
+        return sub_canonical_inline(add_canonical_inline(a, b), c);
     }
 
     BL_FORCE_INLINE constexpr fqd_s add_sub_sub_inline(const fqd_s& a, const fqd_s& b, const fqd_s& c) noexcept
     {
-        return sub_finite_inline(sub_finite_inline(a, b), c);
-    }
-
-    template<int Scale> BL_FORCE_INLINE constexpr double scale_limb_inline(double value) noexcept
-    {
-        if constexpr (Scale == 1)
-            return value;
-        else if constexpr (Scale == -1)
-            return -value;
-        else
-            return value * static_cast<double>(Scale);
-    }
-
-    template<int AScale, int BScale> BL_FORCE_INLINE constexpr fqd_s add_scaled_inline(const fqd_s& a, const fqd_s& b) noexcept
-    {
-        double s0{}, e0{};
-        double s1{}, e1{};
-        double s2{}, e2{};
-        double s3{}, e3{};
-
-        two_sum_precise(scale_limb_inline<AScale>(a.x0), scale_limb_inline<BScale>(b.x0), s0, e0);
-        two_sum_precise(scale_limb_inline<AScale>(a.x1), scale_limb_inline<BScale>(b.x1), s1, e1);
-        two_sum_precise(scale_limb_inline<AScale>(a.x2), scale_limb_inline<BScale>(b.x2), s2, e2);
-        two_sum_precise(scale_limb_inline<AScale>(a.x3), scale_limb_inline<BScale>(b.x3), s3, e3);
-
-        two_sum_precise(s1, e0, s1, e0);
-        three_sum(s2, e0, e1);
-        three_sum2(s3, e0, e2);
-
-        e0 += e1 + e3;
-
-        if (e0 == 0.0)
-            return renorm4(s0, s1, s2, s3);
-
-        return renorm5(s0, s1, s2, s3, e0);
+        return sub_canonical_inline(sub_canonical_inline(a, b), c);
     }
 
     BL_FORCE_INLINE constexpr qd_raw5 mul_double_raw5_inline(const fqd_s& a, double b) noexcept
     {
         using namespace detail::_qd;
+
+        if (detail::fp::isinf_or_nan(a.x0) || detail::fp::isinf_or_nan(b)) [[unlikely]]
+            return { mul_special(a, fqd_s{ b }).x0, 0.0, 0.0, 0.0, 0.0 };
 
         double p0{}, p1{}, p2{}, p3{};
         double q0{}, q1{}, q2{};
@@ -510,7 +487,7 @@ namespace detail::_qd // primitives and kernels
     {
         const pow2_scale_info scale = exact_pow2_scale_info(scalar);
         if (scale.valid)
-            return add_finite_inline(add, scale_pow2_or_checked_inline(value, scalar, scale));
+            return add_canonical_inline(add, scale_pow2_or_checked_inline(value, scalar, scale));
 
         return add_raw5_value_inline(mul_double_raw5_inline(value, scalar), add);
     }
@@ -519,7 +496,7 @@ namespace detail::_qd // primitives and kernels
     {
         const pow2_scale_info scale = exact_pow2_scale_info(scalar);
         if (scale.valid)
-            return sub_finite_inline(min, scale_pow2_or_checked_inline(value, scalar, scale));
+            return sub_canonical_inline(min, scale_pow2_or_checked_inline(value, scalar, scale));
 
         return add_raw5_value_inline(neg_raw5(mul_double_raw5_inline(value, scalar)), min);
     }
@@ -528,7 +505,7 @@ namespace detail::_qd // primitives and kernels
     {
         const pow2_scale_info scale = exact_pow2_scale_info(scalar);
         if (scale.valid)
-            return sub_finite_inline(scale_pow2_or_checked_inline(value, scalar, scale), sub);
+            return sub_canonical_inline(scale_pow2_or_checked_inline(value, scalar, scale), sub);
 
         return add_raw5_value_inline(mul_double_raw5_inline(value, scalar), -sub);
     }
@@ -544,12 +521,12 @@ namespace detail::_qd // primitives and kernels
 
     BL_FORCE_INLINE constexpr fqd_s div_add_double_inline(const fqd_s& numerator, const fqd_s& base_den, double scalar) noexcept
     {
-        return div_prechecked_inline(numerator, add_double_finite_inline(base_den, scalar));
+        return div_canonical_inline(numerator, add_double_canonical_inline(base_den, scalar));
     }
 
     BL_FORCE_INLINE constexpr fqd_s div_double_sub_inline(const fqd_s& numerator, double scalar, const fqd_s& base_den) noexcept
     {
-        return div_prechecked_inline(numerator, sub_double_finite_inline(scalar, base_den));
+        return div_canonical_inline(numerator, sub_double_canonical_inline(scalar, base_den));
     }
 
 } // namespace detail::_qd
@@ -1142,38 +1119,6 @@ namespace detail::_qd_expr
         );
     }
 
-    BL_FORCE_INLINE constexpr fqd_s add_scaled_2_1_eval(const fqd_s& a, const fqd_s& b) noexcept
-    {
-        BL_CONSTEXPR_RUNTIME_DISPATCH(
-            (detail::_qd::add_scaled_inline<2, 1>(a, b)),
-            detail::_qd_runtime::add_scaled_2_1(a, b)
-        );
-    }
-
-    BL_FORCE_INLINE constexpr fqd_s add_scaled_1_2_eval(const fqd_s& a, const fqd_s& b) noexcept
-    {
-        BL_CONSTEXPR_RUNTIME_DISPATCH(
-            (detail::_qd::add_scaled_inline<1, 2>(a, b)),
-            detail::_qd_runtime::add_scaled_1_2(a, b)
-        );
-    }
-
-    BL_FORCE_INLINE constexpr fqd_s add_scaled_2_neg1_eval(const fqd_s& a, const fqd_s& b) noexcept
-    {
-        BL_CONSTEXPR_RUNTIME_DISPATCH(
-            (detail::_qd::add_scaled_inline<2, -1>(a, b)),
-            detail::_qd_runtime::add_scaled_2_neg1(a, b)
-        );
-    }
-
-    BL_FORCE_INLINE constexpr fqd_s add_scaled_1_neg2_eval(const fqd_s& a, const fqd_s& b) noexcept
-    {
-        BL_CONSTEXPR_RUNTIME_DISPATCH(
-            (detail::_qd::add_scaled_inline<1, -2>(a, b)),
-            detail::_qd_runtime::add_scaled_1_neg2(a, b)
-        );
-    }
-
     BL_FORCE_INLINE constexpr fqd_s add_mul_double_eval(const fqd_s& add, const fqd_s& value, double scalar) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
@@ -1217,7 +1162,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s mul_add_add_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::add_finite_inline(detail::_qd::mul_add_inline(a, b, c), d),
+            detail::_qd::add_canonical_inline(detail::_qd::mul_add_inline(a, b, c), d),
             detail::_qd_runtime::mul_add_add(a, b, c, d)
         );
     }
@@ -1225,7 +1170,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s mul_add_sub_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::sub_finite_inline(detail::_qd::mul_add_inline(a, b, c), d),
+            detail::_qd::sub_canonical_inline(detail::_qd::mul_add_inline(a, b, c), d),
             detail::_qd_runtime::mul_add_sub(a, b, c, d)
         );
     }
@@ -1233,7 +1178,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s mul_sub_add_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::add_finite_inline(detail::_qd::mul_sub_inline(a, b, c), d),
+            detail::_qd::add_canonical_inline(detail::_qd::mul_sub_inline(a, b, c), d),
             detail::_qd_runtime::mul_sub_add(a, b, c, d)
         );
     }
@@ -1241,7 +1186,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s mul_sub_sub_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::sub_finite_inline(detail::_qd::mul_sub_inline(a, b, c), d),
+            detail::_qd::sub_canonical_inline(detail::_qd::mul_sub_inline(a, b, c), d),
             detail::_qd_runtime::mul_sub_sub(a, b, c, d)
         );
     }
@@ -1249,7 +1194,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s mul_add_mul_add_mul_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d, const fqd_s& e, const fqd_s& f) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::add_finite_inline(detail::_qd::mul_add_mul_inline(a, b, c, d), detail::_qd::mul_product_inline(e, f)),
+            detail::_qd::add_canonical_inline(detail::_qd::mul_add_mul_inline(a, b, c, d), detail::_qd::mul_canonical_inline(e, f)),
             detail::_qd_runtime::mul_add_mul_add_mul(a, b, c, d, e, f)
         );
     }
@@ -1257,7 +1202,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s mul_add_mul_add_mul_add_mul_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d, const fqd_s& e, const fqd_s& f, const fqd_s& g, const fqd_s& h) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::add_finite_inline(detail::_qd::mul_add_mul_inline(a, b, c, d), detail::_qd::mul_add_mul_inline(e, f, g, h)),
+            detail::_qd::add_canonical_inline(detail::_qd::mul_add_mul_inline(a, b, c, d), detail::_qd::mul_add_mul_inline(e, f, g, h)),
             detail::_qd_runtime::mul_add_mul_add_mul_add_mul(a, b, c, d, e, f, g, h)
         );
     }
@@ -1265,7 +1210,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s add_add_add_add_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::add_finite_inline(detail::_qd::add_add_add_inline(a, b, c), d),
+            detail::_qd::add_canonical_inline(detail::_qd::add_add_add_inline(a, b, c), d),
             detail::_qd_runtime::add_add_add_add(a, b, c, d)
         );
     }
@@ -1273,7 +1218,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s add_add_add_sub_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::sub_finite_inline(detail::_qd::add_add_add_inline(a, b, c), d),
+            detail::_qd::sub_canonical_inline(detail::_qd::add_add_add_inline(a, b, c), d),
             detail::_qd_runtime::add_add_add_sub(a, b, c, d)
         );
     }
@@ -1281,7 +1226,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s add_add_sub_sub_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::sub_finite_inline(detail::_qd::add_add_sub_inline(a, b, c), d),
+            detail::_qd::sub_canonical_inline(detail::_qd::add_add_sub_inline(a, b, c), d),
             detail::_qd_runtime::add_add_sub_sub(a, b, c, d)
         );
     }
@@ -1289,7 +1234,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s add_sub_sub_sub_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::sub_finite_inline(detail::_qd::add_sub_sub_inline(a, b, c), d),
+            detail::_qd::sub_canonical_inline(detail::_qd::add_sub_sub_inline(a, b, c), d),
             detail::_qd_runtime::add_sub_sub_sub(a, b, c, d)
         );
     }
@@ -1313,7 +1258,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s div_add_eval(const fqd_s& numerator, const fqd_s& a, const fqd_s& b) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(numerator, detail::_qd::add_finite_inline(a, b)),
+            detail::_qd::div_canonical_inline(numerator, detail::_qd::add_canonical_inline(a, b)),
             detail::_qd_runtime::div_add(numerator, a, b)
         );
     }
@@ -1321,7 +1266,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s div_sub_eval(const fqd_s& numerator, const fqd_s& a, const fqd_s& b) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(numerator, detail::_qd::sub_finite_inline(a, b)),
+            detail::_qd::div_canonical_inline(numerator, detail::_qd::sub_canonical_inline(a, b)),
             detail::_qd_runtime::div_sub(numerator, a, b)
         );
     }
@@ -1329,7 +1274,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s mul_add_div_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& den) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::mul_add_inline(a, b, c), den),
+            detail::_qd::div_canonical_inline(detail::_qd::mul_add_inline(a, b, c), den),
             detail::_qd_runtime::mul_add_div(a, b, c, den)
         );
     }
@@ -1337,7 +1282,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s mul_sub_div_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& den) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::mul_sub_inline(a, b, c), den),
+            detail::_qd::div_canonical_inline(detail::_qd::mul_sub_inline(a, b, c), den),
             detail::_qd_runtime::mul_sub_div(a, b, c, den)
         );
     }
@@ -1345,7 +1290,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s value_sub_mul_div_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& den) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::value_sub_mul_inline(a, b, c), den),
+            detail::_qd::div_canonical_inline(detail::_qd::value_sub_mul_inline(a, b, c), den),
             detail::_qd_runtime::value_sub_mul_div(a, b, c, den)
         );
     }
@@ -1353,7 +1298,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s mul_add_mul_div_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d, const fqd_s& den) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::mul_add_mul_inline(a, b, c, d), den),
+            detail::_qd::div_canonical_inline(detail::_qd::mul_add_mul_inline(a, b, c, d), den),
             detail::_qd_runtime::mul_add_mul_div(a, b, c, d, den)
         );
     }
@@ -1361,7 +1306,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s mul_sub_mul_div_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d, const fqd_s& den) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::mul_sub_mul_inline(a, b, c, d), den),
+            detail::_qd::div_canonical_inline(detail::_qd::mul_sub_mul_inline(a, b, c, d), den),
             detail::_qd_runtime::mul_sub_mul_div(a, b, c, d, den)
         );
     }
@@ -1369,7 +1314,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s add_add_add_div_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& den) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::add_add_add_inline(a, b, c), den),
+            detail::_qd::div_canonical_inline(detail::_qd::add_add_add_inline(a, b, c), den),
             detail::_qd_runtime::add_add_add_div(a, b, c, den)
         );
     }
@@ -1377,7 +1322,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s add_sub_add_div_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& den) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::add_sub_add_inline(a, b, c), den),
+            detail::_qd::div_canonical_inline(detail::_qd::add_sub_add_inline(a, b, c), den),
             detail::_qd_runtime::add_sub_add_div(a, b, c, den)
         );
     }
@@ -1385,7 +1330,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s add_add_sub_div_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& den) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::add_add_sub_inline(a, b, c), den),
+            detail::_qd::div_canonical_inline(detail::_qd::add_add_sub_inline(a, b, c), den),
             detail::_qd_runtime::add_add_sub_div(a, b, c, den)
         );
     }
@@ -1393,7 +1338,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s add_sub_sub_div_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& den) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::add_sub_sub_inline(a, b, c), den),
+            detail::_qd::div_canonical_inline(detail::_qd::add_sub_sub_inline(a, b, c), den),
             detail::_qd_runtime::add_sub_sub_div(a, b, c, den)
         );
     }
@@ -1401,7 +1346,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s add_mul_double_div_eval(const fqd_s& add, const fqd_s& value, double scalar, const fqd_s& den) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::add_mul_double_inline(add, value, scalar), den),
+            detail::_qd::div_canonical_inline(detail::_qd::add_mul_double_inline(add, value, scalar), den),
             detail::_qd_runtime::add_mul_double_div(add, value, scalar, den)
         );
     }
@@ -1409,7 +1354,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s sub_mul_double_div_eval(const fqd_s& min, const fqd_s& value, double scalar, const fqd_s& den) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::sub_mul_double_inline(min, value, scalar), den),
+            detail::_qd::div_canonical_inline(detail::_qd::sub_mul_double_inline(min, value, scalar), den),
             detail::_qd_runtime::sub_mul_double_div(min, value, scalar, den)
         );
     }
@@ -1417,7 +1362,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s mul_double_sub_div_eval(const fqd_s& value, double scalar, const fqd_s& sub, const fqd_s& den) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::mul_double_sub_inline(value, scalar, sub), den),
+            detail::_qd::div_canonical_inline(detail::_qd::mul_double_sub_inline(value, scalar, sub), den),
             detail::_qd_runtime::mul_double_sub_div(value, scalar, sub, den)
         );
     }
@@ -1425,7 +1370,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s mul_add_div_add_double_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& den, double scalar) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::mul_add_inline(a, b, c), detail::_qd::add_double_finite_inline(den, scalar)),
+            detail::_qd::div_canonical_inline(detail::_qd::mul_add_inline(a, b, c), detail::_qd::add_double_canonical_inline(den, scalar)),
             detail::_qd_runtime::mul_add_div_add_double(a, b, c, den, scalar)
         );
     }
@@ -1433,7 +1378,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s mul_sub_div_add_double_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& den, double scalar) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::mul_sub_inline(a, b, c), detail::_qd::add_double_finite_inline(den, scalar)),
+            detail::_qd::div_canonical_inline(detail::_qd::mul_sub_inline(a, b, c), detail::_qd::add_double_canonical_inline(den, scalar)),
             detail::_qd_runtime::mul_sub_div_add_double(a, b, c, den, scalar)
         );
     }
@@ -1441,7 +1386,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s value_sub_mul_div_add_double_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& den, double scalar) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::value_sub_mul_inline(a, b, c), detail::_qd::add_double_finite_inline(den, scalar)),
+            detail::_qd::div_canonical_inline(detail::_qd::value_sub_mul_inline(a, b, c), detail::_qd::add_double_canonical_inline(den, scalar)),
             detail::_qd_runtime::value_sub_mul_div_add_double(a, b, c, den, scalar)
         );
     }
@@ -1449,7 +1394,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s mul_add_mul_div_add_double_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d, const fqd_s& den, double scalar) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::mul_add_mul_inline(a, b, c, d), detail::_qd::add_double_finite_inline(den, scalar)),
+            detail::_qd::div_canonical_inline(detail::_qd::mul_add_mul_inline(a, b, c, d), detail::_qd::add_double_canonical_inline(den, scalar)),
             detail::_qd_runtime::mul_add_mul_div_add_double(a, b, c, d, den, scalar)
         );
     }
@@ -1457,7 +1402,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s mul_sub_mul_div_add_double_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d, const fqd_s& den, double scalar) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::mul_sub_mul_inline(a, b, c, d), detail::_qd::add_double_finite_inline(den, scalar)),
+            detail::_qd::div_canonical_inline(detail::_qd::mul_sub_mul_inline(a, b, c, d), detail::_qd::add_double_canonical_inline(den, scalar)),
             detail::_qd_runtime::mul_sub_mul_div_add_double(a, b, c, d, den, scalar)
         );
     }
@@ -1465,7 +1410,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s add_add_add_div_add_double_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& den, double scalar) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::add_add_add_inline(a, b, c), detail::_qd::add_double_finite_inline(den, scalar)),
+            detail::_qd::div_canonical_inline(detail::_qd::add_add_add_inline(a, b, c), detail::_qd::add_double_canonical_inline(den, scalar)),
             detail::_qd_runtime::add_add_add_div_add_double(a, b, c, den, scalar)
         );
     }
@@ -1473,7 +1418,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s add_sub_add_div_add_double_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& den, double scalar) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::add_sub_add_inline(a, b, c), detail::_qd::add_double_finite_inline(den, scalar)),
+            detail::_qd::div_canonical_inline(detail::_qd::add_sub_add_inline(a, b, c), detail::_qd::add_double_canonical_inline(den, scalar)),
             detail::_qd_runtime::add_sub_add_div_add_double(a, b, c, den, scalar)
         );
     }
@@ -1481,7 +1426,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s add_add_sub_div_add_double_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& den, double scalar) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::add_add_sub_inline(a, b, c), detail::_qd::add_double_finite_inline(den, scalar)),
+            detail::_qd::div_canonical_inline(detail::_qd::add_add_sub_inline(a, b, c), detail::_qd::add_double_canonical_inline(den, scalar)),
             detail::_qd_runtime::add_add_sub_div_add_double(a, b, c, den, scalar)
         );
     }
@@ -1489,7 +1434,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s add_sub_sub_div_add_double_eval(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& den, double scalar) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::add_sub_sub_inline(a, b, c), detail::_qd::add_double_finite_inline(den, scalar)),
+            detail::_qd::div_canonical_inline(detail::_qd::add_sub_sub_inline(a, b, c), detail::_qd::add_double_canonical_inline(den, scalar)),
             detail::_qd_runtime::add_sub_sub_div_add_double(a, b, c, den, scalar)
         );
     }
@@ -1497,7 +1442,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s add_mul_double_div_add_double_eval(const fqd_s& add, const fqd_s& value, double val_s, const fqd_s& den, double den_s) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::add_mul_double_inline(add, value, val_s), detail::_qd::add_double_finite_inline(den, den_s)),
+            detail::_qd::div_canonical_inline(detail::_qd::add_mul_double_inline(add, value, val_s), detail::_qd::add_double_canonical_inline(den, den_s)),
             detail::_qd_runtime::add_mul_double_div_add_double(add, value, val_s, den, den_s)
         );
     }
@@ -1505,7 +1450,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s sub_mul_double_div_add_double_eval(const fqd_s& min, const fqd_s& value, double val_s, const fqd_s& den, double den_s) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::sub_mul_double_inline(min, value, val_s), detail::_qd::add_double_finite_inline(den, den_s)),
+            detail::_qd::div_canonical_inline(detail::_qd::sub_mul_double_inline(min, value, val_s), detail::_qd::add_double_canonical_inline(den, den_s)),
             detail::_qd_runtime::sub_mul_double_div_add_double(min, value, val_s, den, den_s)
         );
     }
@@ -1513,7 +1458,7 @@ namespace detail::_qd_expr
     BL_FORCE_INLINE constexpr fqd_s mul_double_sub_div_add_double_eval(const fqd_s& value, double val_s, const fqd_s& sub, const fqd_s& den, double den_s) noexcept
     {
         BL_CONSTEXPR_RUNTIME_DISPATCH(
-            detail::_qd::div_prechecked_inline(detail::_qd::mul_double_sub_inline(value, val_s, sub), detail::_qd::add_double_finite_inline(den, den_s)),
+            detail::_qd::div_canonical_inline(detail::_qd::mul_double_sub_inline(value, val_s, sub), detail::_qd::add_double_canonical_inline(den, den_s)),
             detail::_qd_runtime::mul_double_sub_div_add_double(value, val_s, sub, den, den_s)
         );
     }
@@ -2268,20 +2213,6 @@ namespace detail::_qd_expr
             {
                 return eval_leaf_prod_add_value(expr.right, expr.left);
             }
-            else if constexpr (is_add_prod_prod_v<LType> && is_leaf_v<RType>)
-            {
-                return mul_add_mul_add_eval(
-                    leaf_value(expr.left.left.left), leaf_value(expr.left.left.right),
-                    leaf_value(expr.left.right.left), leaf_value(expr.left.right.right),
-                    leaf_value(expr.right));
-            }
-            else if constexpr (is_sub_prod_prod_v<LType> && is_leaf_v<RType>)
-            {
-                return mul_sub_mul_add_eval(
-                    leaf_value(expr.left.left.left), leaf_value(expr.left.left.right),
-                    leaf_value(expr.left.right.left), leaf_value(expr.left.right.right),
-                    leaf_value(expr.right));
-            }
             else
             {
                 return eval_eager(expr);
@@ -2456,20 +2387,6 @@ namespace detail::_qd_expr
             else if constexpr (is_leaf_v<LType> && is_leaf_prod_v<RType>)
             {
                 return eval_value_sub_leaf_prod(expr.left, expr.right);
-            }
-            else if constexpr (is_add_prod_prod_v<LType> && is_leaf_v<RType>)
-            {
-                return mul_add_mul_sub_eval(
-                    leaf_value(expr.left.left.left), leaf_value(expr.left.left.right),
-                    leaf_value(expr.left.right.left), leaf_value(expr.left.right.right),
-                    leaf_value(expr.right));
-            }
-            else if constexpr (is_sub_prod_prod_v<LType> && is_leaf_v<RType>)
-            {
-                return mul_sub_mul_sub_eval(
-                    leaf_value(expr.left.left.left), leaf_value(expr.left.left.right),
-                    leaf_value(expr.left.right.left), leaf_value(expr.left.right.right),
-                    leaf_value(expr.right));
             }
             else
             {

@@ -23,6 +23,11 @@ namespace bl::detail::_dd_runtime
     }
 
     // rounding and decimals
+    fdd_s trunc(const fdd_s& a)
+    {
+        return detail::_dd_impl::trunc(a);
+    }
+
     BL_NO_INLINE fdd_s round_nearest_away_from_zero(const fdd_s& a)
     {
         return detail::_dd_impl::round_nearest_away_from_zero_runtime(a);

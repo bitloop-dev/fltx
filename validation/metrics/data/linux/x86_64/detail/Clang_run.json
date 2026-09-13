@@ -1,20 +1,11 @@
 {
-  "accuracy_parallel": true,
-  "accuracy_samples": 4096,
+  "accuracy_samples": 65536,
   "architecture": "x86_64",
-  "benchmark_corpus_policy": "adaptive-v1",
-  "benchmark_fast_minimum_trial_ms": 15,
-  "benchmark_fast_threshold_ns": 20,
-  "benchmark_fast_trials": 7,
-  "benchmark_maximum_row_ms": 5000,
-  "benchmark_minimum_trial_ms": 8,
-  "benchmark_ordinary_trials": 3,
-  "benchmark_policy": "adaptive-v2",
+  "benchmark_minimum_trial_ms": 25,
   "benchmark_samples": {
-    "dd": 8192,
-    "qd": 4096
+    "dd": 81920,
+    "qd": 40960
   },
-  "benchmark_slow_threshold_ns": 10000,
   "benchmark_trials": 7,
   "compiler": "Clang",
   "configuration": {
@@ -23,11 +14,11 @@
       "compiler-id": "Clang",
       "compiler-version": "21.1.8",
       "config": "Release",
-      "flags-hash": "f1495be1bd5141b518128f4ff63e7f32f93319ad1bbfc9687e92da7b2ee8359a",
+      "flags-hash": "b4c60c5b9a18a9884fdf8d01de49b44007e9a3a3438693eee717acfbed1463c0",
       "frontend-variant": "GNU",
       "optimized": "1",
       "processor": "x86_64",
-      "source-fingerprint": "e69f86fa5e6a90511ab16666e9d7d3b59c206539b7f5abc006f004f8e3f10241",
+      "source-fingerprint": "1908e8ba6c886da6f2ba18b8b720f9dcf8a71e061ccba23011424d3d0f694b2a",
       "system": "Linux"
     },
     "consumer": {
@@ -69,16 +60,16 @@
     }
   },
   "consumer_mode": "strict",
-  "created_utc": "2026-09-03T03:59:02.798679+00:00",
+  "created_utc": "2026-09-12T22:03:51.371584+00:00",
   "executables": {
     "accuracy": {
       "path": "/home/ubuntu/fltx/build/linux-x64-clang-release/validation/fltx_accuracy",
-      "sha256": "010e949dbf03334ff4568e0d7ee62d1946de5fc23eea8df5dab510c8cdc1fb31",
+      "sha256": "089b049491a1bf9e3f8396419407cc0d699bf5093dee53110d54cd32cb3c3de2",
       "wasm-sha256": "not-present"
     },
     "benchmark": {
       "path": "/home/ubuntu/fltx/build/linux-x64-clang-release/validation/fltx_benchmark",
-      "sha256": "6282e90467315011fa923baf4f878643776cde77e183a2f19e793c5bbaeef293",
+      "sha256": "f66e1324947f8cf4b2b71491e4d7a1f130174175ae248f96646858bcbeba85e7",
       "wasm-sha256": "not-present"
     }
   },
@@ -137,12 +128,12 @@
     ]
   },
   "outputs": {
-    "Clang_dd.csv": "ae2678fad9ddc5d777de58acab33e616f70d6dd6467cd019a7e14743bb0ae62c",
-    "Clang_qd.csv": "d136a7fbcd1c1cc898f5bd12e8efaf13ee2544b311661220d6ea346cf5f3580b",
-    "detail/Clang_dd_accuracy.csv": "66468e822e7c51930c619036fe84c7c30e513780fc045144d4fb1f6b94530108",
-    "detail/Clang_dd_benchmark.csv": "3b8432245eca9389b72b5fbd240fce162c8cfb80d42ce7a761111b837c6b681e",
-    "detail/Clang_qd_accuracy.csv": "ffa175eb07f8849cade506c120328901c9094c831b504ef892f75e9c9761b62d",
-    "detail/Clang_qd_benchmark.csv": "75c7d68c70adde332c1a0ec1d946c156bafd53ae555a5c04d27b4d7de8bf613e"
+    "Clang_dd.csv": "fa8e92f455a636fde2f7361cb57a1ea6d8cd870c35bf78c99d48049cc00bff75",
+    "Clang_qd.csv": "b349466795b5429fb38c2a5a96286f344ce63f8fb737a716938ff1dc3091336e",
+    "detail/Clang_dd_accuracy.csv": "5be505c0ef271cb465aa0f3b51f6a050987f1c3ca5abd85df538f89d3c9ddf60",
+    "detail/Clang_dd_benchmark.csv": "f1df23c65f265f410a2c387bd817812780d9759e63769f90fd562322a1514f7e",
+    "detail/Clang_qd_accuracy.csv": "71cecaaa42e5bc2451f45fd1ee7ddfc82ccbd66806aaf69047b362953c02a015",
+    "detail/Clang_qd_benchmark.csv": "1f6c7266f193d9f9979dd01553e5edcff42b01b1fc2aad2664f38dd9c124b3be"
   },
   "phases": {
     "dd.accuracy": {
@@ -175,10 +166,10 @@
     "dd",
     "qd"
   ],
-  "run_id": "4c2b2d34aa1948449eb3a46d0f738355",
-  "sample_mode": "standard",
+  "run_id": "0427bc4c5e03472a88d0d153d7753c46",
+  "sample_mode": "full",
   "schema_version": "6",
-  "source_fingerprint": "e69f86fa5e6a90511ab16666e9d7d3b59c206539b7f5abc006f004f8e3f10241",
-  "source_revision": "918528b7660e94a8698933f74b15e2a0f0f28a7b",
+  "source_fingerprint": "1908e8ba6c886da6f2ba18b8b720f9dcf8a71e061ccba23011424d3d0f694b2a",
+  "source_revision": "844436dea5ed7db933d8911410bd3eb2ea484fc2-dirty-1908e8ba6c88",
   "status": "complete"
 }

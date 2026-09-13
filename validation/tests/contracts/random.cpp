@@ -2,6 +2,7 @@
 
 #include <array>
 #include <concepts>
+#include <cmath>
 #include <cstdint>
 #include <limits>
 #include <random>
@@ -13,6 +14,28 @@
 
 namespace
 {
+    // Exercise both multi-draw and single-draw ranges without depending on
+    // the platform's uint_fast32_t width. A nonzero minimum also checks offsetting.
+    template<int Bits>
+    struct wide_storage_engine
+    {
+        static_assert(Bits > 0 && Bits < 64);
+        using result_type = std::uint64_t;
+
+        bl::mt19937_64 engine{ 0x1020304050607080ull };
+
+        [[nodiscard]] static constexpr result_type min() noexcept { return 17; }
+        [[nodiscard]] static constexpr result_type max() noexcept
+        {
+            return min() + (result_type{ 1 } << Bits) - 1;
+        }
+
+        [[nodiscard]] constexpr result_type operator()() noexcept
+        {
+            return min() + (engine() >> (64 - Bits));
+        }
+    };
+
     struct modulo_six_engine
     {
         using result_type = unsigned int;
@@ -135,6 +158,8 @@ namespace
 }
 
 static_assert(bl::uniform_random_bit_generator<modulo_six_engine>);
+static_assert(bl::uniform_random_bit_generator<wide_storage_engine<32>>);
+static_assert(bl::uniform_random_bit_generator<wide_storage_engine<56>>);
 static_assert(std::same_as<bl::default_random_engine, bl::mt19937>);
 static_assert(!std::copy_constructible<bl::seed_seq>);
 static_assert(std::constructible_from<bl::random_device, const std::string&>);
@@ -290,6 +315,85 @@ TEST_CASE("extended random helpers are deterministic", "[contracts][random]")
             canonical_engine);
     CHECK(canonical >= bl::fqd{ 0.0 });
     CHECK(canonical < bl::fqd{ 1.0 });
+}
+
+TEST_CASE("extended canonical samples use the engine range rather than its storage width",
+          "[contracts][random]")
+{
+    const auto check_range = []<class Real, int Bits>() {
+        wide_storage_engine<Bits> engine;
+        bl::uniform_real_distribution<Real> distribution;
+        constexpr int sample_count = 2048;
+        double sum = 0.0;
+        double sum_squares = 0.0;
+        int upper_half = 0;
+
+        // Unit-uniform generation has a bounded draw count for these power-of-two
+        // ranges. Do not use normal rejection sampling as a regression witness.
+        for (int i = 0; i < sample_count; ++i)
+        {
+            const Real value = distribution(engine);
+            CHECK(value >= Real{ 0.0 });
+            CHECK(value < Real{ 1.0 });
+            const double sample = static_cast<double>(value);
+            sum += sample;
+            sum_squares += sample * sample;
+            upper_half += sample >= 0.5;
+        }
+
+        const double mean = sum / sample_count;
+        const double variance = sum_squares / sample_count - mean * mean;
+        CAPTURE(Bits, mean, variance, upper_half);
+        CHECK(upper_half > 900);
+        CHECK(upper_half < 1150);
+        CHECK(mean > 0.47);
+        CHECK(mean < 0.53);
+        CHECK(variance > 0.075);
+        CHECK(variance < 0.092);
+    };
+
+    check_range.template operator()<bl::fdd_s, 32>();
+    check_range.template operator()<bl::fdd, 32>();
+    check_range.template operator()<bl::fqd_s, 32>();
+    check_range.template operator()<bl::fqd, 32>();
+    check_range.template operator()<bl::fdd_s, 56>();
+    check_range.template operator()<bl::fdd, 56>();
+    check_range.template operator()<bl::fqd_s, 56>();
+    check_range.template operator()<bl::fqd, 56>();
+}
+
+TEST_CASE("extended canonical samples preserve the full-width mt19937_64 limb sequence",
+          "[contracts][random]")
+{
+    const auto check_sequence = []<class Real>() {
+        bl::mt19937_64 engine{ 0x1020304050607080ull };
+        std::mt19937_64 reference{ 0x1020304050607080ull };
+        for (int i = 0; i < 32; ++i)
+        {
+            const Real value = bl::generate_canonical<Real, std::numeric_limits<Real>::digits>(engine);
+            const auto expected_limb = [&](int exponent) {
+                return std::ldexp(static_cast<double>(reference() >> 11), exponent);
+            };
+            if constexpr (std::same_as<Real, bl::fdd_s> || std::same_as<Real, bl::fdd>)
+            {
+                CHECK(value.hi == expected_limb(-53));
+                CHECK(value.lo == expected_limb(-106));
+            }
+            else
+            {
+                CHECK(value.x0 == expected_limb(-53));
+                CHECK(value.x1 == expected_limb(-106));
+                CHECK(value.x2 == expected_limb(-159));
+                CHECK(value.x3 == expected_limb(-212));
+            }
+        }
+        CHECK(engine() == reference());
+    };
+
+    check_sequence.template operator()<bl::fdd_s>();
+    check_sequence.template operator()<bl::fdd>();
+    check_sequence.template operator()<bl::fqd_s>();
+    check_sequence.template operator()<bl::fqd>();
 }
 
 TEST_CASE("all real distributions expose their distinct public operations",

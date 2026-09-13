@@ -156,14 +156,14 @@ namespace bl
 
         constexpr void push_back(char value)
         {
-            require_capacity(length + 1);
+            require_growth(1);
             chars[length++] = value;
             chars[length] = '\0';
         }
 
         constexpr static_string& append(size_type count, char value)
         {
-            require_capacity(length + count);
+            require_growth(count);
             for (size_type index = 0; index < count; ++index)
                 chars[length + index] = value;
             length += count;
@@ -178,7 +178,7 @@ namespace bl
 
         constexpr static_string& append(std::string_view text)
         {
-            require_capacity(length + text.size());
+            require_growth(text.size());
             for (size_type index = 0; index < text.size(); ++index)
                 chars[length + index] = text[index];
             length += text.size();
@@ -194,7 +194,7 @@ namespace bl
         constexpr static_string& insert(size_type position, std::string_view text)
         {
             require_insert_position(position);
-            require_capacity(length + text.size());
+            require_growth(text.size());
             for (size_type index = length; index > position; --index)
                 chars[index + text.size() - 1] = chars[index - 1];
             for (size_type index = 0; index < text.size(); ++index)
@@ -207,7 +207,7 @@ namespace bl
         constexpr static_string& insert(size_type position, size_type count, char value)
         {
             require_insert_position(position);
-            require_capacity(length + count);
+            require_growth(count);
             for (size_type index = length; index > position; --index)
                 chars[index + count - 1] = chars[index - 1];
             for (size_type index = 0; index < count; ++index)
@@ -238,6 +238,12 @@ namespace bl
             while (text[result] != '\0')
                 ++result;
             return result;
+        }
+
+        constexpr void require_growth(size_type count) const
+        {
+            if (count > capacity - length)
+                throw "static_string capacity exceeded";
         }
 
         constexpr void require_capacity(size_type requested_capacity) const

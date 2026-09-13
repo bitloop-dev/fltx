@@ -8,6 +8,64 @@
 
 #include <fltx.h>
 
+TEST_CASE("extended math preserves representable exponential tails",
+          "[contracts][edge-case][math]")
+{
+    const auto check = []<class T>() {
+        for (double x : {13.0, 26.0, 27.0625})
+        {
+            CAPTURE(x);
+            const T tail = bl::erfc(T{x});
+            CHECK(bl::isfinite(tail));
+            CHECK(tail > T{0.0});
+            CHECK(tail < T{1.0});
+        }
+        CHECK(bl::erfc(T{28.0}) == T{0.0});
+        CHECK(bl::erfc(T{-28.0}) == T{2.0});
+        for (double x : {709.0, 710.0})
+        {
+            CAPTURE(x);
+            const T s = bl::sinh(T{x});
+            const T c = bl::cosh(T{x});
+            CHECK(bl::isfinite(s));
+            CHECK(bl::isfinite(c));
+            CHECK(s > T{1.0e307});
+            CHECK(c >= s);
+            CHECK(bl::sinh(T{-x}) == -s);
+            CHECK(bl::cosh(T{-x}) == c);
+        }
+        CHECK(bl::isinf(bl::sinh(T{711.0})));
+        CHECK(bl::isinf(bl::cosh(T{711.0})));
+        const T positive_gamma = bl::tgamma(T{-171.5});
+        const T negative_gamma = bl::tgamma(T{-172.5});
+        CHECK(bl::isfinite(positive_gamma));
+        CHECK(positive_gamma > T{0.0});
+        CHECK(bl::isfinite(negative_gamma));
+        CHECK(negative_gamma < T{0.0});
+    };
+    check.template operator()<bl::fdd>();
+    check.template operator()<bl::fqd>();
+}
+
+TEST_CASE("qd sparse tails do not overflow root and logarithm rescaling",
+          "[contracts][edge-case][math]")
+{
+    for (double head : {0x1p-1074, 0x1p-1000, 0x1p510, 0x1p512, 0x1p958, 0x1p960, 0x1p1000})
+    {
+        CAPTURE(head);
+        const bl::fqd sparse{head, head == 0x1p-1074 ? 0.0 : 0x1p-1074, 0.0, 0.0};
+        const bl::fqd root = bl::sqrt(sparse);
+        const bl::fqd cube_root = bl::cbrt(sparse);
+        CHECK(bl::isfinite(root));
+        CHECK(root > bl::fqd{0.0});
+        CHECK(bl::isfinite(cube_root));
+        CHECK(cube_root > bl::fqd{0.0});
+        CHECK(bl::isfinite(bl::log(sparse)));
+        CHECK(bl::isfinite(bl::log2(sparse)));
+        CHECK(bl::isfinite(bl::log10(sparse)));
+    }
+}
+
 TEST_CASE("large expansion limbs survive floor and truncation", "[contracts][edge-case]")
 {
     const auto check_decimal_inputs = []<class T>() {

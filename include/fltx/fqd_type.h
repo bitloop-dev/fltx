@@ -87,7 +87,15 @@ namespace detail::_qd // primitives and kernels
     using dd_scalar = detail::fp::double_double;
 
     template<class T>
-    [[nodiscard]] BL_FORCE_INLINE constexpr dd_scalar integer_to_double_double(T value) noexcept;
+    [[nodiscard]] BL_FORCE_INLINE constexpr dd_scalar integer_to_double_double(T value) noexcept
+    {
+        dd_scalar out{};
+        if constexpr (std::is_signed_v<std::remove_cv_t<T>>)
+            int64_to_exact_double_pair(static_cast<int64_t>(value), out.hi, out.lo);
+        else
+            uint64_to_exact_double_pair(static_cast<uint64_t>(value), out.hi, out.lo);
+        return out;
+    }
 
     template<class T>
     [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s integer_to_qd(T value) noexcept;
@@ -145,8 +153,19 @@ struct fqd_s
         return *this;
     }
 
-    BL_FORCE_INLINE constexpr fqd_s& operator=(uint64_t u) noexcept;
-    BL_FORCE_INLINE constexpr fqd_s& operator=(int64_t v) noexcept;
+    BL_FORCE_INLINE constexpr fqd_s& operator=(uint64_t u) noexcept
+    {
+        detail::fp::uint64_to_exact_double_pair(u, x0, x1);
+        x2 = 0.0; x3 = 0.0;
+        return *this;
+    }
+
+    BL_FORCE_INLINE constexpr fqd_s& operator=(int64_t v) noexcept
+    {
+        detail::fp::int64_to_exact_double_pair(v, x0, x1);
+        x2 = 0.0; x3 = 0.0;
+        return *this;
+    }
 
     template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_signed_v<T> && (sizeof(T) <= 8), int> = 0>
     BL_FORCE_INLINE constexpr fqd_s& operator=(T v) noexcept
@@ -339,6 +358,14 @@ struct fqd_s
     // Spacing above 1.0 in the public nominal 212-bit model.
     [[nodiscard]] static constexpr fqd_s eps() { return { 0x1p-211, 0.0, 0.0, 0.0 }; }
 };
+
+template<class T>
+[[nodiscard]] BL_FORCE_INLINE constexpr fqd_s detail::_qd::integer_to_qd(T value) noexcept
+{
+    fqd_s out{};
+    out = value;
+    return out;
+}
 
 namespace detail::_qd_expr
 {

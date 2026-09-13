@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>fltx · Metrics overview</title>
+  <style>
+    :root { color-scheme: dark; --canvas: #0f1115; --text: #e7e9ee; --muted: #aeb4bf; --line: #2a2e37; --accent: #b9dcff; }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; background: var(--canvas); color: var(--text); font: 14px/1.5 "Segoe UI", system-ui, sans-serif; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    button { font: inherit; }
+    a { color: var(--muted); text-decoration: none; }
+    a:hover { color: var(--text); }
+    button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+    .shell { max-width: 1780px; margin: 0 auto; padding: 0 32px; }
+    .masthead { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 23px 0; border-bottom: 1px solid var(--line); }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .wordmark { font: 700 24px/1 Consolas, monospace; letter-spacing: -1.5px; color: #fff; }
+    .brand-divider { height: 18px; width: 1px; background: #414652; }
+    .brand-caption { font-size: 12px; color: var(--muted); }
+    .inventory { font-size: 12px; color: #939ba9; }
+    .intro { text-align: center; padding: 35px 0 20px; }
+    h1 { font-size: clamp(24px, 3vw, 31px); line-height: 1.25; font-weight: 600; letter-spacing: -.7px; margin: 0 0 9px; }
+    .intro p { color: var(--muted); margin: 0; font-size: 13px; }
+    .controls { width: fit-content; max-width: 100%; margin: 0 auto 30px; padding: 9px 19px; border: 1px solid var(--line); border-radius: 13px; background: #14171d; }
+    .control-row { display: flex; align-items: center; gap: 20px; padding: 9px 0; }
+    .control-row + .control-row { border-top: 1px solid #232730; }
+    .control-label { flex: 0 0 82px; color: #99a2b2; font-size: 11px; font-weight: 600; letter-spacing: .3px; }
+    .choices { display: flex; flex-wrap: wrap; gap: 4px; }
+    .choice { border: 1px solid transparent; background: transparent; color: #aeb4bf; border-radius: 6px; padding: 6px 13px; cursor: pointer; line-height: 1.3; font-size: 13px; transition: background .12s, color .12s; }
+    .choice:hover { background: #222833; color: #fff; }
+    .choice[aria-checked="true"] { background: #223b55; border-color: #375a7e; color: #d2e8ff; box-shadow: 0 1px 3px #0003; }
+    .control-row[data-key="precision"] .choice { font: 600 14px/1.3 Consolas, monospace; min-width: 55px; }
+    .report-bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding: 15px 12px; border-top: 1px solid var(--line); }
+    .context { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; color: #bec5d0; font-size: 12px; }
+    .context .type { color: #e7e9ee; font: 600 14px Consolas, monospace; }
+    .dot { color: #565f70; }
+    .mode-badge { border: 1px solid #344453; background: #17232d; color: #b8cee0; border-radius: 4px; padding: 2px 7px; font-size: 11px; }
+    .report-actions { display: flex; align-items: center; gap: 16px; font-size: 12px; }
+    .size-toggle { border: 0; padding: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; }
+    .size-toggle:hover, .size-toggle[aria-pressed="true"] { color: var(--accent); }
+    .viewport { width: 100%; overflow-x: auto; border-radius: 5px; }
+    .report { display: block; width: 100%; max-width: var(--report-width); margin: 0 auto; aspect-ratio: var(--report-ratio); border: 0; }
+    .viewport.actual-size .report { width: var(--report-width); max-width: none; }
+    .fallback { padding: 30px; color: var(--muted); }
+    footer { display: flex; justify-content: space-between; gap: 15px; border-top: 1px solid var(--line); margin: 22px 12px 0; padding: 18px 0 24px; font-size: 11px; color: #87909f; }
+    .skip-link { position: absolute; left: 20px; top: -60px; padding: 8px 14px; background: #223b55; color: #fff; z-index: 10; }
+    .skip-link:focus { top: 10px; }
+    @media (max-width: 650px) {
+      .shell { padding: 0 12px; }
+      .masthead { padding: 18px 4px; }
+      .brand-caption { display: none; }
+      .intro { padding-top: 27px; }
+      .controls { width: 100%; padding: 8px 12px; margin-bottom: 23px; }
+      .control-row { align-items: flex-start; gap: 8px; }
+      .control-label { flex-basis: 70px; padding-top: 7px; }
+      .choice { padding: 7px 10px; }
+      .report-bar { padding: 13px 4px; }
+      footer { margin-left: 4px; margin-right: 4px; flex-direction: column; gap: 4px; }
+    }
+    @media (prefers-reduced-motion: reduce) { .choice { transition: none; } }
+    @media print {
+      .masthead, .intro, .controls, .report-actions, footer { display: none; }
+      .shell { padding: 0; }
+      .viewport { overflow: visible; }
+      .viewport.actual-size .report { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#report-section">Skip to report</a>
+  <main class="shell">
+    <header class="masthead">
+      <div class="brand"><span class="wordmark">fltx</span><span class="brand-divider"></span><span class="brand-caption">Accuracy &amp; performance</span></div>
+      <span class="inventory" id="inventory"></span>
+    </header>
+    <section class="intro" aria-labelledby="page-title">
+      <h1 id="page-title">Metrics overview</h1>
+      <p>Explore the numbers across types, platforms and compilers.</p>
+    </section>
+    <nav class="controls" id="controls" aria-label="Choose a report"></nav>
+    <noscript><p>Enable JavaScript to navigate the reports. The original SVG files can also be opened directly.</p></noscript>
+    <section id="report-section" tabindex="-1" aria-label="Selected metrics report">
+      <div class="report-bar">
+        <div class="context" id="context" role="status" aria-live="polite" aria-atomic="true"></div>
+        <div class="report-actions">
+          <button class="size-toggle" id="size-toggle" aria-pressed="false" title="Show the report at its original size; scroll horizontally when needed">Actual size</button>
+          <a id="open-svg" target="_blank" rel="noopener">Open SVG <span aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+      <div class="viewport" id="viewport"></div>
+    </section>
+    <footer><span>Only available report combinations are shown.</span><span id="report-count"></span></footer>
+  </main>
+  <script type="application/json" id="report-data">{"reports": [{"precision": "dd", "platform": "windows", "architecture": "x86_64", "compiler": "MSVC", "kind": "runtime", "mode": "strict", "file": "windows_x86_64_MSVC_dd_overview.svg", "url": "windows_x86_64_MSVC_dd_overview.svg", "width": 1662.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "dd", "platform": "windows", "architecture": "x86_64", "compiler": "MSVC", "kind": "runtime", "mode": "fastmath", "file": "windows_x86_64_MSVC_dd_fastmath_overview.svg", "url": "windows_x86_64_MSVC_dd_fastmath_overview.svg", "width": 730.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "dd", "platform": "windows", "architecture": "x86_64", "compiler": "ClangCL", "kind": "runtime", "mode": "strict", "file": "windows_x86_64_ClangCL_dd_overview.svg", "url": "windows_x86_64_ClangCL_dd_overview.svg", "width": 1288.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "dd", "platform": "windows", "architecture": "x86_64", "compiler": "ClangCL", "kind": "runtime", "mode": "fastmath", "file": "windows_x86_64_ClangCL_dd_fastmath_overview.svg", "url": "windows_x86_64_ClangCL_dd_fastmath_overview.svg", "width": 824.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "dd", "platform": "windows", "architecture": "x86_64", "compiler": "MinGW", "kind": "runtime", "mode": "strict", "file": "windows_x86_64_MinGW_dd_overview.svg", "url": "windows_x86_64_MinGW_dd_overview.svg", "width": 1662.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "dd", "platform": "windows", "architecture": "x86_64", "compiler": "MinGW", "kind": "runtime", "mode": "fastmath", "file": "windows_x86_64_MinGW_dd_fastmath_overview.svg", "url": "windows_x86_64_MinGW_dd_fastmath_overview.svg", "width": 813.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "dd", "platform": "linux", "architecture": "x86_64", "compiler": "GCC", "kind": "runtime", "mode": "strict", "file": "linux_x86_64_GCC_dd_overview.svg", "url": "linux_x86_64_GCC_dd_overview.svg", "width": 1662.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "dd", "platform": "linux", "architecture": "x86_64", "compiler": "GCC", "kind": "runtime", "mode": "fastmath", "file": "linux_x86_64_GCC_dd_fastmath_overview.svg", "url": "linux_x86_64_GCC_dd_fastmath_overview.svg", "width": 730.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "dd", "platform": "linux", "architecture": "x86_64", "compiler": "Clang", "kind": "runtime", "mode": "strict", "file": "linux_x86_64_Clang_dd_overview.svg", "url": "linux_x86_64_Clang_dd_overview.svg", "width": 1662.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "dd", "platform": "linux", "architecture": "x86_64", "compiler": "Clang", "kind": "runtime", "mode": "fastmath", "file": "linux_x86_64_Clang_dd_fastmath_overview.svg", "url": "linux_x86_64_Clang_dd_fastmath_overview.svg", "width": 730.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "dd", "platform": "macos", "architecture": "arm64", "compiler": "AppleClang", "kind": "runtime", "mode": "strict", "file": "macos_arm64_AppleClang_dd_overview.svg", "url": "macos_arm64_AppleClang_dd_overview.svg", "width": 1662.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "dd", "platform": "macos", "architecture": "arm64", "compiler": "AppleClang", "kind": "runtime", "mode": "fastmath", "file": "macos_arm64_AppleClang_dd_fastmath_overview.svg", "url": "macos_arm64_AppleClang_dd_fastmath_overview.svg", "width": 770.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "dd", "platform": "webassembly", "architecture": "wasm32", "compiler": "Emscripten", "kind": "runtime", "mode": "strict", "file": "webassembly_wasm32_Emscripten_dd_overview.svg", "url": "webassembly_wasm32_Emscripten_dd_overview.svg", "width": 1662.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "dd", "platform": "webassembly", "architecture": "wasm32", "compiler": "Emscripten", "kind": "runtime", "mode": "fastmath", "file": "webassembly_wasm32_Emscripten_dd_fastmath_overview.svg", "url": "webassembly_wasm32_Emscripten_dd_fastmath_overview.svg", "width": 921.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "qd", "platform": "windows", "architecture": "x86_64", "compiler": "MSVC", "kind": "runtime", "mode": "strict", "file": "windows_x86_64_MSVC_qd_overview.svg", "url": "windows_x86_64_MSVC_qd_overview.svg", "width": 1662.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "qd", "platform": "windows", "architecture": "x86_64", "compiler": "MSVC", "kind": "runtime", "mode": "fastmath", "file": "windows_x86_64_MSVC_qd_fastmath_overview.svg", "url": "windows_x86_64_MSVC_qd_fastmath_overview.svg", "width": 730.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "qd", "platform": "windows", "architecture": "x86_64", "compiler": "ClangCL", "kind": "runtime", "mode": "strict", "file": "windows_x86_64_ClangCL_qd_overview.svg", "url": "windows_x86_64_ClangCL_qd_overview.svg", "width": 1288.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "qd", "platform": "windows", "architecture": "x86_64", "compiler": "ClangCL", "kind": "runtime", "mode": "fastmath", "file": "windows_x86_64_ClangCL_qd_fastmath_overview.svg", "url": "windows_x86_64_ClangCL_qd_fastmath_overview.svg", "width": 824.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "qd", "platform": "windows", "architecture": "x86_64", "compiler": "MinGW", "kind": "runtime", "mode": "strict", "file": "windows_x86_64_MinGW_qd_overview.svg", "url": "windows_x86_64_MinGW_qd_overview.svg", "width": 1662.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "qd", "platform": "windows", "architecture": "x86_64", "compiler": "MinGW", "kind": "runtime", "mode": "fastmath", "file": "windows_x86_64_MinGW_qd_fastmath_overview.svg", "url": "windows_x86_64_MinGW_qd_fastmath_overview.svg", "width": 813.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "qd", "platform": "linux", "architecture": "x86_64", "compiler": "GCC", "kind": "runtime", "mode": "strict", "file": "linux_x86_64_GCC_qd_overview.svg", "url": "linux_x86_64_GCC_qd_overview.svg", "width": 1662.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "qd", "platform": "linux", "architecture": "x86_64", "compiler": "GCC", "kind": "runtime", "mode": "fastmath", "file": "linux_x86_64_GCC_qd_fastmath_overview.svg", "url": "linux_x86_64_GCC_qd_fastmath_overview.svg", "width": 730.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "qd", "platform": "linux", "architecture": "x86_64", "compiler": "Clang", "kind": "runtime", "mode": "strict", "file": "linux_x86_64_Clang_qd_overview.svg", "url": "linux_x86_64_Clang_qd_overview.svg", "width": 1662.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "qd", "platform": "linux", "architecture": "x86_64", "compiler": "Clang", "kind": "runtime", "mode": "fastmath", "file": "linux_x86_64_Clang_qd_fastmath_overview.svg", "url": "linux_x86_64_Clang_qd_fastmath_overview.svg", "width": 730.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "qd", "platform": "macos", "architecture": "arm64", "compiler": "AppleClang", "kind": "runtime", "mode": "strict", "file": "macos_arm64_AppleClang_qd_overview.svg", "url": "macos_arm64_AppleClang_qd_overview.svg", "width": 1662.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "qd", "platform": "macos", "architecture": "arm64", "compiler": "AppleClang", "kind": "runtime", "mode": "fastmath", "file": "macos_arm64_AppleClang_qd_fastmath_overview.svg", "url": "macos_arm64_AppleClang_qd_fastmath_overview.svg", "width": 770.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "qd", "platform": "webassembly", "architecture": "wasm32", "compiler": "Emscripten", "kind": "runtime", "mode": "strict", "file": "webassembly_wasm32_Emscripten_qd_overview.svg", "url": "webassembly_wasm32_Emscripten_qd_overview.svg", "width": 1662.0, "height": 2272.0, "background": "#0f1115"}, {"precision": "qd", "platform": "webassembly", "architecture": "wasm32", "compiler": "Emscripten", "kind": "runtime", "mode": "fastmath", "file": "webassembly_wasm32_Emscripten_qd_fastmath_overview.svg", "url": "webassembly_wasm32_Emscripten_qd_fastmath_overview.svg", "width": 921.0, "height": 2272.0, "background": "#0f1115"}], "dimensions": [{"key": "precision", "label": "Type", "values": [{"value": "dd", "label": "fdd"}, {"value": "qd", "label": "fqd"}]}, {"key": "platform", "label": "Platform", "values": [{"value": "windows", "label": "Windows"}, {"value": "linux", "label": "Linux"}, {"value": "macos", "label": "macOS"}, {"value": "webassembly", "label": "WebAssembly"}]}, {"key": "architecture", "label": "Architecture", "values": [{"value": "x86_64", "label": "x64"}, {"value": "arm64", "label": "ARM64"}, {"value": "wasm32", "label": "wasm32"}]}, {"key": "compiler", "label": "Compiler", "values": [{"value": "MSVC", "label": "MSVC"}, {"value": "ClangCL", "label": "clang-cl"}, {"value": "MinGW", "label": "GCC (MinGW-w64)"}, {"value": "GCC", "label": "GCC"}, {"value": "Clang", "label": "Clang"}, {"value": "AppleClang", "label": "AppleClang"}, {"value": "Emscripten", "label": "Clang (Emscripten)"}]}, {"key": "kind", "label": "Report", "values": [{"value": "runtime", "label": "Runtime"}]}, {"key": "mode", "label": "Math mode", "values": [{"value": "strict", "label": "Strict"}, {"value": "fastmath", "label": "Fast math"}]}]}</script>
+  <script>
+    "use strict";
+    const { reports, dimensions } = JSON.parse(document.getElementById("report-data").textContent);
+    const controls = document.getElementById("controls");
+    const viewport = document.getElementById("viewport");
+    const keys = dimensions.map(dimension => dimension.key);
+    let selected;
+
+    function label(key, value) {
+      return dimensions.find(dimension => dimension.key === key).values.find(option => option.value === value).label;
+    }
+
+    function candidatesFor(index, value, current) {
+      const prefix = keys.slice(0, index);
+      return reports.filter(report => prefix.every(key => report[key] === current[key]) &&
+        (value === undefined || report[keys[index]] === value));
+    }
+
+    function selectOption(index, value) {
+      // Earlier rows constrain later rows. Preserve later choices when possible,
+      // always selecting an actual report even when the matrix is sparse.
+      const remaining = keys.slice(index + 1);
+      const score = report => remaining.reduce((total, key) => total * 2 + Number(report[key] === selected[key]), 0);
+      const candidates = candidatesFor(index, value, selected);
+      const next = candidates.reduce((best, report) => score(report) > score(best) ? report : best);
+      const focusKey = keys[index];
+      location.hash = new URLSearchParams({ report: next.file }).toString();
+      render(next);
+      controls.querySelector(`[data-key="${focusKey}"] [aria-checked="true"]`)?.focus({ preventScroll: true });
+    }
+
+    function render(report) {
+      if (selected === report) return;
+      selected = report;
+      document.documentElement.style.setProperty("--canvas", report.background);
+      controls.replaceChildren();
+      dimensions.forEach((dimension, index) => {
+        const available = new Set(candidatesFor(index, undefined, report).map(candidate => candidate[dimension.key]));
+        if (available.size < 2) return;
+        const row = document.createElement("div");
+        row.className = "control-row";
+        row.dataset.key = dimension.key;
+        const caption = document.createElement("span");
+        caption.className = "control-label";
+        caption.id = `label-${dimension.key}`;
+        caption.textContent = dimension.label;
+        const choices = document.createElement("div");
+        choices.className = "choices";
+        choices.setAttribute("role", "radiogroup");
+        choices.setAttribute("aria-labelledby", caption.id);
+        dimension.values.filter(option => available.has(option.value)).forEach(option => {
+          const button = document.createElement("button");
+          const active = option.value === report[dimension.key];
+          button.className = "choice";
+          button.textContent = option.label;
+          button.setAttribute("role", "radio");
+          button.setAttribute("aria-checked", String(active));
+          button.tabIndex = active ? 0 : -1;
+          button.addEventListener("click", () => selectOption(index, option.value));
+          button.addEventListener("keydown", event => {
+            const directions = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
+            if (!(event.key in directions) && event.key !== "Home" && event.key !== "End") return;
+            event.preventDefault();
+            const buttons = Array.from(choices.children);
+            const next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1 :
+              (buttons.indexOf(button) + directions[event.key] + buttons.length) % buttons.length;
+            buttons[next].click();
+          });
+          choices.append(button);
+        });
+        row.append(caption, choices);
+        controls.append(row);
+      });
+      controls.hidden = !controls.children.length;
+      const context = document.getElementById("context");
+      context.replaceChildren();
+      keys.forEach(key => {
+        if (key === "kind" && report.kind === "runtime") return;
+        if (context.children.length && key !== "mode") {
+          const dot = document.createElement("span");
+          dot.className = "dot";
+          dot.textContent = "/";
+          dot.setAttribute("aria-hidden", "true");
+          context.append(dot);
+        }
+        const item = document.createElement("span");
+        item.className = key === "precision" ? "type" : key === "mode" ? "mode-badge" : "";
+        item.textContent = label(key, report[key]);
+        context.append(item);
+      });
+      const description = keys.map(key => label(key, report[key])).join(" · ");
+      document.title = `fltx · ${description}`;
+      document.getElementById("open-svg").href = report.url;
+      const object = document.createElement("object");
+      object.className = "report";
+      object.type = "image/svg+xml";
+      object.data = report.url;
+      object.setAttribute("aria-label", description);
+      object.title = description;
+      object.style.setProperty("--report-width", `${report.width}px`);
+      object.style.setProperty("--report-ratio", `${report.width} / ${report.height}`);
+      const fallback = document.createElement("p");
+      fallback.className = "fallback";
+      fallback.append("This report could not be displayed. ");
+      const link = document.createElement("a");
+      link.href = report.url;
+      link.textContent = "Open the SVG directly";
+      fallback.append(link);
+      object.append(fallback);
+      viewport.replaceChildren(object);
+      viewport.scrollLeft = 0;
+      document.getElementById("report-count").textContent = `${reports.length} full reports · SVG originals`;
+    }
+
+    function restore() {
+      const file = new URLSearchParams(location.hash.slice(1)).get("report");
+      render(reports.find(report => report.file === file) || reports[0]);
+    }
+    document.getElementById("inventory").textContent =
+      `${reports.length} reports · ${new Set(reports.map(report => report.platform)).size} platforms`;
+    document.getElementById("size-toggle").addEventListener("click", event => {
+      const actual = viewport.classList.toggle("actual-size");
+      event.currentTarget.setAttribute("aria-pressed", String(actual));
+    });
+    window.addEventListener("hashchange", restore);
+    restore();
+  </script>
+</body>
+</html>

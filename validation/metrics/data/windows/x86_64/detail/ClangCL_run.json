@@ -1,20 +1,11 @@
 {
-  "accuracy_parallel": true,
-  "accuracy_samples": 4096,
+  "accuracy_samples": 65536,
   "architecture": "x86_64",
-  "benchmark_corpus_policy": "adaptive-v1",
-  "benchmark_fast_minimum_trial_ms": 15,
-  "benchmark_fast_threshold_ns": 20,
-  "benchmark_fast_trials": 7,
-  "benchmark_maximum_row_ms": 5000,
-  "benchmark_minimum_trial_ms": 8,
-  "benchmark_ordinary_trials": 3,
-  "benchmark_policy": "adaptive-v2",
+  "benchmark_minimum_trial_ms": 25,
   "benchmark_samples": {
-    "dd": 8192,
-    "qd": 4096
+    "dd": 81920,
+    "qd": 40960
   },
-  "benchmark_slow_threshold_ns": 10000,
   "benchmark_trials": 7,
   "compiler": "ClangCL",
   "configuration": {
@@ -23,11 +14,11 @@
       "compiler-id": "Clang",
       "compiler-version": "22.1.8",
       "config": "Release",
-      "flags-hash": "47db04c453478949a87df17aee6c905f188a5d962d12b76bf2ba37d99f614ec7",
+      "flags-hash": "6663e453ab5d5b26ba7b91031c1a94835d5d1b3e6e1085047e441607c91dd447",
       "frontend-variant": "MSVC",
       "optimized": "1",
       "processor": "AMD64",
-      "source-fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
+      "source-fingerprint": "1908e8ba6c886da6f2ba18b8b720f9dcf8a71e061ccba23011424d3d0f694b2a",
       "system": "Windows"
     },
     "consumer": {
@@ -69,16 +60,16 @@
     }
   },
   "consumer_mode": "strict",
-  "created_utc": "2026-09-02T18:22:34.367497+00:00",
+  "created_utc": "2026-09-12T21:43:20.297326+00:00",
   "executables": {
     "accuracy": {
       "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-clangcl-release\\validation\\fltx_accuracy.exe",
-      "sha256": "a8c2c751da4138cdd9b5920d806564158c51df88c4a8223365d288353280840a",
+      "sha256": "d176060833778c9c44c27b689e35d4193c8f2382316efbcb7c854f1af1594456",
       "wasm-sha256": "not-present"
     },
     "benchmark": {
       "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-clangcl-release\\validation\\fltx_benchmark.exe",
-      "sha256": "f8d5f2898493c155ec0d2926290cde0c9b40d9e162592f8b8bcd58947b661261",
+      "sha256": "92b54149ef085826a4d3d2aa01c01ecd411b85cbc3c1429c0c18834d91337cc0",
       "wasm-sha256": "not-present"
     }
   },
@@ -127,12 +118,12 @@
     ]
   },
   "outputs": {
-    "ClangCL_dd.csv": "20668fcb939fb8b08da11111e16e04f38d1d2ad911b2c18c75efdba1c1d4d9ce",
-    "ClangCL_qd.csv": "416397f1bdd3ebeccdcf4576cb2859d7d4ed46579925ba01c7b69ace7287c778",
-    "detail/ClangCL_dd_accuracy.csv": "99213357afad4c4c143d2fc3a45fc3ad4a54bfa83712a70621f909b2c45dd50a",
-    "detail/ClangCL_dd_benchmark.csv": "7c2b04883141cd16563f892554562128cbdf80e968607d2eadb6b604bd3a8a69",
-    "detail/ClangCL_qd_accuracy.csv": "a0aec62c1f40938fad314baae399039ec48e6284010d63c49de1ac6d89220d5a",
-    "detail/ClangCL_qd_benchmark.csv": "1ace17cc31e77e3600ab9c30724ee601726bc415c3f990c91fe7d7e87b21f970"
+    "ClangCL_dd.csv": "bc01d6cd55f3643538295ffc6fdc80f4c3af4c4c91ff58705ff3b04e36991226",
+    "ClangCL_qd.csv": "0732eecb664ac4ffb2d35ea6bfc5b17726bc5310ee4fa7361ea2e6d953ee5d45",
+    "detail/ClangCL_dd_accuracy.csv": "efcc6b60022d1313a597fb1f128a9b840ebb916cfc35649ceecc25f3bacc1696",
+    "detail/ClangCL_dd_benchmark.csv": "cfe8616e92a9f7d6f404b90358f006f9bab0ddbb2e16f50b96ac66fc6f8d07d3",
+    "detail/ClangCL_qd_accuracy.csv": "f31c8601302cfefc0b8ae90b751d123648e2c4e3beb8d717f142a7bebc993ae7",
+    "detail/ClangCL_qd_benchmark.csv": "b1083e3de63ae0a87371cc7b480ff39e181971addd59a9d93a9fc11828f3317f"
   },
   "phases": {
     "dd.accuracy": {
@@ -165,10 +156,10 @@
     "dd",
     "qd"
   ],
-  "run_id": "6935501f8a5e4e5e9f641729dc842411",
-  "sample_mode": "standard",
+  "run_id": "2f397de37a13419296c323026a14850e",
+  "sample_mode": "full",
   "schema_version": "6",
-  "source_fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
-  "source_revision": "882890995f149618f5ad4c950bbb2cd0b8e2f976-dirty-1e2aee00bd57",
+  "source_fingerprint": "1908e8ba6c886da6f2ba18b8b720f9dcf8a71e061ccba23011424d3d0f694b2a",
+  "source_revision": "844436dea5ed7db933d8911410bd3eb2ea484fc2-dirty-1908e8ba6c88",
   "status": "complete"
 }

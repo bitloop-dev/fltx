@@ -10,7 +10,7 @@
       "file": "windows/x86_64/MSVC_dd.csv",
       "platform": "windows",
       "precision": "dd",
-      "run_id": "7040a0a218d54643965865e739779674"
+      "run_id": "2ba4c0b68d0942b7ba2e279763710a8c"
     },
     {
       "architecture": "x86_64",
@@ -18,7 +18,7 @@
       "file": "windows/x86_64/ClangCL_dd.csv",
       "platform": "windows",
       "precision": "dd",
-      "run_id": "6935501f8a5e4e5e9f641729dc842411"
+      "run_id": "2f397de37a13419296c323026a14850e"
     },
     {
       "architecture": "x86_64",
@@ -26,7 +26,7 @@
       "file": "windows/x86_64/MinGW_dd.csv",
       "platform": "windows",
       "precision": "dd",
-      "run_id": "36324ea202d44d678cf3e4fe87aafe82"
+      "run_id": "7e20dcec79f04028a96c16fd86ea4f43"
     },
     {
       "architecture": "x86_64",
@@ -34,7 +34,7 @@
       "file": "linux/x86_64/GCC_dd.csv",
       "platform": "linux",
       "precision": "dd",
-      "run_id": "00f48956afad431e88b9f4c73909aa48"
+      "run_id": "efa86435a8014972b8f7061da7f4d576"
     },
     {
       "architecture": "x86_64",
@@ -42,7 +42,15 @@
       "file": "linux/x86_64/Clang_dd.csv",
       "platform": "linux",
       "precision": "dd",
-      "run_id": "4c2b2d34aa1948449eb3a46d0f738355"
+      "run_id": "0427bc4c5e03472a88d0d153d7753c46"
+    },
+    {
+      "architecture": "arm64",
+      "compiler": "AppleClang",
+      "file": "macos/arm64/AppleClang_dd.csv",
+      "platform": "macos",
+      "precision": "dd",
+      "run_id": "0a13a8b72b89446d960e941fa20891f0"
     },
     {
       "architecture": "wasm32",
@@ -50,7 +58,7 @@
       "file": "webassembly/wasm32/Emscripten_dd.csv",
       "platform": "webassembly",
       "precision": "dd",
-      "run_id": "d946828be6f140a0a4db7369610a6a34"
+      "run_id": "693a244e9e234ffcb489d037cee0c2a7"
     },
     {
       "architecture": "x86_64",
@@ -58,7 +66,7 @@
       "file": "windows/x86_64/MSVC_qd.csv",
       "platform": "windows",
       "precision": "qd",
-      "run_id": "7040a0a218d54643965865e739779674"
+      "run_id": "2ba4c0b68d0942b7ba2e279763710a8c"
     },
     {
       "architecture": "x86_64",
@@ -66,7 +74,7 @@
       "file": "windows/x86_64/ClangCL_qd.csv",
       "platform": "windows",
       "precision": "qd",
-      "run_id": "6935501f8a5e4e5e9f641729dc842411"
+      "run_id": "2f397de37a13419296c323026a14850e"
     },
     {
       "architecture": "x86_64",
@@ -74,7 +82,7 @@
       "file": "windows/x86_64/MinGW_qd.csv",
       "platform": "windows",
       "precision": "qd",
-      "run_id": "36324ea202d44d678cf3e4fe87aafe82"
+      "run_id": "7e20dcec79f04028a96c16fd86ea4f43"
     },
     {
       "architecture": "x86_64",
@@ -82,7 +90,7 @@
       "file": "linux/x86_64/GCC_qd.csv",
       "platform": "linux",
       "precision": "qd",
-      "run_id": "00f48956afad431e88b9f4c73909aa48"
+      "run_id": "efa86435a8014972b8f7061da7f4d576"
     },
     {
       "architecture": "x86_64",
@@ -90,7 +98,15 @@
       "file": "linux/x86_64/Clang_qd.csv",
       "platform": "linux",
       "precision": "qd",
-      "run_id": "4c2b2d34aa1948449eb3a46d0f738355"
+      "run_id": "0427bc4c5e03472a88d0d153d7753c46"
+    },
+    {
+      "architecture": "arm64",
+      "compiler": "AppleClang",
+      "file": "macos/arm64/AppleClang_qd.csv",
+      "platform": "macos",
+      "precision": "qd",
+      "run_id": "0a13a8b72b89446d960e941fa20891f0"
     },
     {
       "architecture": "wasm32",
@@ -98,7 +114,7 @@
       "file": "webassembly/wasm32/Emscripten_qd.csv",
       "platform": "webassembly",
       "precision": "qd",
-      "run_id": "d946828be6f140a0a4db7369610a6a34"
+      "run_id": "693a244e9e234ffcb489d037cee0c2a7"
     }
   ]
 }

@@ -67,9 +67,15 @@ shared inline definitions and template instantiations. Validation selects its
 consumer policy through `FLTX_VALIDATION_FQD_EXPRESSIONS`, enabled by default.
 
 `aliases.h` supplies the type names, `traits.h` owns concepts and promotion
-traits, and the per-precision `*_type.h`, `*_limits.h`, `*_conversions.h`,
+traits, and the per-precision `*_type.h`, `*_limits.h`,
 `*_comparison.h`, `*_classification.h`, and `*_arithmetic.h` headers build the
 core numeric surface.
+
+Integer construction and assignment are defined in `fdd_type.h` and
+`fqd_type.h`, using the exact integer-to-double-pair helpers in `common_fp.h`
+for both constant evaluation and runtime. They require no compiled assignment
+entry point. The focused `fqd_arithmetic.h` loads the expression frontend when
+selected; the frontend depends on arithmetic rather than the family umbrella.
 
 ## Library layers and execution paths
 
@@ -116,7 +122,7 @@ x86 FMA backends when the build policy enables them.
 
 | Sources | Ownership |
 |---|---|
-| `fdd.cpp`, `fqd.cpp` | Runtime conversions, hot arithmetic helpers, and fqd fused-expression bodies |
+| `fqd.cpp` | Hot qd arithmetic helpers and fqd fused-expression bodies |
 | `fdd_math.cpp`, `fqd_math.cpp` | Core roots, rounding, remainder, and decomposition entry points |
 | `fdd_transcendental.cpp`, `fqd_transcendental.cpp` | Exponential, logarithmic, power, trigonometric, hyperbolic, and special-function entry points |
 | `fltx_io.cpp` | Runtime string formatting and extended-type parsing entry points |
@@ -131,7 +137,7 @@ constant evaluation or templates require the implementation to be visible.
 
 | Subsystem | Public entry points | Detail/runtime owners | Primary validation owners |
 |---|---|---|---|
-| Types, storage, traits, limits | `core.h`, `native.h`, `fdd.h`, `fqd.h`, `traits.h`, `limits.h` | type/conversion/common-FP headers; `fdd.cpp`, `fqd.cpp`, `build_info.cpp` | `tests/contracts/core.cpp`, overload matrices, isolated-header probes, `tests/constexpr/core.cpp`, package tests |
+| Types, storage, traits, limits | `core.h`, `native.h`, `fdd.h`, `fqd.h`, `traits.h`, `limits.h` | type/common-FP/interop headers; `build_info.cpp` | `tests/contracts/core.cpp`, overload matrices, isolated-header probes, `tests/constexpr/core.cpp`, package tests |
 | Arithmetic and fqd expressions | `fdd_arithmetic.h`, `fqd_arithmetic.h` | `detail/fdd_arithmetic.h`, `detail/fqd_arithmetic.h`, `detail/fqd_expansion.h`, `detail/fqd_expressions.h`, `fqd.cpp` | core, expression, and edge-case contracts; accuracy runners; runtime operation benchmarks |
 | Math and classification | `math.h`, `native_math.h`, per-type math/classification/numbers headers | common math/promotion plus per-precision basic, kernel, and transcendental headers; math/transcendental sources | `tests/contracts/math.cpp`, overload matrices, constexpr corpus, `accuracy/`, runtime benchmarks |
 | Text and streams | `io.h`, `charconv.h`, `string.h`, `static_string.h`, `string_options.h`, per-type string headers, `stream.h`, `format.h` | common/native/precision I/O and decimal headers; `fltx_io.cpp` | I/O contracts, constexpr corpus, isolated-header probes, parse/format accuracy rows, I/O benchmarks |
@@ -207,6 +213,16 @@ run_all_supported_metrics.py                         |
 preflight, streamed evidence, aggregation, provenance, staging, and atomic
 publication. The `build_*` modules render existing evidence and must not repair
 or reinterpret source rows.
+
+The `--fixed_constexpr` option selects the existing fixed-simulation accuracy
+runners through the same preset pipeline. `run_native_accuracy.py` owns shared
+accuracy-only collection for native runtime baselines and fixed constexpr
+f32/f64/dd/qd evidence, reusing `run_metrics.py` preflight, provenance, and
+transactional-publication mechanics. Fixed constexpr has a separate execution
+profile, evidence namespace and compatibility policy. `report_pipeline.py`
+routes that evidence to `build_fixed_constexpr.py`, which uses the shared SVG
+table renderer for per-domain accuracy reports. Benchmark collection and the
+runtime comparison renderers keep their existing ownership.
 
 `run_benchmarks.ps1` adds configured local/SSH dispatch for performance-only
 development runs. Its host workers call the same `run_metrics.py` with existing

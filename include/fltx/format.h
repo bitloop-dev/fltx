@@ -91,6 +91,8 @@ namespace bl::detail::format
 
             while (it != end && *it >= '0' && *it <= '9')
             {
+                if (width > (std::numeric_limits<int>::max() - (*it - '0')) / 10)
+                    throw std::format_error("fltx format width is too large");
                 width = width * 10 + (*it - '0');
                 ++it;
             }
@@ -104,6 +106,8 @@ namespace bl::detail::format
                 precision = 0;
                 while (it != end && *it >= '0' && *it <= '9')
                 {
+                    if (precision > (std::numeric_limits<int>::max() - (*it - '0')) / 10)
+                        throw std::format_error("fltx format precision is too large");
                     precision = precision * 10 + (*it - '0');
                     ++it;
                 }

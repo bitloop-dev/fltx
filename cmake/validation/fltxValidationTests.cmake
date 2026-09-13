@@ -94,6 +94,7 @@ set(FLTX_TESTS_HEADER_PROBE_SOURCES)
 foreach(header IN LISTS FLTX_TESTS_PUBLIC_HEADERS)
     string(MAKE_C_IDENTIFIER "${header}" probe_name)
     set(source "${FLTX_VALIDATION_BINARY_DIR}/header_probes/${probe_name}.cpp")
+    set(probe_content "#include <${header}>\n")
     if(header STREQUAL "fltx/native.h" OR
        header STREQUAL "fltx/native_math.h" OR
        header STREQUAL "fltx/native_string.h")
@@ -106,10 +107,72 @@ foreach(header IN LISTS FLTX_TESTS_PUBLIC_HEADERS)
             "static_assert(!fltx_complete_type<bl::fqd>);\n"
             "static_assert(!fltx_complete_type<bl::fqd_s>);\n"
         )
-        file(GENERATE OUTPUT "${source}" CONTENT "${probe_content}")
-    else()
-        file(GENERATE OUTPUT "${source}" CONTENT "#include <${header}>\n")
     endif()
+
+    set(probe_families)
+    if(header MATCHES "^fltx/(fdd|fqd)(_type|_limits|_classification|_comparison|_arithmetic)?\\.h$")
+        set(probe_families "${CMAKE_MATCH_1}")
+    elseif(header STREQUAL "fltx/hash.h" OR header STREQUAL "fltx/limits.h")
+        set(probe_families fdd fqd)
+    endif()
+    if(probe_families)
+        string(APPEND probe_content [=[
+#include <cstdint>
+#include <limits>
+template<class Value, class Storage>
+constexpr bool fltx_header_integer_construction()
+{
+    constexpr auto u = std::numeric_limits<std::uint64_t>::max();
+    constexpr auto s = std::numeric_limits<std::int64_t>::min();
+    const Value small{1}, large{u}, negative{s};
+    const Value signed_max{std::numeric_limits<std::int64_t>::max()};
+    Storage assigned{};
+    if constexpr (requires { assigned.x2; }) { assigned.x2 = 3.0; assigned.x3 = 4.0; }
+    if (&(assigned = u) != &assigned) return false;
+    if constexpr (requires { assigned.hi; })
+        return small.hi == 1.0 && small.lo == 0.0 &&
+               large.hi == 0x1p64 && large.lo == -1.0 &&
+               negative.hi == -0x1p63 && negative.lo == 0.0 &&
+               signed_max.hi == 0x1p63 && signed_max.lo == -1.0 &&
+               assigned.hi == large.hi && assigned.lo == large.lo;
+    else
+        return small.x0 == 1.0 && small.x1 == 0.0 &&
+               large.x0 == 0x1p64 && large.x1 == -1.0 &&
+               negative.x0 == -0x1p63 && negative.x1 == 0.0 &&
+               signed_max.x0 == 0x1p63 && signed_max.x1 == -1.0 &&
+               assigned.x0 == large.x0 && assigned.x1 == large.x1 &&
+               assigned.x2 == 0.0 && assigned.x3 == 0.0;
+}
+]=])
+        foreach(family IN LISTS probe_families)
+            string(APPEND probe_content
+                "static_assert(fltx_header_integer_construction<bl::${family}, bl::${family}_s>());\n"
+                "bl::${family} ${probe_name}_${family}_signed(std::int64_t v) { return bl::${family}{v}; }\n"
+                "bl::${family} ${probe_name}_${family}_unsigned(std::uint64_t v) { return bl::${family}{v}; }\n"
+            )
+        endforeach()
+    endif()
+    if(header STREQUAL "fltx/fqd_arithmetic.h" OR header STREQUAL "fltx/fqd.h")
+        string(APPEND probe_content [=[
+template<class T> constexpr bool fltx_header_selected_qd_result =
+#if defined(FLTX_ENABLE_FQD_EXPRESSIONS) && FLTX_ENABLE_FQD_EXPRESSIONS
+    bl::detail::_qd_expr::is_expr<T>::value;
+#else
+    std::is_same_v<T, bl::fqd>;
+#endif
+static_assert(fltx_header_selected_qd_result<decltype(bl::fqd{2} + bl::fqd{3})>);
+static_assert(fltx_header_selected_qd_result<decltype(bl::fqd{2} - bl::fqd{3})>);
+static_assert(fltx_header_selected_qd_result<decltype(bl::fqd{2} * bl::fqd{3})>);
+static_assert(fltx_header_selected_qd_result<decltype(bl::fqd{2} / bl::fqd{3})>);
+constexpr bl::fqd fltx_header_expression = bl::fqd{2} * bl::fqd{3} + bl::fqd{1};
+static_assert(fltx_header_expression.x0 == 7.0);
+using fltx_header_sum_before_umbrella = decltype(bl::fqd{2} + bl::fqd{3});
+#include <fltx/fqd.h>
+#include <fltx/fqd_arithmetic.h>
+static_assert(std::is_same_v<fltx_header_sum_before_umbrella, decltype(bl::fqd{2} + bl::fqd{3})>);
+]=])
+    endif()
+    file(GENERATE OUTPUT "${source}" CONTENT "${probe_content}")
     list(APPEND FLTX_TESTS_HEADER_PROBE_SOURCES "${source}")
 endforeach()
 

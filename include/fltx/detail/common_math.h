@@ -123,22 +123,6 @@ BL_FORCE_INLINE constexpr float round_nearest_away_from_zero(float x) noexcept
     return static_cast<float>(floor(static_cast<double>(x) + 0.5));
 }
 
-BL_FORCE_INLINE constexpr long long llround(double x) noexcept
-{
-    if (isnan(x) || isinf(x))
-        return 0;
-
-    const double rounded = signbit(x) ? (x - 0.5) : (x + 0.5);
-
-    constexpr double min_ll = static_cast<double>(std::numeric_limits<long long>::min());
-    constexpr double max_ll = static_cast<double>(std::numeric_limits<long long>::max());
-
-    if (rounded < min_ll || rounded > max_ll)
-        return 0;
-
-    return static_cast<long long>(rounded);
-}
-
 BL_FORCE_INLINE constexpr double fmod(double x, double y) noexcept
 {
     if (isinf_or_nan(x) || iszero_or_nan(y))
@@ -242,32 +226,20 @@ BL_FORCE_INLINE constexpr float round_nearest_even(float x) noexcept
 }
 BL_POP_PRECISE;
 
-template<typename SignedInt> BL_FORCE_INLINE constexpr SignedInt to_signed_integer_or_zero(float x) noexcept
+template<typename SignedInt, typename Float>
+BL_FORCE_INLINE constexpr SignedInt to_signed_integer_or_zero(Float x) noexcept
 {
     static_assert(std::is_integral_v<SignedInt> && std::is_signed_v<SignedInt>);
+    static_assert(std::is_same_v<Float, float> || std::is_same_v<Float, double>);
 
     if (isnan(x) || isinf(x))
         return 0;
 
     const double dx = static_cast<double>(x);
     constexpr double lo = static_cast<double>(std::numeric_limits<SignedInt>::lowest());
-    constexpr double hi = static_cast<double>(std::numeric_limits<SignedInt>::max());
-    if (dx < lo || dx > hi)
-        return 0;
-
-    return static_cast<SignedInt>(x);
-}
-
-template<typename SignedInt> BL_FORCE_INLINE constexpr SignedInt to_signed_integer_or_zero(double x) noexcept
-{
-    static_assert(std::is_integral_v<SignedInt> && std::is_signed_v<SignedInt>);
-
-    if (isnan(x) || isinf(x))
-        return 0;
-
-    constexpr double lo = static_cast<double>(std::numeric_limits<SignedInt>::lowest());
-    constexpr double hi = static_cast<double>(std::numeric_limits<SignedInt>::max());
-    if (x < lo || x > hi)
+    // The positive limit is exclusive: converting LLONG_MAX to double rounds
+    // up to 2^63, which cannot be converted back to a signed long long.
+    if (dx < lo || dx >= -lo)
         return 0;
 
     return static_cast<SignedInt>(x);

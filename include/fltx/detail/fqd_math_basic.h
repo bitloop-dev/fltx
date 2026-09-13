@@ -686,47 +686,29 @@ namespace detail::_qd_impl
     }
     else
     {
-        fast = fmod_fast_medium_quotient_abs_with_quotient(ax, ay, r_abs, quotient_abs, false);
+        fast = fmod_fast_medium_quotient_abs_with_quotient(ax, ay, r_abs, quotient_abs);
     }
 
-    if (fast)
-    {
-        const fqd_s half = mul_double_product_inline(ay, 0.5);
-        const int half_cmp = detail::_qd::fmod_compare_remainder_to_half(r_abs, half);
-        if (half_cmp > 0 || (half_cmp == 0 && ((quotient_abs & 1u) != 0u)))
-        {
-            r_abs = sub_finite_inline(r_abs, ay);
-            ++quotient_abs;
-        }
+    if (!fast)
+        r_abs = fmod_exact_fixed_limb_abs_with_quotient_mod(ax, ay, quotient_abs);
 
-        if (quo)
-            *quo = detail::fp::remquo_low_quotient_bits(quotient_abs, quotient_negative);
-
-        fqd_s r = x_negative ? -r_abs : r_abs;
-        if (iszero(r))
-            return detail::_qd::signed_zero_like(x);
-
-        return r;
-    }
-
-    std::uint64_t quotient_mod = 0;
-    r_abs = fmod_exact_fixed_limb_abs_with_quotient_mod(ax, ay, quotient_mod);
-    const fqd_s half = mul_double_product_inline(ay, 0.5);
-    const int half_cmp = detail::_qd::fmod_compare_remainder_to_half(r_abs, half);
-
-    if (half_cmp > 0)
+    // Compare r with y-r when halving could lose a limb at the double floor.
+    const bool half_at_limb_floor = ay.x0 < 0x1p-1021 ||
+        (ay.x1 != 0.0 && detail::fp::absd(ay.x1) < 0x1p-1021) ||
+        (ay.x2 != 0.0 && detail::fp::absd(ay.x2) < 0x1p-1021) ||
+        (ay.x3 != 0.0 && detail::fp::absd(ay.x3) < 0x1p-1021);
+    const fqd_s half = half_at_limb_floor
+        ? sub_finite_inline(ay, r_abs) : mul_double_product_inline(ay, 0.5);
+    const int half_cmp = detail::_qd::fmod_compare_remainder_to_half(
+        r_abs, half);
+    if (half_cmp > 0 || (half_cmp == 0 && ((quotient_abs & 1u) != 0u)))
     {
         r_abs = sub_finite_inline(r_abs, ay);
-        ++quotient_mod;
-    }
-    else if (half_cmp == 0 && ((quotient_mod & 1u) != 0u))
-    {
-        r_abs = sub_finite_inline(r_abs, ay);
-        ++quotient_mod;
+        ++quotient_abs;
     }
 
     if (quo)
-        *quo = detail::fp::remquo_low_quotient_bits(quotient_mod, quotient_negative);
+        *quo = detail::fp::remquo_low_quotient_bits(quotient_abs, quotient_negative);
 
     fqd_s r = x_negative ? -r_abs : r_abs;
     if (iszero(r))

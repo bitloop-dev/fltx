@@ -10,7 +10,7 @@
       "file": "windows/x86_64/MSVC_dd_fastmath.csv",
       "platform": "windows",
       "precision": "dd",
-      "run_id": "919f3b86b0474abe9539b26dc0ad3337"
+      "run_id": "a5dc5b4679c64eaf8e183a02504cb5cd"
     },
     {
       "architecture": "x86_64",
@@ -18,7 +18,7 @@
       "file": "windows/x86_64/ClangCL_dd_fastmath.csv",
       "platform": "windows",
       "precision": "dd",
-      "run_id": "c76b06fbfcdd4497a992a6d9e17c2e03"
+      "run_id": "a6140316df61489c9d3698145a4df103"
     },
     {
       "architecture": "x86_64",
@@ -26,7 +26,7 @@
       "file": "windows/x86_64/MinGW_dd_fastmath.csv",
       "platform": "windows",
       "precision": "dd",
-      "run_id": "a10549fafcbd47c8b5dec99ce26daab3"
+      "run_id": "9496f7e1318845b3b04c87597d485513"
     },
     {
       "architecture": "x86_64",
@@ -34,7 +34,7 @@
       "file": "linux/x86_64/GCC_dd_fastmath.csv",
       "platform": "linux",
       "precision": "dd",
-      "run_id": "59b2982d54c7452385ae9e273a4213f8"
+      "run_id": "27412a6f7a89441e9df31f061e848ce2"
     },
     {
       "architecture": "x86_64",
@@ -42,7 +42,15 @@
       "file": "linux/x86_64/Clang_dd_fastmath.csv",
       "platform": "linux",
       "precision": "dd",
-      "run_id": "3501b22601904cbfa72dd0e2ba76758d"
+      "run_id": "88f10b3fefb24044b85628ed00ceb16b"
+    },
+    {
+      "architecture": "arm64",
+      "compiler": "AppleClang",
+      "file": "macos/arm64/AppleClang_dd_fastmath.csv",
+      "platform": "macos",
+      "precision": "dd",
+      "run_id": "768a732e632441418371656f83b9dc25"
     },
     {
       "architecture": "wasm32",
@@ -50,7 +58,7 @@
       "file": "webassembly/wasm32/Emscripten_dd_fastmath.csv",
       "platform": "webassembly",
       "precision": "dd",
-      "run_id": "bf9a6d9a01e742c0b67066220891edcd"
+      "run_id": "329f39ef673c425ba6c8571890a23134"
     },
     {
       "architecture": "x86_64",
@@ -58,7 +66,7 @@
       "file": "windows/x86_64/MSVC_qd_fastmath.csv",
       "platform": "windows",
       "precision": "qd",
-      "run_id": "919f3b86b0474abe9539b26dc0ad3337"
+      "run_id": "a5dc5b4679c64eaf8e183a02504cb5cd"
     },
     {
       "architecture": "x86_64",
@@ -66,7 +74,7 @@
       "file": "windows/x86_64/ClangCL_qd_fastmath.csv",
       "platform": "windows",
       "precision": "qd",
-      "run_id": "c76b06fbfcdd4497a992a6d9e17c2e03"
+      "run_id": "a6140316df61489c9d3698145a4df103"
     },
     {
       "architecture": "x86_64",
@@ -74,7 +82,7 @@
       "file": "windows/x86_64/MinGW_qd_fastmath.csv",
       "platform": "windows",
       "precision": "qd",
-      "run_id": "a10549fafcbd47c8b5dec99ce26daab3"
+      "run_id": "9496f7e1318845b3b04c87597d485513"
     },
     {
       "architecture": "x86_64",
@@ -82,7 +90,7 @@
       "file": "linux/x86_64/GCC_qd_fastmath.csv",
       "platform": "linux",
       "precision": "qd",
-      "run_id": "59b2982d54c7452385ae9e273a4213f8"
+      "run_id": "27412a6f7a89441e9df31f061e848ce2"
     },
     {
       "architecture": "x86_64",
@@ -90,7 +98,15 @@
       "file": "linux/x86_64/Clang_qd_fastmath.csv",
       "platform": "linux",
       "precision": "qd",
-      "run_id": "3501b22601904cbfa72dd0e2ba76758d"
+      "run_id": "88f10b3fefb24044b85628ed00ceb16b"
+    },
+    {
+      "architecture": "arm64",
+      "compiler": "AppleClang",
+      "file": "macos/arm64/AppleClang_qd_fastmath.csv",
+      "platform": "macos",
+      "precision": "qd",
+      "run_id": "768a732e632441418371656f83b9dc25"
     },
     {
       "architecture": "wasm32",
@@ -98,7 +114,7 @@
       "file": "webassembly/wasm32/Emscripten_qd_fastmath.csv",
       "platform": "webassembly",
       "precision": "qd",
-      "run_id": "bf9a6d9a01e742c0b67066220891edcd"
+      "run_id": "329f39ef673c425ba6c8571890a23134"
     }
   ]
 }

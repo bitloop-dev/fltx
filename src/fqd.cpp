@@ -11,27 +11,6 @@
 
 namespace bl::detail::_qd_runtime
 {
-    // assignment
-    fqd_s to_qd(uint64_t u) noexcept
-    {
-        return detail::_qd_impl::to_qd(u);
-    }
-
-    fqd_s to_qd(int64_t v) noexcept
-    {
-        return detail::_qd_impl::to_qd(v);
-    }
-
-    fqd_s& assign(fqd_s& out, uint64_t u) noexcept
-    {
-        return detail::_qd_impl::assign(out, u);
-    }
-
-    fqd_s& assign(fqd_s& out, int64_t v) noexcept
-    {
-        return detail::_qd_impl::assign(out, v);
-    }
-
     // fma
     BL_NO_INLINE fqd_s fma(const fqd_s& x, const fqd_s& y, const fqd_s& z)
     {
@@ -261,9 +240,9 @@ namespace bl::detail::_qd_runtime
             const double head_abs = head < 0.0 ? -head : head;
             const double base_abs = base_denominator.x0 < 0.0 ? -base_denominator.x0 : base_denominator.x0;
             if (carry == 0.0 && head_abs >= base_abs)
-                return detail::_qd::div_prechecked_inline(numerator, fqd_s{ head, base_denominator.x1, base_denominator.x2, base_denominator.x3 });
+                return detail::_qd::div_canonical_inline(numerator, fqd_s{ head, base_denominator.x1, base_denominator.x2, base_denominator.x3 });
 
-            return detail::_qd::div_prechecked_inline(numerator, detail::_qd::add_double_finite_inline(base_denominator, scalar));
+            return detail::_qd::div_canonical_inline(numerator, detail::_qd::add_double_canonical_inline(base_denominator, scalar));
         }
 
     } // namespace
@@ -474,22 +453,22 @@ namespace bl::detail::_qd_runtime
 
     fqd_s BL_VECTORCALL mul_add_add(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d) noexcept
     {
-        return detail::_qd::add_finite_inline(detail::_qd::mul_add_inline(a, b, c), d);
+        return detail::_qd::add_canonical_inline(detail::_qd::mul_add_inline(a, b, c), d);
     }
 
     fqd_s BL_VECTORCALL mul_add_sub(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d) noexcept
     {
-        return detail::_qd::sub_finite_inline(detail::_qd::mul_add_inline(a, b, c), d);
+        return detail::_qd::sub_canonical_inline(detail::_qd::mul_add_inline(a, b, c), d);
     }
 
     fqd_s BL_VECTORCALL mul_sub_add(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d) noexcept
     {
-        return detail::_qd::add_finite_inline(detail::_qd::mul_sub_inline(a, b, c), d);
+        return detail::_qd::add_canonical_inline(detail::_qd::mul_sub_inline(a, b, c), d);
     }
 
     fqd_s BL_VECTORCALL mul_sub_sub(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d) noexcept
     {
-        return detail::_qd::sub_finite_inline(detail::_qd::mul_sub_inline(a, b, c), d);
+        return detail::_qd::sub_canonical_inline(detail::_qd::mul_sub_inline(a, b, c), d);
     }
 
     fqd_s BL_VECTORCALL mul_add_mul(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d) noexcept
@@ -524,12 +503,12 @@ namespace bl::detail::_qd_runtime
 
     fqd_s BL_VECTORCALL mul_add_mul_add_mul(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d, const fqd_s& e, const fqd_s& f) noexcept
     {
-        return detail::_qd::add_finite_inline(detail::_qd::mul_add_mul_inline(a, b, c, d), detail::_qd::mul_product_inline(e, f));
+        return detail::_qd::add_canonical_inline(detail::_qd::mul_add_mul_inline(a, b, c, d), detail::_qd::mul_canonical_inline(e, f));
     }
 
     fqd_s BL_VECTORCALL mul_add_mul_add_mul_add_mul(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d, const fqd_s& e, const fqd_s& f, const fqd_s& g, const fqd_s& h) noexcept
     {
-        return detail::_qd::add_finite_inline(detail::_qd::mul_add_mul_inline(a, b, c, d), detail::_qd::mul_add_mul_inline(e, f, g, h));
+        return detail::_qd::add_canonical_inline(detail::_qd::mul_add_mul_inline(a, b, c, d), detail::_qd::mul_add_mul_inline(e, f, g, h));
     }
 
     fqd_s BL_VECTORCALL add_add_add(const fqd_s& a, const fqd_s& b, const fqd_s& c) noexcept
@@ -554,42 +533,22 @@ namespace bl::detail::_qd_runtime
 
     fqd_s BL_VECTORCALL add_add_add_add(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d) noexcept
     {
-        return detail::_qd::add_finite_inline(detail::_qd::add_add_add_inline(a, b, c), d);
+        return detail::_qd::add_canonical_inline(detail::_qd::add_add_add_inline(a, b, c), d);
     }
 
     fqd_s BL_VECTORCALL add_add_add_sub(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d) noexcept
     {
-        return detail::_qd::sub_finite_inline(detail::_qd::add_add_add_inline(a, b, c), d);
+        return detail::_qd::sub_canonical_inline(detail::_qd::add_add_add_inline(a, b, c), d);
     }
 
     fqd_s BL_VECTORCALL add_add_sub_sub(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d) noexcept
     {
-        return detail::_qd::sub_finite_inline(detail::_qd::add_add_sub_inline(a, b, c), d);
+        return detail::_qd::sub_canonical_inline(detail::_qd::add_add_sub_inline(a, b, c), d);
     }
 
     fqd_s BL_VECTORCALL add_sub_sub_sub(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d) noexcept
     {
-        return detail::_qd::sub_finite_inline(detail::_qd::add_sub_sub_inline(a, b, c), d);
-    }
-
-    fqd_s BL_VECTORCALL add_scaled_2_1(const fqd_s& a, const fqd_s& b) noexcept
-    {
-        return detail::_qd::add_scaled_inline<2, 1>(a, b);
-    }
-
-    fqd_s BL_VECTORCALL add_scaled_1_2(const fqd_s& a, const fqd_s& b) noexcept
-    {
-        return detail::_qd::add_scaled_inline<1, 2>(a, b);
-    }
-
-    fqd_s BL_VECTORCALL add_scaled_2_neg1(const fqd_s& a, const fqd_s& b) noexcept
-    {
-        return detail::_qd::add_scaled_inline<2, -1>(a, b);
-    }
-
-    fqd_s BL_VECTORCALL add_scaled_1_neg2(const fqd_s& a, const fqd_s& b) noexcept
-    {
-        return detail::_qd::add_scaled_inline<1, -2>(a, b);
+        return detail::_qd::sub_canonical_inline(detail::_qd::add_sub_sub_inline(a, b, c), d);
     }
 
     fqd_s BL_VECTORCALL add_mul_double(const fqd_s& addend, const fqd_s& value, double scalar) noexcept
@@ -624,12 +583,12 @@ namespace bl::detail::_qd_runtime
 
     fqd_s BL_VECTORCALL div_add(const fqd_s& numerator, const fqd_s& a, const fqd_s& b) noexcept
     {
-        return detail::_qd::div_prechecked_inline(numerator, detail::_qd::add_finite_inline(a, b));
+        return detail::_qd::div_canonical_inline(numerator, detail::_qd::add_canonical_inline(a, b));
     }
 
     fqd_s BL_VECTORCALL div_sub(const fqd_s& numerator, const fqd_s& a, const fqd_s& b) noexcept
     {
-        return detail::_qd::div_prechecked_inline(numerator, detail::_qd::sub_finite_inline(a, b));
+        return detail::_qd::div_canonical_inline(numerator, detail::_qd::sub_canonical_inline(a, b));
     }
 
     fqd_s BL_VECTORCALL div_add_double(const fqd_s& numerator, const fqd_s& base_denominator, double scalar) noexcept
@@ -644,122 +603,122 @@ namespace bl::detail::_qd_runtime
 
     fqd_s BL_VECTORCALL mul_add_div(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& denominator) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::mul_add_inline(a, b, c), denominator);
+        return detail::_qd::div_canonical_inline(detail::_qd::mul_add_inline(a, b, c), denominator);
     }
 
     fqd_s BL_VECTORCALL mul_sub_div(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& denominator) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::mul_sub_inline(a, b, c), denominator);
+        return detail::_qd::div_canonical_inline(detail::_qd::mul_sub_inline(a, b, c), denominator);
     }
 
     fqd_s BL_VECTORCALL value_sub_mul_div(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& denominator) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::value_sub_mul_inline(a, b, c), denominator);
+        return detail::_qd::div_canonical_inline(detail::_qd::value_sub_mul_inline(a, b, c), denominator);
     }
 
     fqd_s BL_VECTORCALL mul_add_mul_div(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d, const fqd_s& denominator) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::mul_add_mul_inline(a, b, c, d), denominator);
+        return detail::_qd::div_canonical_inline(detail::_qd::mul_add_mul_inline(a, b, c, d), denominator);
     }
 
     fqd_s BL_VECTORCALL mul_sub_mul_div(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d, const fqd_s& denominator) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::mul_sub_mul_inline(a, b, c, d), denominator);
+        return detail::_qd::div_canonical_inline(detail::_qd::mul_sub_mul_inline(a, b, c, d), denominator);
     }
 
     fqd_s BL_VECTORCALL add_add_add_div(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& denominator) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::add_add_add_inline(a, b, c), denominator);
+        return detail::_qd::div_canonical_inline(detail::_qd::add_add_add_inline(a, b, c), denominator);
     }
 
     fqd_s BL_VECTORCALL add_sub_add_div(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& denominator) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::add_sub_add_inline(a, b, c), denominator);
+        return detail::_qd::div_canonical_inline(detail::_qd::add_sub_add_inline(a, b, c), denominator);
     }
 
     fqd_s BL_VECTORCALL add_add_sub_div(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& denominator) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::add_add_sub_inline(a, b, c), denominator);
+        return detail::_qd::div_canonical_inline(detail::_qd::add_add_sub_inline(a, b, c), denominator);
     }
 
     fqd_s BL_VECTORCALL add_sub_sub_div(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& denominator) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::add_sub_sub_inline(a, b, c), denominator);
+        return detail::_qd::div_canonical_inline(detail::_qd::add_sub_sub_inline(a, b, c), denominator);
     }
 
     fqd_s BL_VECTORCALL add_mul_double_div(const fqd_s& addend, const fqd_s& value, double scalar, const fqd_s& denominator) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::add_mul_double_inline(addend, value, scalar), denominator);
+        return detail::_qd::div_canonical_inline(detail::_qd::add_mul_double_inline(addend, value, scalar), denominator);
     }
 
     fqd_s BL_VECTORCALL sub_mul_double_div(const fqd_s& minuend, const fqd_s& value, double scalar, const fqd_s& denominator) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::sub_mul_double_inline(minuend, value, scalar), denominator);
+        return detail::_qd::div_canonical_inline(detail::_qd::sub_mul_double_inline(minuend, value, scalar), denominator);
     }
 
     fqd_s BL_VECTORCALL mul_double_sub_div(const fqd_s& value, double scalar, const fqd_s& subtrahend, const fqd_s& denominator) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::mul_double_sub_inline(value, scalar, subtrahend), denominator);
+        return detail::_qd::div_canonical_inline(detail::_qd::mul_double_sub_inline(value, scalar, subtrahend), denominator);
     }
 
     fqd_s BL_VECTORCALL mul_add_div_add_double(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& denominator, double scalar) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::mul_add_inline(a, b, c), detail::_qd::add_double_finite_inline(denominator, scalar));
+        return detail::_qd::div_canonical_inline(detail::_qd::mul_add_inline(a, b, c), detail::_qd::add_double_canonical_inline(denominator, scalar));
     }
 
     fqd_s BL_VECTORCALL mul_sub_div_add_double(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& denominator, double scalar) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::mul_sub_inline(a, b, c), detail::_qd::add_double_finite_inline(denominator, scalar));
+        return detail::_qd::div_canonical_inline(detail::_qd::mul_sub_inline(a, b, c), detail::_qd::add_double_canonical_inline(denominator, scalar));
     }
 
     fqd_s BL_VECTORCALL value_sub_mul_div_add_double(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& denominator, double scalar) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::value_sub_mul_inline(a, b, c), detail::_qd::add_double_finite_inline(denominator, scalar));
+        return detail::_qd::div_canonical_inline(detail::_qd::value_sub_mul_inline(a, b, c), detail::_qd::add_double_canonical_inline(denominator, scalar));
     }
 
     fqd_s BL_VECTORCALL mul_add_mul_div_add_double(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d, const fqd_s& denominator, double scalar) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::mul_add_mul_inline(a, b, c, d), detail::_qd::add_double_finite_inline(denominator, scalar));
+        return detail::_qd::div_canonical_inline(detail::_qd::mul_add_mul_inline(a, b, c, d), detail::_qd::add_double_canonical_inline(denominator, scalar));
     }
 
     fqd_s BL_VECTORCALL mul_sub_mul_div_add_double(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& d, const fqd_s& denominator, double scalar) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::mul_sub_mul_inline(a, b, c, d), detail::_qd::add_double_finite_inline(denominator, scalar));
+        return detail::_qd::div_canonical_inline(detail::_qd::mul_sub_mul_inline(a, b, c, d), detail::_qd::add_double_canonical_inline(denominator, scalar));
     }
 
     fqd_s BL_VECTORCALL add_add_add_div_add_double(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& denominator, double scalar) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::add_add_add_inline(a, b, c), detail::_qd::add_double_finite_inline(denominator, scalar));
+        return detail::_qd::div_canonical_inline(detail::_qd::add_add_add_inline(a, b, c), detail::_qd::add_double_canonical_inline(denominator, scalar));
     }
 
     fqd_s BL_VECTORCALL add_sub_add_div_add_double(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& denominator, double scalar) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::add_sub_add_inline(a, b, c), detail::_qd::add_double_finite_inline(denominator, scalar));
+        return detail::_qd::div_canonical_inline(detail::_qd::add_sub_add_inline(a, b, c), detail::_qd::add_double_canonical_inline(denominator, scalar));
     }
 
     fqd_s BL_VECTORCALL add_add_sub_div_add_double(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& denominator, double scalar) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::add_add_sub_inline(a, b, c), detail::_qd::add_double_finite_inline(denominator, scalar));
+        return detail::_qd::div_canonical_inline(detail::_qd::add_add_sub_inline(a, b, c), detail::_qd::add_double_canonical_inline(denominator, scalar));
     }
 
     fqd_s BL_VECTORCALL add_sub_sub_div_add_double(const fqd_s& a, const fqd_s& b, const fqd_s& c, const fqd_s& denominator, double scalar) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::add_sub_sub_inline(a, b, c), detail::_qd::add_double_finite_inline(denominator, scalar));
+        return detail::_qd::div_canonical_inline(detail::_qd::add_sub_sub_inline(a, b, c), detail::_qd::add_double_canonical_inline(denominator, scalar));
     }
 
     fqd_s BL_VECTORCALL add_mul_double_div_add_double(const fqd_s& addend, const fqd_s& value, double value_scalar, const fqd_s& denominator, double denominator_scalar) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::add_mul_double_inline(addend, value, value_scalar), detail::_qd::add_double_finite_inline(denominator, denominator_scalar));
+        return detail::_qd::div_canonical_inline(detail::_qd::add_mul_double_inline(addend, value, value_scalar), detail::_qd::add_double_canonical_inline(denominator, denominator_scalar));
     }
 
     fqd_s BL_VECTORCALL sub_mul_double_div_add_double(const fqd_s& minuend, const fqd_s& value, double value_scalar, const fqd_s& denominator, double denominator_scalar) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::sub_mul_double_inline(minuend, value, value_scalar), detail::_qd::add_double_finite_inline(denominator, denominator_scalar));
+        return detail::_qd::div_canonical_inline(detail::_qd::sub_mul_double_inline(minuend, value, value_scalar), detail::_qd::add_double_canonical_inline(denominator, denominator_scalar));
     }
 
     fqd_s BL_VECTORCALL mul_double_sub_div_add_double(const fqd_s& value, double value_scalar, const fqd_s& subtrahend, const fqd_s& denominator, double denominator_scalar) noexcept
     {
-        return detail::_qd::div_prechecked_inline(detail::_qd::mul_double_sub_inline(value, value_scalar, subtrahend), detail::_qd::add_double_finite_inline(denominator, denominator_scalar));
+        return detail::_qd::div_canonical_inline(detail::_qd::mul_double_sub_inline(value, value_scalar, subtrahend), detail::_qd::add_double_canonical_inline(denominator, denominator_scalar));
     }
 
 } // namespace bl::detail::_qd_runtime

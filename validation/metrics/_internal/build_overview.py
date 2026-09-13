@@ -90,8 +90,8 @@ OPERATION_ROW_FILLS = tuple(
     for color in ("#171a20", "#14171c")
 )
 
-TABLE_GAP = 8
-COMPACT_TABLE_GAP = 3
+TABLE_GAP = 4
+COMPACT_TABLE_GAP = 4
 MONOSPACE_CHARACTER_WIDTH = 6
 COMPACT_FONT_ADVANCE_EM = 0.5
 COMPACT_FONT_SIZE_INCREMENT = -1
@@ -102,6 +102,7 @@ COMPACT_ACCURACY_EXTRA_WIDTH = 2
 COMPACT_BENCHMARK_UNIT_GAP = 3
 COMPACT_OPERATION_TEXT_SHIFT = 2
 COMPACT_SPECIAL_WIDTH_REDUCTION = 4
+SAMPLE_COLUMN_WIDTH = 60
 CELL_PADDING = 8
 COMPACT_CELL_PADDING = 4
 GRID_REGULAR = "#000000"
@@ -947,16 +948,50 @@ def _operation_width(
     )
 
 
+def _sample_column_width(layout: str) -> int:
+    return SAMPLE_COLUMN_WIDTH if layout == "full" else 0
+
+
+def _operation_sample_count(
+    dataset: Dataset,
+    target: Target,
+    precision: str,
+    group: str,
+    operation: str,
+) -> str:
+    """Return the FLTX accuracy sample count represented by an overview row."""
+
+    row = dataset.canonical.get(
+        (target, precision, group, operation, "fltx")
+    )
+    row = _display_row(
+        dataset,
+        target,
+        precision,
+        group,
+        operation,
+        "fltx",
+        row,
+        normal_only=dataset.consumer_mode == "fastmath",
+    )
+    if row is None:
+        return "-"
+    samples = row.get("samples", "-")
+    return f"{int(samples):,}" if samples.isdecimal() else samples
+
+
 def _block_x(
     index: int,
     operation_width: int,
     block_widths: tuple[int, ...],
     *,
+    sample_width: int = 0,
     margin: int = MARGIN,
     table_gap: int = TABLE_GAP,
 ) -> int:
     return (
-        margin + operation_width + table_gap +
+        margin + operation_width + sample_width +
+        (table_gap if sample_width else 0) + table_gap +
         sum(width + table_gap for width in block_widths[:index])
     )
 
@@ -1043,8 +1078,11 @@ def render_overview(
         for implementation in implementations
     )
     operation_width = _operation_width(operations, layout)
+    sample_width = _sample_column_width(layout)
+    sample_x = margin + operation_width + table_gap
     width = (
-        margin * 2 + operation_width +
+        margin * 2 + operation_width + sample_width +
+        (table_gap if sample_width else 0) +
         len(implementations) * table_gap + sum(block_widths)
     )
     title_mode = (
@@ -1103,6 +1141,13 @@ def render_overview(
         header_y + header_height / 2 + 4,
         "operation", weight="bold", size=10,
     )
+    if layout == "full":
+        _rect(parts, sample_x, header_y, sample_width, header_height, "#2B2B2B")
+        add_text(
+            parts, sample_x + sample_width / 2,
+            header_y + header_height / 2 + 4,
+            "samples", weight="bold", size=10,
+        )
 
     labels: dict[str, tuple[str, str]] = {}
     for implementation in implementations:
@@ -1132,6 +1177,7 @@ def render_overview(
             operation_width,
             block_widths,
             margin=margin,
+            sample_width=sample_width,
             table_gap=table_gap,
         )
         header_fill, _ = _implementation_tint(
@@ -1240,6 +1286,11 @@ def render_overview(
             parts, margin, group_y, operation_width,
             GROUP_ROW_HEIGHT, GROUP_ROW_FILL,
         )
+        if layout == "full":
+            _rect(
+                parts, sample_x, group_y, sample_width,
+                GROUP_ROW_HEIGHT, GROUP_ROW_FILL,
+            )
         add_text(
             parts,
             margin + 7,
@@ -1259,6 +1310,7 @@ def render_overview(
                 operation_width,
                 block_widths,
                 margin=margin,
+                sample_width=sample_width,
                 table_gap=table_gap,
             )
             _rect(
@@ -1292,6 +1344,22 @@ def render_overview(
                 size=9 if layout == "compact" else 10,
             )
 
+            if layout == "full":
+                _rect(
+                    parts, sample_x, y, sample_width, ROW_HEIGHT,
+                    OPERATION_ROW_FILLS[row_index % 2],
+                )
+                add_text(
+                    parts,
+                    sample_x + sample_width / 2,
+                    y + 15,
+                    _operation_sample_count(
+                        dataset, target, precision, group, operation,
+                    ),
+                    fill="#f1f2f4",
+                    size=9,
+                )
+
             for index, implementation in enumerate(implementations):
                 column_widths = column_widths_by_implementation[implementation]
                 x = _block_x(
@@ -1299,6 +1367,7 @@ def render_overview(
                     operation_width,
                     block_widths,
                     margin=margin,
+                    sample_width=sample_width,
                     table_gap=table_gap,
                 )
                 row = dataset.canonical.get(
@@ -1424,6 +1493,17 @@ def render_overview(
         grid_bottom,
         stroke=GRID_STRONG,
     )
+    if layout == "full":
+        _line(parts, sample_x, header_y, sample_x + sample_width, header_y, stroke=GRID_STRONG)
+        _line(parts, sample_x, header_y, sample_x, grid_bottom, stroke=GRID_STRONG)
+        _line(
+            parts,
+            sample_x + sample_width,
+            header_y,
+            sample_x + sample_width,
+            grid_bottom,
+            stroke=GRID_STRONG,
+        )
 
     for index, implementation in enumerate(implementations):
         column_widths = column_widths_by_implementation[implementation]
@@ -1433,6 +1513,7 @@ def render_overview(
             operation_width,
             block_widths,
             margin=margin,
+            sample_width=sample_width,
             table_gap=table_gap,
         )
         right = x + block_width
@@ -1488,6 +1569,9 @@ def render_overview(
     for group_y, operations_y, operations_end in group_spans:
         for left, right in (
             (margin, margin + operation_width),
+            *((
+                (sample_x, sample_x + sample_width),
+            ) if layout == "full" else ()),
             *(
                 (
                     _block_x(
@@ -1495,6 +1579,7 @@ def render_overview(
                         operation_width,
                         block_widths,
                         margin=margin,
+                        sample_width=sample_width,
                         table_gap=table_gap,
                     ),
                     _block_x(
@@ -1502,6 +1587,7 @@ def render_overview(
                         operation_width,
                         block_widths,
                         margin=margin,
+                        sample_width=sample_width,
                         table_gap=table_gap,
                     )
                     + block_widths[index],
@@ -1538,12 +1624,22 @@ def render_overview(
         grid_bottom,
         stroke=GRID_STRONG,
     )
+    if layout == "full":
+        _line(
+            parts,
+            sample_x,
+            grid_bottom,
+            sample_x + sample_width,
+            grid_bottom,
+            stroke=GRID_STRONG,
+        )
     for index in range(len(implementations)):
         x = _block_x(
             index,
             operation_width,
             block_widths,
             margin=margin,
+            sample_width=sample_width,
             table_gap=table_gap,
         )
         _line(

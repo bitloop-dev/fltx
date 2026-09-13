@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <compare>
 #include <cmath>
 #include <cstddef>
@@ -125,6 +126,53 @@ namespace
         CHECK(value == exact);
         value /= integer;
         CHECK(value == one);
+    }
+
+    template<class Storage>
+    void check_integer_limb_bits(const Storage& actual, const Storage& expected)
+    {
+        const auto same = [](double a, double b)
+        {
+            return std::bit_cast<std::uint64_t>(a) == std::bit_cast<std::uint64_t>(b);
+        };
+        if constexpr (bl::fltx_fdd<Storage>)
+            CHECK((same(actual.hi, expected.hi) && same(actual.lo, expected.lo)));
+        else
+            CHECK((same(actual.x0, expected.x0) && same(actual.x1, expected.x1) &&
+                   same(actual.x2, expected.x2) && same(actual.x3, expected.x3)));
+    }
+
+    template<class Value, class Integer>
+    void check_integer_construction_and_assignment()
+    {
+        using Storage = bl::storage_t<Value>;
+        constexpr std::array<Integer, 4> inputs{
+            std::numeric_limits<Integer>::lowest(), std::numeric_limits<Integer>::max(),
+            Integer{ 0 }, Integer{ 1 }
+        };
+        constexpr std::array<Value, 4> expected{
+            Value{ inputs[0] }, Value{ inputs[1] }, Value{ inputs[2] }, Value{ inputs[3] }
+        };
+        for (std::size_t i = 0; i < inputs.size(); ++i)
+        {
+            volatile Integer input = inputs[i];
+            const Value constructed{ input };
+            Storage assigned{};
+            if constexpr (requires { assigned.x2; }) { assigned.x2 = 3.0; assigned.x3 = 4.0; }
+            CHECK(&(assigned = input) == &assigned);
+            // Compare limb bits so negative zero tails and fast-math loss
+            // of an integer residual cannot hide behind numerical equality.
+            check_integer_limb_bits<Storage>(constructed, expected[i]);
+            check_integer_limb_bits<Storage>(assigned, expected[i]);
+            CHECK(static_cast<Integer>(constructed) == inputs[i]);
+        }
+    }
+
+    template<class... Integer>
+    void check_all_integer_construction_and_assignment()
+    {
+        ((check_integer_construction_and_assignment<bl::fdd, Integer>(),
+          check_integer_construction_and_assignment<bl::fqd, Integer>()), ...);
     }
 
     template<class L, class R, class SL, class SR>
@@ -637,6 +685,50 @@ TEST_CASE("full-value arithmetic preserves storage-kernel results", "[contracts]
     CHECK(arithmetic_matches_storage(q, qs, qs, qs));
     CHECK(arithmetic_matches_storage(product, d, product_value, ds));
     CHECK(arithmetic_matches_storage(product, qs, product_value, qs));
+}
+
+TEST_CASE("integer construction and assignment preserve every native integer limit", "[contracts][core]")
+{
+    check_all_integer_construction_and_assignment<bool, char, signed char, unsigned char, wchar_t, char8_t, char16_t,
+        char32_t, short, unsigned short, int, unsigned int, long, unsigned long, long long, unsigned long long>();
+}
+
+TEST_CASE("scalar-left subtraction preserves cancellation and zero signs", "[contracts][core]")
+{
+    const auto check_type = []<class T>()
+    {
+        const auto check_scalar = []<class Scalar>()
+        {
+            for (const Scalar value : { Scalar{ 1 }, Scalar{ -1 } })
+            {
+                volatile Scalar input = value;
+                const T result = input - T{ static_cast<double>(input) };
+                CHECK(bl::iszero(result));
+                // Relaxed runtime arithmetic does not promise signed zero.
+                #if !defined(FLTX_FAST_MATH)
+                CHECK_FALSE(bl::signbit(result));
+                #endif
+            }
+        };
+        check_scalar.template operator()<double>();
+        check_scalar.template operator()<float>();
+        check_scalar.template operator()<int>();
+
+        #if !defined(FLTX_FAST_MATH)
+        for (double left : { 0.0, -0.0 })
+            for (double right : { 0.0, -0.0 })
+            {
+                volatile double input = left;
+                const T result = input - T{ right };
+                CHECK(bl::iszero(result));
+                CHECK(bl::signbit(result) == (std::signbit(left) && !std::signbit(right)));
+            }
+        #endif
+    };
+    check_type.template operator()<bl::fdd_s>();
+    check_type.template operator()<bl::fdd>();
+    check_type.template operator()<bl::fqd_s>();
+    check_type.template operator()<bl::fqd>();
 }
 
 TEST_CASE("classification and ordering handle IEEE special values", "[contracts][core]")

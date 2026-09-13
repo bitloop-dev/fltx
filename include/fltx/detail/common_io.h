@@ -548,12 +548,12 @@ template<class Traits>
     case format_kind::fixed_frac:
         return sign_chars
             + static_cast<std::size_t>(Traits::max_fixed_integer_digits)
-            + static_cast<std::size_t>(precision > 0 ? 1 + precision : 0);
+            + (precision > 0 ? 1u + static_cast<std::size_t>(precision) : 0u);
 
     case format_kind::scientific_frac:
         return sign_chars
             + 1u
-            + static_cast<std::size_t>(precision > 0 ? 1 + precision : 0)
+            + (precision > 0 ? 1u + static_cast<std::size_t>(precision) : 0u)
             + exp10_chars;
 
     case format_kind::scientific_sig:
@@ -573,7 +573,7 @@ template<class Traits>
         return sign_chars
             + 2u
             + 1u
-            + static_cast<std::size_t>(fraction_digits > 0 ? 1 + fraction_digits : 0)
+            + (fraction_digits > 0 ? 1u + static_cast<std::size_t>(fraction_digits) : 0u)
             + exp2_chars;
     }
 
@@ -1295,6 +1295,78 @@ BL_FORCE_INLINE constexpr void parsed_decimal_to_value(
     }
 }
 
+[[nodiscard]] constexpr int compare_decimal_token_to_subnormal_midpoint(
+    const char* first, const char* last, int decimal_order,
+    std::uint64_t twice_units, int unit_exponent) noexcept
+{
+    exact_decimal::biguint denominator;
+    denominator.set_bit(1 - unit_exponent);
+    exact_decimal::biguint remainder{ twice_units };
+    int midpoint_order = 0;
+    do
+    {
+        remainder.mul_small(10);
+        --midpoint_order;
+    } while (remainder.compare(denominator) < 0);
+
+    if (decimal_order != midpoint_order)
+        return decimal_order < midpoint_order ? -1 : 1;
+
+    // Stream the exact midpoint's decimal digits. Its binary denominator fits
+    // the existing bigint even when its terminating decimal coefficient does not.
+    bool significant = false;
+    for (const char* p = first; p != last && *p != 'e' && *p != 'E'; ++p)
+    {
+        if (*p == '.')
+            continue;
+        if (!significant && *p == '0')
+            continue;
+        significant = true;
+        // The denominator is 2^k and remainder < 10 * 2^k: the next
+        // decimal digit is exactly the four bits above k, with no division.
+        const int digit = static_cast<int>(remainder.get_bits(1 - unit_exponent, 4));
+        remainder = exact_decimal::low_bits_copy(remainder, 1 - unit_exponent);
+        if (*p - '0' != digit)
+            return *p - '0' < digit ? -1 : 1;
+        remainder.mul_small(10);
+    }
+    return remainder.is_zero() ? 0 : -1;
+}
+
+template<class Traits>
+constexpr void refine_subnormal_decimal_token(
+    const char* first, const char* last, int decimal_order, bool neg,
+    typename Traits::value_type& value) noexcept
+{
+    if (Traits::isinf(value))
+        return;
+    exact_decimal::biguint magnitude;
+    int exponent = 0;
+    bool negative = false;
+    const bool nonzero = exact_decimal::exact_binary_components<Traits>(value, magnitude, exponent, negative);
+    if (nonzero && exponent + magnitude.bit_length() - 1 >
+        exact_decimal::minimum_normal_limb_exponent<Traits>())
+        return;
+
+    // The bounded coefficient already gives the nearest candidate to within one
+    // subnormal unit. Recover exact midpoint/tie decisions from the original text.
+    const auto scaled = exact_decimal::rounded_decimal_places_shift(
+        magnitude, exponent - Traits::min_binary_exponent);
+    std::uint64_t units = scaled.get_bits(0, 54);
+    const int upper = compare_decimal_token_to_subnormal_midpoint(
+        first, last, decimal_order, 2 * units + 1, Traits::min_binary_exponent);
+    if (upper > 0 || (upper == 0 && (units & 1u) != 0))
+        ++units;
+    else if (units != 0)
+    {
+        const int lower = compare_decimal_token_to_subnormal_midpoint(
+            first, last, decimal_order, 2 * units - 1, Traits::min_binary_exponent);
+        if (lower < 0 || (lower == 0 && (units & 1u) != 0))
+            --units;
+    }
+    value = exact_decimal::pack_subnormal_units<Traits>(exact_decimal::biguint{ units }, neg);
+}
+
 template<class Traits, bool bounded>
 BL_MSVC_NOINLINE constexpr bool parse_flt(
     const char* first,
@@ -1320,6 +1392,7 @@ BL_MSVC_NOINLINE constexpr bool parse_flt(
         return true;
     }
 
+    const char* significand_first = p;
     hybrid_parse_token token;
     if (!scan_hybrid_decimal_token<Traits, bounded>(p, last, token))
     {
@@ -1339,6 +1412,10 @@ BL_MSVC_NOINLINE constexpr bool parse_flt(
     const int dec_exp = token.exp10 - token.frac_digits;
     const int approx_dec_order = token.sig_digits + dec_exp - 1;
     parsed_decimal_to_value<Traits>(token, dec_exp, approx_dec_order, neg, out);
+    constexpr int subnormal_decimal_order =
+        (exact_decimal::minimum_normal_limb_exponent<Traits>() * 30103 - 99999) / 100000;
+    if (token.coeff_overflow && approx_dec_order <= subnormal_decimal_order)
+        refine_subnormal_decimal_token<Traits>(significand_first, p, approx_dec_order, neg, out);
     if (endptr)
         *endptr = p;
     return true;

@@ -9,7 +9,6 @@
 
 #ifndef FQD_ARITHMETIC_INCLUDED
 #define FQD_ARITHMETIC_INCLUDED
-#include "fltx/fqd_conversions.h"
 #include "fltx/detail/fqd_arithmetic.h"
 
 namespace bl {
@@ -148,7 +147,7 @@ namespace bl {
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s operator+(double a, const fqd_s& b) noexcept { return b + a; }
-[[nodiscard]] BL_FORCE_INLINE constexpr fqd_s operator-(double a, const fqd_s& b) noexcept { return -(b - a); }
+[[nodiscard]] BL_FORCE_INLINE constexpr fqd_s operator-(double a, const fqd_s& b) noexcept { return -b + a; }
 [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s operator*(double a, const fqd_s& b) noexcept { return b * a; }
 [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s operator/(double a, const fqd_s& b) noexcept { return fqd_s{ a } / b; }
 
@@ -312,5 +311,9 @@ template<class L, class R> requires detail::_qd::eager_pair<L, R>
 }
 
 } // namespace bl
+
+#if defined(FLTX_ENABLE_FQD_EXPRESSIONS) && FLTX_ENABLE_FQD_EXPRESSIONS
+#include "fltx/detail/fqd_expressions.h"
+#endif
 
 #endif

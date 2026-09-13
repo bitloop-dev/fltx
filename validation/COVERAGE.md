@@ -20,6 +20,14 @@ runner. It exercises the constexpr algorithms with the same deterministic
 domains, special values, and thresholds as normal runtime accuracy. Cross-path
 bit identity is intentionally not a contract.
 
+The public metrics commands expose **CA** through `--fixed_constexpr` for
+f32/f64/dd/qd, with the same quick/standard/full sample profiles and strict or
+fast-math consumers. Reports retain individual MPFR domains, thresholds,
+Inf/NaN and signed-zero observations. Strict thresholds gate completion;
+fast-math thresholds are advisory and its deliberate Inf/NaN probes are omitted.
+The profile has separate evidence, metadata and accuracy-only SVG filenames;
+full-profile publication is explicit.
+
 Every public header has an **H** probe through `fltx_compile_contract`, with
 `FLTX_ENABLE_FQD_EXPRESSIONS` both undefined and set to `1`.
 The representative C++20 surface also compiles with
@@ -164,8 +172,9 @@ rows; the native f32/f64 runs retain their 119 numerical rows. Every row keeps
 its deterministic seed and worst witness, so no aggregate score can make a
 failed domain pass.
 
-Any current threshold failures are recorded in `KNOWN_FAILURES.md`; they remain
-gating failures rather than threshold exceptions.
+Current validation status is recorded in `KNOWN_FAILURES.md`. Strict extended
+accuracy failures remain gating; the native runtime and consumer-fast-math
+advisory lanes follow the policy documented in `README.md`.
 
 ## I/O, random, expressions, and numerical edge cases
 

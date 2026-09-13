@@ -13,7 +13,6 @@
 #include <charconv>
 #include <cstddef>
 #include <stdexcept>
-#include <string>
 #include <string_view>
 #include <system_error>
 #include <type_traits>
@@ -131,16 +130,53 @@ namespace bl::detail::charconv
     }
 
     template<class Traits>
-    [[nodiscard]] std::from_chars_result from_chars_impl(
+    [[nodiscard]] constexpr bool native_parse_out_of_range(
+        const char* first, const char* end,
+        const typename Traits::value_type& parsed, std::chars_format fmt) noexcept
+    {
+        if constexpr (std::is_floating_point_v<typename Traits::value_type>)
+        {
+            if (Traits::isinf(parsed))
+                return signed_special_token_length(first, end) == 0;
+            if (Traits::iszero(parsed))
+            {
+                // A zero significand is valid even with an enormous exponent.
+                // Inspect only a successfully consumed token, and only on zero.
+                const char* p = first;
+                if (p != end && (*p == '+' || *p == '-'))
+                    ++p;
+                if (fmt == std::chars_format::hex && end - p >= 2 &&
+                    p[0] == '0' && ascii_lower(p[1]) == 'x')
+                    p += 2;
+                for (; p != end; ++p)
+                {
+                    const unsigned char c = ascii_lower(*p);
+                    if (c == (fmt == std::chars_format::hex ? 'p' : 'e'))
+                        break;
+                    if (fmt == std::chars_format::hex ? ascii_hex_digit_value(c) > 0 : ('1' <= c && c <= '9'))
+                        return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    template<class Traits>
+    [[nodiscard]] constexpr std::from_chars_result from_chars_range(
         const char* first,
         const char* last,
         typename Traits::value_type& value,
-        std::chars_format fmt) noexcept
+        std::chars_format fmt,
+        bool allow_hex_prefix = false,
+        bool allow_leading_plus = false) noexcept
     {
         if (!supported_output_format(fmt))
             return { first, std::errc::invalid_argument };
 
-        if (first == last || *first == '+' || ascii_space(*first))
+        if (first == last || ascii_space(*first))
+            return { first, std::errc::invalid_argument };
+
+        if (*first == '+' && !allow_leading_plus)
             return { first, std::errc::invalid_argument };
 
         typename Traits::value_type parsed{};
@@ -148,26 +184,13 @@ namespace bl::detail::charconv
         bool parsed_ok = false;
         if (fmt == std::chars_format::hex)
         {
-            const std::size_t length = static_cast<std::size_t>(last - first);
-            constexpr std::size_t stack_capacity = 1024;
-            char stack[stack_capacity + 1]{};
-            std::string dynamic;
-            char* buffer = stack;
-
-            if (length > stack_capacity)
-            {
-                dynamic.assign(first, last);
-                dynamic.push_back('\0');
-                buffer = dynamic.data();
-            }
-            else
-            {
-                copy_chars(buffer, first, length);
-                buffer[length] = '\0';
-            }
-
-            parsed_ok = detail::parse_hex_float<Traits>(buffer, buffer + length, parsed, &end);
-            end = first + (end - buffer);
+            parsed_ok = detail::parse_hex_float<Traits>(
+                first,
+                last,
+                parsed,
+                &end,
+                allow_hex_prefix,
+                allow_leading_plus);
         }
         else
         {
@@ -191,6 +214,9 @@ namespace bl::detail::charconv
             return { first, std::errc::invalid_argument };
         }
 
+        if (native_parse_out_of_range<Traits>(first, end, parsed, fmt))
+            return { end, std::errc::result_out_of_range };
+
         value = parsed;
         return { end, std::errc{} };
     }
@@ -213,12 +239,11 @@ namespace bl::detail::charconv
             }
 
             // Some floating from_chars implementations report success and
-            // store infinity for a finite token outside the native range.
+            // store infinity or zero for a finite nonzero token outside the range.
             // Preserve the standard-shaped error and transactional output
             // contract at the bl::from_chars boundary.
             if (result.ec == std::errc{} &&
-                signed_special_token_length(first, last) == 0 &&
-                Traits::isinf(parsed)) [[unlikely]]
+                native_parse_out_of_range<Traits>(first, result.ptr, parsed, fmt)) [[unlikely]]
             {
                 return { result.ptr, std::errc::result_out_of_range };
             }
@@ -229,19 +254,7 @@ namespace bl::detail::charconv
         }
         else
         {
-            typename Traits::value_type parsed = value;
-            const auto result = from_chars_impl<Traits>(
-                first, last, parsed, fmt);
-            if (result.ec == std::errc{} &&
-                signed_special_token_length(first, last) == 0 &&
-                Traits::isinf(parsed)) [[unlikely]]
-            {
-                return { result.ptr, std::errc::result_out_of_range };
-            }
-
-            if (result.ec == std::errc{})
-                value = parsed;
-            return result;
+            return from_chars_range<Traits>(first, last, value, fmt);
         }
     }
 
@@ -406,7 +419,7 @@ namespace bl
         fdd_s& value,
         std::chars_format fmt = std::chars_format::general) noexcept
     {
-        return detail::charconv::from_chars_impl<detail::_dd::dd_io_traits>(first, last, value, fmt);
+        return detail::charconv::from_chars_range<detail::_dd::dd_io_traits>(first, last, value, fmt);
     }
 
     [[nodiscard]] constexpr std::to_chars_result to_chars(
@@ -463,7 +476,7 @@ namespace bl
         fqd_s& value,
         std::chars_format fmt = std::chars_format::general) noexcept
     {
-        return detail::charconv::from_chars_impl<detail::_qd::qd_io_traits>(first, last, value, fmt);
+        return detail::charconv::from_chars_range<detail::_qd::qd_io_traits>(first, last, value, fmt);
     }
 
     namespace detail::charconv
@@ -543,62 +556,6 @@ namespace bl
                 : fmt;
         }
 
-        template<class Traits>
-        [[nodiscard]] constexpr std::from_chars_result from_chars_constexpr_range(
-            const char* first,
-            const char* last,
-            typename Traits::value_type& value,
-            std::chars_format fmt,
-            bool allow_hex_prefix = false,
-            bool allow_leading_plus = false) noexcept
-        {
-            if (!supported_output_format(fmt))
-                return { first, std::errc::invalid_argument };
-
-            if (first == last || ascii_space(*first))
-                return { first, std::errc::invalid_argument };
-
-            if (*first == '+' && !allow_leading_plus)
-                return { first, std::errc::invalid_argument };
-
-            typename Traits::value_type parsed{};
-            const char* end = nullptr;
-            bool parsed_ok = false;
-            if (fmt == std::chars_format::hex)
-            {
-                parsed_ok = detail::parse_hex_float<Traits>(
-                    first,
-                    last,
-                    parsed,
-                    &end,
-                    allow_hex_prefix,
-                    allow_leading_plus);
-            }
-            else
-            {
-                const char* parse_last = last;
-                if (fmt == std::chars_format::fixed)
-                {
-                    const std::size_t length = static_cast<std::size_t>(last - first);
-                    const std::size_t exponent_offset = exponent_marker_offset(first, length);
-                    parse_last = first + exponent_offset;
-                }
-                parsed_ok = detail::parse_flt<Traits>(first, parse_last, parsed, &end);
-            }
-
-            if (!parsed_ok || end == first)
-                return { first, std::errc::invalid_argument };
-
-            if (fmt == std::chars_format::scientific &&
-                signed_special_token_length(first, last) == 0 &&
-                !has_exponent_marker(first, end))
-            {
-                return { first, std::errc::invalid_argument };
-            }
-
-            value = parsed;
-            return { end, std::errc{} };
-        }
 
         template<class T>
         [[nodiscard]] constexpr parse_result<T> parse_constexpr(
@@ -620,7 +577,7 @@ namespace bl
             const char* first = text.data();
             const char* last = first + text.size();
             typename Traits::value_type parsed{};
-            const auto parsed_result = from_chars_constexpr_range<Traits>(
+            const auto parsed_result = from_chars_range<Traits>(
                 first,
                 last,
                 parsed,
@@ -662,7 +619,7 @@ namespace bl
             {
                 using Traits = typename parse_traits_for<T>::traits;
                 typename Traits::value_type traits_value{};
-                const auto traits_result = from_chars_constexpr_range<Traits>(
+                const auto traits_result = from_chars_range<Traits>(
                     text.data(),
                     text.data() + text.size(),
                     traits_value,

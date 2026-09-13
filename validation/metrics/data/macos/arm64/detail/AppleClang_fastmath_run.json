@@ -1,0 +1,145 @@
+{
+  "accuracy_samples": 65536,
+  "architecture": "arm64",
+  "benchmark_minimum_trial_ms": 25,
+  "benchmark_samples": {
+    "dd": 81920,
+    "qd": 40960
+  },
+  "benchmark_trials": 7,
+  "compiler": "AppleClang",
+  "configuration": {
+    "build": {
+      "architecture": "arm64",
+      "compiler-id": "AppleClang",
+      "compiler-version": "21.0.0.21000101",
+      "config": "Release",
+      "flags-hash": "4ec6f98f7a17b56afacadda2c404cbafb898384b1c47903a8f57017865a10635",
+      "frontend-variant": "GNU",
+      "optimized": "1",
+      "processor": "arm64",
+      "source-fingerprint": "1908e8ba6c886da6f2ba18b8b720f9dcf8a71e061ccba23011424d3d0f694b2a",
+      "system": "Darwin"
+    },
+    "consumer": {
+      "arm64": "1",
+      "fast-math": "on",
+      "fma": "AUTO",
+      "has-x86-fma": "0",
+      "simd": "on",
+      "simulated-consteval": "off",
+      "tu-x86-fma": "0",
+      "x86": "0"
+    },
+    "harness": {
+      "qdpp": "off",
+      "tlfloat": "off"
+    },
+    "library": {
+      "arm64": "1",
+      "fast-math": "off",
+      "fast-math-request": "AUTO",
+      "fma": "AUTO",
+      "runtime-fma": "available",
+      "simd": "on",
+      "tu-x86-fma": "0",
+      "x86": "0"
+    },
+    "library_strategy": {
+      "baseline-arm64": "1",
+      "compiled-x86-backend": "0",
+      "msvc-guarded": "0",
+      "neon": "1",
+      "qd-simd": "1",
+      "runtime-check": "0",
+      "runtime-path": "1",
+      "scalar-x86": "0",
+      "sse2": "0",
+      "trig-simd": "1",
+      "wasm-simd": "0"
+    }
+  },
+  "consumer_mode": "fastmath",
+  "created_utc": "2026-09-12T21:20:26.445656+00:00",
+  "executables": {
+    "accuracy": {
+      "path": "/Users/m1/Documents/fltx/build/macos-arm64-appleclang-release/validation/fltx_accuracy_fastmath",
+      "sha256": "a8f534c3f666656f1ef14784a8d13efefb498364b7e2fbacd660a5dc9dcf0e97",
+      "wasm-sha256": "not-present"
+    },
+    "benchmark": {
+      "path": "/Users/m1/Documents/fltx/build/macos-arm64-appleclang-release/validation/fltx_benchmark_fastmath",
+      "sha256": "b9199a1e06e0b688c884b6caa845d1c451557120dd5f6aefefb23d397c387b42",
+      "wasm-sha256": "not-present"
+    }
+  },
+  "host": {
+    "machine": "arm64",
+    "node": "not-used",
+    "os": "Darwin",
+    "os-release": "25.6.0",
+    "processor": "arm",
+    "python": "CPython 3.14.7"
+  },
+  "implementations": {
+    "dd": [
+      {
+        "id": "fltx",
+        "label": "fltx bl::fdd",
+        "short_label": "fltx"
+      }
+    ],
+    "qd": [
+      {
+        "id": "fltx",
+        "label": "fltx bl::fqd",
+        "short_label": "fltx"
+      }
+    ]
+  },
+  "outputs": {
+    "AppleClang_dd_fastmath.csv": "df6cfed22979067e49d18b664dfbda9b44ac13e117de63158c26f6ae6c686b0b",
+    "AppleClang_qd_fastmath.csv": "2ab19ae6d3dd4aafed709cfef5a8693dc8cda617cc311ad497d5827f834d6c59",
+    "detail/AppleClang_dd_fastmath_accuracy.csv": "90722a12a4821b28e1440e680f186a850f228b8b4635428eb52e78d7ba6f1bcf",
+    "detail/AppleClang_dd_fastmath_benchmark.csv": "29ef394cb477b80b48731b2624194fd2a1cae3f8b4b423f6773fa0579cd918e0",
+    "detail/AppleClang_qd_fastmath_accuracy.csv": "ab83d85e3d8031adb36f28290c7f7c4b9763eb8107e41ecb776ef600dc34cd83",
+    "detail/AppleClang_qd_fastmath_benchmark.csv": "ad792fd002ac874aa0b8381d5b8d16a1e181d44a20e071a9bb17f6fb530a0657"
+  },
+  "phases": {
+    "dd.accuracy": {
+      "output": "AppleClang_dd_fastmath_accuracy.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "dd.benchmark": {
+      "output": "AppleClang_dd_fastmath_benchmark.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "qd.accuracy": {
+      "output": "AppleClang_qd_fastmath_accuracy.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "qd.benchmark": {
+      "output": "AppleClang_qd_fastmath_benchmark.csv",
+      "return_code": 0,
+      "status": "passed"
+    }
+  },
+  "phases_requested": [
+    "accuracy",
+    "benchmark"
+  ],
+  "platform": "macos",
+  "precisions": [
+    "dd",
+    "qd"
+  ],
+  "run_id": "768a732e632441418371656f83b9dc25",
+  "sample_mode": "full",
+  "schema_version": "6",
+  "source_fingerprint": "1908e8ba6c886da6f2ba18b8b720f9dcf8a71e061ccba23011424d3d0f694b2a",
+  "source_revision": "844436dea5ed7db933d8911410bd3eb2ea484fc2-dirty-1908e8ba6c88",
+  "status": "complete"
+}

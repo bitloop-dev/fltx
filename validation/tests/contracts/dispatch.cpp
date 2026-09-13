@@ -75,6 +75,18 @@ namespace
             return dispatch_probe<T, Add>(value);
         }
     };
+
+    struct cv_callable_probe
+    {
+        cv_callable_probe() = default;
+        cv_callable_probe(const cv_callable_probe&) = delete;
+
+        template<class... Ts>
+        int operator()(auto...) { return 1; }
+
+        template<class... Ts>
+        int operator()(auto...) const { return 2; }
+    };
 }
 
 TEST_CASE("runtime float selection maps to the documented template type", "[contracts][dispatch]")
@@ -116,6 +128,27 @@ TEST_CASE("type tags, member functions, and callable objects share dispatch sema
         bl_enum_type(bl::FloatType::FDD),
         bl_enum_type(bl::FloatType::F64),
         true) == 16);
+}
+
+TEST_CASE("dispatch preserves callable constness without copying the callable", "[contracts][dispatch]")
+{
+    cv_callable_probe mutable_callable;
+    const cv_callable_probe const_callable;
+    const auto check = [](auto& callable, int expected) {
+        CHECK(bl_table_invoke(callable) == expected);
+        CHECK(bl_table_invoke(callable, true) == expected);
+        CHECK(bl_table_invoke(callable, dispatch_mode::add, false) == expected);
+        CHECK(bl_table_invoke(callable, bl_type<bl::fdd>, true) == expected);
+        CHECK(bl_table_invoke<bl::f64>(callable, false) == expected);
+        CHECK(bl_table_invoke(callable,
+            bl_enum_type(bl::FloatType::FDD),
+            bl_enum_type(bl::FloatType::FQD),
+            dispatch_mode::subtract, true) == expected);
+    };
+
+    check(mutable_callable, 1);
+    check(const_callable, 2);
+    CHECK(bl_table_invoke(cv_callable_probe{}, true) == 1);
 }
 
 TEST_CASE("raw enum dispatch supports explicit sparse domains", "[contracts][dispatch]")

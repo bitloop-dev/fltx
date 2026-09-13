@@ -72,6 +72,74 @@ namespace
     }
 
     template<class T>
+    constexpr bool native_integer_rounding_keeps_limits(T unit = T{ 1 })
+    {
+        constexpr long long last_representable = std::numeric_limits<T>::digits == 24
+            ? 9223371487098961920LL : 9223372036854774784LL;
+        return bl::llround(T{ 0x1p63 } * unit) == 0 &&
+               bl::llround(T{ -0x1p63 } * unit) == std::numeric_limits<long long>::min() &&
+               bl::llround(T{ -0x1p64 } * unit) == 0 &&
+               bl::llround(static_cast<T>(last_representable) * unit) == last_representable &&
+               bl::lround(-static_cast<T>(std::numeric_limits<long>::min()) * unit) == 0 &&
+               bl::lround(static_cast<T>(std::numeric_limits<long>::min()) * unit) ==
+                   std::numeric_limits<long>::min() &&
+               bl::llround(T{ 42.5 } * unit) == 43 &&
+               bl::llround(T{ -42.5 } * unit) == -43;
+    }
+
+    template<class T>
+    constexpr bool subnormal_remainder_keeps_quotient(double unit = 1.0)
+    {
+        struct witness
+        {
+            double x, y, remainder;
+            int quotient;
+            double x_tail = 0.0, y_tail = 0.0, remainder_tail = 0.0;
+        };
+        constexpr witness cases[]{
+            {0x1p-1074, 0x1p-1074, 0.0, 1},
+            {0x1p-1073, 0x0.0000000000003p-1022, -0x1p-1074, 1},
+            {0x0.0000000000003p-1022, 0x1p-1073, -0x1p-1074, 2},
+            {0x1p-1074, 0x1p-1073, 0x1p-1074, 0},
+            {0x1.8p-1000, 0x1p-1000, 0x1p-1001, 1, 0x1p-1074, 0x1p-1074},
+            {0.5, 1.0, -0.5, 1, 0.0, -0x1p-1074, 0x1p-1074}
+        };
+        for (const auto& row : cases)
+        {
+            for (bool negative_x : {false, true})
+            {
+                for (bool negative_y : {false, true})
+                {
+                    T x{(negative_x ? -row.x : row.x) * unit};
+                    T y{negative_y ? -row.y : row.y};
+                    T expected{negative_x ? -row.remainder : row.remainder};
+                    if constexpr (bl::fltx_fdd<T>)
+                    {
+                        x.lo = negative_x ? -row.x_tail : row.x_tail;
+                        y.lo = negative_y ? -row.y_tail : row.y_tail;
+                        expected.lo = negative_x ? -row.remainder_tail : row.remainder_tail;
+                    }
+                    else
+                    {
+                        x.x1 = negative_x ? -row.x_tail : row.x_tail;
+                        y.x1 = negative_y ? -row.y_tail : row.y_tail;
+                        expected.x1 = negative_x ? -row.remainder_tail : row.remainder_tail;
+                    }
+                    const int expected_quotient = negative_x != negative_y ? -row.quotient : row.quotient;
+                    int quotient = 123;
+                    const T result = bl::remquo(x, y, &quotient);
+                    if (result != expected || quotient != expected_quotient ||
+                        bl::remainder(x, y) != expected ||
+                        bl::remquo(x, y, nullptr) != expected ||
+                        (row.remainder == 0.0 && bl::signbit(result) != negative_x))
+                        return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    template<class T>
     void check_selection_and_interpolation()
     {
         CAPTURE(sizeof(T), std::numeric_limits<T>::digits);
@@ -906,6 +974,13 @@ TEST_CASE("decimal and significant-figure rounding preserve tie rules", "[contra
 
 TEST_CASE("integer rounding covers expansion limbs at signed boundaries", "[contracts][math][rounding]")
 {
+    STATIC_CHECK(native_integer_rounding_keeps_limits<float>());
+    STATIC_CHECK(native_integer_rounding_keeps_limits<double>());
+    volatile float float_unit = 1.0f;
+    volatile double double_unit = 1.0;
+    CHECK(native_integer_rounding_keeps_limits<float>(float_unit));
+    CHECK(native_integer_rounding_keeps_limits<double>(double_unit));
+
     const bl::fdd long_min_dd{
         static_cast<double>(std::numeric_limits<long>::min()), 0.5
     };
@@ -1095,6 +1170,16 @@ TEST_CASE("rounding and remainder special values preserve signs", "[contracts][m
 #endif
     check_rounding_and_remainder_special_values<bl::fdd>("dd");
     check_rounding_and_remainder_special_values<bl::fqd>("qd");
+}
+
+TEST_CASE("subnormal remainders retain the exact half-divisor decision",
+          "[contracts][math][remainder]")
+{
+    STATIC_CHECK(subnormal_remainder_keeps_quotient<bl::fdd>());
+    STATIC_CHECK(subnormal_remainder_keeps_quotient<bl::fqd>());
+    volatile double unit = 1.0;
+    CHECK(subnormal_remainder_keeps_quotient<bl::fdd>(unit));
+    CHECK(subnormal_remainder_keeps_quotient<bl::fqd>(unit));
 }
 
 TEST_CASE("fixed rounding ignores the process rounding mode", "[contracts][math][rounding]")

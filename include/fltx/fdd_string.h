@@ -498,60 +498,15 @@ namespace detail::_dd // primitives and kernels
             exp10 = detail::exact_decimal::decimal_exponent_from_components(magnitude, common_exp);
 
             detail::exact_decimal::biguint coefficient;
-            int exact_exp10 = exp10;
-            if (detail::exact_decimal::exact_significant_decimal<exact_traits>(
-                    magnitude,
-                    common_exp,
-                    sig,
-                    coefficient,
-                    exact_exp10))
+            (void)detail::exact_decimal::exact_significant_decimal<exact_traits>(
+                magnitude, common_exp, sig, coefficient, exp10);
+            digits = detail::exact_decimal::to_decimal_string<String>(coefficient);
+            if (static_cast<int>(digits.size()) < sig)
             {
-                exp10 = exact_exp10;
-                digits = detail::exact_decimal::to_decimal_string<String>(coefficient);
-                if (static_cast<int>(digits.size()) < sig)
-                {
-                    const std::size_t zero_pad_count = static_cast<std::size_t>(sig - static_cast<int>(digits.size()));
-                    digits.insert(0, zero_pad_count, '0');
-                }
-                return true;
+                const std::size_t zero_pad_count = static_cast<std::size_t>(sig - static_cast<int>(digits.size()));
+                digits.insert(0, zero_pad_count, '0');
             }
-
-            fdd_s m = x * bl::detail::_dd_impl::pow10_fdd(-exp10);
-            if (detail::fp::isfinite(m.hi))
-            {
-                detail::exact_decimal::biguint candidate;
-                for (int i = 0; i < sig; ++i)
-                {
-                    int digit = static_cast<int>(detail::fp::floor(m.hi));
-                    if (digit < 0) digit = 0;
-                    else if (digit > 9) digit = 9;
-
-                    candidate.mul_small(10);
-                    candidate.add_small(static_cast<std::uint32_t>(digit));
-
-                    m = mul_by_double_print(sub_by_double_print(m, static_cast<double>(digit)), 10.0);
-                }
-
-                detail::exact_decimal::biguint coefficient;
-                int corrected_exp10 = exp10;
-                if (detail::exact_decimal::exact_significant_decimal_from_floor_candidate<exact_traits>(
-                        magnitude,
-                        common_exp,
-                        sig,
-                        candidate,
-                        corrected_exp10,
-                        coefficient))
-                {
-                    exp10 = corrected_exp10;
-                    digits = detail::exact_decimal::to_decimal_string<String>(coefficient);
-                    if (static_cast<int>(digits.size()) < sig)
-                    {
-                        const std::size_t zero_pad_count = static_cast<std::size_t>(sig - static_cast<int>(digits.size()));
-                        digits.insert(0, zero_pad_count, '0');
-                    }
-                    return true;
-                }
-            }
+            return true;
         }
 
         return detail::exact_decimal::exact_scientific_digits<exact_traits>(x, sig, digits, exp10);
@@ -888,7 +843,7 @@ namespace detail::_dd // primitives and kernels
 
         static constexpr value_type exact_uint64_to_value(std::uint64_t value, bool neg)
         {
-            value_type out = detail::_dd::uint64_to_dd(value);
+            value_type out = detail::_dd::integer_to_dd(value);
             return neg ? -out : out;
         }
 

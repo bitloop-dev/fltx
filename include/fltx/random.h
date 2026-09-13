@@ -233,13 +233,14 @@ namespace detail::random
 
         constexpr int limb_bits = std::numeric_limits<double>::digits;
         constexpr result_type inclusive_range = URBG::max() - URBG::min();
-        constexpr int result_digits = std::numeric_limits<result_type>::digits;
+        // The result type can be wider than the generator's actual output range.
+        constexpr int range_digits = bit_width(inclusive_range);
 
-        if constexpr (result_digits >= limb_bits && is_all_low_bits_set(inclusive_range))
+        if constexpr (range_digits >= limb_bits && is_all_low_bits_set(inclusive_range))
         {
             constexpr result_type mask = word_mask<result_type>(limb_bits);
             const result_type sample = static_cast<result_type>(g() - URBG::min());
-            return static_cast<std::uint64_t>((sample >> (result_digits - limb_bits)) & mask);
+            return static_cast<std::uint64_t>((sample >> (range_digits - limb_bits)) & mask);
         }
         else
         {

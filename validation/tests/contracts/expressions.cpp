@@ -545,21 +545,116 @@ TEST_CASE("numeric helpers materialize mixed fqd expressions without manual cast
     require_same_limbs(owned_list.second, bl::fqd{ 3.25 });
 }
 
+#if !defined(FLTX_FAST_MATH)
+TEST_CASE("fqd expression division uses canonical tiny-divisor scaling",
+          "[contracts][expressions]")
+{
+    const bl::fqd zero{ 0.0 }, one{ 1.0 };
+    for (double input : { 0x1p-499, 0x1p-500, 0x1p-501, 0x1p-1022, 0x1p-1024, 0x1p-1074 })
+        for (double sign : { 1.0, -1.0 })
+        {
+            volatile double tiny_input = input * sign;
+            const bl::fqd t{ tiny_input };
+            CAPTURE(input, sign);
+            require_same_limbs(t / (t + 0.0), one);
+            require_same_limbs(t / (t + zero), one);
+            require_same_limbs(t / (t - zero), one);
+            require_same_limbs(t / (0.0 - t), -one);
+            require_same_limbs((t * one + zero) / t, one);
+            require_same_limbs((t * one - zero) / (t + 0.0), one);
+            require_same_limbs((zero - t * one) / (t + 0.0), -one);
+            require_same_limbs((t * one + zero * one) / (t + 0.0), one);
+            require_same_limbs((t * one - zero * one) / t, one);
+            require_same_limbs((t + zero + zero) / (t + 0.0), one);
+            require_same_limbs((t - zero + zero) / t, one);
+            require_same_limbs((t + zero - zero) / (t + 0.0), one);
+            require_same_limbs((t - zero - zero) / t, one);
+            require_same_limbs((zero + t * 1.0) / (t + 0.0), one);
+            require_same_limbs((zero - t * 1.0) / t, -one);
+            require_same_limbs((t * 1.0 - zero) / (t + 0.0), one);
+        }
+}
+
+TEST_CASE("fqd fused expression special values match canonical storage operations",
+          "[contracts][expressions]")
+{
+    const auto shapes = std::tuple{
+        [](auto a, auto b, auto c, auto) { return a + b + c; },
+        [](auto a, auto b, auto c, auto) { return a - b + c; },
+        [](auto a, auto b, auto c, auto) { return a + b - c; },
+        [](auto a, auto b, auto c, auto) { return a - b - c; },
+        [](auto a, auto b, auto c, auto d) { return a + b + c + d; },
+        [](auto a, auto b, auto c, auto) { return a * b + c; },
+        [](auto a, auto b, auto c, auto) { return a * b - c; },
+        [](auto a, auto b, auto c, auto) { return a - b * c; },
+        [](auto a, auto b, auto c, auto d) { return a * b + c * d; },
+        [](auto a, auto b, auto c, auto d) { return a * b - c * d; },
+        [](auto a, auto b, auto c, auto d) { return a * b + c * d + a; },
+        [](auto a, auto b, auto c, auto d) { return a * b - c * d - a; },
+        [](auto a, auto b, auto c, auto d) { return a * b + c * d + a * b; },
+        [](auto a, auto b, auto c, auto d) { return a * b + c * d + a * b + c * d; },
+        [](auto a, auto b, auto, auto) { return a * 2.0 + b; },
+        [](auto a, auto b, auto, auto) { return a * 1.5 - b; },
+        [](auto a, auto b, auto, auto) { return a - b * 1.5; },
+        [](auto a, auto b, auto, auto) { return a * 1.5 + b * 2.5; },
+        [](auto a, auto b, auto c, auto) { return a * 1.5 + b * 2.5 + c; },
+        [](auto a, auto b, auto c, auto d) { return (a * b + c) / d; },
+        [](auto a, auto b, auto c, auto) { return a / (b + c); },
+        [](auto a, auto b, auto c, auto) { return a / (b - c); },
+        [](auto a, auto b, auto, auto) { return a / (b + 1.0); },
+        [](auto a, auto b, auto, auto) { return a / (1.0 - b); },
+        [](auto a, auto b, auto c, auto d) { return (a * b + c) / (d + 1.0); },
+        [](auto a, auto b, auto c, auto d) { return (a + b - c) / (d + 1.0); }
+    };
+    const double inf = std::numeric_limits<double>::infinity();
+    const double nan = std::numeric_limits<double>::quiet_NaN();
+    const std::array values{ 0.0, 1.0, -2.0, inf, -inf, nan };
+    const auto check_shape = [&](const auto& shape)
+    {
+        for (double a : values)
+            for (double b : values)
+                for (double c : values)
+                    for (double d : values)
+                    {
+                        const bl::fqd actual = shape(bl::fqd{ a }, bl::fqd{ b }, bl::fqd{ c }, bl::fqd{ d });
+                        const bl::fqd_s expected = shape(bl::fqd_s{ a }, bl::fqd_s{ b }, bl::fqd_s{ c }, bl::fqd_s{ d });
+                        CAPTURE(a, b, c, d);
+                        if (bl::isnan(expected))
+                            CHECK(bl::isnan(actual));
+                        else
+                            CHECK(actual == expected);
+                        if (!bl::isfinite(expected))
+                        {
+                            CHECK(actual.x1 == 0.0);
+                            CHECK(actual.x2 == 0.0);
+                            CHECK(actual.x3 == 0.0);
+                        }
+                    }
+    };
+    std::apply([&](const auto&... shape) { (check_shape(shape), ...); }, shapes);
+}
+#endif
+
 TEST_CASE("fqd multiplication remains fused with a following subtraction",
           "[contracts][expressions]")
 {
-    const bl::fqd rounded_product{
+    constexpr bl::fqd rounded_product{
         -0x1.f800000000000p-1,
         -0x1.09d8792fb4c49p-112,
         -0x1.5a5ead789df78p-166,
         -0x1.66781f7a94e69p-220
     };
-    const bl::fqd independently_rounded_residual{
+    constexpr bl::fqd independently_rounded_residual{
         0x1.d529c8e2c2693p-274,
         0x1.f25380232caccp-328,
         -0x1.9cd5b6c082469p-386,
         -0x1.5eb53f5b41559p-441
     };
+
+    constexpr bl::fqd constant_residual = expression_x * expression_y - rounded_product;
+    STATIC_CHECK(constant_residual != bl::fqd{ 0.0 });
+    STATIC_CHECK(bl::abs(constant_residual - independently_rounded_residual) <=
+                 bl::abs(independently_rounded_residual) * bl::fqd{ 0x1p-50 });
 
     const bl::fqd residual = expression_x * expression_y - rounded_product;
     const auto product = expression_x * expression_y;

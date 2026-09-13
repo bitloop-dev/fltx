@@ -205,14 +205,8 @@ BL_FORCE_INLINE constexpr int frexp_exponent(double x) noexcept
     if (exp_bits != 0)
         return static_cast<int>(exp_bits) - 1022;
 
-    std::uint64_t frac = bits & ((std::uint64_t{ 1 } << 52) - 1);
-    int e = -1022;
-    while ((frac & (std::uint64_t{ 1 } << 52)) == 0)
-    {
-        frac <<= 1;
-        --e;
-    }
-    return e + 1;
+    const std::uint64_t fraction = bits & ((std::uint64_t{ 1 } << 52) - 1);
+    return static_cast<int>(std::bit_width(fraction)) - 1074;
 }
 
 BL_FORCE_INLINE constexpr int frexp_exponent_limb(double value) noexcept
@@ -229,24 +223,12 @@ BL_FORCE_INLINE constexpr int frexp_exponent_limb(double value) noexcept
 
 BL_FORCE_INLINE constexpr int highest_bit_index(std::uint64_t value) noexcept
 {
-    int index = -1;
-    while (value != 0)
-    {
-        value >>= 1;
-        ++index;
-    }
-    return index;
+    return static_cast<int>(std::bit_width(value)) - 1;
 }
 
 [[nodiscard]] BL_FORCE_INLINE constexpr int bit_length_u64(std::uint64_t value) noexcept
 {
-    int bits = 0;
-    while (value != 0)
-    {
-        ++bits;
-        value >>= 1;
-    }
-    return bits;
+    return static_cast<int>(std::bit_width(value));
 }
 
 struct pow2_scale_info

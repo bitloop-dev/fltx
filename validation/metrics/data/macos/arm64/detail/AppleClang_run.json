@@ -1,0 +1,175 @@
+{
+  "accuracy_samples": 65536,
+  "architecture": "arm64",
+  "benchmark_minimum_trial_ms": 25,
+  "benchmark_samples": {
+    "dd": 81920,
+    "qd": 40960
+  },
+  "benchmark_trials": 7,
+  "compiler": "AppleClang",
+  "configuration": {
+    "build": {
+      "architecture": "arm64",
+      "compiler-id": "AppleClang",
+      "compiler-version": "21.0.0.21000101",
+      "config": "Release",
+      "flags-hash": "4ec6f98f7a17b56afacadda2c404cbafb898384b1c47903a8f57017865a10635",
+      "frontend-variant": "GNU",
+      "optimized": "1",
+      "processor": "arm64",
+      "source-fingerprint": "1908e8ba6c886da6f2ba18b8b720f9dcf8a71e061ccba23011424d3d0f694b2a",
+      "system": "Darwin"
+    },
+    "consumer": {
+      "arm64": "1",
+      "fast-math": "off",
+      "fma": "AUTO",
+      "has-x86-fma": "0",
+      "simd": "on",
+      "simulated-consteval": "off",
+      "tu-x86-fma": "0",
+      "x86": "0"
+    },
+    "harness": {
+      "qdpp": "on",
+      "tlfloat": "on"
+    },
+    "library": {
+      "arm64": "1",
+      "fast-math": "off",
+      "fast-math-request": "AUTO",
+      "fma": "AUTO",
+      "runtime-fma": "available",
+      "simd": "on",
+      "tu-x86-fma": "0",
+      "x86": "0"
+    },
+    "library_strategy": {
+      "baseline-arm64": "1",
+      "compiled-x86-backend": "0",
+      "msvc-guarded": "0",
+      "neon": "1",
+      "qd-simd": "1",
+      "runtime-check": "0",
+      "runtime-path": "1",
+      "scalar-x86": "0",
+      "sse2": "0",
+      "trig-simd": "1",
+      "wasm-simd": "0"
+    }
+  },
+  "consumer_mode": "strict",
+  "created_utc": "2026-09-12T20:43:59.428869+00:00",
+  "executables": {
+    "accuracy": {
+      "path": "/Users/m1/Documents/fltx/build/macos-arm64-appleclang-release/validation/fltx_accuracy",
+      "sha256": "bc37e917f51f4efa70dcc065114840d756a3662425cf38c3401c058c767ba120",
+      "wasm-sha256": "not-present"
+    },
+    "benchmark": {
+      "path": "/Users/m1/Documents/fltx/build/macos-arm64-appleclang-release/validation/fltx_benchmark",
+      "sha256": "eb2ac9cbceb27e1c77b7aee20120426c250df129a09b24d16b243e9ce03bf447",
+      "wasm-sha256": "not-present"
+    }
+  },
+  "host": {
+    "machine": "arm64",
+    "node": "not-used",
+    "os": "Darwin",
+    "os-release": "25.6.0",
+    "processor": "arm",
+    "python": "CPython 3.14.7"
+  },
+  "implementations": {
+    "dd": [
+      {
+        "id": "fltx",
+        "label": "fltx bl::fdd",
+        "short_label": "fltx"
+      },
+      {
+        "id": "qdpp",
+        "label": "qdpp dd_real",
+        "short_label": "ddreal"
+      },
+      {
+        "id": "cppdd",
+        "label": "boost::multiprecision::cpp_double_double",
+        "short_label": "cppdd"
+      },
+      {
+        "id": "tlfloat",
+        "label": "TLFloat Quad",
+        "short_label": "tlquad"
+      }
+    ],
+    "qd": [
+      {
+        "id": "fltx",
+        "label": "fltx bl::fqd",
+        "short_label": "fltx"
+      },
+      {
+        "id": "qdpp",
+        "label": "qdpp qd_real",
+        "short_label": "qdreal"
+      },
+      {
+        "id": "mpfr64",
+        "label": "boost::multiprecision::mpfr_float_backend<64>",
+        "short_label": "mpfr64"
+      },
+      {
+        "id": "tlfloat",
+        "label": "TLFloat Octuple",
+        "short_label": "tloct"
+      }
+    ]
+  },
+  "outputs": {
+    "AppleClang_dd.csv": "978a0bb7611f5c18a469a93bdb11b4ac9844a368aba63e47c819e36cd1300d5e",
+    "AppleClang_qd.csv": "66424be72893df7a915725d4cffbb309e12bad3017027c30b44c381aca1c1dcd",
+    "detail/AppleClang_dd_accuracy.csv": "dea48579f105a9574a3ab46bf57ee0c57d2bb415c76fa92bcce118e684b7390f",
+    "detail/AppleClang_dd_benchmark.csv": "aecfa499a3c77508895ceee89157d9644d207268e62cf4b9f50786cdba0d88cf",
+    "detail/AppleClang_qd_accuracy.csv": "17ddef4217456b2a018cb49a3f15ece647263391b272ef81b10ae4fe270cf1f4",
+    "detail/AppleClang_qd_benchmark.csv": "712309a64699a5d32d714f7288931ac4b9d634d447cf930fe1719823fbb3b8ac"
+  },
+  "phases": {
+    "dd.accuracy": {
+      "output": "AppleClang_dd_accuracy.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "dd.benchmark": {
+      "output": "AppleClang_dd_benchmark.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "qd.accuracy": {
+      "output": "AppleClang_qd_accuracy.csv",
+      "return_code": 0,
+      "status": "passed"
+    },
+    "qd.benchmark": {
+      "output": "AppleClang_qd_benchmark.csv",
+      "return_code": 0,
+      "status": "passed"
+    }
+  },
+  "phases_requested": [
+    "accuracy",
+    "benchmark"
+  ],
+  "platform": "macos",
+  "precisions": [
+    "dd",
+    "qd"
+  ],
+  "run_id": "0a13a8b72b89446d960e941fa20891f0",
+  "sample_mode": "full",
+  "schema_version": "6",
+  "source_fingerprint": "1908e8ba6c886da6f2ba18b8b720f9dcf8a71e061ccba23011424d3d0f694b2a",
+  "source_revision": "844436dea5ed7db933d8911410bd3eb2ea484fc2-dirty-1908e8ba6c88",
+  "status": "complete"
+}

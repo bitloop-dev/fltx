@@ -100,8 +100,20 @@ struct fdd_s
         return *this;
     }
 
-    BL_FORCE_INLINE constexpr fdd_s& operator=(uint64_t u) noexcept;
-    BL_FORCE_INLINE constexpr fdd_s& operator=(int64_t v) noexcept;
+    BL_FORCE_INLINE constexpr fdd_s& operator=(uint64_t u) noexcept
+    {
+        detail::fp::uint64_to_exact_double_pair(u, hi, lo);
+        return *this;
+    }
+
+    BL_FORCE_INLINE constexpr fdd_s& operator=(int64_t v) noexcept
+    {
+        detail::fp::int64_to_exact_double_pair(v, hi, lo);
+        // Preserve dd's positive zero tail without renormalizing an exact pair.
+        if (std::bit_cast<std::uint64_t>(lo) == 0x8000000000000000ull)
+            lo = 0.0;
+        return *this;
+    }
 
     template<class T, std::enable_if_t<std::is_integral_v<T>&& std::is_signed_v<T> && (sizeof(T) <= 8), int> = 0>
     BL_FORCE_INLINE constexpr fdd_s& operator=(T v) noexcept
@@ -262,6 +274,14 @@ struct fdd_s
     // Spacing above 1.0 in the public nominal 106-bit model.
     [[nodiscard]] static constexpr fdd_s eps() { return { 0x1p-105, 0.0 }; }
 };
+
+template<class T>
+[[nodiscard]] BL_FORCE_INLINE constexpr fdd_s detail::_dd::integer_to_dd(T value) noexcept
+{
+    fdd_s out{};
+    out = value;
+    return out;
+}
 
 struct fdd : public fdd_s
 {

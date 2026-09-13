@@ -780,44 +780,25 @@ namespace detail::_dd_impl
         fast = fmod_fast_small_quotient_abs_with_quotient(ax, ay, r_abs, quotient_abs, true);
     }
 
-    if (fast)
-    {
-        const fdd_s half = mul_double_product_inline(ay, 0.5);
-        const int half_cmp = detail::_dd::fmod_compare_remainder_to_half(r_abs, half);
-        if (half_cmp > 0 || (half_cmp == 0 && ((quotient_abs & 1u) != 0u)))
-        {
-            r_abs = sub_finite_inline(r_abs, ay);
-            ++quotient_abs;
-        }
+    if (!fast)
+        r_abs = fmod_exact_fixed_limb_abs_with_quotient_mod(ax, ay, quotient_abs);
 
-        if (quo)
-            *quo = detail::fp::remquo_low_quotient_bits(quotient_abs, quotient_negative);
-
-        fdd_s r = x_negative ? -r_abs : r_abs;
-        if (iszero(r))
-            return detail::_dd::signed_zero(x_negative);
-
-        return r;
-    }
-
-    std::uint64_t quotient_mod = 0;
-    r_abs = fmod_exact_fixed_limb_abs_with_quotient_mod(ax, ay, quotient_mod);
-    const fdd_s half = mul_double_product_inline(ay, 0.5);
-    const int half_cmp = detail::_dd::fmod_compare_remainder_to_half(r_abs, half);
-
-    if (half_cmp > 0)
+    // At the limb floor compare r with y-r. This avoids rounding y/2 and
+    // does not need to double a potentially large, sparsely populated head.
+    const bool half_at_limb_floor = ay.hi < 0x1p-1021 ||
+        (ay.lo != 0.0 && detail::fp::absd(ay.lo) < 0x1p-1021);
+    const fdd_s half = half_at_limb_floor
+        ? sub_finite_inline(ay, r_abs) : mul_double_product_inline(ay, 0.5);
+    const int half_cmp = detail::_dd::fmod_compare_remainder_to_half(
+        r_abs, half);
+    if (half_cmp > 0 || (half_cmp == 0 && ((quotient_abs & 1u) != 0u)))
     {
         r_abs = sub_finite_inline(r_abs, ay);
-        ++quotient_mod;
-    }
-    else if (half_cmp == 0 && ((quotient_mod & 1u) != 0u))
-    {
-        r_abs = sub_finite_inline(r_abs, ay);
-        ++quotient_mod;
+        ++quotient_abs;
     }
 
     if (quo)
-        *quo = detail::fp::remquo_low_quotient_bits(quotient_mod, quotient_negative);
+        *quo = detail::fp::remquo_low_quotient_bits(quotient_abs, quotient_negative);
 
     fdd_s r = x_negative ? -r_abs : r_abs;
     if (iszero(r))

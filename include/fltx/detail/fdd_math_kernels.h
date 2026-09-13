@@ -378,26 +378,6 @@ namespace detail::_dd // primitives and kernels
             fmod_u128_bit_length(value) + bits > 128;
     }
 
-    BL_FORCE_INLINE constexpr fmod_u128 fmod_u128_mod_shift_subtract(fmod_u128 numerator, const fmod_u128& denominator)
-    {
-        if (fmod_u128_is_zero(denominator))
-            return {};
-        if (fmod_u128_compare(numerator, denominator) < 0)
-            return numerator;
-
-        int shift = fmod_u128_bit_length(numerator) - fmod_u128_bit_length(denominator);
-        fmod_u128 shifted = fmod_u128_shl_bits(denominator, shift);
-
-        for (; shift >= 0; --shift)
-        {
-            if (fmod_u128_compare(numerator, shifted) >= 0)
-                fmod_u128_sub_inplace(numerator, shifted);
-            shifted = fmod_u128_shr_bits(shifted, 1);
-        }
-
-        return numerator;
-    }
-
     BL_FORCE_INLINE constexpr fmod_u128 fmod_u128_mod_shift_subtract_with_quotient_mod(
         fmod_u128 numerator,
         const fmod_u128& denominator,
@@ -424,15 +404,6 @@ namespace detail::_dd // primitives and kernels
         }
 
         return numerator;
-    }
-
-    BL_FORCE_INLINE constexpr fmod_u128 fmod_u128_double_mod(fmod_u128 value, const fmod_u128& modulus)
-    {
-        const bool overflow = (value.hi >> 63) != 0u;
-        value = fmod_u128_shl1(value);
-        if (overflow || fmod_u128_compare(value, modulus) >= 0)
-            fmod_u128_sub_inplace(value, modulus);
-        return value;
     }
 
     BL_FORCE_INLINE constexpr fmod_u128 fmod_u128_double_mod_with_quotient_bit(
@@ -1105,7 +1076,7 @@ namespace detail::_dd // primitives and kernels
             return false;
 
         constexpr std::int64_t int64_min = std::numeric_limits<std::int64_t>::lowest();
-        if (xi == detail::_dd_impl::to_dd(int64_min))
+        if (xi == detail::_dd::integer_to_dd(int64_min))
         {
             out = int64_min;
             return true;
@@ -1115,7 +1086,7 @@ namespace detail::_dd // primitives and kernels
             return false;
 
         const int64_t hi_part = static_cast<int64_t>(xi.hi);
-        const fdd_s rem = sub_finite_inline(xi, detail::_dd_impl::to_dd(hi_part));
+        const fdd_s rem = sub_finite_inline(xi, detail::_dd::integer_to_dd(hi_part));
         out = hi_part + static_cast<int64_t>(rem.hi + rem.lo);
         return true;
     }
@@ -1202,8 +1173,8 @@ namespace detail::_dd // primitives and kernels
 
         constexpr auto lo_i = static_cast<std::int64_t>(std::numeric_limits<SignedInt>::lowest());
         constexpr auto hi_i = static_cast<std::int64_t>(std::numeric_limits<SignedInt>::max());
-        const fdd_s lo = detail::_dd_impl::to_dd(lo_i);
-        const fdd_s hi = detail::_dd_impl::to_dd(hi_i);
+        const fdd_s lo = detail::_dd::integer_to_dd(lo_i);
+        const fdd_s hi = detail::_dd::integer_to_dd(hi_i);
 
         if (x < lo || x > hi)
             return 0;
@@ -1226,7 +1197,7 @@ namespace detail::_dd // primitives and kernels
 
         constexpr auto lo_i = static_cast<std::int64_t>(std::numeric_limits<SignedInt>::lowest());
         constexpr auto hi_i = static_cast<std::int64_t>(std::numeric_limits<SignedInt>::max());
-        if (x < detail::_dd_impl::to_dd(lo_i) || x > detail::_dd_impl::to_dd(hi_i))
+        if (x < detail::_dd::integer_to_dd(lo_i) || x > detail::_dd::integer_to_dd(hi_i))
             return false;
 
         std::int64_t base = static_cast<std::int64_t>(x.hi);

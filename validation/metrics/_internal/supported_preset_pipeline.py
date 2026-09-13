@@ -45,7 +45,9 @@ def main(root: Path, argv: list[str] | None = None) -> int:
             flush=True,
         )
         try:
-            outputs = preset_pipeline.run_pipeline_from_args(root, preset, args)
+            outputs = preset_pipeline.run_pipeline_from_args(
+                root, preset, args, native_baseline=False,
+            )
         except preset_pipeline.PipelineError as error:
             print(
                 f"all-supported metrics failed for {preset}: {error}",

@@ -15,7 +15,9 @@ namespace bl::detail::_qd_runtime
     BL_NO_INLINE fqd_s sqrt(const fqd_s& a)
     {
 #if BL_FP_BARRIER_ACTIVE
-        if (detail::_qd::has_subnormal_limb(a)) [[unlikely]]
+        // Leave a leading-exponent bit free after the 512-bit upward scale.
+        if (detail::_qd::has_subnormal_limb(a) &&
+            detail::fp::absd(a.x0) < 0x1p511) [[unlikely]]
         {
             constexpr int input_scale = 512;
             return detail::_qd::scale_terms_guarded(

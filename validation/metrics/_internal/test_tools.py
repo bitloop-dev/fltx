@@ -22,6 +22,7 @@ import build_tables
 import build_performance
 import build_overview
 import build_profile_comparison
+import build_fixed_constexpr
 import manifest
 import preset_pipeline
 import report_pipeline
@@ -2408,6 +2409,16 @@ class RenderingTests(unittest.TestCase):
         )
         self.assertIn(">TLFloat (Quad)<", svg)
         self.assertIn("&lt;cppdd &amp; api&gt;", svg)
+        self.assertIn(">samples</text>", svg)
+        self.assertLess(svg.find(">operation</text>"), svg.find(">samples</text>"))
+        dataset.canonical[(target, "dd", "arithmetic", "add", "fltx")]["samples"] = "131078"
+        svg = build_overview.render_overview(dataset, target, "dd")
+        self.assertIn(">131,078</text>", svg)
+
+        compact_svg = build_overview.render_overview(
+            dataset, target, "dd", "compact",
+        )
+        self.assertNotIn(">samples</text>", compact_svg)
 
         qd_row = dict(dataset.canonical[
             (target, "dd", "arithmetic", "add", "fltx")
@@ -2828,7 +2839,7 @@ class RenderingTests(unittest.TestCase):
 
     def test_compact_overview_sizes_text_for_ubuntu_mono(self) -> None:
         self.assertEqual(build_overview.COMPACT_MARGIN, 0)
-        self.assertEqual(build_overview.COMPACT_TABLE_GAP, 3)
+        self.assertEqual(build_overview.COMPACT_TABLE_GAP, 4)
         self.assertEqual(build_overview.COMPACT_CELL_PADDING, 4)
         self.assertEqual(
             build_overview.COMPACT_HEADER_HEIGHTS,
@@ -2846,7 +2857,7 @@ class RenderingTests(unittest.TestCase):
                 margin=build_overview.COMPACT_MARGIN,
                 table_gap=build_overview.COMPACT_TABLE_GAP,
             ),
-            103,
+            104,
         )
         self.assertAlmostEqual(
             build_overview._estimated_character_width("compact", 9),
@@ -3634,6 +3645,7 @@ class PresetPipelineTests(unittest.TestCase):
                     force_rerun=True,
                     consumer_mode="all",
                     operations=(),
+                    native_baseline=False,
                 ),
                 mock.call(
                     root,
@@ -3644,6 +3656,7 @@ class PresetPipelineTests(unittest.TestCase):
                     force_rerun=True,
                     consumer_mode="all",
                     operations=(),
+                    native_baseline=False,
                 ),
             ],
         )
@@ -3678,6 +3691,7 @@ class PresetPipelineTests(unittest.TestCase):
             force_rerun=False,
             consumer_mode="strict",
             operations=(),
+            native_baseline=False,
         )
 
     def test_all_supported_pipeline_does_not_accept_a_preset(self) -> None:
@@ -4650,6 +4664,190 @@ class PresetPipelineTests(unittest.TestCase):
                 preset_pipeline.metrics_paths(
                     root, "quick", custom, publish=True,
                 )
+
+
+class FixedConstexprMetricsTests(unittest.TestCase):
+    def collect(self, root, *, mode="strict", fail=False, operations=()):
+        configuration = ValidationTests.configuration_banner(simulated_consteval="on")
+        configuration["consumer"]["fast-math"] = "on" if mode == "fastmath" else "off"
+        provenance = {
+            "host": {field: "fixture" for field in run_metrics.HOST_FIELDS},
+            "executables": {"accuracy": {"path": "accuracy.exe", "sha256": FINGERPRINT, "wasm-sha256": "not-present"}},
+        }
+        commands = []
+        result_file = root / "result.json"
+        output_root = root / "build/data/fixed_constexpr" / mode
+
+        def fake_run(command, runner_name, **kwargs):
+            commands.append(command)
+            self.assertEqual(runner_name, "accuracy")
+            self.assertEqual(command[command.index("--sample-mode") + 1], "small")
+            precision = command[command.index("--precision") + 1]
+            rows = []
+            for group, operation, domain in sorted(manifest.select_operations(manifest.EXPECTED_ACCURACY[precision], operations)):
+                row = accuracy_row(group=group, operation=operation, domain=domain)
+                row.update(precision=precision, run_id=command[command.index("--run-id") + 1])
+                if precision in ("f32", "f64"):
+                    row.update(implementation="native", implementation_short="float" if precision == "f32" else "double")
+                if fail:
+                    row.update(worst_bits="80", margin_bits="-10", **{"pass": "no"})
+                rows.append(row)
+            OperationFilterTests.write_rows(Path(command[command.index("--output") + 1]), run_metrics.ACCURACY_FIELDS, rows)
+            return configuration, 0
+
+        with (
+            mock.patch.object(run_native_accuracy, "__file__", str(root / "validation/metrics/_internal/run_native_accuracy.py")),
+            mock.patch.object(run_native_accuracy, "source_identity", return_value=source_fingerprint.SourceIdentity("rev", FINGERPRINT)),
+            mock.patch.object(run_native_accuracy, "_run_provenance", return_value=provenance),
+            mock.patch.object(run_native_accuracy, "_preflight_runners", return_value=configuration),
+            mock.patch.object(run_native_accuracy, "_run", side_effect=fake_run),
+            redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()) as errors,
+        ):
+            status = run_native_accuracy.main([
+                "--accuracy", "accuracy.exe", "--fixed_constexpr", "--sample-mode", "small",
+                "--consumer-mode", mode, "--output-root", str(output_root), "--result-file", str(result_file),
+                *(value for operation in operations for value in ("--operation", operation)),
+            ])
+        return status, result_file, commands, errors.getvalue()
+
+    def test_fixed_collection_and_reports_preserve_runtime_files(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "build/generated"
+            output.joinpath("overview").mkdir(parents=True)
+            runtime = output / "overview/windows_x86_64_MSVC_dd_overview.svg"
+            runtime.write_text("existing runtime report", encoding="utf-8")
+            for mode in ("strict", "fastmath"):
+                status, result_path, commands, errors = self.collect(root, mode=mode)
+                self.assertEqual(status, 0, errors)
+                self.assertEqual(len(commands), 4)
+                self.assertTrue(all(("--advisory" in command) == (mode == "fastmath") for command in commands))
+                result = json.loads(result_path.read_text())
+                metadata_path = Path(result["metadata"])
+                metadata, checked = build_fixed_constexpr.load_run(metadata_path, mode)
+                self.assertEqual(result, checked)
+                self.assertEqual(metadata["execution_profile"], "fixed_constexpr")
+                self.assertEqual(metadata["precisions"], ["f32", "f64", "dd", "qd"])
+                for precision in metadata["precisions"]:
+                    self.assertTrue((metadata_path.parent / f"{precision}_fixed_constexpr_accuracy.csv").is_file())
+                reports = report_pipeline.rebuild(root / "build/data", output, consumer_mode=mode, fixed_constexpr=True)
+                self.assertEqual(len(reports), 4)
+                for path in reports:
+                    self.assertIn("_fixed_constexpr", path.name)
+                    svg = path.read_text()
+                    self.assertIn("constexpr algorithms executed at runtime", svg)
+                    self.assertIn("wide_exponent", svg)
+                    self.assertIn("Signed zero", svg)
+                    self.assertNotIn("benchmark", svg.casefold())
+                self.assertEqual(runtime.read_text(), "existing runtime report")
+
+    def test_fixed_strict_failure_never_commits_complete_evidence(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            status, result, _, errors = self.collect(root, fail=True)
+            self.assertEqual(status, 1)
+            self.assertIn("threshold failed", errors)
+            self.assertFalse(result.exists())
+            self.assertFalse(list(root.glob("build/data/fixed_constexpr/strict/*/fixed_constexpr_accuracy_run.json")))
+            status, result, _, errors = self.collect(root, mode="fastmath", fail=True)
+            self.assertEqual(status, 0, errors)
+            metadata_path = Path(json.loads(result.read_text())["metadata"])
+            metadata, _ = build_fixed_constexpr.load_run(metadata_path, "fastmath")
+            self.assertEqual(metadata["thresholds"], "advisory")
+
+    def test_fixed_cache_rejects_wrong_profile_stale_source_and_damaged_evidence(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            status, result_path, _, errors = self.collect(Path(temporary))
+            self.assertEqual(status, 0, errors)
+            metadata_path = Path(json.loads(result_path.read_text())["metadata"])
+            metadata, _ = build_fixed_constexpr.load_run(metadata_path, "strict")
+            kwargs = dict(sample_mode="small", consumer_mode="strict", platform="windows", architecture="x86_64", compiler="MSVC",
+                          fingerprint=FINGERPRINT, configuration=metadata["configuration"], host=metadata["host"], fixed_constexpr=True)
+            reusable, _ = run_native_accuracy._find_reusable_run(metadata_path.parent.parent, **kwargs)
+            self.assertIsNotNone(reusable)
+            for change in ({"fixed_constexpr": False}, {"fingerprint": "b" * 64}, {"consumer_mode": "fastmath"}, {"operations": ("add",)}):
+                with self.subTest(change=change):
+                    reusable, _ = run_native_accuracy._find_reusable_run(metadata_path.parent.parent, **{**kwargs, **change})
+                    self.assertIsNone(reusable)
+            csv_path = metadata_path.parent / "dd_fixed_constexpr_accuracy.csv"
+            rows = run_metrics._read_csv(csv_path, run_metrics.ACCURACY_FIELDS)
+            OperationFilterTests.write_rows(csv_path, run_metrics.ACCURACY_FIELDS, rows[:-1])
+            with self.assertRaises(run_metrics.MetricsError):
+                build_fixed_constexpr.load_run(metadata_path, "strict")
+            # Even a recomputed file hash cannot hide a missing domain.
+            metadata["outputs"][csv_path.name] = run_metrics._sha256_file(csv_path)
+            run_metrics._write_json(metadata_path, metadata)
+            with self.assertRaisesRegex(run_metrics.MetricsError, "manifest mismatch"):
+                build_fixed_constexpr.load_run(metadata_path, "strict")
+
+    def test_fixed_profile_rejects_runtime_banner_and_external_comparisons(self):
+        with self.assertRaisesRegex(run_metrics.MetricsError, "simulated-consteval=on"):
+            run_native_accuracy.require_execution_profile(ValidationTests.configuration_banner(), True, "test")
+        configuration = ValidationTests.configuration_banner(simulated_consteval="on")
+        configuration["harness"]["qdpp"] = "on"
+        with self.assertRaisesRegex(run_metrics.MetricsError, "FLTX-only"):
+            run_native_accuracy.require_execution_profile(configuration, True, "test")
+
+    def test_fixed_filters_skip_precisions_without_coverage(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            status, result_path, commands, errors = self.collect(Path(temporary), operations=("to_chars",))
+            self.assertEqual(status, 0, errors)
+            self.assertEqual([command[command.index("--precision") + 1] for command in commands], ["dd", "qd"])
+            result = json.loads(result_path.read_text())
+            metadata, _ = build_fixed_constexpr.load_run(Path(result["metadata"]), "strict")
+            self.assertEqual(metadata["precisions"], ["dd", "qd"])
+            self.assertEqual(metadata["operations"], ["to_chars"])
+
+    def test_fixed_quick_evidence_cannot_publish_reports(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            status, result_path, _, errors = self.collect(root)
+            self.assertEqual(status, 0, errors)
+            metadata_path = Path(json.loads(result_path.read_text())["metadata"])
+            with mock.patch.object(build_fixed_constexpr, "__file__", str(root / "validation/metrics/_internal/build_fixed_constexpr.py")):
+                with self.assertRaisesRegex(run_metrics.MetricsError, "full-profile evidence"):
+                    build_fixed_constexpr.build_run(metadata_path, root / "validation/metrics/generated", "strict")
+            self.assertFalse((root / "validation/metrics/generated").exists())
+
+    def test_fixed_flag_reaches_every_supported_preset(self):
+        for spelling in ("--fixed_constexpr", "--fixed-constexpr"):
+            with (
+                mock.patch.object(supported_preset_pipeline, "supported_presets", return_value=("first", "second")),
+                mock.patch.object(preset_pipeline, "run_pipeline", return_value=[]) as pipeline,
+                redirect_stdout(io.StringIO()),
+            ):
+                status = supported_preset_pipeline.main(Path("."), ["--quick", spelling, "--consumer-mode", "all"])
+                self.assertEqual(status, 0)
+                self.assertEqual([call.args[1] for call in pipeline.call_args_list], ["first", "second"])
+                for call in pipeline.call_args_list:
+                    self.assertTrue(call.kwargs["fixed_constexpr"])
+                    self.assertFalse(call.kwargs["native_baseline"])
+                    self.assertEqual(call.kwargs["workflow"], "quick")
+                    self.assertEqual(call.kwargs["consumer_mode"], "all")
+                    self.assertFalse(call.kwargs["publish"])
+
+    def test_fixed_build_selects_only_requested_accuracy_runner(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            selection = mock.Mock(environment={}, binary_dir=root / "build/preset",
+                                  configure_name="configure", build_name="build", configuration="Release")
+            with (
+                mock.patch.object(preset_pipeline, "resolve_preset", return_value=selection),
+                mock.patch.object(preset_pipeline, "existing_runner_artifacts", return_value=None),
+                mock.patch.object(preset_pipeline, "needs_msvc_environment", return_value=False),
+                mock.patch.object(preset_pipeline, "prepare_file_api_query"),
+                mock.patch.object(preset_pipeline, "_run") as run,
+                mock.patch.object(preset_pipeline, "discover_runner_artifacts", return_value={}) as discover,
+                mock.patch.object(preset_pipeline, "run_fixed_accuracy", return_value=[]) as collect,
+            ):
+                preset_pipeline.run_pipeline(root, "preset", workflow="quick", fixed_constexpr=True,
+                                             consumer_mode="fastmath", output_root=root / "build/results")
+                self.assertEqual(run.call_count, 2)
+                self.assertEqual(run.call_args_list[0].args[0], ["cmake", "--preset", "configure"])
+                self.assertEqual(run.call_args_list[1].args[0], ["cmake", "--build", "--preset", "build",
+                                                               "--target", "fltx_constexpr_accuracy_fastmath"])
+                self.assertEqual(discover.call_args.args[2], ("fltx_constexpr_accuracy_fastmath",))
+                self.assertEqual(collect.call_args.args[3:5], (("fastmath",), "small"))
 
 
 if __name__ == "__main__":

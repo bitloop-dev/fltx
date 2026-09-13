@@ -1,20 +1,11 @@
 {
-  "accuracy_parallel": true,
-  "accuracy_samples": 4096,
+  "accuracy_samples": 65536,
   "architecture": "x86_64",
-  "benchmark_corpus_policy": "adaptive-v1",
-  "benchmark_fast_minimum_trial_ms": 15,
-  "benchmark_fast_threshold_ns": 20,
-  "benchmark_fast_trials": 7,
-  "benchmark_maximum_row_ms": 5000,
-  "benchmark_minimum_trial_ms": 8,
-  "benchmark_ordinary_trials": 3,
-  "benchmark_policy": "adaptive-v2",
+  "benchmark_minimum_trial_ms": 25,
   "benchmark_samples": {
-    "dd": 8192,
-    "qd": 4096
+    "dd": 81920,
+    "qd": 40960
   },
-  "benchmark_slow_threshold_ns": 10000,
   "benchmark_trials": 7,
   "compiler": "ClangCL",
   "configuration": {
@@ -23,11 +14,11 @@
       "compiler-id": "Clang",
       "compiler-version": "22.1.8",
       "config": "Release",
-      "flags-hash": "47db04c453478949a87df17aee6c905f188a5d962d12b76bf2ba37d99f614ec7",
+      "flags-hash": "6663e453ab5d5b26ba7b91031c1a94835d5d1b3e6e1085047e441607c91dd447",
       "frontend-variant": "MSVC",
       "optimized": "1",
       "processor": "AMD64",
-      "source-fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
+      "source-fingerprint": "1908e8ba6c886da6f2ba18b8b720f9dcf8a71e061ccba23011424d3d0f694b2a",
       "system": "Windows"
     },
     "consumer": {
@@ -69,16 +60,16 @@
     }
   },
   "consumer_mode": "fastmath",
-  "created_utc": "2026-09-02T18:24:19.384848+00:00",
+  "created_utc": "2026-09-12T22:12:40.326042+00:00",
   "executables": {
     "accuracy": {
       "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-clangcl-release\\validation\\fltx_accuracy_fastmath.exe",
-      "sha256": "2b5dd90b6fff390fd056d7c835254b74e4851e2cbb1bd074b076de879fad03c4",
+      "sha256": "b807b9005b23932e06adfb10f18ff2f75b84b57a496d4ebb02c563c151b22306",
       "wasm-sha256": "not-present"
     },
     "benchmark": {
       "path": "C:\\dev\\cpp\\bitloop-workspace\\fltx\\build\\windows-x64-clangcl-release\\validation\\fltx_benchmark_fastmath.exe",
-      "sha256": "ecf9c0c1b1e8bd68e3db31924417425198d112a8cb31f2eceb71e66d7bcccb96",
+      "sha256": "1699a24de9857594fde30b22d4e7c54d0c8f14a12c7b3bc198a3b800565c2f45",
       "wasm-sha256": "not-present"
     }
   },
@@ -107,12 +98,12 @@
     ]
   },
   "outputs": {
-    "ClangCL_dd_fastmath.csv": "74a8b7a5e4e0eca7b68e50bf2fe83c26f64a07a4b73c6e162c8cca2a32974dff",
-    "ClangCL_qd_fastmath.csv": "218abda4321d917859aaaaa6d047973817cceb4e45a7a8237949ddc4a58b8b26",
-    "detail/ClangCL_dd_fastmath_accuracy.csv": "2cf14ea5155131481c2e6d66a50f662162b95f276948945632c0d916811e6ce3",
-    "detail/ClangCL_dd_fastmath_benchmark.csv": "c9141db655b81a1949c73591c3fe297ae5efa217342bfb6eb5fe4a3e4d57e6cb",
-    "detail/ClangCL_qd_fastmath_accuracy.csv": "d402b3043e08a9a172954ea1d0f6f4f9509a2dfd5afb1b01a37457556b56ff6e",
-    "detail/ClangCL_qd_fastmath_benchmark.csv": "2f45c0ed02e55a5436d13e632ea4c09aefbe690516a1395d5342f334e54ef7df"
+    "ClangCL_dd_fastmath.csv": "dd63fde2377f057e3a4fb801f8d0525543836df629e22ee62efac256c674dc70",
+    "ClangCL_qd_fastmath.csv": "2cf038d0fdd96a6addbec427a2f7d34e425c3ab5737477b6ffbbdd8dc3137ad8",
+    "detail/ClangCL_dd_fastmath_accuracy.csv": "a40a57289127818e17ca0aaffccb3ae6419383a58379927674e97485569095b9",
+    "detail/ClangCL_dd_fastmath_benchmark.csv": "2f0ef1a82e55b3bab11ea757f1edd59e627b439a9a5838035bdff2a572f837a8",
+    "detail/ClangCL_qd_fastmath_accuracy.csv": "0e2b074b889327eb0b9977aaeebe54986766ed16ac4fe96522843cbbfb652086",
+    "detail/ClangCL_qd_fastmath_benchmark.csv": "733bd0614bef78b8c50dbb00a57bd4b73a843fa05b238b85c5190622208150e0"
   },
   "phases": {
     "dd.accuracy": {
@@ -145,10 +136,10 @@
     "dd",
     "qd"
   ],
-  "run_id": "c76b06fbfcdd4497a992a6d9e17c2e03",
-  "sample_mode": "standard",
+  "run_id": "a6140316df61489c9d3698145a4df103",
+  "sample_mode": "full",
   "schema_version": "6",
-  "source_fingerprint": "1e2aee00bd57b301edd023de6890d551317f43814e16aef9fa559625eabb590c",
-  "source_revision": "882890995f149618f5ad4c950bbb2cd0b8e2f976-dirty-1e2aee00bd57",
+  "source_fingerprint": "1908e8ba6c886da6f2ba18b8b720f9dcf8a71e061ccba23011424d3d0f694b2a",
+  "source_revision": "844436dea5ed7db933d8911410bd3eb2ea484fc2-dirty-1908e8ba6c88",
   "status": "complete"
 }

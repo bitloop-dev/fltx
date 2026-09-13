@@ -960,37 +960,6 @@ namespace detail::_dd // primitives and kernels
         return true;
     }
 
-    BL_FORCE_INLINE constexpr fdd_s sin_kernel_small(const fdd_s& x)
-    {
-        using namespace detail::_dd;
-
-        if (detail::fp::absd(x.hi) < 0x1p-56)
-            return x;
-
-        const fdd_s t = mul_product_inline(x, x);
-
-        const fdd_s ps = horner_forward(
-            dd_sin_coeffs_pi4 + dd_trig_small_coeff_offset,
-            dd_trig_small_coeff_count,
-            t);
-
-        return mul_add_inline(mul_product_inline(x, t), ps, x);
-    }
-
-    BL_FORCE_INLINE constexpr fdd_s cos_kernel_small(const fdd_s& x)
-    {
-        using namespace detail::_dd;
-
-        const fdd_s t = mul_product_inline(x, x);
-
-        const fdd_s pc = horner_forward(
-            dd_cos_coeffs_pi4 + dd_trig_small_coeff_offset,
-            dd_trig_small_coeff_count,
-            t);
-
-        return mul_add_double_rhs_inline(t, pc, 1.0);
-    }
-
     BL_FORCE_INLINE constexpr void sincos_kernel_small(const fdd_s& x, fdd_s& s_out, fdd_s& c_out)
     {
         using namespace detail::_dd;
@@ -1250,6 +1219,15 @@ namespace detail::_dd // primitives and kernels
 
             an += an_step;
             an_step -= 2.0;
+        }
+
+        if (x > fdd_s{ 27.0 })
+        {
+            // Keep the exponential and continued-fraction product normal until
+            // the final scaling; erfc's positive tail can remain representable.
+            const fdd_s argument = add_finite_inline(-z, mul_pwr2_inline(std::numbers::ln2_v<fdd_s>, 512.0));
+            const fdd_s scaled = mul_product_inline(mul_product_inline(mul_product_inline(detail::_dd_impl::exp(argument), x), std::numbers::inv_sqrtpi_v<fdd_s>), h);
+            return ldexp_terms(scaled, -512);
         }
 
         const fdd_s out = mul_product_inline(mul_product_inline(mul_product_inline(detail::_dd_impl::exp(-z), x), std::numbers::inv_sqrtpi_v<fdd_s>), h);
@@ -2047,6 +2025,12 @@ namespace detail::_dd
             mul_double_product_inline(div_prechecked_inline(mul_product_inline(e, add_double_finite_inline(e, 2.0)), add_double_finite_inline(e, 1.0)), 0.5);
     }
 
+    if (exp_overflows(ax)) [[unlikely]]
+    {
+        const fdd_s out = detail::_dd_impl::exp(sub_finite_inline(ax, std::numbers::ln2_v<fdd_s>));
+        return signbit(x) ? -out : out;
+    }
+
     const fdd_s ex = detail::_dd_impl::exp(ax);
 #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
     fdd_s out = detail::fp::exp_inverse_is_negligible(ax.hi)
@@ -2070,6 +2054,8 @@ namespace detail::_dd
         return std::numeric_limits<fdd_s>::infinity();
 
     const fdd_s ax = detail::_dd::mag(x);
+    if (exp_overflows(ax)) [[unlikely]]
+        return detail::_dd_impl::exp(sub_finite_inline(ax, std::numbers::ln2_v<fdd_s>));
     const fdd_s ex = detail::_dd_impl::exp(ax);
 #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
     if (detail::fp::exp_inverse_is_negligible(ax.hi))
@@ -2257,7 +2243,8 @@ namespace detail::_dd
     if (x < fdd_s{ 2.0 })
         return sub_double_finite_inline(1.0, erf_positive_cheb_1_2(x));
 
-    if (x > fdd_s{ 27.0 })
+    // erfc(28) < exp(-784) < half the minimum double subnormal.
+    if (x >= fdd_s{ 28.0 })
         return fdd_s{ 0.0 };
 
     return erfc_positive_cf(x);
@@ -2315,6 +2302,16 @@ namespace detail::_dd
     const fdd_s sinpix = sinpi_reduced(x);
     if (iszero(sinpix))
         return std::numeric_limits<fdd_s>::quiet_NaN();
+
+    if (x.hi < -170.0) [[unlikely]]
+    {
+        // Gamma(1-x) can overflow while its reflected reciprocal is nonzero.
+        const fdd_s log_abs = sub_finite_inline(
+            sub_finite_inline(detail::_dd_impl::log(std::numbers::pi_v<fdd_s>), detail::_dd_impl::log(mag(sinpix))),
+            lgamma_positive_recurrence(sub_double_finite_inline(1.0, x)));
+        const fdd_s out = detail::_dd_impl::exp(log_abs);
+        return signbit(sinpix) ? -out : out;
+    }
 
     const fdd_s out = div_prechecked_inline(std::numbers::pi_v<fdd_s>, mul_product_inline(sinpix, gamma_positive_recurrence(sub_double_finite_inline(1.0, x))));
     return out;

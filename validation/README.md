@@ -30,7 +30,7 @@ Strict consumers and genuine constant evaluation retain the checked semantics.
 - `fltx_contract_tests` checks public behaviour, I/O, random facilities,
   expression fusion, dispatch, and named numerical edge cases.
 - `fltx_constexpr_tests` checks genuine compiler constant evaluation, including
-  the 58-case-per-type MPFR corpus for all four types in the strict consumer.
+  the MPFR corpus for all four types and extended range-edge cases in the strict consumer.
   The fast-math target retains that corpus for dd/qd; native numerical
   gates use the strict consumer because fast-math also relaxes the compiler's
   constant evaluator. Exact native special-value assertions still compile in
@@ -196,6 +196,63 @@ python .\validation\metrics\run_all_supported_metrics.py `
     --consumer-mode all --standard --publish
 ```
 
+### Fixed constexpr accuracy reports
+
+Both public metrics entry points accept `--fixed_constexpr` (also spelled
+`--fixed-constexpr`). It selects the existing `fltx_constexpr_accuracy` and
+`fltx_constexpr_accuracy_fastmath` runners, which force
+`FLTX_SIMULATE_FIXED_CONSTEVAL_MODE` and compare FLTX f32/f64/dd/qd against MPFR.
+The flag selects accuracy collection and reporting only; it does not run
+benchmarks or external comparison libraries.
+
+```powershell
+python validation/metrics/run_all_supported_metrics.py --full --fixed_constexpr --consumer-mode all --publish
+
+# Quick development verification, with all output under build/.
+python validation/metrics/run_preset_metrics.py --preset windows-x64-msvc-release --quick --fixed_constexpr --consumer-mode all --output-root build/metrics/fixed-constexpr
+```
+
+The ordinary profile flag controls sampling: `--quick` uses the 2,048-sample
+small profile, standard uses 4,096, and full uses 65,536, with the existing
+per-operation sample policy and deterministic anchors. Strict thresholds gate
+all four precisions. Fast-math threshold misses remain advisory; incomplete
+evidence, runner faults, and mismatched execution modes always fail.
+Fast-math Inf/NaN probes are omitted and shown as `-`, as in CI.
+
+Evidence is stored under `data/fixed_constexpr/<consumer-mode>/<run-id>/`, with
+`<precision>_fixed_constexpr_accuracy.csv` files and
+`fixed_constexpr_accuracy_run.json`. Each completed set is committed with the
+existing publication transaction and its own lock. Reuse checks the execution
+profile, consumer mode, source, target, host, sample policy, operation manifest,
+configuration, and output hashes. Runtime evidence cannot satisfy this profile.
+`--publish` for fixed constexpr requires `--full` and retains the known-revision
+and optimized-Release checks. Development runs can use `--output-root` for
+isolation; filtered runs must stay under `build/` and cannot be published.
+
+Each precision produces an accuracy-only overview, for example
+`windows_x86_64_MSVC_f32_fixed_constexpr_overview.svg` or
+`windows_x86_64_MSVC_f32_fixed_constexpr_fastmath_overview.svg`. These tables
+show each domain's mean, p01, worst and required bits, threshold result,
+Inf/NaN support, and signed zero. Subnormal domains remain explicit rows.
+Tooltips retain the worst input and observed/MPFR values. Headers identify
+these as constexpr algorithms executed at runtime; actual compiler constant
+evaluation remains covered by the separate constexpr contract corpus.
+This profile produces four SVGs per target and consumer mode, without compact
+performance or strict/fast-math comparison variants. Existing runtime report
+names and contents are unaffected.
+
+Rebuild this profile from existing evidence with:
+
+```powershell
+python validation/metrics/rebuild_tables.py --fixed_constexpr --consumer-mode strict --targets windows/x86_64/MSVC
+```
+
+For development evidence, supply its data directory with `--input` and a
+development report directory with `--output`. The renderer selects the latest
+completed run for each requested target and validates it before rendering.
+
+### Filtered runtime metrics
+
 For a focused optimisation pass, repeat `--operation` with exact operation names:
 
 ```powershell
@@ -267,6 +324,12 @@ fast-math profile comparisons whenever a compatible pair exists. An `all` run
 requires those comparison reports; a focused run simply skips them when the
 other mode is unavailable or stale.
 
+`run_all_supported_metrics.py` runs the runtime `dd`/`qd` metrics and reports
+for every preset supported by the current host. It does not collect the
+separate native `f32`/`f64` accuracy baseline. Use `run_preset_metrics.py` for
+one preset when that native baseline is wanted, or invoke
+`_internal/run_native_accuracy.py` directly for native accuracy only.
+
 The public commands use mutually exclusive, value-free profile flags. With no
 profile flag, `--standard` is implied. `--quick` selects the half-sized
 `small` sample profile and `--full` selects the full profile. Publication is
@@ -309,8 +372,8 @@ three single-batch trials. A soft five-second row budget can reduce the trial
 count to one or three. In standard mode, the four slow gamma/error functions
 use 256 dd or 128 qd samples; quick mode uses 128 or 64.
 
-The remaining public Python command in `validation/metrics/` rebuilds every
-report from existing data without running the metrics executables:
+`rebuild_tables.py` rebuilds every report from existing data without running
+the metrics executables:
 
 ```powershell
 python .\validation\metrics\rebuild_tables.py `
@@ -323,6 +386,23 @@ these entry points or by CMake. Every report build produces both the complete
 and `_compact` overview/performance variants. Compact reports hide displayed
 speed ratios, narrow the benchmark columns, and colour each nanosecond timing
 from the same hidden relative speed ratio used by the complete layout.
+
+To browse the existing non-compact overview SVGs in a local HTML page, run:
+
+```powershell
+python .\validation\metrics\build_overview_viewer.py --open
+```
+
+This writes `validation/metrics/generated/overview/index.html`. It discovers
+the available types, platforms, architectures, compilers and math modes, hides
+unavailable choices and omits selector rows with only one option. Fixed
+constexpr overviews get a report selector when they coexist with runtime
+overviews. The page uses each SVG's canvas colour, keeps its selectable text
+and tooltips, and supports direct report links, browser history and an
+actual-size view. It works offline with the SVGs alongside it; rerun the
+script after adding or removing reports. No metrics data or SVGs are changed.
+Use `--input PATH` to browse another overview directory and `--output PATH.html`
+to write the viewer elsewhere. `--open` is optional.
 
 Configure and build are incremental. Before running the expensive phases, the
 pipeline validates any existing evidence against the freshly built runners'

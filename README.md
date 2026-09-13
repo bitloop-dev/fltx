@@ -695,6 +695,16 @@ _Compared with reference libraries_
 </details>
 
 <details>
+<summary><code>macOS · ARM64 · AppleClang</code></summary>
+<br>
+<a href="https://raw.githubusercontent.com/bitloop-dev/fltx/main/validation/metrics/generated/overview/macos_arm64_AppleClang_dd_overview.svg">
+  <img src="validation/metrics/generated/overview/macos_arm64_AppleClang_dd_overview_compact.svg"
+       alt="Double-double metrics for macOS arm64 with AppleClang"
+       width="100%">
+</a>
+</details>
+
+<details>
 <summary><code>WebAssembly · wasm32 · Emscripten</code></summary>
 <br>
 <a href="https://raw.githubusercontent.com/bitloop-dev/fltx/main/validation/metrics/generated/overview/webassembly_wasm32_Emscripten_dd_overview.svg">
@@ -754,6 +764,17 @@ _Compared with reference libraries_
        width="100%">
 </a>
 </details>
+
+<details>
+<summary><code>macOS · ARM64 · AppleClang</code></summary>
+<br>
+<a href="https://raw.githubusercontent.com/bitloop-dev/fltx/main/validation/metrics/generated/overview/macos_arm64_AppleClang_qd_overview.svg">
+  <img src="validation/metrics/generated/overview/macos_arm64_AppleClang_qd_overview_compact.svg"
+       alt="Quad-double metrics for macOS ARM64 with AppleClang"
+       width="100%">
+</a>
+</details>
+
 <details>
 <summary><code>WebAssembly · wasm32 · Emscripten</code></summary>
 <br>

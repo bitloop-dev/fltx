@@ -744,8 +744,11 @@ namespace fltx::tests::accuracy
             tlfloat_impl<Float>("tlfloat::remainder",
                                 [](auto x, auto y) { return tlfloat_ops::remainder(x, y); }));
 
+        auto hyperbolic_domains = ordinary(n);
+        for (double x : {709.0, -709.0, 709.5, -709.5, 710.0, -710.0, 710.475, -710.475})
+            hyperbolic_domains.back().values.push_back(make_exact_sample(x, "finite exponential range edge"));
         run.unary(
-            "hyperbolic", "sinh", ordinary(n), [](auto x) { return bl::sinh(x); },
+            "hyperbolic", "sinh", hyperbolic_domains, [](auto x) { return bl::sinh(x); },
             [](const real& x) {
                 using boost::multiprecision::sinh;
                 return sinh(x);
@@ -754,7 +757,7 @@ namespace fltx::tests::accuracy
             boost_impl<Float>("boost::multiprecision::sinh", [](auto x) { return boost_sinh(x); }),
             tlfloat_impl<Float>("tlfloat::sinh", [](auto x) { return tlfloat_ops::sinh(x); }));
         run.unary(
-            "hyperbolic", "cosh", ordinary(n), [](auto x) { return bl::cosh(x); },
+            "hyperbolic", "cosh", std::move(hyperbolic_domains), [](auto x) { return bl::cosh(x); },
             [](const real& x) {
                 using boost::multiprecision::cosh;
                 return cosh(x);
@@ -813,8 +816,11 @@ namespace fltx::tests::accuracy
             [](const real& x) { return boost::math::erf(x); },
             boost_impl<Float>("boost::multiprecision::erf", [](auto x) { return boost_erf(x); }),
             tlfloat_impl<Float>("tlfloat::erf", [](auto x) { return tlfloat_ops::erf(x); }));
+        auto erfc_domains = ordinary(n);
+        for (double x : {13.0, 24.0, 25.0, 26.0, 27.0, 27.0625, 27.125, 27.1875, 27.21875, 27.25, 28.0})
+            erfc_domains.back().values.push_back(make_exact_sample(x, "positive complementary tail"));
         run.unary(
-            "special_functions", "erfc", ordinary(n), [](auto x) { return bl::erfc(x); },
+            "special_functions", "erfc", std::move(erfc_domains), [](auto x) { return bl::erfc(x); },
             [](const real& x) { return boost::math::erfc(x); },
             boost_impl<Float>("boost::multiprecision::erfc", [](auto x) { return boost_erfc(x); }),
             tlfloat_impl<Float>("tlfloat::erfc", [](auto x) { return tlfloat_ops::erfc(x); }));
@@ -826,9 +832,12 @@ namespace fltx::tests::accuracy
             boost_impl<Float>("boost::multiprecision::lgamma",
                               [](auto x) { return boost_lgamma(x); }),
             tlfloat_impl<Float>("tlfloat::lgamma", [](auto x) { return tlfloat_ops::lgamma(x); }));
+        auto gamma_domain = domains::interval("moderate", 0.125, 20.0, n, default_seed ^ 0x36u);
+        for (double x : {-170.5, -171.5, -172.5, -173.5, -174.5, -175.5})
+            gamma_domain.values.push_back(make_exact_sample(x, "reflected gamma tail"));
         run.unary(
             "special_functions", "tgamma",
-            {domains::interval("moderate", 0.125, 20.0, n, default_seed ^ 0x36u)},
+            {std::move(gamma_domain)},
             [](auto x) { return bl::tgamma(x); },
             [](const real& x) { return boost::math::tgamma(x); },
             boost_impl<Float>("boost::multiprecision::tgamma",

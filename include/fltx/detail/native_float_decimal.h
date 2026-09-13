@@ -196,6 +196,8 @@ namespace bl::detail::_native_float_decimal
         }
 
         int ratio_exp = detail::exact_decimal::floor_log2_ratio(numerator, denominator);
+        if (bin_exp + ratio_exp < detail::exact_decimal::minimum_normal_limb_exponent<Traits>())
+            return detail::exact_decimal::rounded_subnormal_ratio<Traits>(numerator, denominator, bin_exp, neg);
         biguint q = detail::exact_decimal::extract_rounded_significand_chunks(
             numerator,
             denominator,
@@ -211,9 +213,6 @@ namespace bl::detail::_native_float_decimal
         const int e2 = bin_exp + ratio_exp;
         if (e2 > Traits::max_binary_exponent)
             return Traits::infinity(neg);
-        if (e2 < Traits::min_binary_exponent)
-            return Traits::zero(neg);
-
         return Traits::pack_from_significand(q, e2, neg);
     }
 }

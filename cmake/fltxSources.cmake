@@ -1,7 +1,6 @@
 set(FLTX_LIBRARY_SOURCE_FILES
     src/build_info.cpp
     src/fltx_io.cpp
-    src/fdd.cpp
     src/fdd_math.cpp
     src/fdd_transcendental.cpp
     src/fqd.cpp

@@ -29,6 +29,7 @@ import build_profile_comparison
 from build_tables import REPORT_EXCLUDED_OPERATIONS, Target
 from manifest import EXPECTED_ACCURACY, normalize_operations, operation_key, select_operations
 import run_metrics
+import run_native_accuracy
 
 
 RUNNER_SETS = {
@@ -40,6 +41,10 @@ RUNNER_TARGETS = tuple(
     for targets in RUNNER_SETS.values()
     for target in targets
 )
+FIXED_RUNNERS = {
+    "strict": "fltx_constexpr_accuracy",
+    "fastmath": "fltx_constexpr_accuracy_fastmath",
+}
 DEFAULT_WORKFLOW = "standard"
 
 
@@ -110,6 +115,7 @@ def _codemodel_path(binary_dir: Path) -> Path:
 def discover_runner_artifacts(
     binary_dir: Path,
     configuration: str | None,
+    target_names: tuple[str, ...] = RUNNER_TARGETS,
 ) -> dict[str, Path]:
     codemodel_path = _codemodel_path(binary_dir)
     codemodel = read_json(codemodel_path)
@@ -151,7 +157,7 @@ def discover_runner_artifacts(
         raise PipelineError(f"{codemodel_path}: selected configuration has no targets")
     reply = codemodel_path.parent
     artifacts: dict[str, Path] = {}
-    for target_name in RUNNER_TARGETS:
+    for target_name in target_names:
         references = [
             value
             for value in targets
@@ -266,6 +272,8 @@ def existing_runner_artifacts(
     environment: Mapping[str, str] | None = None,
     *,
     publish: bool = False,
+    fixed_constexpr: bool = False,
+    requested_modes: tuple[str, ...] = ("strict", "fastmath"),
 ) -> dict[str, Path] | None:
     """Return source-current runner artifacts without invoking CMake."""
 
@@ -273,9 +281,23 @@ def existing_runner_artifacts(
         artifacts = discover_runner_artifacts(
             selection.binary_dir,
             selection.configuration,
+            *((tuple(FIXED_RUNNERS[mode] for mode in requested_modes),) if fixed_constexpr else ()),
         )
         identities = set()
-        for consumer_mode, (accuracy_target, benchmark_target) in RUNNER_SETS.items():
+        if fixed_constexpr:
+            identity = run_native_accuracy.source_identity(root)
+            for mode in requested_modes:
+                configuration = run_metrics._preflight_runners(
+                    (("accuracy", artifacts[FIXED_RUNNERS[mode]]),),
+                    fingerprint=identity.fingerprint,
+                    platform=None, architecture=None, compiler=None,
+                    publishable=sample_mode == "full" or publish,
+                    environment=environment,
+                )
+                run_metrics.require_consumer_mode(configuration, mode, "existing fixed constexpr runner")
+                run_native_accuracy.require_execution_profile(configuration, True, "existing fixed constexpr runner")
+                identities.add(run_metrics.infer_canonical_target(configuration, "existing fixed constexpr runner"))
+        for consumer_mode, (accuracy_target, benchmark_target) in (() if fixed_constexpr else RUNNER_SETS.items()):
             identities.add(
                 run_metrics.validate_runner_artifacts(
                     root,
@@ -321,6 +343,8 @@ def run_pipeline(
     force_rerun: bool = False,
     consumer_mode: str = "strict",
     operations: tuple[str, ...] = (),
+    fixed_constexpr: bool = False,
+    native_baseline: bool = True,
 ) -> list[Path]:
     root = root.resolve()
     try:
@@ -346,6 +370,10 @@ def run_pipeline(
     if policy is None:
         raise PipelineError(f"unsupported metrics workflow {workflow!r}")
     selected_sample_mode = policy.sample_mode
+    if fixed_constexpr and publish and workflow != "full":
+        raise PipelineError("fixed constexpr publication requires --full")
+    if fixed_constexpr and not run_native_accuracy.selected_precisions(True, operations):
+        raise PipelineError("requested operations have no fixed constexpr accuracy coverage")
     selected_paths = metrics_paths(
         root,
         workflow,
@@ -361,7 +389,9 @@ def run_pipeline(
         selected_sample_mode,
         environment,
         publish=publish,
+        **({"fixed_constexpr": True, "requested_modes": requested_modes} if fixed_constexpr else {}),
     )
+    runner_targets = tuple(FIXED_RUNNERS[mode] for mode in requested_modes) if fixed_constexpr else RUNNER_TARGETS
     if artifacts is None:
         cmake_environment: Mapping[str, str] | None = None
         if needs_msvc_environment(selection):
@@ -377,7 +407,7 @@ def run_pipeline(
                     "cmake",
                     "--preset",
                     selection.configure_name,
-                    "-DFLTX_METRICS_EXTERNAL_COMPARISONS=ON",
+                    *([] if fixed_constexpr else ["-DFLTX_METRICS_EXTERNAL_COMPARISONS=ON"]),
                 ],
                 root,
                 cmake_environment,
@@ -399,7 +429,7 @@ def run_pipeline(
                 "--preset",
                 selection.build_name,
                 "--target",
-                *RUNNER_TARGETS,
+                *runner_targets,
             ],
             root,
             cmake_environment,
@@ -407,6 +437,13 @@ def run_pipeline(
         artifacts = discover_runner_artifacts(
             selection.binary_dir,
             selection.configuration,
+            *((runner_targets,) if fixed_constexpr else ()),
+        )
+
+    if fixed_constexpr:
+        return run_fixed_accuracy(
+            root, artifacts, selected_paths, requested_modes,
+            selected_sample_mode, publish, force_rerun, operations, environment,
         )
 
     generated: list[Path] = []
@@ -501,7 +538,10 @@ def run_pipeline(
                 "consumer modes produced incompatible metrics targets"
             )
 
-        if select_operations(EXPECTED_ACCURACY["f32"], operations):
+        if (
+            native_baseline
+            and select_operations(EXPECTED_ACCURACY["f32"], operations)
+        ):
             run_native_baseline(
                 root, artifacts[accuracy_target], selected_paths.data, handoff,
                 result, selected_sample_mode, mode, force_rerun,
@@ -596,6 +636,58 @@ def run_pipeline(
             "profile comparison renderer did not create required outputs"
         )
     generated.extend(existing_comparisons)
+    return generated
+
+
+def run_fixed_accuracy(
+    root: Path,
+    artifacts: Mapping[str, Path],
+    paths: MetricsPaths,
+    modes: tuple[str, ...],
+    sample_mode: str,
+    publish: bool,
+    force_rerun: bool,
+    operations: tuple[str, ...],
+    environment: Mapping[str, str],
+) -> list[Path]:
+    import build_fixed_constexpr
+
+    generated = []
+    target_identity = None
+    for mode in modes:
+        handoff = root / "build" / "metrics" / "pipeline" / uuid.uuid4().hex / "fixed_constexpr_result.json"
+        _run(
+            [
+                sys.executable,
+                str(root / "validation/metrics/_internal/run_native_accuracy.py"),
+                "--accuracy", str(artifacts[FIXED_RUNNERS[mode]]),
+                "--fixed_constexpr", "--consumer-mode", mode,
+                "--sample-mode", sample_mode,
+                "--output-root", str(paths.data / "fixed_constexpr" / mode),
+                "--result-file", str(handoff),
+                *(["--canonical-publication"] if publish else []),
+                *([] if force_rerun else ["--reuse-compatible"]),
+                *(value for operation in operations for value in ("--operation", operation)),
+            ],
+            root, environment,
+        )
+        result = read_json(handoff)
+        if (result.get("execution_profile") != "fixed_constexpr"
+                or result.get("consumer_mode") != mode
+                or result.get("sample_mode") != sample_mode
+                or result.get("operations", []) != list(operations)):
+            raise PipelineError(f"{handoff}: invalid fixed constexpr result handoff")
+        identity = result.get("target")
+        if target_identity is not None and identity != target_identity:
+            raise PipelineError("fixed constexpr consumers identify different targets")
+        target_identity = identity
+        try:
+            generated.extend(build_fixed_constexpr.build_run(
+                Path(result["metadata"]), paths.generated, mode,
+                expected_result=result,
+            ))
+        except (run_metrics.MetricsError, OSError, ValueError, KeyError) as error:
+            raise PipelineError(str(error)) from error
     return generated
 
 
@@ -705,6 +797,10 @@ def add_workflow_arguments(parser: argparse.ArgumentParser) -> None:
     )
     parser.set_defaults(workflow=DEFAULT_WORKFLOW)
     parser.add_argument(
+        "--fixed_constexpr", "--fixed-constexpr", action="store_true",
+        help="run FLTX-only fixed constexpr accuracy for f32/f64/dd/qd and render accuracy-only reports",
+    )
+    parser.add_argument(
         "--operation", action="append", dest="operations", metavar="NAME",
         help="run an exact operation name; repeat to select several (development only)",
     )
@@ -761,9 +857,14 @@ def run_pipeline_from_args(
     root: Path,
     preset: str,
     args: argparse.Namespace,
+    *,
+    native_baseline: bool = True,
 ) -> list[Path]:
     """Forward parsed public workflow arguments to one preset run."""
 
+    optional_arguments = {}
+    if not native_baseline:
+        optional_arguments["native_baseline"] = False
     return run_pipeline(
         root,
         preset,
@@ -773,6 +874,8 @@ def run_pipeline_from_args(
         force_rerun=args.force_rerun,
         consumer_mode=args.consumer_mode,
         operations=tuple(args.operations or ()),
+        **optional_arguments,
+        **({"fixed_constexpr": True} if args.fixed_constexpr else {}),
     )
 
 

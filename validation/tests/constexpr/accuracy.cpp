@@ -549,6 +549,22 @@ namespace
         check(arithmetic);
         check(reduction);
         check(transcendental);
+
+        if constexpr (std::is_same_v<Float, bl::fdd_s> || std::is_same_v<Float, bl::fqd_s>)
+        {
+            constexpr auto range_edges = std::array{
+                make_case<Float>("erfc positive saturation boundary", unary_op::erfc, fp<Float>(13.0)),
+                make_case<Float>("erfc near underflow", unary_op::erfc, fp<Float>(26.0)),
+                make_case<Float>("erfc nonzero subnormal tail", unary_op::erfc, fp<Float>(27.0625)),
+                make_case<Float>("erfc rounded zero tail", unary_op::erfc, fp<Float>(28.0)),
+                make_case<Float>("sinh finite beyond exp range", unary_op::sinh, fp<Float>(710.0)),
+                make_case<Float>("sinh negative beyond exp range", unary_op::sinh, fp<Float>(-710.0)),
+                make_case<Float>("cosh finite beyond exp range", unary_op::cosh, fp<Float>(710.0)),
+                make_case<Float>("tgamma reflected positive subnormal", unary_op::tgamma, fp<Float>(-171.5)),
+                make_case<Float>("tgamma reflected negative subnormal", unary_op::tgamma, fp<Float>(-172.5))
+            };
+            check(range_edges);
+        }
     }
 }
 

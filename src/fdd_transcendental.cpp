@@ -40,24 +40,12 @@ namespace bl::detail::_dd_runtime
 {
     BL_NO_INLINE fdd_s BL_VECTORCALL horner_forward(const fdd_s* coeffs, std::size_t count, const fdd_s& x) noexcept
     {
-        if (count == 0)
-            return {};
-
-        fdd_s p = coeffs[0];
-        for (std::size_t i = 1; i < count; ++i)
-            p = detail::_dd::mul_add_inline(p, x, coeffs[i]);
-        return p;
+        return detail::_dd::horner_forward_inline(coeffs, count, x);
     }
 
     BL_NO_INLINE fdd_s BL_VECTORCALL horner_reverse(const fdd_s* coeffs, std::size_t count, const fdd_s& x) noexcept
     {
-        if (count == 0)
-            return {};
-
-        fdd_s p = coeffs[count - 1];
-        for (std::size_t i = count - 1; i > 0; --i)
-            p = detail::_dd::mul_add_inline(p, x, coeffs[i - 1]);
-        return p;
+        return detail::_dd::horner_reverse_inline(coeffs, count, x);
     }
 
     BL_NO_INLINE void horner_pair_forward(
@@ -68,20 +56,7 @@ namespace bl::detail::_dd_runtime
         fdd_s& left_out,
         fdd_s& right_out) noexcept
     {
-        if (count == 0)
-        {
-            left_out = fdd_s{};
-            right_out = fdd_s{};
-            return;
-        }
-
-        fdd_s left  = left_coeffs[0];
-        fdd_s right = right_coeffs[0];
-        for (std::size_t i = 1; i < count; ++i)
-            detail::_dd::mul_add_pair_same_rhs_inline(left, right, x, left_coeffs[i], right_coeffs[i], left, right);
-
-        left_out = left;
-        right_out = right;
+        detail::_dd::horner_pair_forward_inline(left_coeffs, right_coeffs, count, x, left_out, right_out);
     }
 
     // exponential and logarithmic
