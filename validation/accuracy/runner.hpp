@@ -27,7 +27,7 @@
 
 namespace fltx::tests::accuracy
 {
-    inline constexpr std::string_view schema_version = "6";
+    inline constexpr std::string_view schema_version = "7";
 #if !defined(FLTX_TESTS_ENABLE_EXTERNAL_COMPARISONS) || \
     !FLTX_TESTS_ENABLE_EXTERNAL_COMPARISONS || \
     (defined(FLTX_TESTS_EXPECT_CONSUMER_FAST_MATH) && \
@@ -59,6 +59,8 @@ namespace fltx::tests::accuracy
 
     struct result
     {
+        mpfr::nominal_ulp_accumulator ulp;
+        std::string ulp_worst_input, ulp_observed, ulp_reference;
         std::size_t samples = 0;
         double mean_bits = 0.0;
         double p01_bits = 0.0;
@@ -1316,6 +1318,7 @@ namespace fltx::tests::accuracy
                         expected,
                         implementations::value_traits<Value>::absolute_resolution(),
                         implementations::value_traits<Value>::nominal_bits));
+                add_ulp<Value>(observed, expected, describe(domain.values[i]), measured);
                 bits.push_back(sample_bits);
                 if (bits.size() == 1 || sample_bits < measured.worst_bits)
                 {
@@ -1366,6 +1369,20 @@ namespace fltx::tests::accuracy
         }
 
         template<class Value>
+        void add_ulp(const mpfr::real& observed, const mpfr::real& expected,
+                     const std::string& input, result& measured)
+        {
+            if (measured.ulp.add(observed, expected,
+                    implementations::value_traits<Value>::absolute_resolution(),
+                    static_cast<int>(implementations::value_traits<Value>::nominal_bits)))
+            {
+                measured.ulp_worst_input = input;
+                measured.ulp_observed = mpfr::text(observed);
+                measured.ulp_reference = mpfr::text(expected);
+            }
+        }
+
+        template<class Value>
         void add_sample(
             const Value& value,
             const mpfr::real& expected,
@@ -1376,6 +1393,7 @@ namespace fltx::tests::accuracy
         {
             const mpfr::real observed =
                 implementations::value_traits<Value>::to_real(value);
+            add_ulp<Value>(observed, expected, input, measured);
             const double sample_bits = score(value, expected, require_exact);
             bits.push_back(sample_bits);
             if (bits.size() == 1 || sample_bits < measured.worst_bits)
@@ -1398,6 +1416,10 @@ namespace fltx::tests::accuracy
             result& measured,
             std::vector<double>& bits)
         {
+            add_ulp<First>(implementations::value_traits<First>::to_real(first),
+                expected_first, input + " [component 0]", measured);
+            add_ulp<Second>(implementations::value_traits<Second>::to_real(second),
+                expected_second, input + " [component 1]", measured);
             bits.push_back(sample_bits);
             if (bits.size() == 1 || sample_bits < measured.worst_bits)
             {
@@ -1620,7 +1642,17 @@ namespace fltx::tests::accuracy
                 std::string(zero),
                 measured.worst_input,
                 measured.observed,
-                measured.reference
+                measured.reference,
+                "reference-binade-v1",
+                std::to_string(static_cast<int>(implementations::value_traits<Value>::nominal_bits)),
+                mpfr::text(implementations::value_traits<Value>::absolute_resolution()),
+                std::to_string(measured.ulp.samples),
+                mpfr::text(measured.ulp.sum),
+                measured.ulp.samples ? mpfr::text(measured.ulp.maximum) : "",
+                std::to_string(measured.ulp.exact_samples),
+                std::to_string(measured.ulp.nonfinite_samples),
+                std::to_string(measured.ulp.undefined_samples),
+                measured.ulp_worst_input, measured.ulp_observed, measured.ulp_reference
             });
 
             std::cout << std::left

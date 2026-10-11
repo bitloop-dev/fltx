@@ -23,6 +23,14 @@ evaluation. Genuine strict native numerical constant evaluation, native
 special-value assertions in both consumer profiles, strict native fixed
 simulation, and strict fdd/fqd accuracy remain gating.
 
+On 13 September 2026, the current source also passed `fltx_ci_checks` on
+Windows x64/MSVC at source fingerprint
+`05c846d92aea3ea144df4d91df6abeaee122ac4ca784bf6a0f14626f8cabf7f3`.
+This is a current single-platform confirmation, not a replacement for the
+seven-preset pre-audit baseline above. The explicit witnesses below were
+rechecked against that rebuilt library; none is covered by the standard
+accuracy corpus.
+
 The complete consumer-fast-math contract executable is compiled on every
 configured target but is not a badge gate. GCC, Clang, AppleClang, MinGW, and
 Emscripten legitimately produce different findings when their fast-math modes
@@ -42,13 +50,13 @@ are warning-level header-hygiene debt, not hidden test failures.
 
 ## Open conversion finding
 
-Native floating casts currently add expansion limbs serially in `long double`
+Native floating casts still add expansion limbs serially in `long double`
 before the final conversion. This can lose a tail that determines rounding,
-even for canonical storage. For example, on a host with 64-bit long-double
-precision, converting `fdd_s{0x1.000001p0, 0x1p-80}` to `float` yields `1`
-instead of `1 + 2^-23`. Related double and long-double witnesses fail in both
-runtime and constant evaluation. Raw overlapping/cancelling limbs expose an
-additional summation issue.
+even for canonical storage. The 13 September MSVC recheck reproduced the
+documented witness: converting `fdd_s{0x1.000001p0, 0x1p-80}` to `float`
+yielded `1` instead of `1 + 2^-23`. Related double and long-double witnesses
+fail in both runtime and constant evaluation. Raw overlapping/cancelling limbs
+expose an additional summation issue.
 
 This remains an open pre-existing correctness finding. A correction needs one
 shared target-aware rounding implementation, including overflow-before-
@@ -60,9 +68,10 @@ native floating conversion.
 
 At the declared exponential overflow cutoff and some immediately preceding
 last-limb neighbors, the existing expansion kernel can overflow an
-intermediate and produce noncanonical nonfinite results. Genuine constant
-evaluation can reject the same intermediate. The audit reproduced this in
-the committed baseline as well as the candidate.
+intermediate and produce noncanonical nonfinite results. The 13 September
+MSVC recheck produced NaN for both fdd and fqd at the declared cutoff and its
+immediate representable predecessor; genuine constant evaluation can reject
+the same intermediate. This was also present in the committed baseline.
 
 `sinh` and `cosh` inherit this narrow endpoint defect through their exponential
 calls, including near the shifted cutoff used for their added finite range.
@@ -74,10 +83,12 @@ and its endpoint policy remains separate work.
 
 Some formatting routes assume that their requested precision fits fixed
 internal scratch storage even when the caller provides a larger output buffer.
-The audit reproduced scientific precision 384 terminating through a noexcept
-writer and QD hexadecimal precision 600 reporting success with incorrect
-digits. The width/precision parser now rejects integer accumulation overflow,
-but that does not fix these separate numerical and scratch-capacity limits.
+The 13 September MSVC recheck reproduced scientific precision 384 terminating
+through a noexcept writer. QD hexadecimal precision 600 returned a successful
+607-character result, but it began `0x0.000...p+1` for pi rather than a
+nonzero significand. The width/precision parser now rejects integer
+accumulation overflow, but that does not fix these separate numerical and
+scratch-capacity limits.
 
 The resource policy remains undecided: support larger requests by generating
 bounded exact digits and emitting additional zero padding, or document and

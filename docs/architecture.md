@@ -220,8 +220,10 @@ accuracy-only collection for native runtime baselines and fixed constexpr
 f32/f64/dd/qd evidence, reusing `run_metrics.py` preflight, provenance, and
 transactional-publication mechanics. Fixed constexpr has a separate execution
 profile, evidence namespace and compatibility policy. `report_pipeline.py`
-routes that evidence to `build_fixed_constexpr.py`, which uses the shared SVG
-table renderer for per-domain accuracy reports. Benchmark collection and the
+routes that evidence to `build_fixed_constexpr.py`, which adapts validated
+accuracy evidence to `build_overview.py` with performance columns omitted.
+Operation summaries reuse the shared accuracy aggregation; domain evidence
+remains in tooltips. Benchmark collection and the
 runtime comparison renderers keep their existing ownership.
 
 `run_benchmarks.ps1` adds configured local/SSH dispatch for performance-only

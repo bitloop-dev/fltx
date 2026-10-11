@@ -35,6 +35,7 @@ from source_fingerprint import source_identity, valid_fingerprint
 
 
 SCHEMA_VERSION = "6"
+ACCURACY_SCHEMA_VERSION = "7"
 PRECISIONS = ("dd", "qd")
 CONSUMER_MODES = ("strict", "fastmath")
 MINIMUM_CREDIBLE_BENCHMARK_NS = 0.001
@@ -202,6 +203,14 @@ ACCURACY_FIELDS = (
     "observed",
     "reference",
 )
+LEGACY_ACCURACY_FIELDS = ACCURACY_FIELDS
+ULP_FIELDS = (
+    "nominal_ulp_policy", "nominal_precision_bits", "nominal_ulp_floor",
+    "ulp_samples", "ulp_sum", "ulp_max", "ulp_exact_samples",
+    "ulp_nonfinite_samples", "ulp_undefined_samples",
+    "ulp_worst_input", "ulp_observed", "ulp_reference",
+)
+ACCURACY_FIELDS += ULP_FIELDS
 BENCHMARK_FIELDS = (
     "schema_version",
     "run_id",
@@ -243,6 +252,11 @@ CANONICAL_FIELDS = (
     "speed_ratio",
     "run_id",
 )
+
+
+LEGACY_CANONICAL_FIELDS = CANONICAL_FIELDS
+ULP_SUMMARY_FIELDS = (*ULP_FIELDS, "ulp_mean", "ulp_worst_domain")
+CANONICAL_FIELDS += ULP_SUMMARY_FIELDS
 
 
 class MetricsError(ValueError):
@@ -851,7 +865,10 @@ def _read_csv(
     try:
         with path.open(newline="", encoding="utf-8") as stream:
             reader = csv.DictReader(stream)
-            if tuple(reader.fieldnames or ()) != fields:
+            actual_fields = tuple(reader.fieldnames or ())
+            legacy_accuracy = fields == ACCURACY_FIELDS and actual_fields == LEGACY_ACCURACY_FIELDS
+            legacy_summary = fields == CANONICAL_FIELDS and actual_fields == LEGACY_CANONICAL_FIELDS
+            if actual_fields != fields and not (legacy_accuracy or legacy_summary):
                 raise MetricsError(
                     f"{path}: expected header {','.join(fields)}, "
                     f"got {','.join(reader.fieldnames or [])}"
@@ -967,6 +984,39 @@ def _benchmark_values(
     return time, ratio
 
 
+def _validate_ulp(row: Mapping[str, str], path: Path) -> None:
+    from decimal import Decimal, InvalidOperation
+
+    if row["nominal_ulp_policy"] != "reference-binade-v1":
+        raise MetricsError(f"{path}: unsupported nominal ULP policy")
+    if _int(row, "nominal_precision_bits", path) == 0:
+        raise MetricsError(f"{path}: nominal precision must be positive")
+    count = _int(row, "ulp_samples", path)
+    exact = _int(row, "ulp_exact_samples", path)
+    _int(row, "ulp_nonfinite_samples", path)
+    _int(row, "ulp_undefined_samples", path)
+    if exact > count:
+        raise MetricsError(f"{path}: ULP exact count exceeds measured count")
+    def decimal(field: str) -> Decimal:
+        try:
+            value = Decimal(row[field])
+        except InvalidOperation as error:
+            raise MetricsError(f"{path}: invalid {field}") from error
+        if not value.is_finite() or value < 0:
+            raise MetricsError(f"{path}: invalid {field}")
+        return value
+    decimal("nominal_ulp_floor")
+    total = decimal("ulp_sum")
+    if count:
+        maximum = decimal("ulp_max")
+        if maximum > total:
+            raise MetricsError(f"{path}: ULP maximum exceeds sum")
+        if any(not row[field] for field in ("ulp_worst_input", "ulp_observed", "ulp_reference")):
+            raise MetricsError(f"{path}: missing ULP witness")
+    elif total != 0 or any(row[field] for field in ("ulp_max", "ulp_worst_input", "ulp_observed", "ulp_reference")):
+        raise MetricsError(f"{path}: ULP statistics without measured samples")
+
+
 def _validate_identity(
     rows: Iterable[Mapping[str, str]],
     path: Path,
@@ -981,7 +1031,10 @@ def _validate_identity(
     seen: set[tuple[str, ...]] = set()
     accuracy = tuple(rows)
     for row in accuracy:
-        if row["schema_version"] != SCHEMA_VERSION:
+        expected_schema = (
+            ACCURACY_SCHEMA_VERSION if "nominal_ulp_policy" in row else SCHEMA_VERSION
+        )
+        if row["schema_version"] != expected_schema:
             raise MetricsError(f"{path}: unsupported schema version {row['schema_version']!r}")
         if row["run_id"] != run_id or row["source_revision"] != revision:
             raise MetricsError(f"{path}: mixed run ID or source revision")
@@ -1006,6 +1059,8 @@ def _validate_identity(
             raise MetricsError(f"{path}: samples must be greater than zero")
         if "seed" in row:
             _int(row, "seed", path)
+        if "nominal_ulp_policy" in row:
+            _validate_ulp(row, path)
 
 
 def _validate_completeness(
@@ -1154,6 +1209,38 @@ def _accuracy_values(
     if passed != (margin >= 0):
         raise MetricsError(f"{source}: inconsistent pass flag for {row['operation']}")
     return mean, p01, worst, margin, passed, exact
+
+
+def _ulp_summary(detail: list[dict[str, str]], source: Path) -> dict[str, object]:
+    from decimal import Decimal, localcontext
+
+    empty = dict.fromkeys(ULP_SUMMARY_FIELDS, "")
+    if not detail or not any("nominal_ulp_policy" in row for row in detail):
+        return empty
+    if not all("nominal_ulp_policy" in row for row in detail):
+        raise MetricsError(f"{source}: cannot pool legacy and nominal ULP evidence")
+    for row in detail:
+        _validate_ulp(row, source)
+    policies = {(row["nominal_ulp_policy"], int(row["nominal_precision_bits"]),
+                 Decimal(row["nominal_ulp_floor"])) for row in detail}
+    if len(policies) != 1:
+        raise MetricsError(f"{source}: inconsistent nominal ULP units")
+    counts = ("ulp_samples", "ulp_exact_samples", "ulp_nonfinite_samples", "ulp_undefined_samples")
+    result = {**empty, **{key: sum(int(row[key]) for row in detail) for key in counts}}
+    for key in ("nominal_ulp_policy", "nominal_precision_bits", "nominal_ulp_floor"):
+        result[key] = detail[0][key]
+    with localcontext() as context:
+        context.prec = 100
+        total = sum((Decimal(row["ulp_sum"]) for row in detail), Decimal(0))
+        result["ulp_sum"] = str(total)
+        if result["ulp_samples"]:
+            result["ulp_mean"] = str(total / result["ulp_samples"])
+            worst = max((row for row in detail if int(row["ulp_samples"])),
+                        key=lambda row: Decimal(row["ulp_max"]))
+            for key in ("ulp_max", "ulp_worst_input", "ulp_observed", "ulp_reference"):
+                result[key] = worst[key]
+            result["ulp_worst_domain"] = worst["domain"]
+    return result
 
 
 def _accuracy_summary(
@@ -1342,6 +1429,7 @@ def aggregate(
                 "implementation_label": identity["implementation_label"],
                 "api": identity["api"],
                 **accuracy_values,
+                **_ulp_summary(detail, accuracy_path),
                 **benchmark_values,
                 "run_id": run_id,
             }
@@ -1687,7 +1775,7 @@ def _validate_reusable_candidate(
         expected_summary = {
             (str(row["group"]), str(row["operation"]), str(row["implementation"])): {
                 field: str(_format(row[field]))
-                for field in CANONICAL_FIELDS
+                for field in canonical_rows[0]
             }
             for row in expected_rows
         }

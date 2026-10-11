@@ -201,7 +201,8 @@ python .\validation\metrics\run_all_supported_metrics.py `
 Both public metrics entry points accept `--fixed_constexpr` (also spelled
 `--fixed-constexpr`). It selects the existing `fltx_constexpr_accuracy` and
 `fltx_constexpr_accuracy_fastmath` runners, which force
-`FLTX_SIMULATE_FIXED_CONSTEVAL_MODE` and compare FLTX f32/f64/dd/qd against MPFR.
+`FLTX_SIMULATE_FIXED_CONSTEVAL_MODE` and compare FLTX DD/QD against MPFR.
+Add `--include-native` to explicitly include f32/f64 fixed-constexpr accuracy.
 The flag selects accuracy collection and reporting only; it does not run
 benchmarks or external comparison libraries.
 
@@ -215,7 +216,7 @@ python validation/metrics/run_preset_metrics.py --preset windows-x64-msvc-releas
 The ordinary profile flag controls sampling: `--quick` uses the 2,048-sample
 small profile, standard uses 4,096, and full uses 65,536, with the existing
 per-operation sample policy and deterministic anchors. Strict thresholds gate
-all four precisions. Fast-math threshold misses remain advisory; incomplete
+the selected precisions. Fast-math threshold misses remain advisory; incomplete
 evidence, runner faults, and mismatched execution modes always fail.
 Fast-math Inf/NaN probes are omitted and shown as `-`, as in CI.
 
@@ -225,19 +226,22 @@ Evidence is stored under `data/fixed_constexpr/<consumer-mode>/<run-id>/`, with
 existing publication transaction and its own lock. Reuse checks the execution
 profile, consumer mode, source, target, host, sample policy, operation manifest,
 configuration, and output hashes. Runtime evidence cannot satisfy this profile.
-`--publish` for fixed constexpr requires `--full` and retains the known-revision
-and optimized-Release checks. Development runs can use `--output-root` for
-isolation; filtered runs must stay under `build/` and cannot be published.
+`--publish` for fixed constexpr supports the `--quick`, `--standard`, and
+`--full` profiles and retains the known-revision and optimized-Release checks.
+Development runs can use `--output-root` for isolation; filtered runs must stay
+under `build/` and cannot be published.
 
 Each precision produces an accuracy-only overview, for example
-`windows_x86_64_MSVC_f32_fixed_constexpr_overview.svg` or
-`windows_x86_64_MSVC_f32_fixed_constexpr_fastmath_overview.svg`. These tables
-show each domain's mean, p01, worst and required bits, threshold result,
-Inf/NaN support, and signed zero. Subnormal domains remain explicit rows.
-Tooltips retain the worst input and observed/MPFR values. Headers identify
+`windows_x86_64_MSVC_dd_fixed_constexpr_overview.svg` or
+`windows_x86_64_MSVC_dd_fixed_constexpr_fastmath_overview.svg`. These tables
+reuse the ordinary overview styling, with one row per operation showing mean
+and worst accuracy, passing domain counts, Inf/NaN support and signed zero.
+Fast-math reports show subnormal support separately, as ordinary overviews do.
+Tooltips retain domain details, thresholds, worst inputs and observed/MPFR values. Headers identify
 these as constexpr algorithms executed at runtime; actual compiler constant
 evaluation remains covered by the separate constexpr contract corpus.
-This profile produces four SVGs per target and consumer mode, without compact
+This profile produces two SVGs per target and consumer mode (four with
+`--include-native`), without compact
 performance or strict/fast-math comparison variants. Existing runtime report
 names and contents are unaffected.
 
@@ -325,10 +329,11 @@ requires those comparison reports; a focused run simply skips them when the
 other mode is unavailable or stale.
 
 `run_all_supported_metrics.py` runs the runtime `dd`/`qd` metrics and reports
-for every preset supported by the current host. It does not collect the
-separate native `f32`/`f64` accuracy baseline. Use `run_preset_metrics.py` for
-one preset when that native baseline is wanted, or invoke
-`_internal/run_native_accuracy.py` directly for native accuracy only.
+for every preset supported by the current host. Both public metrics commands
+run DD/QD only by default. Add `--include-native` to either command to collect
+the separate f32/f64 accuracy baseline as well. This opt-in applies to runtime
+and fixed-constexpr workflows. Invoke `_internal/run_native_accuracy.py`
+directly for native accuracy only.
 
 The public commands use mutually exclusive, value-free profile flags. With no
 profile flag, `--standard` is implied. `--quick` selects the half-sized
@@ -586,7 +591,7 @@ consumer translation unit.
 f32 and f64 use the same 119 accuracy rows as a native/libm policy baseline,
 but they are not merged into the dd/qd summary tables. The preset metrics
 pipeline records the matching strict or fast-math baseline after each requested
-dd/qd metrics mode. Run both complete native suites independently with:
+dd/qd metrics mode only when `--include-native` is supplied. Run both complete native suites independently with:
 
 ```powershell
 cmake --build --preset windows-x64-msvc-release --target fltx_native_accuracy_full
@@ -711,3 +716,42 @@ Thus `0.49×` means that implementation runs at 49% of FLTX's speed, while
 See [COVERAGE.md](COVERAGE.md) for ownership and
 [KNOWN_FAILURES.md](KNOWN_FAILURES.md) for findings that currently prevent
 canonical publication.
+
+## Nominal ULP evidence
+
+New accuracy detail CSVs use schema 7 and retain the existing bit scores and
+pass/fail thresholds unchanged. Benchmark schema is unchanged. Operation summary CSVs include the pooled
+ULP fields plus `ulp_mean` and `ulp_worst_domain`; existing SVG tables continue
+to display the original bit scores. Legacy schema-6 accuracy evidence remains readable, but cannot
+supply the new statistics.
+
+`nominal_ulp_policy=reference-binade-v1` defines error as
+`abs(observed - reference) / max(2^(floor(log2(abs(reference))) + 1 - p), floor)`.
+Here `p` is the implementation's `nominal_precision_bits`, and `floor` is its
+`nominal_ulp_floor` (smallest component spacing). At exact powers of two the
+upper binade is used, for either sign. This is the nominal binade model used
+by stepping, but not a direction-dependent nextafter distance. It does not
+claim correctly rounded expansion arithmetic. Comparisons use each
+implementation's own precision and floor, both recorded in every row.
+
+`ulp_sum / ulp_samples` is the arithmetic mean error, including zero for exact
+finite matches; `ulp_max` is the maximum. Sums are accumulated with the MPFR
+oracle type and serialized with 80 significant decimal digits, without binary64
+conversion, score caps or exact-result bonuses. `ulp_exact_samples` counts
+finite equality to the MPFR reference only; rounded underflow-to-zero has a
+nonzero error. Signed-zero correctness remains a separate check.
+
+A zero reference uses the component floor. For implementations without a
+fixed floor, an exact zero match contributes zero; a nonzero result against
+zero is counted in `ulp_undefined_samples`. Nonfinite observations or references
+are counted in `ulp_nonfinite_samples`, never silently inserted as zero error.
+Means describe only the counted finite measurements and must be shown with
+these exclusion counts and the existing correctness results.
+
+Pair-valued rows count each numeric output component separately; predicate
+rows have no ULP measurements. Formatting compares the emitted decimal with
+the binary input using that input type's nominal spacing. `ulp_worst_input`,
+`ulp_observed`, and `ulp_reference` retain a separate maximum-ULP witness (pair
+witnesses identify the component). Pool domains by summing `ulp_sum` and
+`ulp_samples`, not by averaging domain means. Do not pool different policies,
+precisions, or component floors into a single ULP average.

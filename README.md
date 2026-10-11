@@ -38,7 +38,7 @@ Performance:
 
 - Optimised for runtime and constexpr performance, with predictable build-time and binary-size scaling
 - Compatible with fast-math builds
-- Internal [`bl::fqd`](include/fltx/fqd.h) expression fusion reduces intermediate rounding and temporary value materialisation for common arithmetic shapes
+- Internal [`bl::fqd`](include/fltx/fqd.h) expression fusion reduces intermediate rounding and temporary value materialisation for common arithmetic shapes *(optional)*
 - Hardware acceleration where supported, including SSE2 on x86-64, FMA where available, AArch64 NEON, and WebAssembly SIMD128 via Emscripten
 - Suitable for lightweight native and WebAssembly builds
 - Optional dispatch helper that maps runtime choices to template specialisations
@@ -159,12 +159,17 @@ add_subdirectory(/path/to/fltx fltx-build)
 target_link_libraries(main PRIVATE fltx::fltx)
 ```
 
-Performance controls:
+### Performance controls
 
-| Option | Default | Meaning |
-|---|---|---|
-| `FLTX_FMA_MODE=AUTO\|OFF\|ASSUME` | `AUTO` | Safely detect x86 FMA at runtime, disable hardware FMA, or let the consumer guarantee FMA support. `ASSUME` exports `-mfma` where GNU-style compilers require it and performs no runtime feature check. |
-| `FLTX_SIMD=ON\|OFF` | `ON` | Enable supported SIMD paths. Emscripten `ON` supplies `-msimd128` to both the library and consuming translation units. |
+| Setting | Default | Configured when | Purpose |
+|---|---|---|---|
+| `FLTX_ENABLE_FQD_EXPRESSIONS=0\|1` | `0` | Compiling your application | Enable QD expression fusion. Works with an already installed library. |
+| `FLTX_FMA_MODE=AUTO\|OFF\|ASSUME` | `AUTO` | Building fltx | Automatically detect x86 hardware-FMA support, disable hardware FMA, or require FMA support. `ASSUME` performs no runtime feature check and exports FMA compiler options where required. |
+| `FLTX_SIMD=ON\|OFF` | `ON` | Building fltx | Enable SIMD implementations available for the target. Emscripten builds require SIMD128 when enabled and propagate `-msimd128` to consuming targets. |
+
+The defaults enable supported acceleration. Most applications need no configuration
+changes. FMA and SIMD settings are recorded in the built package; changing them
+requires rebuilding fltx. Expression templates are selected by the consuming application.
 
 Normal build-type optimization flags remain controlled by the selected CMake configuration and toolchain.
 
@@ -620,8 +625,12 @@ For detailed validation and metrics workflows, see [`validation/README.md`](vali
 
 Tested on:
 - **Windows:** AMD Ryzen 9 5950X, 32 GB DDR4
-- **Linux:** AMD Ryzen 9 5950X, 32 GB DDR4
-- **macOS:** Apple M2 Pro, 16 GB unified memory
+- **Linux:** AMD EPYC 7232P, 64 GB DDR4
+- **macOS:** Apple M2, 16 GB unified memory
+
+Cross-platform timings reflect different hardware as well as compilers and operating systems.
+
+[Browse metrics overviews](./validation/metrics/generated/overview/index.html)
 
 <br>
 

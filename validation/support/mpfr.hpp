@@ -399,6 +399,65 @@ namespace fltx::tests::mpfr
         return ldexp(real{1}, std::is_same_v<Float, float> ? -149 : -1074);
     }
 
+    // Reference-binade nominal ULPs, independent of the existing acceptance score.
+    // At powers of two use the upper binade (spacing away from zero). The
+    // component floor limits spacing near underflow. Zero with no fixed floor
+    // has no defined spacing unless the result is also exactly zero.
+    struct nominal_ulp_accumulator
+    {
+        std::size_t samples = 0;
+        std::size_t exact_samples = 0;
+        std::size_t nonfinite_samples = 0;
+        std::size_t undefined_samples = 0;
+        real sum{0};
+        real maximum{0};
+
+        // True when this sample supplies the maximum-error witness.
+        bool add(const real& observed, const real& reference,
+                 const real& floor, int precision)
+        {
+            if (is_nan(observed) || is_inf(observed) ||
+                is_nan(reference) || is_inf(reference))
+            {
+                ++nonfinite_samples;
+                return false;
+            }
+            real error{0};
+            if (observed != reference)
+            {
+                real spacing = floor;
+                if (reference != 0)
+                {
+                    const auto exponent = mpfr_get_exp(reference.backend().data());
+                    real binade_spacing{1};
+                    mpfr_mul_2si(binade_spacing.backend().data(),
+                        binade_spacing.backend().data(), exponent - precision, MPFR_RNDN);
+                    if (binade_spacing > spacing)
+                        spacing = binade_spacing;
+                }
+                if (spacing == 0)
+                {
+                    ++undefined_samples;
+                    return false;
+                }
+                error = observed - reference;
+                if (error < 0)
+                    error = -error;
+                error /= spacing;
+            }
+            else
+                ++exact_samples;
+            ++samples;
+            sum += error;
+            if (samples == 1 || error > maximum)
+            {
+                maximum = error;
+                return true;
+            }
+            return false;
+        }
+    };
+
     [[nodiscard]] FLTX_VALIDATION_PRECISE_FUNCTION double resolution_adjusted_bits(
         const real& observed,
         const real& reference,

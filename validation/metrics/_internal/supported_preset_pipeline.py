@@ -46,7 +46,7 @@ def main(root: Path, argv: list[str] | None = None) -> int:
         )
         try:
             outputs = preset_pipeline.run_pipeline_from_args(
-                root, preset, args, native_baseline=False,
+                root, preset, args,
             )
         except preset_pipeline.PipelineError as error:
             print(

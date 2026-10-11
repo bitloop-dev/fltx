@@ -29,7 +29,7 @@ from manifest import IMPLEMENTATIONS
 
 
 PRECISIONS = ("dd", "qd")
-PRECISION_TYPE_NAMES = {"dd": "fdd", "qd": "fqd"}
+PRECISION_TYPE_NAMES = {"f32": "float", "f64": "double", "dd": "fdd", "qd": "fqd"}
 SUPPORT = {
     "Both": "#4ade80",
     "Inf": "#fbbf24",
@@ -381,7 +381,7 @@ def _display_row(
     nominal_bits = next(
         item.nominal_bits
         for item in IMPLEMENTATIONS[precision]
-        if item.id == implementation
+        if item.id == implementation or (precision in {"f32", "f64"} and item.id == "native")
     )
     pooled = [
         nominal_bits + 32.0 if is_exact else mean
@@ -532,6 +532,8 @@ def _tooltip(
     operation: str,
     implementation: str,
     row: dict[str, str] | None,
+    *,
+    include_worst_inputs: bool = False,
 ) -> str:
     if row is None:
         return f"{implementation}: {operation} is unavailable"
@@ -581,6 +583,8 @@ def _tooltip(
                 f"required {_fmt_bits(required)}, margin {margin}, "
                 f"n={detail['samples']}, seed={detail['seed']}"
             )
+            if include_worst_inputs:
+                lines.append(f"Worst input: {detail['worst_input']} | Observed: {detail['observed']} | MPFR: {detail['reference']}")
     if row["ns_iter"]:
         benchmark = f"benchmark: {_fmt_ns(row['ns_iter'])} ns/iteration"
         speed_ratio = _speed_vs_fltx(row, implementation)
@@ -1013,6 +1017,9 @@ def render_overview(
     target: Target,
     precision: str,
     layout: str = "full",
+    *,
+    accuracy_only: bool = False,
+    description: str | None = None,
 ) -> str:
     if layout not in {"full", "compact"}:
         raise ValueError(f"unsupported overview layout {layout!r}")
@@ -1073,6 +1080,13 @@ def render_overview(
         )
         for implementation in implementations
     }
+    if accuracy_only:
+        # A zero-width column preserves the shared column indices while omitting
+        # performance completely from accuracy-only reports.
+        column_widths_by_implementation = {
+            key: (*widths[:3], 0, *widths[4:])
+            for key, widths in column_widths_by_implementation.items()
+        }
     block_widths = tuple(
         sum(column_widths_by_implementation[implementation])
         for implementation in implementations
@@ -1100,6 +1114,9 @@ def render_overview(
         "Accuracy is MPFR-relative; domain pass counts use FLTX release "
         "thresholds; speed is implementation ÷ FLTX."
     )
+    if accuracy_only:
+        title = f"{PRECISION_TYPE_NAMES[precision]}{title_mode} fixed constexpr accuracy — {target.label}"
+        subtitle = description or "Accuracy is MPFR-relative; constexpr algorithms executed at runtime."
     if layout == "full":
         character_width = _estimated_character_width("full", 10)
         width = max(
@@ -1230,6 +1247,8 @@ def render_overview(
             groups += ((("Subnorm",), column_widths[6], True),)
         group_x = x
         for group_lines, group_width, spans_subheader in groups:
+            if not group_width:
+                continue
             group_height = (
                 header_heights[1] + header_heights[2]
                 if spans_subheader
@@ -1251,6 +1270,8 @@ def render_overview(
         for (key, header_lines, _), column_width in zip(
             _column_specs(dataset.consumer_mode), column_widths
         ):
+            if not column_width:
+                continue
             if (
                 key in {"special", "signed_zero", "subnormal"} or
                 (
@@ -1392,6 +1413,7 @@ def render_overview(
                     operation,
                     implementation,
                     row,
+                    include_worst_inputs=accuracy_only,
                 )
                 values: list[tuple[str, str, str]] = [
                     _accuracy_style(
@@ -1417,6 +1439,8 @@ def render_overview(
                 for column_index, (
                     column_width, (value, fill, text_fill),
                 ) in enumerate(zip(column_widths, values)):
+                    if not column_width:
+                        continue
                     _rect(
                         parts, column_x, y, column_width, ROW_HEIGHT, fill,
                     )
@@ -1541,6 +1565,8 @@ def render_overview(
         boundaries = []
         position = x
         for column_width in column_widths[:-1]:
+            if not column_width:
+                continue
             position += column_width
             boundaries.append(position)
 

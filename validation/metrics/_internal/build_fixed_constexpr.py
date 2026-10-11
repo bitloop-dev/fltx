@@ -1,4 +1,4 @@
-"""Render validated fixed constexpr accuracy evidence, with one row per domain."""
+"""Adapt validated fixed constexpr evidence to the shared overview renderer."""
 
 from __future__ import annotations
 
@@ -6,12 +6,13 @@ import uuid
 from pathlib import Path
 from typing import Mapping
 
-from build_tables import GROUP_LABELS, GROUP_ORDER, OPERATION_ORDER, Target, _target
-from build_overview import _fmt_bits
+from collections import defaultdict
+
+from build_tables import Dataset, Target, _target
+from build_overview import render_overview
 from manifest import normalize_operations
 import run_metrics
 import run_native_accuracy as accuracy
-from svg_table import Cell, Column, Row, Table, render
 
 
 def load_run(metadata_path: Path, consumer_mode: str) -> tuple[dict, dict]:
@@ -30,6 +31,7 @@ def load_run(metadata_path: Path, consumer_mode: str) -> tuple[dict, dict]:
             fingerprint=metadata["source_fingerprint"],
             configuration=configuration, host=metadata["host"],
             operations=operations, fixed_constexpr=True,
+            include_native=any(p in accuracy.NATIVE_PRECISIONS for p in metadata.get("precisions", [])),
         )
     except (KeyError, TypeError, ValueError) as error:
         raise run_metrics.MetricsError(f"{metadata_path}: invalid fixed constexpr metadata: {error}") from error
@@ -37,45 +39,32 @@ def load_run(metadata_path: Path, consumer_mode: str) -> tuple[dict, dict]:
 
 
 def render_precision(rows: list[dict[str, str]], metadata: dict, precision: str) -> str:
-    def order(row):
-        group, operation = row["group"], row["operation"]
-        return (GROUP_ORDER.get(group, 999), group,
-                OPERATION_ORDER.get(group, {}).get(operation, 999), operation, row["domain"])
-
-    table_rows = []
-    for row in sorted(rows, key=order):
-        passed = row["pass"] == "yes"
-        tooltip = (
-            f"{row['api']} | samples: {row['samples']} | seed: {row['seed']}\n"
-            f"Worst input: {row['worst_input']}\n"
-            f"Observed: {row['observed']}\nMPFR: {row['reference']}"
-        )
-        table_rows.append(Row(
-            GROUP_LABELS.get(row["group"], row["group"]),
-            f"{row['operation']} / {row['domain']}",
-            (
-                *(Cell((_fmt_bits(row[field]),), tooltip=tooltip) for field in
-                  ("mean_bits", "p01_bits", "worst_bits", "required_worst_bits")),
-                Cell(("PASS" if passed else "FAIL",), fill="#dcfce7" if passed else "#fee2e2", tooltip=tooltip),
-                Cell((row["special_support"],)),
-                Cell((row["signed_zero_support"],)),
-            ),
-        ))
     target = Target(metadata["platform"], metadata["architecture"], metadata["compiler"])
-    legend = [
-        "Each row is one MPFR accuracy domain; exact means every sampled result was exact.",
-        f"Thresholds: {metadata['thresholds']}. Signed zero is reported independently of numerical accuracy.",
-        f"Run: {metadata['run_id']} | Source: {metadata['source_fingerprint'][:16]}",
-    ]
+    grouped = defaultdict(list)
+    for row in rows:
+        grouped[(row["group"], row["operation"])].append(row)
+    canonical, details = {}, {}
+    for (group, operation), domains in grouped.items():
+        summary = run_metrics._accuracy_summary(
+            domains, Path("fixed constexpr evidence"),
+            {row["domain"]: float(row["required_worst_bits"]) for row in domains},
+        )
+        key = (target, precision, group, operation, "fltx")
+        canonical[key] = {
+            **domains[0], **{name: str(value) for name, value in summary.items()},
+            "ns_iter": "", "speed_ratio": "",
+        }
+        for row in domains:
+            details[(*key, row["domain"])] = row
+    dataset = Dataset(
+        canonical, details, {(target, precision): ("fltx",)},
+        {metadata["source_revision"]}, {metadata["source_fingerprint"]},
+        {target: metadata["run_id"]}, consumer_mode=metadata["consumer_mode"],
+    )
+    description = f"{metadata['sample_mode']} | thresholds: {metadata['thresholds']} | constexpr algorithms executed at runtime."
     if metadata["consumer_mode"] == "fastmath":
-        legend.append("Inf/NaN probes are omitted under fixed constexpr fast-math; '-' means untested or inapplicable.")
-    return render(Table(
-        title=f"FLTX {precision} fixed constexpr accuracy",
-        description=f"{target.label} | {metadata['consumer_mode']} | {metadata['sample_mode']} | constexpr algorithms executed at runtime",
-        columns=(Column("Mean", "bits"), Column("p01", "bits"), Column("Worst", "bits"),
-                 Column("Required", "worst bits"), Column("Threshold"), Column("Inf / NaN"), Column("Signed zero")),
-        rows=tuple(table_rows), legend=tuple(legend),
-    ))
+        description += " Subnormals separate; Inf/NaN untested."
+    return render_overview(dataset, target, precision, accuracy_only=True, description=description)
 
 
 def build_run(
@@ -93,8 +82,8 @@ def build_run(
         raise run_metrics.MetricsError("operation-filtered reports must stay under build/")
     canonical = root / "validation" / "metrics" / "generated"
     if output.resolve().is_relative_to(canonical):
-        if metadata["sample_mode"] != "full" or metadata["source_revision"] == "unknown":
-            raise run_metrics.MetricsError("fixed constexpr publication requires complete full-profile evidence and a known revision")
+        if metadata["source_revision"] == "unknown":
+            raise run_metrics.MetricsError("fixed constexpr publication requires a known revision")
         run_metrics._validate_publishable_build(metadata["configuration"], metadata_path)
 
     target = _target(result["target"])
@@ -120,8 +109,9 @@ def build_run(
         "evidence_sha256": run_metrics._sha256_file(metadata_path),
         "outputs": {final.name: run_metrics._sha256_file(staged) for staged, final in staged_outputs},
     })
-    with run_metrics._publication_lock(output / "overview" / f".{prefix}{suffix}.publish.lock"):
-        run_metrics._publish_transaction(staged_outputs, staged_metadata, output / "overview" / marker)
+    publication_metadata = output / ".metadata"
+    with run_metrics._publication_lock(publication_metadata / f".{prefix}{suffix}.publish.lock"):
+        run_metrics._publish_transaction(staged_outputs, staged_metadata, publication_metadata / marker)
     return [final for _, final in staged_outputs]
 
 

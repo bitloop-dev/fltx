@@ -51,7 +51,7 @@ def accuracy_row(
     }[implementation]
     gated = implementation == "fltx"
     return {
-        "schema_version": run_metrics.SCHEMA_VERSION,
+        "schema_version": run_metrics.ACCURACY_SCHEMA_VERSION,
         "run_id": "run",
         "source_revision": "rev",
         "source_fingerprint": FINGERPRINT,
@@ -76,6 +76,13 @@ def accuracy_row(
         "worst_input": "1",
         "observed": "1",
         "reference": "1",
+        "nominal_ulp_policy": "reference-binade-v1",
+        "nominal_precision_bits": "106",
+        "nominal_ulp_floor": "4.9406564584124654e-324",
+        "ulp_samples": "4", "ulp_sum": "0.75", "ulp_max": "0.5",
+        "ulp_exact_samples": "2", "ulp_nonfinite_samples": "0",
+        "ulp_undefined_samples": "0",
+        "ulp_worst_input": "1", "ulp_observed": "1", "ulp_reference": "1",
     }
 
 
@@ -3645,7 +3652,6 @@ class PresetPipelineTests(unittest.TestCase):
                     force_rerun=True,
                     consumer_mode="all",
                     operations=(),
-                    native_baseline=False,
                 ),
                 mock.call(
                     root,
@@ -3656,7 +3662,6 @@ class PresetPipelineTests(unittest.TestCase):
                     force_rerun=True,
                     consumer_mode="all",
                     operations=(),
-                    native_baseline=False,
                 ),
             ],
         )
@@ -3691,8 +3696,23 @@ class PresetPipelineTests(unittest.TestCase):
             force_rerun=False,
             consumer_mode="strict",
             operations=(),
-            native_baseline=False,
         )
+
+    def test_all_supported_pipeline_forwards_native_opt_in_in_both_workflows(self) -> None:
+        for fixed in (False, True):
+            with (
+                mock.patch.object(supported_preset_pipeline, "supported_presets", return_value=("one", "two")),
+                mock.patch.object(preset_pipeline, "run_pipeline", return_value=[]) as run,
+                redirect_stdout(io.StringIO()),
+            ):
+                status = supported_preset_pipeline.main(
+                    Path("source"), ["--standard", "--include-native",
+                                     *(["--fixed_constexpr"] if fixed else [])])
+                self.assertEqual(status, 0)
+                self.assertEqual(run.call_count, 2)
+                for call in run.call_args_list:
+                    self.assertTrue(call.kwargs["include_native"])
+                    self.assertEqual(call.kwargs.get("fixed_constexpr", False), fixed)
 
     def test_all_supported_pipeline_does_not_accept_a_preset(self) -> None:
         with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
@@ -3803,12 +3823,15 @@ class PresetPipelineTests(unittest.TestCase):
         self.assert_pipeline_all()
 
     def test_filtered_pipeline_all_forwards_selection_to_metrics_and_native(self) -> None:
-        self.assert_pipeline_all(("sin", "add", "sin"))
+        self.assert_pipeline_all(("sin", "add", "sin"), native=True, include_native=True)
 
     def test_benchmark_only_pipeline_all_skips_native(self) -> None:
-        self.assert_pipeline_all(("sincos", "nextafter", "sincos"), native=False)
+        self.assert_pipeline_all(("sincos", "nextafter", "sincos"), native=False, include_native=True)
 
-    def assert_pipeline_all(self, operations=(), *, native=True) -> None:
+    def test_pipeline_native_collection_requires_explicit_opt_in(self) -> None:
+        self.assert_pipeline_all(native=True, include_native=True)
+
+    def assert_pipeline_all(self, operations=(), *, native=False, include_native=False) -> None:
         selected = sorted(set(operations))
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -3941,6 +3964,7 @@ class PresetPipelineTests(unittest.TestCase):
             ):
                 args = preset_pipeline.parse_args([
                     "--preset", "native-release", "--consumer-mode", "all",
+                    *(["--include-native"] if include_native else []),
                     *(value for operation in operations for value in ("--operation", operation)),
                 ])
                 outputs = preset_pipeline.run_pipeline_from_args(
@@ -4667,7 +4691,7 @@ class PresetPipelineTests(unittest.TestCase):
 
 
 class FixedConstexprMetricsTests(unittest.TestCase):
-    def collect(self, root, *, mode="strict", fail=False, operations=()):
+    def collect(self, root, *, mode="strict", fail=False, operations=(), include_native=False):
         configuration = ValidationTests.configuration_banner(simulated_consteval="on")
         configuration["consumer"]["fast-math"] = "on" if mode == "fastmath" else "off"
         provenance = {
@@ -4705,6 +4729,7 @@ class FixedConstexprMetricsTests(unittest.TestCase):
         ):
             status = run_native_accuracy.main([
                 "--accuracy", "accuracy.exe", "--fixed_constexpr", "--sample-mode", "small",
+                *(["--include-native"] if include_native else []),
                 "--consumer-mode", mode, "--output-root", str(output_root), "--result-file", str(result_file),
                 *(value for operation in operations for value in ("--operation", operation)),
             ])
@@ -4720,26 +4745,42 @@ class FixedConstexprMetricsTests(unittest.TestCase):
             for mode in ("strict", "fastmath"):
                 status, result_path, commands, errors = self.collect(root, mode=mode)
                 self.assertEqual(status, 0, errors)
-                self.assertEqual(len(commands), 4)
+                self.assertEqual(len(commands), 2)
                 self.assertTrue(all(("--advisory" in command) == (mode == "fastmath") for command in commands))
                 result = json.loads(result_path.read_text())
                 metadata_path = Path(result["metadata"])
                 metadata, checked = build_fixed_constexpr.load_run(metadata_path, mode)
                 self.assertEqual(result, checked)
                 self.assertEqual(metadata["execution_profile"], "fixed_constexpr")
-                self.assertEqual(metadata["precisions"], ["f32", "f64", "dd", "qd"])
+                self.assertEqual(metadata["precisions"], ["dd", "qd"])
                 for precision in metadata["precisions"]:
                     self.assertTrue((metadata_path.parent / f"{precision}_fixed_constexpr_accuracy.csv").is_file())
                 reports = report_pipeline.rebuild(root / "build/data", output, consumer_mode=mode, fixed_constexpr=True)
-                self.assertEqual(len(reports), 4)
+                self.assertEqual(len(reports), 2)
                 for path in reports:
                     self.assertIn("_fixed_constexpr", path.name)
                     svg = path.read_text()
                     self.assertIn("constexpr algorithms executed at runtime", svg)
                     self.assertIn("wide_exponent", svg)
-                    self.assertIn("Signed zero", svg)
+                    self.assertIn("±0", svg)
+                    self.assertIn("Worst input:", svg)
+                    self.assertIn('fill="#0f1115"', svg)
+                    self.assertNotIn(">performance<", svg)
                     self.assertNotIn("benchmark", svg.casefold())
                 self.assertEqual(runtime.read_text(), "existing runtime report")
+
+    def test_fixed_native_collection_requires_opt_in_and_distinct_cache(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            status, result_path, commands, errors = self.collect(root, include_native=True)
+            self.assertEqual(status, 0, errors)
+            self.assertEqual([command[command.index("--precision") + 1] for command in commands], ["f32", "f64", "dd", "qd"])
+            metadata_path = Path(json.loads(result_path.read_text())["metadata"])
+            metadata, _ = build_fixed_constexpr.load_run(metadata_path, "strict")
+            kwargs = dict(sample_mode="small", consumer_mode="strict", platform="windows", architecture="x86_64", compiler="MSVC",
+                          fingerprint=FINGERPRINT, configuration=metadata["configuration"], host=metadata["host"], fixed_constexpr=True)
+            self.assertIsNone(run_native_accuracy._find_reusable_run(metadata_path.parent.parent, **kwargs)[0])
+            self.assertIsNotNone(run_native_accuracy._find_reusable_run(metadata_path.parent.parent, include_native=True, **kwargs)[0])
 
     def test_fixed_strict_failure_never_commits_complete_evidence(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -4798,16 +4839,18 @@ class FixedConstexprMetricsTests(unittest.TestCase):
             self.assertEqual(metadata["precisions"], ["dd", "qd"])
             self.assertEqual(metadata["operations"], ["to_chars"])
 
-    def test_fixed_quick_evidence_cannot_publish_reports(self):
+    def test_fixed_quick_evidence_can_publish_reports(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             status, result_path, _, errors = self.collect(root)
             self.assertEqual(status, 0, errors)
             metadata_path = Path(json.loads(result_path.read_text())["metadata"])
             with mock.patch.object(build_fixed_constexpr, "__file__", str(root / "validation/metrics/_internal/build_fixed_constexpr.py")):
-                with self.assertRaisesRegex(run_metrics.MetricsError, "full-profile evidence"):
-                    build_fixed_constexpr.build_run(metadata_path, root / "validation/metrics/generated", "strict")
-            self.assertFalse((root / "validation/metrics/generated").exists())
+                reports = build_fixed_constexpr.build_run(metadata_path, root / "validation/metrics/generated", "strict")
+            self.assertEqual(len(reports), 2)
+            self.assertTrue(all(path.is_file() for path in reports))
+            self.assertTrue(all(path.suffix == ".svg" for path in (root / "validation/metrics/generated/overview").iterdir()))
+            self.assertEqual(len(list((root / "validation/metrics/generated/.metadata").glob("*_reports.json"))), 1)
 
     def test_fixed_flag_reaches_every_supported_preset(self):
         for spelling in ("--fixed_constexpr", "--fixed-constexpr"):
@@ -4821,7 +4864,7 @@ class FixedConstexprMetricsTests(unittest.TestCase):
                 self.assertEqual([call.args[1] for call in pipeline.call_args_list], ["first", "second"])
                 for call in pipeline.call_args_list:
                     self.assertTrue(call.kwargs["fixed_constexpr"])
-                    self.assertFalse(call.kwargs["native_baseline"])
+                    self.assertFalse(call.kwargs.get("include_native", False))
                     self.assertEqual(call.kwargs["workflow"], "quick")
                     self.assertEqual(call.kwargs["consumer_mode"], "all")
                     self.assertFalse(call.kwargs["publish"])
@@ -4848,6 +4891,65 @@ class FixedConstexprMetricsTests(unittest.TestCase):
                                                                "--target", "fltx_constexpr_accuracy_fastmath"])
                 self.assertEqual(discover.call_args.args[2], ("fltx_constexpr_accuracy_fastmath",))
                 self.assertEqual(collect.call_args.args[3:5], (("fastmath",), "small"))
+
+
+class NominalUlpEvidenceTests(unittest.TestCase):
+    def test_summary_pools_sums_and_counts_and_keeps_maximum_witness(self):
+        first = accuracy_row()
+        second = {**accuracy_row(), "domain": "boundary", "ulp_samples": "2",
+                  "ulp_exact_samples": "0", "ulp_sum": "4", "ulp_max": "3",
+                  "ulp_worst_input": "maximum witness"}
+        summary = run_metrics._ulp_summary([first, second], Path("accuracy.csv"))
+        from decimal import Decimal
+        self.assertEqual(summary["ulp_samples"], 6)
+        self.assertEqual(summary["ulp_exact_samples"], 2)
+        self.assertEqual(Decimal(summary["ulp_sum"]), Decimal("4.75"))
+        self.assertAlmostEqual(float(summary["ulp_mean"]), 4.75 / 6)
+        self.assertEqual(summary["ulp_max"], "3")
+        self.assertEqual(summary["ulp_worst_domain"], "boundary")
+        self.assertEqual(summary["ulp_worst_input"], "maximum witness")
+        with self.assertRaises(run_metrics.MetricsError):
+            run_metrics._ulp_summary([first, {**second, "nominal_precision_bits": "212"}], Path("bad.csv"))
+
+    def test_summary_leaves_legacy_and_benchmark_only_fields_empty(self):
+        legacy = {k: v for k, v in accuracy_row().items() if k not in run_metrics.ULP_FIELDS}
+        self.assertTrue(all(v == "" for v in run_metrics._ulp_summary([legacy], Path("old.csv")).values()))
+        self.assertTrue(all(v == "" for v in run_metrics._ulp_summary([], Path("none.csv")).values()))
+        with self.assertRaises(run_metrics.MetricsError):
+            run_metrics._ulp_summary([legacy, accuracy_row()], Path("mixed.csv"))
+
+    def test_new_evidence_and_invalid_statistics(self):
+        row = accuracy_row()
+        run_metrics._validate_ulp(row, Path("accuracy.csv"))
+        for change in (
+            {"ulp_sum": "NaN"}, {"ulp_max": "Infinity"},
+            {"ulp_sum": "-1"}, {"ulp_exact_samples": "5"},
+            {"ulp_max": "1"}, {"ulp_observed": ""},
+            {"nominal_ulp_policy": "unknown"},
+            {"ulp_samples": "0", "ulp_exact_samples": "0"},
+        ):
+            with self.subTest(change=change), self.assertRaises(run_metrics.MetricsError):
+                run_metrics._validate_ulp({**row, **change}, Path("accuracy.csv"))
+
+    def test_large_errors_do_not_overflow_binary64(self):
+        row = {**accuracy_row(), "ulp_sum": "1e10000", "ulp_max": "1e9999"}
+        run_metrics._validate_ulp(row, Path("accuracy.csv"))
+
+    def test_legacy_evidence_is_not_given_invented_ulp_values(self):
+        row = {key: value for key, value in accuracy_row().items()
+               if key in run_metrics.LEGACY_ACCURACY_FIELDS}
+        row["schema_version"] = run_metrics.SCHEMA_VERSION
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "legacy.csv"
+            with path.open("w", newline="", encoding="utf-8") as stream:
+                writer = csv.DictWriter(stream, fieldnames=run_metrics.LEGACY_ACCURACY_FIELDS)
+                writer.writeheader()
+                writer.writerow(row)
+            rows = run_metrics._read_csv(path, run_metrics.ACCURACY_FIELDS)
+            self.assertNotIn("ulp_sum", rows[0])
+            self.assertEqual(build_tables._read(path, run_metrics.ACCURACY_FIELDS), rows)
+            run_metrics._validate_identity(rows, path, run_id="run", revision="rev",
+                                           fingerprint=FINGERPRINT, precision="dd")
 
 
 if __name__ == "__main__":

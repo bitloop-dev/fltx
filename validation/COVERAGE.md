@@ -259,6 +259,14 @@ underflow adjustment use each implementation's declared precision and range.
 Competitor accuracy is informational; only FLTX's source-controlled thresholds
 affect the exit code.
 
+## Debugger previews
+
+Native debugger previews have a separate owner in
+`_internal/test_natvis.py`: it extracts the shipped Natvis expressions, emits a
+C++ numerical probe, and checks DD/QD decimal previews against exact-limb Decimal
+sums. This is approximate debugger-display coverage, not public I/O accuracy.
+See `../docs/debugging.md` for commands and the required native debugger check.
+
 ## Release validation
 
 The remaining release-evidence tasks are:
@@ -275,3 +283,10 @@ The remaining release-evidence tasks are:
    MinGW, Linux GCC and Clang, macOS AppleClang, and Emscripten;
 6. reconcile the README's numerical and comparative claims with the final
    worst-domain and benchmark evidence in `RELEASE_CHECKLIST.md`.
+
+Nominal ULP evidence is collected by `accuracy/runner.hpp` through the shared
+MPFR accumulator in `support/mpfr.hpp`, for runtime and fixed-simulation
+numeric/parse/format routes. `accuracy/main.cpp` self-checks exact contributions,
+mean/max accumulation, binade boundaries, signs, underflow and excluded values
+on every accuracy invocation. Python tooling validates the additive schema-7
+fields; legacy schema-6 evidence remains readable without inferred ULP data.

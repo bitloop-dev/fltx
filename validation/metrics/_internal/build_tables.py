@@ -21,6 +21,7 @@ from run_metrics import (
     SCHEMA_VERSION,
     MetricsError,
     _format,
+    _read_csv,
     _require_source_fingerprint,
     _safe_component,
     _validate_completeness,
@@ -222,6 +223,8 @@ def _target(value: str) -> Target:
 
 
 def _read(path: Path, fields: tuple[str, ...], *, allow_empty: bool = False) -> list[dict[str, str]]:
+    if fields in (ACCURACY_FIELDS, CANONICAL_FIELDS):
+        return _read_csv(path, fields, allow_empty=allow_empty)
     try:
         with path.open(newline="", encoding="utf-8") as stream:
             reader = csv.DictReader(stream)
@@ -385,7 +388,7 @@ def load(
             )
             expected = {
                 (row["group"], row["operation"], row["implementation"]): {
-                    field: str(_format(row[field])) for field in CANONICAL_FIELDS
+                    field: str(_format(row[field])) for field in canonical_rows[0]
                 }
                 for row in expected_rows
             }

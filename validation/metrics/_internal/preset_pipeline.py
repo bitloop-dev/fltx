@@ -344,7 +344,7 @@ def run_pipeline(
     consumer_mode: str = "strict",
     operations: tuple[str, ...] = (),
     fixed_constexpr: bool = False,
-    native_baseline: bool = True,
+    include_native: bool = False,
 ) -> list[Path]:
     root = root.resolve()
     try:
@@ -370,9 +370,7 @@ def run_pipeline(
     if policy is None:
         raise PipelineError(f"unsupported metrics workflow {workflow!r}")
     selected_sample_mode = policy.sample_mode
-    if fixed_constexpr and publish and workflow != "full":
-        raise PipelineError("fixed constexpr publication requires --full")
-    if fixed_constexpr and not run_native_accuracy.selected_precisions(True, operations):
+    if fixed_constexpr and not run_native_accuracy.selected_precisions(True, operations, include_native):
         raise PipelineError("requested operations have no fixed constexpr accuracy coverage")
     selected_paths = metrics_paths(
         root,
@@ -444,6 +442,7 @@ def run_pipeline(
         return run_fixed_accuracy(
             root, artifacts, selected_paths, requested_modes,
             selected_sample_mode, publish, force_rerun, operations, environment,
+            include_native=include_native,
         )
 
     generated: list[Path] = []
@@ -539,7 +538,7 @@ def run_pipeline(
             )
 
         if (
-            native_baseline
+            include_native
             and select_operations(EXPECTED_ACCURACY["f32"], operations)
         ):
             run_native_baseline(
@@ -649,6 +648,8 @@ def run_fixed_accuracy(
     force_rerun: bool,
     operations: tuple[str, ...],
     environment: Mapping[str, str],
+    *,
+    include_native: bool = False,
 ) -> list[Path]:
     import build_fixed_constexpr
 
@@ -662,6 +663,7 @@ def run_fixed_accuracy(
                 str(root / "validation/metrics/_internal/run_native_accuracy.py"),
                 "--accuracy", str(artifacts[FIXED_RUNNERS[mode]]),
                 "--fixed_constexpr", "--consumer-mode", mode,
+                *(["--include-native"] if include_native else []),
                 "--sample-mode", sample_mode,
                 "--output-root", str(paths.data / "fixed_constexpr" / mode),
                 "--result-file", str(handoff),
@@ -772,6 +774,10 @@ def run_native_baseline(
 
 def add_workflow_arguments(parser: argparse.ArgumentParser) -> None:
     """Add the metrics workflow arguments shared by public entry points."""
+    parser.add_argument(
+        "--include-native", action="store_true",
+        help="Include f32/f64 accuracy in runtime or fixed-constexpr runs (default: DD/QD only).",
+    )
 
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument(
@@ -798,7 +804,7 @@ def add_workflow_arguments(parser: argparse.ArgumentParser) -> None:
     parser.set_defaults(workflow=DEFAULT_WORKFLOW)
     parser.add_argument(
         "--fixed_constexpr", "--fixed-constexpr", action="store_true",
-        help="run FLTX-only fixed constexpr accuracy for f32/f64/dd/qd and render accuracy-only reports",
+        help="run FLTX-only fixed constexpr accuracy for DD/QD and render accuracy-only reports",
     )
     parser.add_argument(
         "--operation", action="append", dest="operations", metavar="NAME",
@@ -857,14 +863,12 @@ def run_pipeline_from_args(
     root: Path,
     preset: str,
     args: argparse.Namespace,
-    *,
-    native_baseline: bool = True,
 ) -> list[Path]:
     """Forward parsed public workflow arguments to one preset run."""
 
     optional_arguments = {}
-    if not native_baseline:
-        optional_arguments["native_baseline"] = False
+    if args.include_native:
+        optional_arguments["include_native"] = True
     return run_pipeline(
         root,
         preset,

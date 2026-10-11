@@ -74,6 +74,55 @@ namespace
                 "400-digit MPFR references changed at 800-digit precision");
     }
 
+    void check_nominal_ulp_metric()
+    {
+        using namespace fltx::tests::mpfr;
+        for (int precision : {24, 53, 106, 212})
+        {
+            const real floor = absolute_resolution<double>();
+            real step{1};
+            mpfr_mul_2si(step.backend().data(), step.backend().data(),
+                1 - precision, MPFR_RNDN);
+            nominal_ulp_accumulator measured;
+            measured.add(real{1}, real{1}, floor, precision); // exact contributes zero
+            measured.add(real{1} + step / 4, real{1}, floor, precision);
+            measured.add(real{-1} - step / 2, real{-1}, floor, precision);
+            if (measured.samples != 3 || measured.exact_samples != 1 ||
+                measured.sum != real{0.75} || measured.maximum != real{0.5})
+                throw std::logic_error("nominal ULP mean/max self-check failed");
+
+            nominal_ulp_accumulator boundary;
+            boundary.add(real{2} - step, real{2}, floor, precision);
+            boundary.add(real{2}, real{2} - step, floor, precision);
+            if (boundary.sum != real{1.5} || boundary.maximum != 1)
+                throw std::logic_error("nominal ULP binade boundary self-check failed");
+
+            nominal_ulp_accumulator tiny;
+            tiny.add(floor, floor * real{1.25}, floor, precision);
+            tiny.add(real{0}, floor / 4, floor, precision);
+            tiny.add(floor, real{0}, floor, precision);
+            tiny.add(real{0}, signed_zero(true), floor, precision);
+            if (tiny.samples != 4 || tiny.exact_samples != 1 ||
+                tiny.sum != real{1.5} || tiny.maximum != 1)
+                throw std::logic_error("nominal ULP underflow self-check failed");
+        }
+        nominal_ulp_accumulator excluded;
+        excluded.add(real{1}, real{0}, real{0}, 212);
+        excluded.add(std::numeric_limits<real>::infinity(), real{1}, real{0}, 212);
+        excluded.add(real{1}, std::numeric_limits<real>::quiet_NaN(), real{0}, 212);
+        if (excluded.samples != 0 || excluded.undefined_samples != 1 ||
+            excluded.nonfinite_samples != 2)
+            throw std::logic_error("nominal ULP exclusion self-check failed");
+
+        nominal_ulp_accumulator unbounded;
+        real huge{1};
+        mpfr_mul_2si(huge.backend().data(), huge.backend().data(), 2000, MPFR_RNDN);
+        unbounded.add(huge, real{1}, real{0}, 106);
+        if (unbounded.samples != 1 || unbounded.maximum <= huge ||
+            is_inf(unbounded.sum))
+            throw std::logic_error("nominal ULP error was capped or overflowed binary64");
+    }
+
     void check_accuracy_metric()
     {
         using fltx::tests::mpfr::real;
@@ -246,6 +295,7 @@ int main(int argc, char** argv)
 
         const auto settings = parse_arguments(argc, argv);
         check_accuracy_metric();
+        check_nominal_ulp_metric();
         check_oracle_precision();
         fltx::tests::support::print_config_banner(
             "accuracy",
@@ -259,7 +309,11 @@ int main(int argc, char** argv)
             "api", "domain", "samples", "seed",
             "mean_bits", "p01_bits", "worst_bits", "required_worst_bits",
             "margin_bits", "pass", "special_support", "signed_zero_support",
-            "worst_input", "observed", "reference"
+            "worst_input", "observed", "reference",
+            "nominal_ulp_policy", "nominal_precision_bits", "nominal_ulp_floor",
+            "ulp_samples", "ulp_sum", "ulp_max", "ulp_exact_samples",
+            "ulp_nonfinite_samples", "ulp_undefined_samples",
+            "ulp_worst_input", "ulp_observed", "ulp_reference"
         });
 
         int failures = 0;

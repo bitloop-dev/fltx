@@ -44,9 +44,10 @@ FIXED_PRECISIONS = ("f32", "f64", "dd", "qd")
 FIXED_POLICY = "fixed-constexpr-mpfr-v1"
 
 
-def selected_precisions(fixed_constexpr: bool, operations: tuple[str, ...] = ()) -> tuple[str, ...]:
+def selected_precisions(fixed_constexpr: bool, operations: tuple[str, ...] = (), include_native: bool = False) -> tuple[str, ...]:
     return tuple(
         precision for precision in (FIXED_PRECISIONS if fixed_constexpr else NATIVE_PRECISIONS)
+        if not fixed_constexpr or include_native or precision not in NATIVE_PRECISIONS
         if select_operations(EXPECTED_ACCURACY[precision], operations)
     )
 
@@ -248,6 +249,7 @@ def _validate_reusable_candidate(
     host: object,
     operations: tuple[str, ...] = (),
     fixed_constexpr: bool = False,
+    include_native: bool = False,
 ) -> dict[str, object]:
     metadata = _read_metadata(metadata_path)
     required = {
@@ -261,7 +263,7 @@ def _validate_reusable_candidate(
         "architecture": architecture,
         "compiler": compiler,
         "target": f"{platform}/{architecture}/{compiler}",
-        "precisions": list(selected_precisions(fixed_constexpr, operations)),
+        "precisions": list(selected_precisions(fixed_constexpr, operations, include_native)),
         "policy": FIXED_POLICY if fixed_constexpr else NATIVE_POLICY,
         "thresholds": threshold_policy(fixed_constexpr, consumer_mode),
     }
@@ -309,7 +311,7 @@ def _validate_reusable_candidate(
     run_directory = metadata_path.parent
     expected_outputs = {
         evidence_name(precision, fixed_constexpr)
-        for precision in selected_precisions(fixed_constexpr, operations)
+        for precision in selected_precisions(fixed_constexpr, operations, include_native)
     }
     _verify_output_hashes(
         run_directory,
@@ -317,7 +319,7 @@ def _validate_reusable_candidate(
         expected_outputs,
         metadata_path,
     )
-    for precision in selected_precisions(fixed_constexpr, operations):
+    for precision in selected_precisions(fixed_constexpr, operations, include_native):
         _validate_accuracy_evidence(
             run_directory / evidence_name(precision, fixed_constexpr),
             precision=precision,
@@ -356,6 +358,7 @@ def _find_reusable_run(
     host: object,
     operations: tuple[str, ...] = (),
     fixed_constexpr: bool = False,
+    include_native: bool = False,
 ) -> tuple[dict[str, object] | None, str]:
     candidates = list(output_root.glob(f"*/{metadata_name(fixed_constexpr)}"))
     candidates.sort(key=lambda path: path.stat().st_mtime, reverse=True)
@@ -376,6 +379,7 @@ def _find_reusable_run(
                     fingerprint=fingerprint,
                     configuration=configuration,
                     host=host,
+                    include_native=include_native,
                     operations=operations,
                     fixed_constexpr=fixed_constexpr,
                 ),
@@ -390,6 +394,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--accuracy", required=True, type=Path)
     parser.add_argument("--fixed_constexpr", "--fixed-constexpr", action="store_true")
+    parser.add_argument("--include-native", action="store_true", help="Include f32/f64 in fixed constexpr collection (default: DD/QD only).")
     parser.add_argument("--canonical-publication", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument(
         "--output-root",
@@ -421,13 +426,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--result-file", type=Path)
     args = parser.parse_args(argv)
+    if args.include_native and not args.fixed_constexpr:
+        parser.error("--include-native requires --fixed_constexpr")
     try:
         args.operations = normalize_operations(args.operations)
     except ValueError as error:
         parser.error(str(error))
     if args.operations and not any(
         select_operations(EXPECTED_ACCURACY[precision], args.operations)
-        for precision in selected_precisions(args.fixed_constexpr)
+        for precision in selected_precisions(args.fixed_constexpr, include_native=args.include_native)
     ):
         parser.error("requested operations have no accuracy coverage in this profile")
     return args
@@ -441,14 +448,14 @@ def main(argv: list[str] | None = None) -> int:
     accuracy = args.accuracy.resolve()
     output_root = args.output_root.resolve()
     fixed = args.fixed_constexpr
-    precisions = selected_precisions(fixed, args.operations)
+    precisions = selected_precisions(fixed, args.operations, args.include_native)
     label = "fixed constexpr" if fixed else "native"
     canonical = (root / "validation" / "metrics" / "data").resolve()
     if fixed and output_root.is_relative_to(canonical) and not args.canonical_publication:
         print("fixed constexpr canonical output requires --publish", file=sys.stderr)
         return 1
-    if args.canonical_publication and (not fixed or args.sample_mode != "full" or args.operations):
-        print("fixed constexpr publication requires a complete full profile", file=sys.stderr)
+    if args.canonical_publication and (not fixed or args.operations):
+        print("fixed constexpr publication requires an unfiltered fixed constexpr profile", file=sys.stderr)
         return 1
     if args.operations and not output_root.is_relative_to(root / "build"):
         print("native accuracy failed: operation-filtered output must stay under build/", file=sys.stderr)
@@ -461,7 +468,7 @@ def main(argv: list[str] | None = None) -> int:
             platform=None,
             architecture=None,
             compiler=None,
-            publishable=fixed and (args.sample_mode == "full" or args.canonical_publication),
+            publishable=fixed and args.canonical_publication,
         )
         configuration = require_consumer_mode(
             configuration,
@@ -490,6 +497,7 @@ def main(argv: list[str] | None = None) -> int:
             fingerprint=identity.fingerprint,
             configuration=configuration,
             host=provenance["host"],
+            include_native=args.include_native,
             operations=args.operations,
             fixed_constexpr=fixed,
         )
