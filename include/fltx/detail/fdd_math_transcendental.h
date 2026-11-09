@@ -854,7 +854,7 @@ namespace detail::_dd // primitives and kernels
         constexpr fdd_s pi_2_hi{ pi_2_hi_d };
         constexpr fdd_s pi_2_mid{ pi_2_mid_d };
         constexpr fdd_s pi_2_lo{ pi_2_lo_d };
-        constexpr fdd_s pi_4{ pi_4_hi };
+        constexpr fdd_s pi_4_bound{ pi_4_hi };
 
         long long n = static_cast<long long>(qd);
         const double q = static_cast<double>(n);
@@ -864,14 +864,14 @@ namespace detail::_dd // primitives and kernels
         r = sub_finite_inline(r, mul_double_product_inline(pi_2_mid, q));
         r = sub_finite_inline(r, mul_double_product_inline(pi_2_lo, q));
 
-        if (r > pi_4)
+        if (r > pi_4_bound)
         {
             ++n;
             r = sub_finite_inline(r, pi_2_hi);
             r = sub_finite_inline(r, pi_2_mid);
             r = sub_finite_inline(r, pi_2_lo);
         }
-        else if (r < -pi_4)
+        else if (r < -pi_4_bound)
         {
             --n;
             r = add_finite_inline(r, pi_2_hi);

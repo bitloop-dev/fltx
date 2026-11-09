@@ -228,7 +228,8 @@ namespace detail::_qd // primitives and kernels
         return { x0, x1, x2, x3 };
     }
 
-    BL_FORCE_INLINE constexpr fqd_s scale_pow2_or_checked_inline(const fqd_s& a,double scalar,pow2_scale_info scale) noexcept
+    BL_FORCE_INLINE constexpr fqd_s scale_pow2_or_checked_inline(
+        const fqd_s& a, [[maybe_unused]] double scalar, pow2_scale_info scale) noexcept
     {
         #if defined(FLTX_FAST_MATH)
         if (!bl::detail::is_constant_evaluated())
