@@ -220,7 +220,7 @@ BL_POP_PRECISE;
     return std::cos(x);
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr bool sincos(float x, float& s_out, float& c_out) noexcept
+BL_FORCE_INLINE constexpr bool sincos(float x, float& s_out, float& c_out) noexcept
 {
     s_out = bl::sin(x);
     c_out = bl::cos(x);

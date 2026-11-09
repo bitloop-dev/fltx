@@ -12,6 +12,43 @@
 
 namespace
 {
+    constexpr bool extreme_range_results_are_constant_evaluated()
+    {
+        for (double sign : {-1.0, 1.0})
+        {
+            const auto dd_scaled = bl::ldexp(bl::fdd{sign}, 1024);
+            const auto qd_scaled = bl::ldexp(bl::fqd{sign}, 1024);
+            const auto qd_scaled_head = bl::ldexp(bl::fqd{sign * 0x1p1023}, 1);
+            const auto reciprocal = bl::recip(bl::fqd{sign * 0x1p-1030});
+            if (!bl::isinf(dd_scaled) || dd_scaled.lo != 0.0 ||
+                bl::signbit(dd_scaled) != (sign < 0) ||
+                !bl::isinf(qd_scaled) || qd_scaled.x1 != 0.0 ||
+                qd_scaled.x2 != 0.0 || qd_scaled.x3 != 0.0 ||
+                bl::signbit(qd_scaled) != (sign < 0) ||
+                qd_scaled_head != qd_scaled || !bl::isinf(reciprocal) ||
+                bl::signbit(reciprocal) != (sign < 0) ||
+                reciprocal.x1 != 0.0 || reciprocal.x2 != 0.0 || reciprocal.x3 != 0.0)
+                return false;
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
+            const bl::fdd huge{sign * 0x1p1000, sign * 0x1p945};
+            if (bl::fdd{huge / bl::fdd{1.0}} != huge ||
+                bl::fdd{huge / huge} != bl::fdd{1.0} ||
+                bl::atan(huge) != (sign < 0 ? -bl::detail::_dd::pi_2 : bl::detail::_dd::pi_2))
+                return false;
+#endif
+            for (double near_cutoff : {0x1.fffffffffffffp109, 0x1p110, 0x1.0000000000001p110})
+                if (bl::atan(bl::fdd{sign * near_cutoff}) !=
+                    (sign < 0 ? -bl::detail::_dd::pi_2 : bl::detail::_dd::pi_2))
+                    return false;
+        }
+        const auto tiny_step = bl::nextafter(bl::fqd{0x1p-1074}, bl::fqd{1.0});
+        const auto zero_step = bl::nextafter(bl::fqd{-0x1p-1074}, bl::fqd{1.0});
+        const auto parsed = bl::parse<bl::fqd>("6.002e-291");
+        return tiny_step == bl::fqd{0x1p-1073} && bl::iszero(zero_step) &&
+            parsed == bl::fqd{parsed + bl::fqd{0.0}};
+    }
+    static_assert(extreme_range_results_are_constant_evaluated());
+
     constexpr bl::fqd add_expression_pair(const auto& x, const auto& y)
     {
         return x + y;
@@ -525,6 +562,38 @@ namespace
     }
 
     template<class T>
+    consteval bool canonical_random_preserves_identities()
+    {
+        bl::mt19937 engine32{ 42u };
+        bl::mt19937_64 engine64{ 42u };
+        for (int i = 0; i < 16; ++i)
+        {
+            const T a = bl::generate_canonical<T, std::numeric_limits<T>::digits>(engine32);
+            const T b = bl::generate_canonical<T, std::numeric_limits<T>::digits>(engine64);
+            if (!(a >= T{ 0.0 } && a < T{ 1.0 } && b >= T{ 0.0 } && b < T{ 1.0 }) ||
+                a != T{ a + T{ 0.0 } } || b != T{ b + T{ 0.0 } } ||
+                a - T{ a + T{ 0.0 } } != T{ 0.0 } ||
+                b - T{ b + T{ 0.0 } } != T{ 0.0 })
+                return false;
+        }
+        return true;
+    }
+
+    template<class QD, class DD>
+    consteval bool mixed_division_preserves_tiny_quotients()
+    {
+        constexpr double tiny = 0x1p-1030;
+        constexpr DD wide{ 0x1p-100, 0x1p-155 };
+        return QD{ QD{ tiny } / tiny } == QD{ 1.0 } &&
+               QD{ tiny / QD{ tiny } } == QD{ 1.0 } &&
+               QD{ QD{ tiny } / DD{ tiny } } == QD{ 1.0 } &&
+               QD{ DD{ tiny } / QD{ tiny } } == QD{ 1.0 } &&
+               QD{ QD{ -tiny } / tiny } == QD{ -1.0 } &&
+               QD{ QD{ 0.0 } / tiny } == QD{ 0.0 } &&
+               QD{ wide / QD{ tiny } } == QD{ 0x1p930, 0x1p875, 0.0, 0.0 };
+    }
+
+    template<class T>
     consteval bool random_is_constant_evaluated()
     {
         const auto first = bl::uniform_real_array<4>(
@@ -602,12 +671,19 @@ namespace
     static_assert(io_is_constant_evaluated<bl::fqd>());
     static_assert(maximum_fqd_io_is_constant_evaluated());
     static_assert(sparse_fdd_io_is_constant_evaluated());
+    static_assert(canonical_random_preserves_identities<bl::fdd_s>());
+    static_assert(canonical_random_preserves_identities<bl::fdd>());
+    static_assert(canonical_random_preserves_identities<bl::fqd_s>());
+    static_assert(canonical_random_preserves_identities<bl::fqd>());
+    static_assert(mixed_division_preserves_tiny_quotients<bl::fqd_s, bl::fdd_s>());
+    static_assert(mixed_division_preserves_tiny_quotients<bl::fqd, bl::fdd>());
     static_assert(random_is_constant_evaluated<bl::fdd>());
     static_assert(random_is_constant_evaluated<bl::fqd>());
 }
 
 TEST_CASE("genuine constant evaluation covers representative heavy paths", "[constexpr]")
 {
+    STATIC_CHECK(extreme_range_results_are_constant_evaluated());
     CHECK(dd_sqrt == bl::sqrt(bl::fdd{ 4.0 }));
     CHECK(dd_exp_log == bl::exp(bl::log(dd_input)));
     CHECK(within_roundoff(dd_sincos.s, bl::sin(dd_input)));
@@ -657,6 +733,12 @@ TEST_CASE("genuine constant evaluation covers representative heavy paths", "[con
     STATIC_CHECK(io_is_constant_evaluated<bl::fqd>());
     STATIC_CHECK(maximum_fqd_io_is_constant_evaluated());
     STATIC_CHECK(sparse_fdd_io_is_constant_evaluated());
+    STATIC_CHECK(canonical_random_preserves_identities<bl::fdd_s>());
+    STATIC_CHECK(canonical_random_preserves_identities<bl::fdd>());
+    STATIC_CHECK(canonical_random_preserves_identities<bl::fqd_s>());
+    STATIC_CHECK(canonical_random_preserves_identities<bl::fqd>());
+    STATIC_CHECK(mixed_division_preserves_tiny_quotients<bl::fqd_s, bl::fdd_s>());
+    STATIC_CHECK(mixed_division_preserves_tiny_quotients<bl::fqd, bl::fdd>());
     STATIC_CHECK(random_is_constant_evaluated<bl::fdd>());
     STATIC_CHECK(random_is_constant_evaluated<bl::fqd>());
 }

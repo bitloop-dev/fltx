@@ -118,15 +118,21 @@ namespace detail::_dd // primitives and kernels
     {
 #if BL_FP_BARRIER_ACTIVE
         double hi = detail::fp::ldexp(value.hi, exponent);  BL_FP_BARRIER(hi);
+#else
+        const double hi = ldexp_limb(value.hi, exponent);
+#endif
+        if (detail::fp::isinf_or_nan(hi)) [[unlikely]]
+            return { hi, 0.0 };
+#if BL_FP_BARRIER_ACTIVE
         double lo = detail::fp::ldexp(value.lo, exponent);  BL_FP_BARRIER(lo);
+#else
+        const double lo = ldexp_limb(value.lo, exponent);
+#endif
+#if BL_FP_BARRIER_ACTIVE
         if (is_subnormal_limb(lo))
             return { hi, lo };
-        return renorm(hi, lo);
-#else
-        return renorm(
-            ldexp_limb(value.hi, exponent),
-            ldexp_limb(value.lo, exponent));
 #endif
+        return renorm(hi, lo);
     }
 
     BL_FORCE_INLINE constexpr fdd_s _ldexp(const fdd_s& x, int e)
@@ -134,27 +140,7 @@ namespace detail::_dd // primitives and kernels
         fdd_s fast{};
         if (ldexp_fast_normal(x, e, fast))
             return fast;
-
-        if (bl::detail::is_constant_evaluated())
-        {
-            return renorm(
-                detail::fp::ldexp(x.hi, e),
-                detail::fp::ldexp(x.lo, e)
-            );
-        }
-
-#if BL_FP_BARRIER_ACTIVE
-        double hi = detail::fp::ldexp(x.hi, e);  BL_FP_BARRIER(hi);
-        double lo = detail::fp::ldexp(x.lo, e);  BL_FP_BARRIER(lo);
-        if (is_subnormal_limb(lo))
-            return { hi, lo };
-        return renorm(hi, lo);
-#else
-        return renorm(
-            std::ldexp(x.hi, e),
-            std::ldexp(x.lo, e)
-        );
-#endif
+        return ldexp_terms(x, e);
     }
 
     struct fmod_u128

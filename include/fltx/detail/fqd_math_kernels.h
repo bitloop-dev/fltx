@@ -185,22 +185,32 @@ namespace detail::_qd // primitives and kernels
     {
 #if BL_FP_BARRIER_ACTIVE
         double x0 = detail::fp::ldexp(value.x0, exponent);  BL_FP_BARRIER(x0);
+#else
+        const double x0 = ldexp_limb(value.x0, exponent);
+#endif
+        if (detail::fp::isinf_or_nan(x0)) [[unlikely]]
+            return { x0, 0.0, 0.0, 0.0 };
+#if BL_FP_BARRIER_ACTIVE
         double x1 = detail::fp::ldexp(value.x1, exponent);  BL_FP_BARRIER(x1);
+#else
+        const double x1 = ldexp_limb(value.x1, exponent);
+#endif
+#if BL_FP_BARRIER_ACTIVE
         double x2 = detail::fp::ldexp(value.x2, exponent);  BL_FP_BARRIER(x2);
+#else
+        const double x2 = ldexp_limb(value.x2, exponent);
+#endif
+#if BL_FP_BARRIER_ACTIVE
         double x3 = detail::fp::ldexp(value.x3, exponent);  BL_FP_BARRIER(x3);
+#else
+        const double x3 = ldexp_limb(value.x3, exponent);
+#endif
+#if BL_FP_BARRIER_ACTIVE
         if (is_subnormal_limb(x0) || is_subnormal_limb(x1) ||
             is_subnormal_limb(x2) || is_subnormal_limb(x3))
-        {
             return { x0, x1, x2, x3 };
-        }
-        return renorm(x0, x1, x2, x3);
-#else
-        return renorm(
-            ldexp_limb(value.x0, exponent),
-            ldexp_limb(value.x1, exponent),
-            ldexp_limb(value.x2, exponent),
-            ldexp_limb(value.x3, exponent));
 #endif
+        return renorm(x0, x1, x2, x3);
     }
 
     struct fmod_u320
@@ -1480,7 +1490,16 @@ namespace detail::_qd // primitives and kernels
     BL_FORCE_INLINE constexpr fqd_s normalize_nextafter_tail(const fqd_s& from, double stepped_x3) noexcept
     {
         if (from.x1 == 0.0)
-            return fqd_s{ from.x0, stepped_x3, 0.0, 0.0 };
+        {
+            // A clamped denormal step can overlap a very small leading limb.
+            if (absd(from.x0) < 0x1p-1020) [[unlikely]]
+            {
+                double head{}, tail{};
+                quick_two_sum_precise(from.x0, stepped_x3, head, tail);
+                return { head, tail, 0.0, 0.0 };
+            }
+            return { from.x0, stepped_x3, 0.0, 0.0 };
+        }
 
         if (from.x2 == 0.0 && (from.x1 + stepped_x3) == from.x1)
             return fqd_s{ from.x0, from.x1, stepped_x3, 0.0 };
@@ -1563,42 +1582,30 @@ namespace detail::_qd // primitives and kernels
 #if BL_FP_BARRIER_ACTIVE
         return ldexp_terms(a, e);
 #else
+        if (bl::detail::is_constant_evaluated())
+            return ldexp_terms(a, e);
         if (e > 1023 || e < -1074) [[unlikely]]
             return ldexp_terms(a, e);
 
-        double s;
-        if (bl::detail::is_constant_evaluated())
+        const double s = std::ldexp(1.0, e);
+        #if FLTX_FQD_ENABLE_SIMD
+        if (qd_runtime_simd_enabled())
         {
-            s = bl::detail::fp::ldexp(1.0, e);
+            const simd::f64x2 scale = simd::f64x2_splat(s);
+            simd::f64x2 lo = simd::f64x2_mul(simd::f64x2_set(a.x0, a.x1), scale);
+            simd::f64x2 hi = simd::f64x2_mul(simd::f64x2_set(a.x2, a.x3), scale);
+            double x0{}, x1{}, x2{}, x3{};
+            simd::f64x2_store(lo, x0, x1);
+            simd::f64x2_store(hi, x2, x3);
+            if (detail::fp::isinf_or_nan(x0)) [[unlikely]]
+                return { x0, 0.0, 0.0, 0.0 };
+            return renorm(x0, x1, x2, x3);
         }
-        else
-        {
-            s = std::ldexp(1.0, e);
-        }
-
-        if (bl::detail::is_constant_evaluated())
-        {
-            return renorm(a.x0 * s, a.x1 * s, a.x2 * s, a.x3 * s);
-        }
-        else
-        {
-            #if FLTX_FQD_ENABLE_SIMD
-            if (qd_runtime_simd_enabled())
-            {
-                const simd::f64x2 scale = simd::f64x2_splat(s);
-                simd::f64x2 lo = simd::f64x2_mul(simd::f64x2_set(a.x0, a.x1), scale);
-                simd::f64x2 hi = simd::f64x2_mul(simd::f64x2_set(a.x2, a.x3), scale);
-                double x0{}, x1{}, x2{}, x3{};
-                simd::f64x2_store(lo, x0, x1);
-                simd::f64x2_store(hi, x2, x3);
-                return renorm(x0, x1, x2, x3);
-            }
-            else
-            #endif
-            {
-                return renorm(a.x0 * s, a.x1 * s, a.x2 * s, a.x3 * s);
-            }
-        }
+        #endif
+        const double x0 = a.x0 * s;
+        if (detail::fp::isinf_or_nan(x0)) [[unlikely]]
+            return { x0, 0.0, 0.0, 0.0 };
+        return renorm(x0, a.x1 * s, a.x2 * s, a.x3 * s);
 #endif
     }
 

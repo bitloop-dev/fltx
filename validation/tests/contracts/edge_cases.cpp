@@ -8,6 +8,157 @@
 
 #include <fltx.h>
 
+#if !defined(FLTX_FAST_MATH)
+TEST_CASE("extreme range results retain canonical limbs",
+          "[contracts][edge-case][range-canonical]")
+{
+    const auto check_scaling = []<class T>() {
+        for (double sign : {-1.0, 1.0})
+        {
+            for (int exponent : {1, 30, 1024, 2048, std::numeric_limits<int>::max()})
+            {
+                const T input{sign * (exponent < 1024 ? 0x1p1023 : 1.0)};
+                const T out = bl::ldexp(input, exponent);
+                CAPTURE(sign, exponent);
+                CHECK(bl::isinf(out));
+                CHECK(bl::signbit(out) == (sign < 0));
+                if constexpr (sizeof(T) == sizeof(bl::fdd)) CHECK(out.lo == 0.0);
+                else { CHECK(out.x1 == 0.0); CHECK(out.x2 == 0.0); CHECK(out.x3 == 0.0); }
+                CHECK(bl::scalbn(input, exponent) == out);
+                CHECK(bl::scalbln(input, exponent) == out);
+            }
+        }
+    };
+    check_scaling.template operator()<bl::fdd>();
+    check_scaling.template operator()<bl::fdd_s>();
+    check_scaling.template operator()<bl::fqd>();
+    check_scaling.template operator()<bl::fqd_s>();
+
+    for (double sign : {-1.0, 1.0})
+    {
+        for (double magnitude : {0x1p-1074, 0x1p-1030, 0x1p-1024})
+        {
+            const bl::fqd out = bl::recip(bl::fqd{sign * magnitude});
+            CHECK(bl::isinf(out));
+            CHECK(bl::signbit(out) == (sign < 0));
+            CHECK(out.x1 == 0.0); CHECK(out.x2 == 0.0); CHECK(out.x3 == 0.0);
+        }
+        const bl::fqd boundary = bl::recip(bl::fqd{sign * 0x1.0000000000004p-1024});
+        CHECK(bl::isfinite(boundary));
+        CHECK(boundary == bl::fqd{boundary + bl::fqd{0.0}});
+    }
+}
+
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
+TEST_CASE("dd division protects the residual splitter at extreme exponents",
+          "[contracts][edge-case][range-canonical]")
+{
+    for (int exponent : {109, 110, 111, 995, 996, 997, 1000, 1022})
+    {
+        for (double sign : {-1.0, 1.0})
+        {
+            const bl::fdd a{sign * std::ldexp(1.0, exponent),
+                            sign * std::ldexp(1.0, exponent - 55)};
+            CAPTURE(exponent, sign);
+            CHECK(bl::fdd{a / bl::fdd{1.0}} == a);
+            CHECK(bl::fdd{a / 1.0} == a);
+            CHECK(bl::fdd{a / a} == bl::fdd{1.0});
+            CHECK(bl::detail::_dd::div_finite_inline(a, bl::fdd_s{1.0}) == a);
+            CHECK(bl::atan(a) == (sign < 0 ? -bl::detail::_dd::pi_2 : bl::detail::_dd::pi_2));
+        }
+    }
+}
+#endif
+
+TEST_CASE("qd tiny stepping and decimal tails preserve representation identities",
+          "[contracts][edge-case][range-canonical]")
+{
+    const auto stable = [](bl::fqd x) {
+        const bl::fqd y = x + bl::fqd{0.0};
+        CHECK(x == y);
+        CHECK(x == bl::fqd{x - bl::fqd{0.0}});
+        CHECK(x == bl::fqd{x * bl::fqd{1.0}});
+        CHECK(x == bl::fqd{x / bl::fqd{1.0}});
+        CHECK(std::hash<bl::fqd>{}(x) == std::hash<bl::fqd>{}(y));
+    };
+    for (double magnitude : {0x1p-1074, 0x1p-1030, 0x1p-1022, 0x1p-1021, 0x1p-1020})
+        for (double sign : {-1.0, 1.0})
+            for (double direction : {-1.0, 1.0})
+            {
+                const bl::fqd x{sign * magnitude};
+                const bl::fqd out = bl::nextafter(x, bl::fqd{direction});
+                stable(out);
+                CHECK(bl::nextafter(out, x) == x);
+                CHECK((direction > 0 ? out > x : out < x));
+            }
+    CHECK(bl::iszero(bl::nextafter(bl::fqd{-0x1p-1074}, bl::fqd{1.0})));
+    for (const char* text : {"6.002e-291", "-6.002e-291",
+        "9.764828507356783252210253403079124617387068392850063287793767521841862072699e-274",
+        "6.002195961969672823482481250658182829807816806007646023760837288967435639935e-291"})
+    {
+        CAPTURE(text);
+        const auto parsed = bl::try_parse<bl::fqd>(text);
+        REQUIRE(parsed);
+        stable(parsed.value);
+        CHECK(bl::parse<bl::fqd_s>(text) == parsed.value);
+    }
+}
+
+TEST_CASE("mixed qd division recovers from an overflowing reciprocal",
+          "[contracts][edge-case][mixed-division]")
+{
+    const auto check = []<class QD, class DD>() {
+        for (double magnitude : {0x1p-1074, 0x1p-1050, 0x1p-1030, 0x1p-1024,
+                                 0x1.0000000000004p-1024, 0x1p-1023, 0x1p-1022})
+        {
+            for (double sign : {-1.0, 1.0})
+            {
+                const double denominator = sign * magnitude;
+                for (double factor : {-4.0, -1.0, 1.0, 4.0})
+                {
+                    CAPTURE(magnitude, sign, factor);
+                    const double numerator = factor * denominator;
+                    const QD expected{ factor };
+                    CHECK(QD{ QD{ numerator } / denominator } == expected);
+                    CHECK(QD{ numerator / QD{ denominator } } == expected);
+                    CHECK(QD{ QD{ numerator } / DD{ denominator } } == expected);
+                    CHECK(QD{ DD{ numerator } / QD{ denominator } } == expected);
+                    CHECK(bl::detail::_qd_runtime::div_double_finite(
+                        bl::fqd_s{ numerator }, denominator) == expected);
+                }
+                for (double zero : {0.0, -0.0})
+                {
+                    const QD quotient = QD{ zero } / denominator;
+                    CHECK(bl::iszero(quotient));
+                    CHECK(bl::signbit(quotient) == (std::signbit(zero) != std::signbit(denominator)));
+                }
+            }
+        }
+
+        // A normalized DD numerator can have a nonzero low limb even when the
+        // divisor is tiny. Exercise the route that bypasses its scalar shortcut.
+        const DD numerator{ 0x1p-100, 0x1p-155 };
+        const QD expected{ 0x1p930, 0x1p875, 0.0, 0.0 };
+        CHECK(QD{ numerator / QD{ 0x1p-1030 } } == expected);
+        CHECK(QD{ -numerator / QD{ 0x1p-1030 } } == -expected);
+        const QD wide_numerator{ 0x1p-100, 0x1p-155, 0x1p-210, 0x1p-265 };
+        const QD wide_expected{ 0x1p930, 0x1p875, 0x1p820, 0x1p765 };
+        CHECK(QD{ wide_numerator / 0x1p-1030 } == wide_expected);
+        CHECK(QD{ wide_numerator / DD{ 0x1p-1030 } } == wide_expected);
+        CHECK(bl::detail::_qd_runtime::div_double_finite(wide_numerator, 0x1p-1030) == wide_expected);
+
+        const QD overflow = QD{ 1.0 } / 0x1p-1030;
+        CHECK(bl::isinf(overflow));
+        CHECK_FALSE(bl::signbit(overflow));
+        CHECK(overflow.x1 == 0.0);
+        CHECK(overflow.x2 == 0.0);
+        CHECK(overflow.x3 == 0.0);
+    };
+    check.template operator()<bl::fqd_s, bl::fdd_s>();
+    check.template operator()<bl::fqd, bl::fdd>();
+}
+#endif
+
 TEST_CASE("extended math preserves representable exponential tails",
           "[contracts][edge-case][math]")
 {

@@ -285,6 +285,19 @@ class SourceFingerprintTests(unittest.TestCase):
 
 
 class ManifestTests(unittest.TestCase):
+    def test_mixed_division_benchmarks_are_qd_primary_only(self) -> None:
+        names = ("divide_double", "double_divide", "divide_dd", "dd_divide")
+        expected = frozenset(("arithmetic", name) for name in names)
+        self.assertEqual(manifest.normalize_operations(names), tuple(sorted(names)))
+        for precision in ("dd", "qd"):
+            rows = manifest.benchmark_manifest(precision, qdpp=True, tlfloat=True)
+            for implementation, operations in rows.items():
+                with self.subTest(precision=precision, implementation=implementation):
+                    self.assertEqual(
+                        manifest.select_operations(operations, names),
+                        expected if precision == "qd" and implementation == "fltx" else frozenset(),
+                    )
+
     def test_operation_selection_normalizes_order_and_duplicates(self) -> None:
         for empty in (None, (), []):
             self.assertEqual(manifest.normalize_operations(empty), ())

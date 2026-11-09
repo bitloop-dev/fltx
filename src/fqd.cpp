@@ -228,7 +228,7 @@ namespace bl::detail::_qd_runtime
             if (a.lo == 0.0)
                 return div_double_prechecked_inline(a.hi, b);
 
-            return div_prechecked_inline(fqd_s{ a.hi, a.lo }, b);
+            return div_prechecked_inline<true>(fqd_s{ a.hi, a.lo }, b);
         }
 
         // Divides by a qd-plus-double denominator without materializing it when exact.

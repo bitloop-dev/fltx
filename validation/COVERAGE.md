@@ -47,10 +47,17 @@ public call and return-type contracts.
 
 ## Core and integration
 
+`contracts/edge_cases.cpp` and `constexpr/core.cpp` cover canonical overflow
+results from DD/QD scaling and QD reciprocal, DD division/atan at the Dekker
+splitter boundary, and QD stepping on the binary64 subnormal grid. The
+`[range-canonical]` contracts also check equality/hash stability for tiny QD
+decimal tails; `contracts/io.cpp` compares their runtime and constexpr limb
+bits under both consumer modes, including the MinGW DAZ/FTZ configuration.
+
 | Public family | Types exercised | C | CE / CA / O | A / B | Notes |
 |---|---|---|---|---|---|
 | fdd/fqd storage and value construction, assignment, scalar/integer and cross-precision conversion | fdd/fqd | `contracts/core.cpp` | CE: `constexpr/core.cpp`, Boolean assertions in `contracts/core.cpp`; O: `contracts/overloads.cpp`, `contracts/overload_matrix.cpp` | — | Covers every fundamental arithmetic type, explicit narrowing, implicit widening, exact 64-bit boundaries, low-limb integer truncation, signed zero, `long double`, aggregate storage, both cross-precision directions, and bitwise Boolean conversion of zeros, subnormals, infinities and NaNs in strict/fast-math modes |
-| unary, binary and compound `+ - * /` | fdd/fqd | `contracts/core.cpp` | CE: `constexpr/core.cpp`, `constexpr/accuracy.cpp`; CA: all; O: `contracts/overloads.cpp` | A: f32/f64/fdd/fqd; B: fdd/fqd | Every distinct scalar category and cross-precision route is instantiated; runtime fast-math waives NaN, infinity, and signed-zero guarantees for basic fdd/fqd arithmetic while genuine constant evaluation remains checked |
+| unary, binary and compound `+ - * /` | fdd/fqd | `contracts/core.cpp`, `contracts/edge_cases.cpp` | CE: `constexpr/core.cpp`, `constexpr/accuracy.cpp`; CA: all; O: `contracts/overloads.cpp` | A: f32/f64/fdd/fqd; B: fdd/fqd, plus QD/double and QD/DD in both directions | Every distinct scalar category and cross-precision route is instantiated; tiny mixed-QD division covers reciprocal overflow, signed zero, finite quotients and the finite-only kernel under gradual underflow; runtime fast-math waives NaN, infinity, and signed-zero guarantees for basic fdd/fqd arithmetic while genuine constant evaluation remains checked |
 | comparison, `<=>`, unordered NaN behaviour | fdd/fqd | `contracts/core.cpp` | CE: `constexpr/core.cpp`, six-operator matrix in `contracts/core.cpp` | B: six fdd/fqd relational operators | Runtime and constexpr pairwise ordering includes signed zeros, infinities, NaNs, and equal heads with distinct tails |
 | `approx_eq` and parity tolerances | same-precision f32/f64/fdd/fqd, including fqd expressions | `contracts/approx_comparison.cpp` | CE: default and custom relative-threshold cases; O: accepted same-precision and rejected mixed/four-argument calls | — | Covers named defaults, native runtime/constexpr math parity, scaling, signed zero, infinities, NaNs, invalid tolerances, symmetry, exact threshold boundaries, and mixed expression shapes |
 | classification, signed zero, subnormals, infinities and NaNs | all | `contracts/core.cpp` | CE: `constexpr/core.cpp` for fdd/fqd | — | Includes unordered comparisons |
@@ -189,7 +196,7 @@ advisory lanes follow the policy documented in `README.md`.
 | deterministic formatter/parser round trip | `contracts/io.cpp` | sparse fdd and finite-extreme fqd cases in `constexpr/core.cpp` | Defaults use the normalized-expansion `max_digits10` values of 34/67 digits. General-format coverage includes a sparse-tail fdd regression; 10,000 independently constructed, bounded-spacing raw-limb values per type round-trip exactly in scientific format at those precision settings, including signed zero, mixed-sign tails, and extreme boundaries |
 | `seed_seq`, `mt19937`, `mt19937_64` | `contracts/random.cpp` | `mt19937_64` through array generation | Constructors, seed/generate/param, min/max, discard, comparison, valid/malformed streams and standard-engine equivalence |
 | `random_device` | `contracts/random.cpp` | runtime only | |
-| `uniform_int_distribution`, `generate_canonical` | `contracts/random.cpp` | fdd/fqd canonical generation | Constructors, params, bounds, override calls, equality and streams, including full-width integer ranges |
+| `uniform_int_distribution`, `generate_canonical` | `contracts/random.cpp` | fdd/fqd storage/value identity checks in `constexpr/core.cpp`; exact chunk boundaries in random contracts | Constructors, params, bounds, override calls, equality and streams, including full-width integer ranges; extended generation preserves source bits/draw counts, normalized identities, hashes, exact hexadecimal round trips and `[0,1)` for zero, maximal and zero-leading chunks |
 | uniform real distribution and array helpers | `contracts/random.cpp` | deterministic fdd/fqd and expression arrays in `constexpr/core.cpp` | Native/fdd/fqd/expression parameters, expression CTAD, and every engine/seed/default array overload; fdd/fqd distribution benchmark |
 | exponential, normal, lognormal distributions | `contracts/random.cpp` | fdd/fqd samples and expression parameters in `constexpr/core.cpp` | Every accessor, param/reset/override/equality/stream form; expression CTAD and normal-array parity; native cached-state and extended parameter-only behavior; fdd/fqd normal benchmark |
 | fqd expression lifetime, routing and materialization | `contracts/expressions.cpp`, `contracts/overload_matrix.cpp` | conversions, const/lvalue composition, ADL and mixed math promotion in `constexpr/core.cpp` | Covers delayed temporaries and storage members, every node shape, owning copies through generic helpers, explicit conversion to all fundamental arithmetic targets, promotion by value type, independent expected values, and a fusion-sensitive residual |
@@ -197,10 +204,12 @@ advisory lanes follow the policy documented in `README.md`.
 
 ## Benchmark ownership
 
-`benchmarks/runtime/operations.cpp` currently owns 77 rows for each of fdd and fqd:
+`benchmarks/runtime/operations.cpp` currently owns 77 rows for fdd and 81 for fqd:
 
 - arithmetic: `add`, `subtract`, `multiply`, `divide`, `fma`, `abs`,
   `fabs`, `sqr`, `recip`, `fmin`, `fmax`, `fdim`, `copysign`;
+- QD mixed division: `divide_double`, `double_divide`, `divide_dd`, `dd_divide`
+  (FLTX only, ordinary nonzero inputs with exponents from -80 to 80);
 - rounding: `floor`, `ceil`, `trunc`, `round`, `roundeven`, `lround`,
   `llround`, `round_decimals`, `round_significant`;
 - remainder: `fmod`, `remainder`, `remquo`;

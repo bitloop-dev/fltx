@@ -179,16 +179,21 @@ _BENCHMARK_OPERATIONS = frozenset({
     ("mixed_workloads", "haversine"),
 })
 
+_QD_MIXED_DIVISION_BENCHMARK = frozenset({
+    ("arithmetic", "divide_double"), ("arithmetic", "double_divide"),
+    ("arithmetic", "divide_dd"), ("arithmetic", "dd_divide"),
+})
+
 EXPECTED_BENCHMARK = {
-    precision: _BENCHMARK_OPERATIONS
-    for precision in ("dd", "qd")
+    "dd": _BENCHMARK_OPERATIONS,
+    "qd": _BENCHMARK_OPERATIONS | _QD_MIXED_DIVISION_BENCHMARK,
 }
 
 
 def normalize_operations(values: Iterable[str] | None) -> tuple[str, ...]:
     """Validate exact operation names and give equivalent selections one identity."""
     operations = tuple(sorted(set(values or ())))
-    available = {operation for _, operation in _BENCHMARK_OPERATIONS}
+    available = {operation for rows in EXPECTED_BENCHMARK.values() for _, operation in rows}
     unknown = set(operations) - available
     if unknown:
         raise ValueError(
@@ -285,11 +290,11 @@ def benchmark_manifest(
         implementation.id: (
             EXPECTED_BENCHMARK[precision]
             if implementation.id == "fltx"
-            else EXPECTED_BENCHMARK[precision] - qd_missing
+            else EXPECTED_BENCHMARK[precision] - qd_missing - _QD_MIXED_DIVISION_BENCHMARK
             if implementation.id == "qdpp"
-            else EXPECTED_BENCHMARK[precision] - _TLFLOAT_UNAVAILABLE
+            else EXPECTED_BENCHMARK[precision] - _TLFLOAT_UNAVAILABLE - _QD_MIXED_DIVISION_BENCHMARK
             if implementation.id == "tlfloat"
-            else EXPECTED_BENCHMARK[precision] - _BOOST_UNAVAILABLE
+            else EXPECTED_BENCHMARK[precision] - _BOOST_UNAVAILABLE - _QD_MIXED_DIVISION_BENCHMARK
         )
         for implementation in enabled_implementations(
             precision, qdpp=qdpp, tlfloat=tlfloat,

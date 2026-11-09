@@ -537,6 +537,19 @@ namespace fltx::tests::benchmark
                                   [](const auto& x, const auto& y) { return x / y; }),
                 tlfloat_impl<Float>("TLFloat operator/",
                                     [](const auto& x, const auto& y) { return x / y; }));
+            if constexpr (std::is_same_v<Float, bl::fqd>)
+            {
+                // Measure the specialized mixed kernels separately from QD/QD.
+                // Selecting leading limbs avoids timing narrowing conversions.
+                run.binary("arithmetic", "divide_double",
+                    [](const auto& x, const auto& y) { return x / y.x0; });
+                run.binary("arithmetic", "double_divide",
+                    [](const auto& x, const auto& y) { return x.x0 / y; });
+                run.binary("arithmetic", "divide_dd",
+                    [](const auto& x, const auto& y) { return x / bl::fdd{ y.x0, y.x1 }; });
+                run.binary("arithmetic", "dd_divide",
+                    [](const auto& x, const auto& y) { return bl::fdd{ x.x0, x.x1 } / y; });
+            }
             run.ternary(
                 "floating_point_utilities", "fma",
                 [](const auto& x, const auto& y, const auto& z) { return bl::fma(x, y, z); },

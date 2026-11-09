@@ -254,31 +254,23 @@ namespace detail::random
         using real_type = std::remove_cv_t<RealType>;
         static_assert(extended_limb_canonical_v<real_type>);
 
-        constexpr int limb_bits = std::numeric_limits<double>::digits;
-        const double x0 = detail::fp::ldexp_limb(static_cast<double>(canonical_limb_bits(g)), -limb_bits);
-        const double x1 = detail::fp::ldexp_limb(static_cast<double>(canonical_limb_bits(g)), -2 * limb_bits);
+        // Each 53-bit integer and its power-of-two scaling are exact. These
+        // chunks describe a fixed-point fraction, not yet normalized limbs.
+        const double x0 = static_cast<double>(canonical_limb_bits(g)) * 0x1p-53;
+        const double x1 = static_cast<double>(canonical_limb_bits(g)) * 0x1p-106;
 
-        if constexpr (std::same_as<real_type, fdd_s>)
+        if constexpr (std::same_as<real_type, fdd_s> || std::same_as<real_type, fdd>)
         {
-            return fdd_s{ x0, x1 };
-        }
-        else if constexpr (std::same_as<real_type, fdd>)
-        {
-            return fdd{ x0, x1 };
+            return real_type{ detail::_dd::renorm(x0, x1) };
         }
         else
         {
-            const double x2 = detail::fp::ldexp_limb(static_cast<double>(canonical_limb_bits(g)), -3 * limb_bits);
-            const double x3 = detail::fp::ldexp_limb(static_cast<double>(canonical_limb_bits(g)), -4 * limb_bits);
+            const double x2 = static_cast<double>(canonical_limb_bits(g)) * 0x1p-159;
+            const double x3 = static_cast<double>(canonical_limb_bits(g)) * 0x1p-212;
 
-            if constexpr (std::same_as<real_type, fqd_s>)
-            {
-                return fqd_s{ x0, x1, x2, x3 };
-            }
-            else
-            {
-                return fqd{ x0, x1, x2, x3 };
-            }
+            // Normalize once at construction, retaining all 212 source bits
+            // and the [0, 1) bound, including a carry to 1 with a negative tail.
+            return real_type{ detail::_qd::renorm(x0, x1, x2, x3) };
         }
     }
 

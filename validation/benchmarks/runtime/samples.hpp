@@ -47,6 +47,7 @@ namespace fltx::tests::benchmark::samples
     {
         constexpr std::string_view operations[] = {
             "add", "subtract", "multiply", "divide",
+            "divide_double", "double_divide", "divide_dd", "dd_divide",
             "equal", "not_equal", "less", "less_equal", "greater",
             "greater_equal", "abs", "fabs", "fmin", "fmax", "fdim",
             "copysign", "fma", "modf", "ldexp", "scalbn", "scalbln",
@@ -226,7 +227,9 @@ namespace fltx::tests::benchmark::samples
                     index % 5 == 3 ? -x : signed_log(rng, -80, 80);
                 append(x, y);
             }
-            else if (operation == "divide" || operation == "atan2")
+            else if (operation == "divide" || operation == "atan2" ||
+                     operation == "divide_double" || operation == "double_divide" ||
+                     operation == "divide_dd" || operation == "dd_divide")
             {
                 append(signed_log(rng, -80, 80), signed_log(rng, -80, 80));
             }

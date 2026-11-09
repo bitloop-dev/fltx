@@ -542,28 +542,64 @@ namespace detail::_dd // primitives and kernels
         return renorm(s, t);
     }
 
-#if BL_FP_BARRIER_ACTIVE
-    // Applies the compensated quotient correction with explicit evaluation barriers.
+    // Applies the compensated quotient correction, retaining barriers where needed.
     [[nodiscard]] BL_FORCE_INLINE constexpr fdd_s div_correction_inline(
-        const fdd_s& a,
-        const fdd_s& b,
-        double q0,
-        double p0,
-        double e0) noexcept
+        const fdd_s& a, const fdd_s& b, double q0, double p0, double e0) noexcept
     {
+#if BL_FP_BARRIER_ACTIVE
         double residual = a.hi - p0;  BL_FP_BARRIER(residual);
         residual -= e0;               BL_FP_BARRIER(residual);
         residual += a.lo;             BL_FP_BARRIER(residual);
         residual -= q0 * b.lo;        BL_FP_BARRIER(residual);
-
         double q1 = residual / b.hi;  BL_FP_BARRIER(q1);
         double hi = q0 + q1;          BL_FP_BARRIER(hi);
         double lo = q0 - hi;          BL_FP_BARRIER(lo);
         lo += q1;                     BL_FP_BARRIER(lo);
-
         return { hi, lo };
+#else
+        const double q1 = (((a.hi - p0) - e0) + a.lo - (q0 * b.lo)) / b.hi;
+        const double hi = q0 + q1;
+        return { hi, (q0 - hi) + q1 };
+#endif
+    }
+
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
+    // Finish the entire failed division off the hot path. Returning the value
+    // avoids keeping normal-path residual temporaries alive across this call.
+    [[nodiscard]] BL_NO_INLINE inline fdd_s div_recover_split(
+        const fdd_s& a, const fdd_s& b, double q0) noexcept
+    {
+        double p0{}, e0{};
+        detail::fp::two_prod_precise_dekker_scaled(q0, b.hi, p0, e0);
+        return div_correction_inline(a, b, q0, p0, e0);
     }
 #endif
+
+    [[nodiscard]] BL_FORCE_INLINE constexpr fdd_s div_quotient_inline(
+        const fdd_s& a, const fdd_s& b, double q0) noexcept
+    {
+        double p0{}, e0{};
+#if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)
+#if FLTX_HAS_RUNTIME_FMA_PATH
+        if (!bl::detail::is_constant_evaluated() && detail::fp::runtime_hardware_fma_enabled())
+        {
+            detail::fp::two_prod_fma(q0, b.hi, p0, e0);
+            return div_correction_inline(a, b, q0, p0, e0);
+        }
+#endif
+        if (bl::detail::is_constant_evaluated())
+            detail::fp::two_prod_precise_dekker_range_safe(q0, b.hi, p0, e0);
+        else
+        {
+            detail::fp::two_prod_precise_dekker(q0, b.hi, p0, e0);
+            if (detail::fp::isinf_or_nan(e0)) [[unlikely]]
+                return div_recover_split(a, b, q0);
+        }
+#else
+        two_prod_precise(q0, b.hi, p0, e0);
+#endif
+        return div_correction_inline(a, b, q0, p0, e0);
+    }
 
     // Divides dd after the caller has handled exceptional denominator cases.
     [[nodiscard]] BL_FORCE_INLINE constexpr fdd_s div_prechecked_inline(const fdd_s& a, const fdd_s& b) noexcept
@@ -577,16 +613,7 @@ namespace detail::_dd // primitives and kernels
         if (q0 == 0.0 && a.hi == 0.0 && a.lo == 0.0) [[unlikely]]
             return signed_zero(bl::signbit(a) != bl::signbit(b));
 
-        double p0{}, e0{};
-        two_prod_precise(q0, b.hi, p0, e0);
-
-#if BL_FP_BARRIER_ACTIVE
-        return div_correction_inline(a, b, q0, p0, e0);
-#else
-        const double q1 = (((a.hi - p0) - e0) + a.lo - (q0 * b.lo)) / b.hi;
-        const double hi = q0 + q1;
-        return { hi, (q0 - hi) + q1 };
-#endif
+        return div_quotient_inline(a, b, q0);
     }
 
     // Divides finite dd values without canonical special-value handling.
@@ -597,16 +624,7 @@ namespace detail::_dd // primitives and kernels
 #endif
         const double q0 = a.hi / b.hi;
 
-        double p0{}, e0{};
-        two_prod_precise(q0, b.hi, p0, e0);
-
-#if BL_FP_BARRIER_ACTIVE
-        return div_correction_inline(a, b, q0, p0, e0);
-#else
-        const double q1 = (((a.hi - p0) - e0) + a.lo - (q0 * b.lo)) / b.hi;
-        const double hi = q0 + q1;
-        return { hi, (q0 - hi) + q1 };
-#endif
+        return div_quotient_inline(a, b, q0);
     }
 
 #if !defined(FLTX_DISABLE_MATH_USES_CHECKED_DEKKER)

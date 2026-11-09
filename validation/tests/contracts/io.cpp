@@ -853,6 +853,33 @@ TEST_CASE("parsing rounds subnormal boundaries once with ties to even", "[contra
     check_subnormal_parsing<bl::fqd>();
 }
 
+TEST_CASE("qd decimal subnormal tail ties agree with constant evaluation",
+          "[contracts][io][charconv][subnormal][range-canonical]")
+{
+    constexpr std::array texts{
+        "6.002e-291", "-6.002e-291",
+        "9.764828507356783252210253403079124617387068392850063287793767521841862072699e-274",
+        "6.002195961969672823482481250658182829807816806007646023760837288967435639935e-291"};
+    constexpr auto expected = [texts] {
+        std::array<bl::fqd, texts.size()> values{};
+        for (std::size_t i = 0; i < texts.size(); ++i)
+            values[i] = bl::parse<bl::fqd>(texts[i]);
+        return values;
+    }();
+    for (std::size_t i = 0; i < texts.size(); ++i)
+    {
+        CAPTURE(texts[i]);
+        const std::string input{texts[i]};
+        const auto out = bl::parse<bl::fqd>(input);
+        const auto storage = bl::parse<bl::fqd_s>(input);
+        // Compare bits so DAZ/FTZ cannot hide a lost subnormal limb.
+        CHECK(std::bit_cast<std::array<std::uint64_t, 4>>(out) ==
+              std::bit_cast<std::array<std::uint64_t, 4>>(expected[i]));
+        CHECK(std::bit_cast<std::array<std::uint64_t, 4>>(storage) ==
+              std::bit_cast<std::array<std::uint64_t, 4>>(expected[i]));
+    }
+}
+
 TEST_CASE("native parse range errors agree across signs formats and evaluation routes", "[contracts][io][charconv]")
 {
     const auto check = []<class T>() {

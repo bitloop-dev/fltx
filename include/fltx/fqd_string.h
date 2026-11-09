@@ -96,6 +96,16 @@ namespace detail::_qd // primitives and kernels
             return rounded >= hidden_bit ? hidden_bit : rounded;
         }
 
+        // Keep this rare repair out of the ordinary parser's instruction stream.
+        static BL_NO_INLINE constexpr value_type normalize_guarded_tail(value_type out) noexcept
+        {
+            // Bit-based scaling preserves subnormal limbs under DAZ/FTZ;
+            // the barrier-aware renormalizer also survives consumer fast-math.
+            const auto scaled = scale_terms_guarded(out, 512);
+            const auto normalized = renorm(scaled.x0, scaled.x1, scaled.x2, scaled.x3);
+            return scale_terms_guarded(normalized, -512);
+        }
+
         // Extracts each limb from the exact signed remainder, avoiding the
         // floating-point error-free transforms that fast-math can reassociate.
         static constexpr value_type pack_guarded_significand(
@@ -151,12 +161,17 @@ namespace detail::_qd // primitives and kernels
                     detail::exact_decimal::add_signed(remainder, term, !remainder.neg);
                 }
             }
-            return {
+            const value_type out{
                 std::bit_cast<double>(limb_bits[0]),
                 std::bit_cast<double>(limb_bits[1]),
                 std::bit_cast<double>(limb_bits[2]),
                 std::bit_cast<double>(limb_bits[3])
             };
+            // Guard bits can reach the subnormal grid only in this exponent range.
+            // Rounding that final limb can leave a halfway tie in an earlier limb.
+            if (unit_exponent < -1022) [[unlikely]]
+                return normalize_guarded_tail(out);
+            return out;
         }
 #endif
 

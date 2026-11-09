@@ -867,6 +867,10 @@ namespace detail::_qd_impl
             if (stepped_x3_bits < half_x2_ulp_bits) [[likely]]
                 return fqd_s{ from.x0, from.x1, from.x2, stepped_x3 };
         }
+        // This branch has a normal nominal step, far below the head's ulp.
+        // Its one-limb shortcut needs no subnormal-overlap check.
+        if (from.x1 == 0.0)
+            return fqd_s{ from.x0, stepped_x3, 0.0, 0.0 };
         return normalize_nextafter_tail(from, stepped_x3);
     }
 

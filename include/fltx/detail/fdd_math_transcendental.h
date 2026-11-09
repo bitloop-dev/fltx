@@ -1068,7 +1068,13 @@ namespace detail::_dd // primitives and kernels
     {
         if (isnan(x))  return x;
         if (iszero(x)) return x;
-        if (isinf(x))  return signbit(x.hi) ? -pi_2 : pi_2;
+        // atan(1/|x|) < 2^-110 here, below half an ulp of pi_2.lo.
+        // The existing infinity branch can return the same rounded DD value
+        // for huge finite inputs without forming their reciprocal.
+        const std::uint64_t magnitude_bits =
+            std::bit_cast<std::uint64_t>(x.hi) & 0x7fffffffffffffffull;
+        if (magnitude_bits >= std::bit_cast<std::uint64_t>(0x1p110))
+            return signbit(x.hi) ? -pi_2 : pi_2;
 
         const bool neg = x.hi < 0.0;
         const fdd_s ax = neg ? -x : x;

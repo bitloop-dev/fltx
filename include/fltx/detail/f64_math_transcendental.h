@@ -1329,7 +1329,7 @@ requires (detail::math::f64_promoted_math_args<Base, Exp> &&
 #endif
 }
 
-[[nodiscard]] BL_FORCE_INLINE constexpr bool sincos(double x, double& s_out, double& c_out) noexcept
+BL_FORCE_INLINE constexpr bool sincos(double x, double& s_out, double& c_out) noexcept
 {
     s_out = bl::sin(x);
     c_out = bl::cos(x);

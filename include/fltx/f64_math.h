@@ -174,7 +174,7 @@ FLTX_F64_PROMOTED_BINARY(islessgreater)
 
     template<class T>
     requires detail::math::f64_promoted_math_args<T>
-    [[nodiscard]] BL_FORCE_INLINE constexpr bool sincos(T x, detail::math::promoted_t<T>& s_out, detail::math::promoted_t<T>& c_out)
+    BL_FORCE_INLINE constexpr bool sincos(T x, detail::math::promoted_t<T>& s_out, detail::math::promoted_t<T>& c_out)
     {
         using P = detail::math::promoted_t<T>;
         return bl::sincos(detail::math::promoted_cast<P>(x), s_out, c_out);

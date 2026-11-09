@@ -897,7 +897,7 @@ namespace detail::_qd // primitives and kernels
             simd::f64x2_store(q23, q2, ignored);
         }
         else
-            #endif
+        #endif
         {
             two_prod_precise(a.x0, b, p0, q0);
             two_prod_precise(a.x1, b, p1, q1);
@@ -1257,12 +1257,21 @@ namespace detail::_qd // primitives and kernels
     }
 
     // Divides qd after the caller has handled exceptional denominator cases.
+    // Mixed callers can request recovery if they have not scaled tiny divisors.
+    template<bool RecoverOverflow = false>
     [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s div_prechecked_inline(const fqd_s& a, const fqd_s& b) noexcept
     {
         const double inv_b0 = 1.0 / b.x0;
         const double q0 = a.x0 * inv_b0;
         if (detail::fp::isinf_or_nan(q0)) [[unlikely]]
+        {
+            if constexpr (RecoverOverflow)
+            {
+                if (detail::fp::isinf(inv_b0) && detail::fp::absd(a.x0) < 0x1p500)
+                    return detail::_qd_runtime::div_canonical(a, b);
+            }
             return fqd_s{ q0, 0.0, 0.0, 0.0 };
+        }
         if (q0 == 0.0 && bl::iszero(a)) [[unlikely]]
             return signed_zero(bl::signbit(a) != bl::signbit(b));
 
@@ -1333,6 +1342,10 @@ namespace detail::_qd // primitives and kernels
 
         if (bl::detail::is_constant_evaluated())
         {
+            // Constant evaluation must avoid overflowing the reciprocal itself.
+            if (detail::fp::absd(b) < 0x1p-500 && detail::fp::absd(a.x0) < 0x1p500)
+                return div_canonical_inline(a, fqd_s{ b });
+
             if (detail::fp::isnan(a.x0) || detail::fp::isnan(b))
                 return std::numeric_limits<fqd_s>::quiet_NaN();
 
@@ -1368,7 +1381,7 @@ namespace detail::_qd // primitives and kernels
 
         const double q0 = a.x0 * inv_b;
         if (detail::fp::isinf_or_nan(q0)) [[unlikely]]
-            return fqd_s{ q0, 0.0, 0.0, 0.0 };
+            return detail::_qd_runtime::div_canonical(a, divisor);
         if (q0 == 0.0 && bl::iszero(a)) [[unlikely]]
             return signed_zero(bl::signbit(a) != signbit(b));
 
@@ -1487,16 +1500,28 @@ namespace detail::_qd // primitives and kernels
         return div_double_prechecked_inline(a, b);
     }
 
-    // Divides finite qd by a finite double without canonical special handling.
+    // Divides finite qd by a finite double with reciprocal-overflow recovery.
     [[nodiscard]] BL_FORCE_INLINE constexpr fqd_s div_double_finite_inline(
         const fqd_s& a,
         double b) noexcept
     {
         using namespace detail::_qd;
 
+        if (bl::detail::is_constant_evaluated())
+        {
+            if (detail::fp::absd(b) < 0x1p-500 && detail::fp::absd(a.x0) < 0x1p500)
+                return div_canonical_inline(a, fqd_s{ b });
+        }
+
         const double inv_b = 1.0 / b;
         const fqd_s divisor{ b, 0.0, 0.0, 0.0 };
         const double q0 = a.x0 * inv_b;
+        if (detail::fp::isinf_or_nan(q0)) [[unlikely]]
+        {
+            if (detail::fp::isinf(inv_b) && detail::fp::absd(a.x0) < 0x1p500)
+                return detail::_qd_runtime::div_canonical(a, divisor);
+            return fqd_s{ q0, 0.0, 0.0, 0.0 };
+        }
         fqd_s r = div_residual_exact_inline(a, divisor, q0);
 
         const double q1 = r.x0 * inv_b; r = div_residual_fast_inline(r, divisor, q1);
@@ -1536,6 +1561,11 @@ namespace detail::_qd // primitives and kernels
         return signed_infinity(signbit(b));
     if (isinf(b)) [[unlikely]]
         return signed_zero(signbit(b));
+
+    // Below this boundary the reciprocal exceeds the binary64 exponent range.
+    // Normalized subnormal inputs have no nonzero trailing limbs.
+    if (absd(b.x0) <= 0x1p-1024) [[unlikely]]
+        return signed_infinity(signbit(b));
 
     constexpr fqd_s one = fqd_s{ 1.0 };
 

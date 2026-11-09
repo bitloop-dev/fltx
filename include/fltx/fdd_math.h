@@ -359,7 +359,7 @@ requires (detail::math::dd_promoted_math_args<Base, Exp> &&
 }
 
 // trig
-[[nodiscard]] BL_FORCE_INLINE constexpr bool sincos(const fdd_s& x, fdd_s& s_out, fdd_s& c_out)
+BL_FORCE_INLINE constexpr bool sincos(const fdd_s& x, fdd_s& s_out, fdd_s& c_out)
 {
     BL_CONSTEXPR_RUNTIME_DISPATCH(
         detail::_dd_impl::sincos(x, s_out, c_out),
@@ -691,7 +691,7 @@ requires detail::math::dd_nexttoward_args<From, To>
 
 template<class T>
 requires detail::math::dd_promoted_math_args<T>
-[[nodiscard]] BL_FORCE_INLINE constexpr bool sincos(T x, detail::math::promoted_t<T>& s_out, detail::math::promoted_t<T>& c_out)
+BL_FORCE_INLINE constexpr bool sincos(T x, detail::math::promoted_t<T>& s_out, detail::math::promoted_t<T>& c_out)
 {
     using P = detail::math::promoted_t<T>;
     return bl::sincos(detail::math::promoted_cast<P>(x), s_out, c_out);

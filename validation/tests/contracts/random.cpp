@@ -7,10 +7,13 @@
 #include <limits>
 #include <random>
 #include <sstream>
+#include <string_view>
 #include <type_traits>
 #include <vector>
 
 #include <fltx/random.h>
+#include <fltx/charconv.h>
+#include <fltx/hash.h>
 
 namespace
 {
@@ -52,6 +55,86 @@ namespace
             return result;
         }
     };
+
+    struct canonical_chunk_engine
+    {
+        using result_type = std::uint64_t;
+
+        std::array<result_type, 4> chunks;
+        std::size_t index = 0;
+
+        [[nodiscard]] static constexpr result_type min() noexcept { return 0; }
+        [[nodiscard]] static constexpr result_type max() noexcept
+        {
+            return std::numeric_limits<result_type>::max();
+        }
+
+        [[nodiscard]] constexpr result_type operator()() noexcept
+        {
+            return chunks[index++] << 11;
+        }
+    };
+
+    template<class Real>
+    void check_canonical_value(const Real& value)
+    {
+        const Real unchanged = value + Real{ 0.0 };
+        CHECK(value == unchanged);
+        CHECK(value - unchanged == Real{ 0.0 });
+        CHECK(value >= Real{ 0.0 });
+        CHECK(value < Real{ 1.0 });
+        CHECK(std::hash<Real>{}(value) == std::hash<Real>{}(unchanged));
+
+        // Hex represents the generated fixed-point fraction exactly. Decimal
+        // max_digits10 round trips can introduce bits below its nominal grid.
+        std::array<char, 128> buffer{};
+        const auto formatted = bl::to_chars(
+            buffer.data(), buffer.data() + buffer.size(), value,
+            std::chars_format::hex, (std::numeric_limits<Real>::digits + 3) / 4);
+        REQUIRE(formatted.ec == std::errc{});
+        const auto restored = bl::try_parse<Real>(
+            std::string_view{ buffer.data(), static_cast<std::size_t>(formatted.ptr - buffer.data()) },
+            std::chars_format::hex);
+        REQUIRE(restored);
+        CHECK(restored.value == value);
+    }
+
+    template<class Real>
+    constexpr bool canonical_chunk_boundaries()
+    {
+        constexpr std::uint64_t all_bits = (std::uint64_t{ 1 } << 53) - 1;
+        constexpr bool dd = std::same_as<Real, bl::fdd_s> || std::same_as<Real, bl::fdd>;
+        constexpr int count = dd ? 2 : 4;
+        constexpr double last_bit = dd ? 0x1p-106 : 0x1p-212;
+
+        const auto sample = [](std::array<std::uint64_t, 4> chunks) {
+            canonical_chunk_engine engine{ chunks };
+            return bl::generate_canonical<Real, std::numeric_limits<Real>::digits>(engine);
+        };
+        const Real zero = sample({ 0, 0, 0, 0 });
+        const Real maximum = sample({ all_bits, all_bits, all_bits, all_bits });
+        const Real expected_maximum = Real{ 1.0 } - Real{ last_bit };
+        if (zero != Real{ 0.0 } || maximum != expected_maximum ||
+            !(maximum < Real{ 1.0 }) || maximum != Real{ maximum + Real{ 0.0 } })
+            return false;
+
+        // Each source bit must survive, including a zero head with only the
+        // lowest chunk set. The expected value is one exactly representable double.
+        for (int limb = 0; limb < count; ++limb)
+        {
+            double expected = limb == 0 ? 0x1p-53 : limb == 1 ? 0x1p-106 :
+                              limb == 2 ? 0x1p-159 : 0x1p-212;
+            for (int bit = 0; bit < 53; ++bit)
+            {
+                std::array<std::uint64_t, 4> chunks{};
+                chunks[limb] = std::uint64_t{ 1 } << bit;
+                if (sample(chunks) != Real{ expected })
+                    return false;
+                expected *= 2.0;
+            }
+        }
+        return true;
+    }
 
     template<class Distribution>
     void check_stream_round_trip(Distribution distribution)
@@ -362,30 +445,28 @@ TEST_CASE("extended canonical samples use the engine range rather than its stora
     check_range.template operator()<bl::fqd, 56>();
 }
 
-TEST_CASE("extended canonical samples preserve the full-width mt19937_64 limb sequence",
+TEST_CASE("extended canonical samples preserve the full-width mt19937_64 value sequence",
           "[contracts][random]")
 {
     const auto check_sequence = []<class Real>() {
         bl::mt19937_64 engine{ 0x1020304050607080ull };
         std::mt19937_64 reference{ 0x1020304050607080ull };
-        for (int i = 0; i < 32; ++i)
+        for (int i = 0; i < 128; ++i)
         {
+            CAPTURE(i);
             const Real value = bl::generate_canonical<Real, std::numeric_limits<Real>::digits>(engine);
-            const auto expected_limb = [&](int exponent) {
-                return std::ldexp(static_cast<double>(reference() >> 11), exponent);
-            };
-            if constexpr (std::same_as<Real, bl::fdd_s> || std::same_as<Real, bl::fdd>)
+            constexpr int count =
+                std::same_as<Real, bl::fdd_s> || std::same_as<Real, bl::fdd> ? 2 : 4;
+            Real expected{ 0.0 };
+            for (int limb = 0; limb < count; ++limb)
             {
-                CHECK(value.hi == expected_limb(-53));
-                CHECK(value.lo == expected_limb(-106));
+                // Independent public arithmetic constructs the same exact
+                // fixed-point value; its raw positive chunks need not be limbs.
+                expected = expected + Real{
+                    std::ldexp(static_cast<double>(reference() >> 11), -53 * (limb + 1)) };
             }
-            else
-            {
-                CHECK(value.x0 == expected_limb(-53));
-                CHECK(value.x1 == expected_limb(-106));
-                CHECK(value.x2 == expected_limb(-159));
-                CHECK(value.x3 == expected_limb(-212));
-            }
+            CHECK(value == expected);
+            check_canonical_value(value);
         }
         CHECK(engine() == reference());
     };
@@ -394,6 +475,38 @@ TEST_CASE("extended canonical samples preserve the full-width mt19937_64 limb se
     check_sequence.template operator()<bl::fdd>();
     check_sequence.template operator()<bl::fqd_s>();
     check_sequence.template operator()<bl::fqd>();
+}
+
+TEST_CASE("extended canonical samples retain boundary bits and normalized identities",
+          "[contracts][random]")
+{
+    STATIC_CHECK(canonical_chunk_boundaries<bl::fdd_s>());
+    STATIC_CHECK(canonical_chunk_boundaries<bl::fdd>());
+    STATIC_CHECK(canonical_chunk_boundaries<bl::fqd_s>());
+    STATIC_CHECK(canonical_chunk_boundaries<bl::fqd>());
+    CHECK(canonical_chunk_boundaries<bl::fdd_s>());
+    CHECK(canonical_chunk_boundaries<bl::fdd>());
+    CHECK(canonical_chunk_boundaries<bl::fqd_s>());
+    CHECK(canonical_chunk_boundaries<bl::fqd>());
+
+    const auto check_engines = []<class Real>() {
+        bl::mt19937 engine32{ 42u };
+        bl::mt19937_64 engine64{ 42u };
+        modulo_six_engine small_range;
+        wide_storage_engine<32> offset_range;
+        for (int i = 0; i < 128; ++i)
+        {
+            CAPTURE(i);
+            check_canonical_value(bl::generate_canonical<Real, std::numeric_limits<Real>::digits>(engine32));
+            check_canonical_value(bl::generate_canonical<Real, std::numeric_limits<Real>::digits>(engine64));
+            check_canonical_value(bl::generate_canonical<Real, std::numeric_limits<Real>::digits>(small_range));
+            check_canonical_value(bl::generate_canonical<Real, std::numeric_limits<Real>::digits>(offset_range));
+        }
+    };
+    check_engines.template operator()<bl::fdd_s>();
+    check_engines.template operator()<bl::fdd>();
+    check_engines.template operator()<bl::fqd_s>();
+    check_engines.template operator()<bl::fqd>();
 }
 
 TEST_CASE("all real distributions expose their distinct public operations",
